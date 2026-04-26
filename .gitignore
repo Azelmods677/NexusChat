@@ -1,0 +1,121 @@
+# ═══════════════════════════════════════════════════════════
+# AI AGENTS & DEVELOPMENT TOOLS
+# ═══════════════════════════════════════════════════════════
+.kiro/
+.replit
+.replitignore
+*.replit
+kiro-backend-server.js
+start-kiro-backend.bat
+.cache/
+.local/
+.agents/
+artifacts/
+attached_assets/
+
+# ═══════════════════════════════════════════════════════════
+# NODE.JS (not needed for Android project)
+# ═══════════════════════════════════════════════════════════
+node_modules/
+package.json
+package-lock.json
+pnpm-lock.yaml
+pnpm-workspace.yaml
+yarn.lock
+.npmrc
+tsconfig*.json
+
+# ═══════════════════════════════════════════════════════════
+# TEMPORARY/EXTERNAL LIBRARIES
+# ═══════════════════════════════════════════════════════════
+lib/
+scripts/
+webrtc-android-main/
+
+# ═══════════════════════════════════════════════════════════
+# ANDROID / KOTLIN PROJECT
+# ═══════════════════════════════════════════════════════════
+
+# Gradle files
+.gradle/
+build/
+app/build/
+*/build/
+**/build/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log/OS Files
+*.log
+
+# Android Studio generated files and folders
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+output.json
+
+# IntelliJ IDEA
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+
+# Keystore files (NEVER commit these!)
+*.jks
+*.keystore
+
+# Android Profiling
+*.hprof
+
+# Kotlin
+.kotlin/
+
+# Build outputs
+*.class
+*.dex
+*.ap_
+
+# Temporary files
+*.swp
+*.bak
+*~
+
+# ═══════════════════════════════════════════════════════════
+# FIREBASE (keep google-services.json for development)
+# ═══════════════════════════════════════════════════════════
+# Uncomment the line below if you want to exclude Firebase config
+# app/google-services.json
+
+# ═══════════════════════════════════════════════════════════
+# IDE - VSCODE
+# ═══════════════════════════════════════════════════════════
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ═══════════════════════════════════════════════════════════
+# SYSTEM FILES
+# ═══════════════════════════════════════════════════════════
+.DS_Store
+Thumbs.db
+
+# ═══════════════════════════════════════════════════════════
+# MISC
+# ═══════════════════════════════════════════════════════════
+.expo/
+.expo-shared/
+dist/
+tmp/
+out-tsc/
+*.tsbuildinfo

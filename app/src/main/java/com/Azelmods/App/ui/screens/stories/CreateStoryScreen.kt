@@ -1,0 +1,929 @@
+package com.Azelmods.App.ui.screens.stories
+
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import coil3.compose.rememberAsyncImagePainter
+import com.Azelmods.App.ui.components.DraggableText
+import com.Azelmods.App.ui.components.DraggableEmoji
+import com.Azelmods.App.ui.components.EmojiOverlay
+import com.Azelmods.App.ui.components.PhotoAdjuster
+import com.Azelmods.App.ui.theme.*
+import com.Azelmods.App.utils.PermissionHelper
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.asImageBitmap
+import com.Azelmods.App.utils.VideoThumbnailExtractor
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CreateStoryScreen(
+    navController: NavController,
+    viewModel: CreateStoryViewModel = hiltViewModel()
+) {
+    val context = LocalContext.current
+    val state by viewModel.state.collectAsState()
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var caption by remember { mutableStateOf("") }
+    var textOverlay by remember { mutableStateOf("") }
+    var textPosition by remember { mutableStateOf(Offset(100f, 300f)) }
+    var showTextDialog by remember { mutableStateOf(false) }
+    var showDrawMode by remember { mutableStateOf(false) }
+    var showStickerPicker by remember { mutableStateOf(false) }
+    var selectedSticker by remember { mutableStateOf("") }
+    var emojiOverlays by remember { mutableStateOf<List<EmojiOverlay>>(emptyList()) }
+    var showPhotoAdjuster by remember { mutableStateOf(false) }
+    var photoVerticalPosition by remember { mutableStateOf(0f) }
+    var videoThumbnail by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var isVideoSelected by remember { mutableStateOf(false) }
+    
+    // Show error toast
+    LaunchedEffect(state.error) {
+        state.error?.let { error ->
+            android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
+    
+    // Show success and navigate back
+    LaunchedEffect(state.uploadSuccess) {
+        if (state.uploadSuccess) {
+            android.widget.Toast.makeText(context, "Story uploaded!", android.widget.Toast.LENGTH_SHORT).show()
+            viewModel.clearSuccess()
+            navController.popBackStack()
+        }
+    }
+    
+    // Media permission launcher
+    val mediaPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            // Permissions granted, can proceed
+        }
+    }
+    
+    // Image picker launcher with error handling
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        try {
+            selectedImageUri = uri
+            isVideoSelected = false
+            videoThumbnail = null
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    
+    // Video picker launcher with error handling and thumbnail extraction
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        try {
+            selectedImageUri = uri
+            if (uri != null) {
+                isVideoSelected = true
+                // Extract video thumbnail in background
+                videoThumbnail = VideoThumbnailExtractor.extractThumbnail(context, uri)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            isVideoSelected = false
+            videoThumbnail = null
+        }
+    }
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { 
+                    Text(
+                        "Create Story",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    ) 
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            Icons.Default.Close, 
+                            contentDescription = "Close",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                },
+                actions = {
+                    if (selectedImageUri != null) {
+                        // Animated share button
+                        val infiniteTransition = rememberInfiniteTransition(label = "share_pulse")
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = 1.05f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "pulse"
+                        )
+                        
+                        Surface(
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .scale(if (state.isUploading) 1f else scale),
+                            shape = RoundedCornerShape(20.dp),
+                            color = if (state.isUploading) Purple.copy(alpha = 0.5f) else Purple,
+                            onClick = {
+                                if (!state.isUploading && selectedImageUri != null) {
+                                    // Detect media type and upload accordingly
+                                    val uriString = selectedImageUri.toString()
+                                    when {
+                                        uriString == "text_only" -> {
+                                            // Text story
+                                            viewModel.createTextStory(textOverlay, "#7C3AED")
+                                        }
+                                        uriString.contains("video", ignoreCase = true) -> {
+                                            // Video story
+                                            viewModel.uploadVideoStory(selectedImageUri!!, caption)
+                                        }
+                                        else -> {
+                                            // Image story
+                                            viewModel.uploadImageStory(selectedImageUri!!, caption)
+                                        }
+                                    }
+                                }
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (state.isUploading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    if (state.isUploading) "Uploading..." else "Share",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
+                                )
+                            }
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color(0xFF1A1A2E),
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White
+                )
+            )
+        },
+        containerColor = Color(0xFF0F0F1A)
+    ) { paddingValues ->
+        if (selectedImageUri == null) {
+            // Media selection with modern design
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Animated icon
+                    val infiniteTransition = rememberInfiniteTransition(label = "icon_pulse")
+                    val iconScale by infiniteTransition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 1.1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1500),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "scale"
+                    )
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .scale(iconScale)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.secondary
+                                    )
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.AddPhotoAlternate,
+                            contentDescription = null,
+                            modifier = Modifier.size(60.dp),
+                            tint = Color.White
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    Text(
+                        text = "Create Your Story",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = "Share a moment that disappears after 24 hours",
+                        fontSize = 15.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(48.dp))
+                    
+                    // Modern glassmorphism buttons
+                    StoryCreationButton(
+                        icon = Icons.Default.Photo,
+                        text = "Choose Photo",
+                        gradient = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary),
+                        onClick = { 
+                            if (PermissionHelper.hasMediaPermissions(context)) {
+                                imagePickerLauncher.launch("image/*")
+                            } else {
+                                mediaPermissionLauncher.launch(PermissionHelper.mediaPermissions)
+                            }
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    StoryCreationButton(
+                        icon = Icons.Default.Videocam,
+                        text = "Choose Video",
+                        gradient = listOf(Color(0xFFFF6B9D), Color(0xFFFF8E53)),
+                        onClick = { 
+                            if (PermissionHelper.hasMediaPermissions(context)) {
+                                videoPickerLauncher.launch("video/*")
+                            } else {
+                                mediaPermissionLauncher.launch(PermissionHelper.mediaPermissions)
+                            }
+                        }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    StoryCreationButton(
+                        icon = Icons.Default.TextFields,
+                        text = "Text Story",
+                        gradient = listOf(Color(0xFF00BFA6), Color(0xFF00D9FF)),
+                        onClick = { 
+                            selectedImageUri = Uri.parse("text_only")
+                            showTextDialog = true
+                        }
+                    )
+                }
+            }
+        } else {
+            // Preview with modern overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                // Background
+                if (selectedImageUri.toString() == "text_only") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black) // Fondo negro como pediste
+                    ) {
+                        // Draggable text overlay - can be moved anywhere
+                        if (textOverlay.isNotEmpty()) {
+                            DraggableText(
+                                text = textOverlay,
+                                initialOffset = textPosition,
+                                onPositionChange = { newPosition ->
+                                    textPosition = newPosition
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                                backgroundColor = Color.Transparent // Sin fondo para que se vea el negro
+                            )
+                        } else {
+                            // Placeholder text in center
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Tap 'Text' to add your message",
+                                    fontSize = 18.sp,
+                                    color = Color.White.copy(alpha = 0.6f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                        
+                        // Draggable emoji overlays on black background
+                        emojiOverlays.forEach { emojiOverlay ->
+                            DraggableEmoji(
+                                emoji = emojiOverlay.emoji,
+                                initialOffset = Offset(emojiOverlay.x, emojiOverlay.y),
+                                size = emojiOverlay.size,
+                                onPositionChange = { newPosition ->
+                                    emojiOverlays = emojiOverlays.map {
+                                        if (it.id == emojiOverlay.id) {
+                                            it.copy(x = newPosition.x, y = newPosition.y)
+                                        } else {
+                                            it
+                                        }
+                                    }
+                                },
+                                onRemove = {
+                                    emojiOverlays = emojiOverlays.filter { it.id != emojiOverlay.id }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Show video thumbnail if available, otherwise show image
+                        if (isVideoSelected && videoThumbnail != null) {
+                            Image(
+                                bitmap = videoThumbnail!!.asImageBitmap(),
+                                contentDescription = "Video thumbnail",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        translationY = photoVerticalPosition
+                                    },
+                                contentScale = ContentScale.Crop
+                            )
+                            
+                            // Video play icon overlay
+                            Surface(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .align(Alignment.Center),
+                                shape = CircleShape,
+                                color = Color.Black.copy(alpha = 0.6f)
+                            ) {
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = "Video",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp)
+                                )
+                            }
+                        } else {
+                            Image(
+                                painter = rememberAsyncImagePainter(selectedImageUri),
+                                contentDescription = "Selected media",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        translationY = photoVerticalPosition
+                                    },
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        
+                        // Draggable text overlay
+                        if (textOverlay.isNotEmpty()) {
+                            DraggableText(
+                                text = textOverlay,
+                                initialOffset = textPosition,
+                                onPositionChange = { newPosition ->
+                                    textPosition = newPosition
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        
+                        // Draggable emoji overlays
+                        emojiOverlays.forEach { emojiOverlay ->
+                            DraggableEmoji(
+                                emoji = emojiOverlay.emoji,
+                                initialOffset = Offset(emojiOverlay.x, emojiOverlay.y),
+                                size = emojiOverlay.size,
+                                onPositionChange = { newPosition ->
+                                    emojiOverlays = emojiOverlays.map {
+                                        if (it.id == emojiOverlay.id) {
+                                            it.copy(x = newPosition.x, y = newPosition.y)
+                                        } else {
+                                            it
+                                        }
+                                    }
+                                },
+                                onRemove = {
+                                    emojiOverlays = emojiOverlays.filter { it.id != emojiOverlay.id }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        
+                        // Sticker overlay (deprecated - use emoji overlays instead)
+                        if (selectedSticker.isNotEmpty()) {
+                            Text(
+                                text = selectedSticker,
+                                fontSize = 64.sp,
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        }
+                    }
+                }
+                
+                // Modern bottom toolbar with glassmorphism
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter),
+                    color = Color(0xFF1A1A2E).copy(alpha = 0.95f),
+                    shadowElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp)
+                    ) {
+                        // Caption input with modern design
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFF2D2D44)
+                        ) {
+                            BasicTextField(
+                                value = caption,
+                                onValueChange = { caption = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                textStyle = LocalTextStyle.current.copy(
+                                    color = Color.White,
+                                    fontSize = 15.sp
+                                ),
+                                decorationBox = { innerTextField ->
+                                    if (caption.isEmpty()) {
+                                        Text(
+                                            "Add a caption...",
+                                            color = Color.Gray,
+                                            fontSize = 15.sp
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(20.dp))
+                        
+                        // Edit options with better design
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            ModernStoryEditOption(
+                                icon = Icons.Default.CropRotate,
+                                label = "Ajustar",
+                                color = Color(0xFF10B981),
+                                onClick = { showPhotoAdjuster = true }
+                            )
+                            ModernStoryEditOption(
+                                icon = Icons.Default.Draw,
+                                label = "Draw",
+                                color = Color(0xFFFF6B9D),
+                                onClick = { showDrawMode = true }
+                            )
+                            ModernStoryEditOption(
+                                icon = Icons.Default.TextFields,
+                                label = "Text",
+                                color = MaterialTheme.colorScheme.primary,
+                                onClick = { showTextDialog = true }
+                            )
+                            ModernStoryEditOption(
+                                icon = Icons.Default.EmojiEmotions,
+                                label = "Sticker",
+                                color = Color(0xFFFFB020),
+                                onClick = { showStickerPicker = true }
+                            )
+                            ModernStoryEditOption(
+                                icon = Icons.Default.MusicNote,
+                                label = "Music",
+                                color = Color(0xFF00BFA6),
+                                onClick = { 
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        "Music feature coming soon!",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Modern text dialog with proper keyboard handling for Android 16
+    if (showTextDialog) {
+        var dialogText by remember { mutableStateOf(textOverlay) }
+        
+        AlertDialog(
+            onDismissRequest = { showTextDialog = false },
+            title = { 
+                Text(
+                    "Add Text",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                ) 
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .imePadding() // Critical for Android 16 keyboard handling
+                ) {
+                    OutlinedTextField(
+                        value = dialogText,
+                        onValueChange = { dialogText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp),
+                        placeholder = { 
+                            Text(
+                                "Enter your text...",
+                                color = Color.Gray
+                            ) 
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Purple,
+                            unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = Purple
+                        ),
+                        textStyle = LocalTextStyle.current.copy(
+                            fontSize = 16.sp
+                        ),
+                        maxLines = 5
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { 
+                        textOverlay = dialogText
+                        showTextDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = Purple
+                    )
+                ) {
+                    Text("Done", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { 
+                        dialogText = ""
+                        textOverlay = ""
+                        showTextDialog = false
+                    }
+                ) {
+                    Text("Clear", color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF1A1A2E),
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false // Critical for Android 16
+            ),
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .wrapContentHeight()
+        )
+    }
+    
+    // Sticker picker dialog
+    if (showStickerPicker) {
+        AlertDialog(
+            onDismissRequest = { showStickerPicker = false },
+            title = { 
+                Text(
+                    "Choose a Sticker",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                ) 
+            },
+            text = {
+                // Grid of emoji stickers
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val stickers = listOf(
+                        "😀", "😂", "🥰", "😎", "🤩", "😍",
+                        "🔥", "❤️", "⭐", "🎉", "👍", "💯",
+                        "🌟", "✨", "💫", "🎊", "🎈", "🎁",
+                        "😭", "🤔", "😱", "🥳", "🤗", "😴",
+                        "🍕", "🍔", "🍟", "🍿", "🎂", "🍰",
+                        "⚽", "🏀", "🎮", "🎵", "🎸", "🎤"
+                    )
+                    
+                    stickers.chunked(6).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            row.forEach { sticker ->
+                                Text(
+                                    text = sticker,
+                                    fontSize = 36.sp,
+                                    modifier = Modifier
+                                        .padding(8.dp)
+                                        .clickable {
+                                            // Add emoji as draggable overlay
+                                            emojiOverlays = emojiOverlays + EmojiOverlay(
+                                                emoji = sticker,
+                                                x = 150f,
+                                                y = 300f,
+                                                size = 64
+                                            )
+                                            showStickerPicker = false
+                                        }
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Tip: Long press on emoji to remove it",
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showStickerPicker = false }) {
+                    Text("Close", color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF1A1A2E),
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false
+            ),
+            modifier = Modifier.fillMaxWidth(0.9f)
+        )
+    }
+    
+    // Draw mode dialog (simple version)
+    if (showDrawMode) {
+        AlertDialog(
+            onDismissRequest = { showDrawMode = false },
+            title = { 
+                Text(
+                    "Draw Mode",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                ) 
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Draw,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color(0xFFFF6B9D)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Drawing feature coming soon!",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "You'll be able to draw on your stories with different colors and brush sizes.",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showDrawMode = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Got it", fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = Color(0xFF1A1A2E)
+        )
+    }
+    
+    // Photo adjuster overlay
+    if (showPhotoAdjuster && selectedImageUri != null && selectedImageUri.toString() != "text_only") {
+        PhotoAdjuster(
+            imageUri = selectedImageUri,
+            onPositionChange = { newPosition ->
+                photoVerticalPosition = newPosition
+            },
+            onConfirm = {
+                showPhotoAdjuster = false
+                android.widget.Toast.makeText(
+                    context,
+                    "Posición ajustada",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+            },
+            onCancel = {
+                showPhotoAdjuster = false
+                photoVerticalPosition = 0f
+            },
+            initialPosition = photoVerticalPosition,
+            title = "Ajustar Foto de Story"
+        )
+    }
+}
+
+@Composable
+fun StoryCreationButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    gradient: List<Color>,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent,
+        onClick = onClick
+    ) {
+        Box(
+            modifier = Modifier.background(
+                Brush.linearGradient(gradient)
+            ),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text,
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernStoryEditOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Surface(
+            modifier = Modifier.size(56.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = color.copy(alpha = 0.15f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = color,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.White,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+fun StoryEditOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(8.dp)
+    ) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Purple.copy(alpha = 0.2f))
+        ) {
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = Purple
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = Color.White
+        )
+    }
+}

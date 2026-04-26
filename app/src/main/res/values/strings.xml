@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nexus Chat</string>
+    
+    <!-- Authentication -->
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="display_name">Display Name</string>
+    <string name="username">Username</string>
+    <string name="dont_have_account">Don\'t have an account? Register</string>
+    <string name="already_have_account">Already have an account? Login</string>
+    
+    <!-- Validation -->
+    <string name="email_required">Email is required</string>
+    <string name="invalid_email">Invalid email format</string>
+    <string name="password_required">Password is required</string>
+    <string name="password_too_short">Password must be at least 6 characters</string>
+    <string name="passwords_dont_match">Passwords don\'t match</string>
+    <string name="display_name_required">Display name is required</string>
+    
+    <!-- Navigation -->
+    <string name="chats">Chats</string>
+    <string name="stories">Stories</string>
+    <string name="calls">Calls</string>
+    <string name="profile">Profile</string>
+    <string name="settings">Settings</string>
+    
+    <!-- Common -->
+    <string name="loading">Loading…</string>
+    <string name="error">Error</string>
+    <string name="retry">Retry</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    
+    <!-- App Branding -->
+    <string name="default_bio">Hey there! I\'m using Nexus Chat</string>
+    <string name="help_support_title">Nexus Chat Help &amp; Support</string>
+    
+    <!-- Google Sign-In -->
+    <string name="default_web_client_id">341817574378-68483linucnkehkl4b6aiafba94vs0f5.apps.googleusercontent.com</string>
+</resources>

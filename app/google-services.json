@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "341817574378",
+    "firebase_url": "https://nexuschat-d3191-default-rtdb.firebaseio.com",
+    "project_id": "nexuschat-d3191",
+    "storage_bucket": "nexuschat-d3191.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:341817574378:android:6a9a675e0cd6fde13e2893",
+        "android_client_info": {
+          "package_name": "com.Azelmods.App"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "341817574378-a0e9fuvukcrnui2m8m01f3p9rlj1khi2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.Azelmods.App",
+            "certificate_hash": "1b01962447263e53c0b3087fb92cc875f6ad842d"
+          }
+        },
+        {
+          "client_id": "341817574378-68483linucnkehkl4b6aiafba94vs0f5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKQA0zfRUgJ81M1lTBAkxL4EEjWSJyD6g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "341817574378-68483linucnkehkl4b6aiafba94vs0f5.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

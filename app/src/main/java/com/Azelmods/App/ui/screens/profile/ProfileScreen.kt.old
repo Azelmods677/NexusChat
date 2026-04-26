@@ -1,0 +1,315 @@
+package com.Azelmods.App.ui.screens.profile
+
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.Azelmods.App.ui.navigation.Screen
+import com.Azelmods.App.ui.theme.*
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProfileScreen(
+    navController: NavController,
+    userId: String,
+    viewModel: ProfileViewModel = hiltViewModel()
+) {
+    val state by viewModel.state.collectAsState()
+    var displayName by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
+    
+    LaunchedEffect(state.user) {
+        state.user?.let {
+            displayName = it.displayName
+            bio = it.bio ?: ""
+        }
+    }
+    
+    // Animated gradient ring
+    val infiniteTransition = rememberInfiniteTransition(label = "gradient_ring")
+    val angle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ring_rotation"
+    )
+    
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Profile") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (state.isOwnProfile) {
+                        IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = DarkSurface,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
+            )
+        },
+        containerColor = DarkBackground
+    ) { paddingValues ->
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Purple)
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Cover gradient
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Purple, Teal, Pink)
+                            )
+                        )
+                )
+                
+                Spacer(modifier = Modifier.height(-60.dp))
+                
+                // Avatar with animated ring
+                Box(
+                    modifier = Modifier.size(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Animated gradient ring (placeholder)
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.sweepGradient(StoryGradient)
+                            )
+                    )
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(112.dp)
+                            .clip(CircleShape)
+                            .background(DarkBackground)
+                    )
+                    
+                    Box(
+                        modifier = Modifier
+                            .size(104.dp)
+                            .clip(CircleShape)
+                            .background(Purple),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = state.user?.displayName?.take(1)?.uppercase() ?: "?",
+                            color = Color.White,
+                            fontSize = 42.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // User info
+                if (state.isEditing) {
+                    OutlinedTextField(
+                        value = displayName,
+                        onValueChange = { displayName = it },
+                        label = { Text("Display Name") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Purple,
+                            cursorColor = Purple
+                        )
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = bio,
+                        onValueChange = { if (it.length <= 150) bio = it },
+                        label = { Text("Bio") },
+                        supportingText = { Text("${bio.length}/150") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        minLines = 3,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Purple,
+                            cursorColor = Purple
+                        )
+                    )
+                } else {
+                    Text(
+                        text = state.user?.displayName ?: "",
+                        color = Color.White,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = "@${state.user?.username ?: ""}",
+                        color = Color.Gray,
+                        fontSize = 16.sp
+                    )
+                    
+                    if (!state.user?.bio.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = state.user?.bio ?: "",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(horizontal = 24.dp)
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Stats row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    StatItem("Member Since", "2024")
+                    StatItem("Messages", "1.2K")
+                    StatItem("Files", "234")
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Action buttons
+                if (state.isOwnProfile) {
+                    if (state.isEditing) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.toggleEditMode() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Cancel")
+                            }
+                            
+                            Button(
+                                onClick = { viewModel.updateProfile(displayName, bio) },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                            ) {
+                                Text("Save")
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = { viewModel.toggleEditMode() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                        ) {
+                            Text("Edit Profile")
+                        }
+                    }
+                } else {
+                    // Other user actions
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Button(
+                            onClick = { /* Message */ },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                        ) {
+                            Icon(Icons.Default.Message, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Message")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = { /* Call */ },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Call, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Call")
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun StatItem(label: String, value: String) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = label,
+            color = Color.Gray,
+            fontSize = 12.sp
+        )
+    }
+}

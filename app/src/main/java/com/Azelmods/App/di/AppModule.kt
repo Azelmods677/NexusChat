@@ -1,0 +1,106 @@
+package com.Azelmods.App.di
+
+import android.content.Context
+import androidx.credentials.CredentialManager
+import com.Azelmods.App.data.api.OllamaApiService
+import com.Azelmods.App.data.demo.DemoAccountManager
+import com.Azelmods.App.data.preferences.TutorialPreferences
+import com.Azelmods.App.data.preferences.UserPreferences
+import com.google.firebase.database.FirebaseDatabase
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import javax.inject.Singleton
+import com.Azelmods.App.R
+
+@Module
+@InstallIn(SingletonComponent::class)
+object AppModule {
+    
+    @Provides
+    @Singleton
+    fun provideContext(@ApplicationContext context: Context): Context = context
+    
+    @Provides
+    @Singleton
+    fun provideFirebaseDatabase(): FirebaseDatabase {
+        return FirebaseDatabase.getInstance()
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCoroutineScope(): CoroutineScope {
+        return CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideCredentialManager(@ApplicationContext context: Context): CredentialManager {
+        return CredentialManager.create(context)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideGoogleClientId(@ApplicationContext context: Context): String {
+        return context.getString(R.string.default_web_client_id)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideOllamaApiService(): OllamaApiService {
+        // Default to localhost, user can configure in settings
+        return OllamaApiService(baseUrl = "http://10.0.2.2:11434") // Android emulator localhost
+    }
+    
+    @Provides
+    @Singleton
+    fun provideTutorialPreferences(@ApplicationContext context: Context): TutorialPreferences {
+        return TutorialPreferences(context)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideDemoAccountManager(
+        @ApplicationContext context: Context,
+        database: FirebaseDatabase
+    ): DemoAccountManager {
+        return DemoAccountManager(context, database)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideChatBackgroundRepository(
+        database: FirebaseDatabase
+    ): com.Azelmods.App.data.repository.ChatBackgroundRepository {
+        return com.Azelmods.App.data.repository.ChatBackgroundRepository(database)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideAppBackgroundManager(
+        @ApplicationContext context: Context
+    ): com.Azelmods.App.data.manager.AppBackgroundManager {
+        return com.Azelmods.App.data.manager.AppBackgroundManager(context)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideBotPreferences(
+        @ApplicationContext context: Context
+    ): com.Azelmods.App.data.preferences.BotPreferences {
+        return com.Azelmods.App.data.preferences.BotPreferences(context)
+    }
+    
+    @Provides
+    @Singleton
+    fun provideInternalBotRepository(
+        botPreferences: com.Azelmods.App.data.preferences.BotPreferences
+    ): com.Azelmods.App.data.repository.InternalBotRepository {
+        return com.Azelmods.App.data.repository.InternalBotRepository(botPreferences)
+    }
+}

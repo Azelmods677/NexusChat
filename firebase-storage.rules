@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to validate image file
+    function isValidImage() {
+      return request.resource.size < 10 * 1024 * 1024 // 10MB max
+          && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Helper function to validate video file
+    function isValidVideo() {
+      return request.resource.size < 100 * 1024 * 1024 // 100MB max
+          && request.resource.contentType.matches('video/.*');
+    }
+    
+    // User profile photos
+    match /user_photos/{userId}/{fileName} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow write only for the owner
+      allow write: if isOwner(userId) && isValidImage();
+    }
+    
+    // Stories
+    match /stories/{userId}/{fileName} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow write only for the owner with proper validation
+      allow write: if isOwner(userId) 
+                   && (isValidImage() || isValidVideo());
+    }
+    
+    // Chat images
+    match /chats/{chatId}/images/{fileName} {
+      // Allow read for all authenticated users (chat members check in app logic)
+      allow read: if isAuthenticated();
+      
+      // Allow write for authenticated users with image validation
+      allow write: if isAuthenticated() && isValidImage();
+    }
+    
+    // Chat videos
+    match /chats/{chatId}/videos/{fileName} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow write for authenticated users with video validation
+      allow write: if isAuthenticated() && isValidVideo();
+    }
+    
+    // Chat audio
+    match /chats/{chatId}/audio/{fileName} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow write for authenticated users with audio validation
+      allow write: if isAuthenticated() 
+                   && request.resource.size < 10 * 1024 * 1024 // 10MB max
+                   && request.resource.contentType.matches('audio/.*');
+    }
+    
+    // Chat documents
+    match /chats/{chatId}/documents/{fileName} {
+      // Allow read for all authenticated users
+      allow read: if isAuthenticated();
+      
+      // Allow write for authenticated users with document validation
+      allow write: if isAuthenticated() 
+                   && request.resource.size < 50 * 1024 * 1024; // 50MB max
+    }
+  }
+}
