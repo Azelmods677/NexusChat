@@ -4,7 +4,7 @@ import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,11 +41,13 @@ fun PhotoAdjuster(
     initialPosition: Float = 0f,
     title: String = "Ajustar Foto"
 ) {
-    var verticalOffset by remember { mutableStateOf(initialPosition) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(initialPosition) }
     var isDragging by remember { mutableStateOf(false) }
+    var scale by remember { mutableStateOf(1f) }
     
     // Animated scale for drag feedback
-    val scale by animateFloatAsState(
+    val animatedScale by animateFloatAsState(
         targetValue = if (isDragging) 1.05f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -59,25 +61,26 @@ fun PhotoAdjuster(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Background image with vertical drag
+        // Background image with X+Y drag
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectVerticalDragGestures(
+                    detectDragGestures(
                         onDragStart = {
                             isDragging = true
                         },
                         onDragEnd = {
                             isDragging = false
-                            onPositionChange(verticalOffset)
+                            onPositionChange(offsetY) // Still pass Y for backward compatibility
                         },
                         onDragCancel = {
                             isDragging = false
                         },
-                        onVerticalDrag = { change, dragAmount ->
+                        onDrag = { change, dragAmount ->
                             change.consume()
-                            verticalOffset = (verticalOffset + dragAmount).coerceIn(-500f, 500f)
+                            offsetX = (offsetX + dragAmount.x).coerceIn(-500f, 500f)
+                            offsetY = (offsetY + dragAmount.y).coerceIn(-500f, 500f)
                         }
                     )
                 }
@@ -89,9 +92,10 @@ fun PhotoAdjuster(
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
-                            translationY = verticalOffset
-                            scaleX = scale
-                            scaleY = scale
+                            translationX = offsetX
+                            translationY = offsetY
+                            scaleX = animatedScale * scale
+                            scaleY = animatedScale * scale
                         },
                     contentScale = ContentScale.Crop
                 )
@@ -217,7 +221,7 @@ fun PhotoAdjuster(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.UnfoldMore,
+                            Icons.Default.OpenWith,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(32.dp)
@@ -228,7 +232,7 @@ fun PhotoAdjuster(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "Desliza arriba o abajo",
+                    text = "Arrastra en cualquier dirección",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -260,14 +264,14 @@ fun PhotoAdjuster(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Height,
+                        Icons.Default.OpenWith,
                         contentDescription = null,
                         tint = Color(0xFF7C3AED),
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Posición: ${(verticalOffset / 10).toInt()}",
+                        text = "X: ${(offsetX / 10).toInt()} Y: ${(offsetY / 10).toInt()}",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium

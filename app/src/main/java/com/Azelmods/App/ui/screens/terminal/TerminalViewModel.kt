@@ -1,48 +1,47 @@
 package com.Azelmods.App.ui.screens.terminal
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.topjohnwu.superuser.Shell
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * TerminalViewModel - REAL TERMINAL using libsu
+ * 
+ * This ViewModel wraps the RealTerminalEmulator to provide
+ * a real terminal experience with full command execution support.
+ */
 @HiltViewModel
-class TerminalViewModel @Inject constructor() : ViewModel() {
+class TerminalViewModel @Inject constructor(
+    @ApplicationContext context: Context
+) : ViewModel() {
+
+    // Use the real terminal emulator
+    private val terminalEmulator = RealTerminalEmulator(context)
     
-    private val repo = TerminalRepository()
+    // Expose terminal state
+    val lines: StateFlow<List<RealTerminalEmulator.TerminalLine>> = terminalEmulator.lines
+    val isRoot: StateFlow<Boolean> = terminalEmulator.isRoot
     
-    val history: StateFlow<List<TerminalEntry>> = repo.getHistory()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    // Type alias for compatibility
+    typealias TerminalLine = RealTerminalEmulator.TerminalLine
     
-    private val _isRunning = MutableStateFlow(false)
-    val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
-    
-    val hasRoot: Boolean get() = Shell.getShell().isRoot
-    
-    fun execute(command: String, useRoot: Boolean = false) {
-        if (command.isBlank() || _isRunning.value) return
+    fun execute(command: String) {
         viewModelScope.launch {
-            _isRunning.value = true
-            val output = if (useRoot && hasRoot)
-                repo.executeRoot(command)
-            else
-                repo.executeShell(command)
-            
-            repo.saveEntry(
-                TerminalEntry(
-                    input = command,
-                    output = output,
-                    isError = output.startsWith("Error"),
-                    timestamp = System.currentTimeMillis()
-                )
-            )
-            _isRunning.value = false
+            terminalEmulator.execute(command)
         }
     }
     
     fun clear() {
-        viewModelScope.launch { repo.clearHistory() }
+        terminalEmulator.clear()
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        terminalEmulator.close()
     }
 }

@@ -179,6 +179,68 @@ fun AiFeaturesScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Azel IA Access Button
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                color = DarkSurface,
+                shape = MaterialTheme.shapes.large
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = Purple,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Azel IA",
+                                color = Color.White,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Superinteligencia artificial sin restricciones",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "• Hacking ético y pentesting avanzado\n• Análisis de código y vulnerabilidades\n• Generación de exploits y payloads\n• Automatización de ataques\n• OSINT y ingeniería social",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Button(
+                        onClick = { navController.navigate("azel_ai") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Purple,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Acceder a Azel IA", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            
             // Assistant section
             Surface(
                 modifier = Modifier

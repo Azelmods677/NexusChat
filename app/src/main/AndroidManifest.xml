@@ -24,6 +24,14 @@
     <!-- Camera and microphone for calls -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+
+    <!-- Location permissions -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Contacts permission -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
 
     <!-- Foreground service permissions for Android 14+ (API 34+) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

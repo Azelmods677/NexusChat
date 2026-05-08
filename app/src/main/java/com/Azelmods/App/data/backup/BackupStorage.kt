@@ -295,6 +295,29 @@ class BackupStorage @Inject constructor(
     private val StorageMetadata.sizeBytes: Long
         get() = this.sizeBytes
 
+    // ── Additional methods for BackupManager compatibility ────────────────────
+
+    /**
+     * Lists all backups for a user (combines local and Firebase)
+     */
+    suspend fun listBackups(userId: String): List<BackupMetadata> {
+        // For now, return empty list - TODO: implement proper metadata storage
+        return emptyList()
+    }
+
+    /**
+     * Deletes a backup by ID
+     */
+    suspend fun deleteBackup(backupId: String): Boolean {
+        // Try to delete from local storage
+        val localFile = File(getLocalBackupsDir(), "$backupId.azelback")
+        return if (localFile.exists()) {
+            localFile.delete()
+        } else {
+            false
+        }
+    }
+
     private companion object {
         const val TAG = "BackupStorage"
     }
@@ -322,4 +345,14 @@ data class BackupInfo(
     val sizeBytes: Long,
     val createdAt: Long,
     val location: StorageLocation
+)
+
+/**
+ * Backup metadata (simplified version for compatibility)
+ */
+data class BackupMetadata(
+    val backupId: String,
+    val userId: String,
+    val timestamp: Long,
+    val sizeBytes: Long
 )

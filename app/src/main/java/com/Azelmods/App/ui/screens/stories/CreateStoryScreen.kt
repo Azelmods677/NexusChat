@@ -126,6 +126,10 @@ fun CreateStoryScreen(
     }
     
     Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .navigationBarsPadding(),
         topBar = {
             TopAppBar(
                 title = { 
@@ -167,14 +171,13 @@ fun CreateStoryScreen(
                             onClick = {
                                 if (!state.isUploading && selectedImageUri != null) {
                                     // Detect media type and upload accordingly
-                                    val uriString = selectedImageUri.toString()
                                     when {
-                                        uriString == "text_only" -> {
+                                        selectedImageUri.toString() == "text_only" -> {
                                             // Text story
                                             viewModel.createTextStory(textOverlay, "#7C3AED")
                                         }
-                                        uriString.contains("video", ignoreCase = true) -> {
-                                            // Video story
+                                        isVideoSelected -> {
+                                            // Video story (detected by picker)
                                             viewModel.uploadVideoStory(selectedImageUri!!, caption)
                                         }
                                         else -> {
@@ -403,36 +406,36 @@ fun CreateStoryScreen(
                             .background(Color.Black),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Show video thumbnail if available, otherwise show image
-                        if (isVideoSelected && videoThumbnail != null) {
-                            Image(
-                                bitmap = videoThumbnail!!.asImageBitmap(),
-                                contentDescription = "Video thumbnail",
+                        // Show video preview with ExoPlayer if video selected, otherwise show image
+                        if (isVideoSelected && selectedImageUri != null) {
+                            // Video preview using ExoPlayer
+                            val previewPlayer = remember(selectedImageUri) {
+                                androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+                                    setMediaItem(androidx.media3.common.MediaItem.fromUri(selectedImageUri!!))
+                                    prepare()
+                                    playWhenReady = false // paused preview
+                                    repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+                                }
+                            }
+                            
+                            DisposableEffect(selectedImageUri) {
+                                onDispose { previewPlayer.release() }
+                            }
+                            
+                            androidx.compose.ui.viewinterop.AndroidView(
+                                factory = { ctx ->
+                                    androidx.media3.ui.PlayerView(ctx).apply {
+                                        player = previewPlayer
+                                        useController = true
+                                        resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
                                         translationY = photoVerticalPosition
-                                    },
-                                contentScale = ContentScale.Crop
+                                    }
                             )
-                            
-                            // Video play icon overlay
-                            Surface(
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .align(Alignment.Center),
-                                shape = CircleShape,
-                                color = Color.Black.copy(alpha = 0.6f)
-                            ) {
-                                Icon(
-                                    Icons.Default.PlayArrow,
-                                    contentDescription = "Video",
-                                    tint = Color.White,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(16.dp)
-                                )
-                            }
                         } else {
                             Image(
                                 painter = rememberAsyncImagePainter(selectedImageUri),
@@ -495,7 +498,8 @@ fun CreateStoryScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.BottomCenter),
+                        .align(Alignment.BottomCenter)
+                        .imePadding(),
                     color = Color(0xFF1A1A2E).copy(alpha = 0.95f),
                     shadowElevation = 8.dp
                 ) {
@@ -504,7 +508,9 @@ fun CreateStoryScreen(
                     ) {
                         // Caption input with modern design
                         Surface(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .imePadding(),
                             shape = RoundedCornerShape(16.dp),
                             color = Color(0xFF2D2D44)
                         ) {
@@ -661,80 +667,96 @@ fun CreateStoryScreen(
         )
     }
     
-    // Sticker picker dialog
+    // Sticker picker dialog - FULL EMOJI PICKER
     if (showStickerPicker) {
-        AlertDialog(
-            onDismissRequest = { showStickerPicker = false },
-            title = { 
-                Text(
-                    "Choose a Sticker",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                ) 
-            },
-            text = {
-                // Grid of emoji stickers
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val stickers = listOf(
-                        "😀", "😂", "🥰", "😎", "🤩", "😍",
-                        "🔥", "❤️", "⭐", "🎉", "👍", "💯",
-                        "🌟", "✨", "💫", "🎊", "🎈", "🎁",
-                        "😭", "🤔", "😱", "🥳", "🤗", "😴",
-                        "🍕", "🍔", "🍟", "🍿", "🎂", "🍰",
-                        "⚽", "🏀", "🎮", "🎵", "🎸", "🎤"
-                    )
-                    
-                    stickers.chunked(6).forEach { row ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            row.forEach { sticker ->
-                                Text(
-                                    text = sticker,
-                                    fontSize = 36.sp,
-                                    modifier = Modifier
-                                        .padding(8.dp)
-                                        .clickable {
-                                            // Add emoji as draggable overlay
-                                            emojiOverlays = emojiOverlays + EmojiOverlay(
-                                                emoji = sticker,
-                                                x = 150f,
-                                                y = 300f,
-                                                size = 64
-                                            )
-                                            showStickerPicker = false
-                                        }
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Tip: Long press on emoji to remove it",
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showStickerPicker = false }) {
-                    Text("Close", color = Color.Gray)
-                }
-            },
-            containerColor = Color(0xFF1A1A2E),
-            properties = DialogProperties(
-                usePlatformDefaultWidth = false
-            ),
-            modifier = Modifier.fillMaxWidth(0.9f)
+        var selectedCategory by remember { mutableStateOf("Caritas") }
+        val emojiCategories = mapOf(
+            "Caritas" to listOf("😀","😂","😍","😎","😭","😅","🤣","😊","😇","🥰","😘","😜","🤔","😏","😒","😡","🤯","🥳","😴","🤮","🤒","👻","💀","🤖","👽","😺","😸"),
+            "Animales" to listOf("🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🦋","🐌","🐞","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈"),
+            "Comida" to listOf("🍎","🍊","🍋","🍇","🍓","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥑","🍆","🥔","🥕","🌽","🌶️","🥒","🥬","🥦","🍄","🥜","🌰","🍞","🥐","🥖","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯","🥙","🧆","🥚","🍳","🥘","🍲","🥣","🥗","🍿","🧈","🧂","🥫","🍱","🍘","🍙","🍚","🍛","🍜","🍝","🍠","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡","🦀","🦞","🦐","🦑","🦪","🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬","🍭","🍮","🍯","🍼","🥛","☕","🍵","🍶","🍾","🍷","🍸","🍹","🍺","🍻","🥂","🥃","🥤","🧃","🧉","🧊"),
+            "Deportes" to listOf("⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️","🤼","🤸","🤺","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴","🏆","🥇","🥈","🥉","🏅","🎖️","🎗️","🎫","🎟️","🎪","🎭","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🎷","🎺","🎸","🪕","🎻","🎲","♟️","🎯","🎮","🕹️","🎰","🧩")
         )
+        
+        ModalBottomSheet(
+            onDismissRequest = { showStickerPicker = false },
+            containerColor = Color(0xFF1A1A2E),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            ) {
+                // Category tabs
+                ScrollableTabRow(
+                    selectedTabIndex = emojiCategories.keys.indexOf(selectedCategory),
+                    containerColor = Color.Transparent,
+                    contentColor = Color(0xFF7B5CFA),
+                    edgePadding = 8.dp
+                ) {
+                    emojiCategories.keys.forEach { cat ->
+                        Tab(
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat },
+                            text = { 
+                                Text(
+                                    cat, 
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selectedCategory == cat) FontWeight.Bold else FontWeight.Normal
+                                ) 
+                            }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Emoji grid
+                androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                    columns = androidx.compose.foundation.lazy.grid.GridCells.Fixed(8),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val emojis = emojiCategories[selectedCategory] ?: emptyList()
+                    items(emojis.size) { index ->
+                        val emoji = emojis[index]
+                        Text(
+                            text = emoji,
+                            fontSize = 28.sp,
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .clickable {
+                                    // Add emoji as draggable overlay
+                                    emojiOverlays = emojiOverlays + EmojiOverlay(
+                                        emoji = emoji,
+                                        x = 150f,
+                                        y = 300f,
+                                        size = 64
+                                    )
+                                    showStickerPicker = false
+                                },
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Tip: Mantén presionado un emoji para eliminarlo",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            }
+        }
     }
     
     // Draw mode dialog (simple version)

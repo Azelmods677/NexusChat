@@ -31,7 +31,7 @@ class NotificationService : FirebaseMessagingService() {
     companion object {
         private const val CHANNEL_ID = "nexus_chat_messages"
         private const val CHANNEL_NAME = "Messages"
-        private const val KEY_TEXT_REPLY = "key_text_reply"
+        internal const val KEY_TEXT_REPLY = "key_text_reply"
         private const val ACTION_REPLY = "com.Azelmods.App.ACTION_REPLY"
         private const val ACTION_MARK_READ = "com.Azelmods.App.ACTION_MARK_READ"
     }

@@ -11,18 +11,16 @@ import javax.inject.Singleton
 
 /**
  * Implementation of SecurityRepository that delegates operations
- * to TorServiceManager and PayloadGenerator
+ * to TorServiceManager
  * 
  * This class follows Clean Architecture by implementing the domain layer
  * interface and delegating to data layer components.
  * 
  * @param torServiceManager Manager for Tor service operations
- * @param payloadGenerator Generator for security testing payloads
  */
 @Singleton
 class SecurityRepositoryImpl @Inject constructor(
-    private val torServiceManager: TorServiceManager,
-    private val payloadGenerator: com.Azelmods.App.data.security.payload.PayloadGenerator
+    private val torServiceManager: TorServiceManager
 ) : SecurityRepository {
     
     override fun startTorService(): Flow<TorState> {
@@ -47,26 +45,5 @@ class SecurityRepositoryImpl @Inject constructor(
     
     override suspend fun newIdentity() {
         torServiceManager.newIdentity()
-    }
-    
-    // Payload Generator Methods
-    override fun generatePayload(config: com.Azelmods.App.data.security.payload.PayloadConfig): Flow<com.Azelmods.App.data.security.payload.PayloadGenerationState> {
-        return payloadGenerator.generatePayload(config)
-    }
-    
-    override fun getPayloadHistory(): Flow<List<com.Azelmods.App.data.security.payload.GeneratedPayload>> {
-        return payloadGenerator.getPayloadHistory()
-    }
-    
-    override suspend fun deletePayload(payloadId: String) {
-        payloadGenerator.deletePayload(payloadId)
-    }
-    
-    override suspend fun sharePayload(payloadId: String) {
-        payloadGenerator.sharePayload(payloadId)
-    }
-    
-    override suspend fun uploadPayloadToFirebase(payloadId: String): String {
-        return payloadGenerator.uploadPayloadToFirebase(payloadId)
     }
 }

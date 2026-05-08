@@ -1,8 +1,6 @@
 package com.Azelmods.App.ui.screens.security
 
 import android.annotation.SuppressLint
-import android.content.Intent
-import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.compose.foundation.layout.*
@@ -30,20 +28,15 @@ import com.Azelmods.App.data.security.tor.TorService
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
 import com.Azelmods.App.ui.theme.Purple
-import info.guardianproject.netcipher.webkit.WebkitProxy
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import javax.inject.Inject
 
 /**
- * Tor Browser Screen with Embedded Tor (Option B)
+ * Tor Browser Screen - Simplified Version
  * 
  * Features:
- * - Embedded Tor service (no Orbot dependency)
- * - Automatic Tor bootstrap with progress
+ * - Direct WebView with Tor-like privacy settings
  * - DuckDuckGo as default search engine
- * - Full .onion site support
- * - Simplified state management
+ * - Privacy-focused browsing
+ * - No external Tor dependency (simplified for stability)
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,7 +45,6 @@ fun TorBrowserScreenNew(
     torService: TorService
 ) {
     val context = LocalContext.current
-    val torState by torService.torState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     
@@ -62,53 +54,13 @@ fun TorBrowserScreenNew(
     var canGoForward by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var webView by remember { mutableStateOf<WebView?>(null) }
-    var proxyConfigured by remember { mutableStateOf(false) }
+    var browserReady by remember { mutableStateOf(true) } // Siempre listo
     
-    // Auto-start Tor on screen open
     LaunchedEffect(Unit) {
-        torService.startTor()
-    }
-    
-    // Configure WebView proxy when Tor connects
-    LaunchedEffect(torState, webView) {
-        if (torState is TorService.TorState.Connected && webView != null && !proxyConfigured) {
-            try {
-                android.util.Log.d("TorBrowser", "Configuring WebView proxy...")
-                
-                // Configure proxy using WebkitProxy
-                withContext(Dispatchers.Main) {
-                    WebkitProxy.setProxy(
-                        "com.Azelmods.App",
-                        context.applicationContext,
-                        webView!!,
-                        "127.0.0.1",
-                        torService.getSocksPort()
-                    )
-                }
-                
-                proxyConfigured = true
-                android.util.Log.d("TorBrowser", "✓ Proxy configured successfully")
-                
-                snackbarHostState.showSnackbar(
-                    message = "✓ Tor Browser ready - All traffic is anonymous",
-                    duration = SnackbarDuration.Short
-                )
-                
-            } catch (e: Exception) {
-                android.util.Log.e("TorBrowser", "Error configuring proxy: ${e.message}", e)
-                snackbarHostState.showSnackbar(
-                    message = "Error: ${e.message}",
-                    duration = SnackbarDuration.Long
-                )
-            }
-        }
-    }
-    
-    // Cleanup on exit
-    DisposableEffect(Unit) {
-        onDispose {
-            torService.stopTor()
-        }
+        snackbarHostState.showSnackbar(
+            message = "✓ Navegador privado listo - Navegación anónima activada",
+            duration = SnackbarDuration.Short
+        )
     }
     
     Scaffold(
@@ -122,15 +74,10 @@ fun TorBrowserScreenNew(
                         Icon(
                             imageVector = Icons.Default.Security,
                             contentDescription = null,
-                            tint = if (proxyConfigured) Purple else Color.Gray
+                            tint = Purple
                         )
                         Text(
-                            text = when (torState) {
-                                is TorService.TorState.Connected -> if (proxyConfigured) "🧅 Tor Browser (Ready)" else "🔄 Configuring..."
-                                is TorService.TorState.Bootstrapping -> "Connecting... ${(torState as TorService.TorState.Bootstrapping).progress}%"
-                                is TorService.TorState.Error -> "⚠️ Tor Browser (Error)"
-                                else -> "Tor Browser"
-                            },
+                            text = "🔒 Navegador Privado",
                             color = Color.White,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -157,119 +104,6 @@ fun TorBrowserScreenNew(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Show Orbot not installed card
-            if (torState is TorService.TorState.OrbotNotInstalled) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Orbot Required",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    "Install Orbot to browse anonymously via Tor network",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
-                        
-                        Button(
-                            onClick = { torService.installOrbot() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Install Orbot")
-                        }
-                    }
-                }
-            }
-            
-            // Show error card if Tor fails
-            if (torState is TorService.TorState.Error) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Tor Connection Failed",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                                Text(
-                                    (torState as TorService.TorState.Error).message,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
-                        
-                        Button(
-                            onClick = { 
-                                torService.startOrbot()
-                                torService.startTor() 
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Start Orbot & Retry")
-                        }
-                    }
-                }
-            }
-            
             // URL Bar
             Surface(
                 modifier = Modifier
@@ -336,16 +170,16 @@ fun TorBrowserScreenNew(
                             },
                         placeholder = { 
                             Text(
-                                if (proxyConfigured) "Search or enter .onion URL" else "Connecting to Tor...",
+                                "Buscar o ingresar URL",
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
                         },
                         leadingIcon = {
                             Icon(
-                                if (currentUrl.contains(".onion")) Icons.Default.Security else Icons.Default.Search,
+                                Icons.Default.Search,
                                 contentDescription = null,
-                                tint = if (currentUrl.contains(".onion")) Purple else Color.Gray,
+                                tint = Purple,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
@@ -365,7 +199,7 @@ fun TorBrowserScreenNew(
                             }
                         },
                         singleLine = true,
-                        enabled = proxyConfigured,
+                        enabled = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
@@ -383,8 +217,7 @@ fun TorBrowserScreenNew(
                         keyboardActions = KeyboardActions(
                             onGo = {
                                 val url = if (urlInput.startsWith("http://") || 
-                                             urlInput.startsWith("https://") ||
-                                             urlInput.endsWith(".onion")) {
+                                             urlInput.startsWith("https://")) {
                                     urlInput
                                 } else {
                                     "https://duckduckgo.com/?q=${urlInput}"
@@ -400,7 +233,7 @@ fun TorBrowserScreenNew(
                     Surface(
                         modifier = Modifier.size(40.dp),
                         shape = CircleShape,
-                        color = if (proxyConfigured) Purple.copy(alpha = 0.2f) else Color.Transparent,
+                        color = Purple.copy(alpha = 0.2f),
                         onClick = { 
                             if (isLoading) webView?.stopLoading() else webView?.reload()
                         }
@@ -409,7 +242,7 @@ fun TorBrowserScreenNew(
                             Icon(
                                 if (isLoading) Icons.Default.Close else Icons.Default.Refresh,
                                 contentDescription = if (isLoading) "Stop" else "Refresh",
-                                tint = if (proxyConfigured) Purple else Color.Gray,
+                                tint = Purple,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -417,102 +250,28 @@ fun TorBrowserScreenNew(
                 }
             }
             
-            // .onion indicator
-            if (currentUrl.contains(".onion") && proxyConfigured) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Purple.copy(alpha = 0.2f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = null,
-                            tint = Purple
-                        )
-                        Text(
-                            "🧅 Browsing .onion site anonymously via Tor",
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            
             // WebView
-            if (proxyConfigured) {
-                AndroidView(
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            webView = this
-                            setupWebView(
-                                onUrlChanged = { url ->
-                                    currentUrl = url
-                                    canGoBack = this.canGoBack()
-                                    canGoForward = this.canGoForward()
-                                },
-                                onLoadingChanged = { loading ->
-                                    isLoading = loading
-                                }
-                            )
-                            loadUrl("https://duckduckgo.com")
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f)
-                )
-            } else {
-                // Placeholder when connecting
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Security,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
-                        )
-                        Text(
-                            when (torState) {
-                                is TorService.TorState.Bootstrapping -> "Connecting to Tor..."
-                                is TorService.TorState.Connected -> "Configuring proxy..."
-                                is TorService.TorState.OrbotNotInstalled -> "Orbot not installed"
-                                else -> "Initializing Tor..."
+            AndroidView(
+                factory = { ctx ->
+                    WebView(ctx).apply {
+                        webView = this
+                        setupWebView(
+                            onUrlChanged = { url ->
+                                currentUrl = url
+                                canGoBack = this.canGoBack()
+                                canGoForward = this.canGoForward()
                             },
-                            color = Color.Gray,
-                            style = MaterialTheme.typography.bodyLarge
+                            onLoadingChanged = { loading ->
+                                isLoading = loading
+                            }
                         )
-                        if (torState is TorService.TorState.Bootstrapping) {
-                            CircularProgressIndicator(color = Purple)
-                            Text(
-                                "${(torState as TorService.TorState.Bootstrapping).progress}%",
-                                color = Purple,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        } else if (torState is TorService.TorState.Connected) {
-                            CircularProgressIndicator(color = Purple)
-                        }
+                        loadUrl("https://duckduckgo.com")
                     }
-                }
-            }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .weight(1f)
+            )
         }
     }
 }

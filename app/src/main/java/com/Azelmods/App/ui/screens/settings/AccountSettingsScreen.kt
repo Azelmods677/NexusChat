@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,17 +70,28 @@ fun AccountSettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Profile photo section
-            Column(
+            // Profile preview - link to full profile
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .clickable {
+                        try {
+                            navController.navigate(Screen.Profile.createRoute(""))
+                        } catch (e: Exception) {
+                            android.util.Log.e("AccountSettingsScreen", "Navigation error: ${e.message}")
+                        }
+                    },
+                color = Color(0xFF1A1A2E)
             ) {
-                Box {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                         contentAlignment = Alignment.Center
@@ -87,72 +99,69 @@ fun AccountSettingsScreen(
                         Text(
                             text = displayName.takeIf { it.isNotBlank() }?.take(1)?.uppercase() ?: "U",
                             color = Color.White,
-                            fontSize = 40.sp,
+                            fontSize = 28.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     
-                    IconButton(
-                        onClick = { /* TODO: Change photo */ },
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    ) {
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = displayName.ifEmpty { "User Name" },
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (username.isNotEmpty()) "@$username" else "Set username",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+                    
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "Edit Profile",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                         Icon(
-                            Icons.Default.CameraAlt,
-                            contentDescription = "Change photo",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                            Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                TextButton(onClick = { /* TODO: Change photo */ }) {
-                    Text("Change Profile Photo", color = MaterialTheme.colorScheme.primary)
-                }
             }
             
-            HorizontalDivider(color = Color(0xFF1A1A2E))
+            Spacer(modifier = Modifier.height(8.dp))
             
-            // Account info
-            AccountInfoItem(
-                label = "Display Name",
-                value = displayName.ifEmpty { "Not set" },
-                icon = Icons.Default.Person,
-                onClick = {
-                    editField = "displayName"
-                    editValue = displayName
-                    showEditDialog = true
-                }
-            )
-            
-            AccountInfoItem(
-                label = "Username",
-                value = if (username.isNotEmpty()) "@$username" else "Not set",
-                icon = Icons.Default.AlternateEmail,
-                onClick = {
-                    editField = "username"
-                    editValue = username
-                    showEditDialog = true
-                }
-            )
-            
-            AccountInfoItem(
-                label = "Bio",
-                value = bio.ifEmpty { "Not set" },
-                icon = Icons.Default.Info,
-                onClick = {
-                    editField = "bio"
-                    editValue = bio
-                    showEditDialog = true
-                }
+            Text(
+                text = "Tap to edit your profile, photo, name, username, and bio",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 8.dp)
             )
             
             HorizontalDivider(color = Color(0xFF1A1A2E))
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Account Information",
+                color = Color.White,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
             
             AccountInfoItem(
                 label = "Phone Number",

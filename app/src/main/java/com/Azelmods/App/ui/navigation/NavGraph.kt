@@ -204,7 +204,7 @@ fun NavGraph(
             arguments = listOf(navArgument("userId") { type = NavType.StringType })
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
-            ProfileScreen(navController = navController, userId = userId)
+            ProfileScreen(userId = userId, navController = navController)
         }
         
         composable(Screen.EditProfile.route) {
@@ -285,10 +285,10 @@ fun NavGraph(
             AIFeaturesScreenRedesigned(navController = navController)
         }
         
-        // Ollama Chat - Uncensored chat
-        composable("ollama_ai") {
-            com.Azelmods.App.ui.screens.ai.OllamaAIScreen(
-                navController = navController
+        // Azel IA - Advanced AI chat
+        composable("azel_ai") {
+            com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         
@@ -317,25 +317,7 @@ fun NavGraph(
             com.Azelmods.App.ui.screens.viewer.ImageCropScreen(
                 imageUri = encodedUri,
                 photoType = photoType,
-                navController = navController,
-                onConfirm = { scale, offsetX, offsetY ->
-                    // Store crop parameters in SavedStateHandle for ProfileScreen to retrieve
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("crop_scale", scale)
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("crop_offset_x", offsetX)
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("crop_offset_y", offsetY)
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("crop_uri", encodedUri)
-                    navController.previousBackStackEntry
-                        ?.savedStateHandle
-                        ?.set("crop_type", photoType)
-                }
+                navController = navController
             )
         }
         
@@ -372,19 +354,6 @@ fun NavGraph(
             com.Azelmods.App.ui.screens.security.TorBrowserScreenNew(
                 navController = navController,
                 torService = torService
-            )
-        }
-        
-        // Payload Generator screens
-        composable(Screen.PayloadGenerator.route) {
-            com.Azelmods.App.ui.screens.security.PayloadGeneratorScreen(
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        
-        composable(Screen.PayloadHistory.route) {
-            com.Azelmods.App.ui.screens.security.PayloadHistoryScreen(
-                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -431,24 +400,6 @@ fun NavGraph(
         // Mod Screens
         composable("mod_home") {
             com.Azelmods.App.ui.screens.home.ModHomeScreen(
-                navController = navController
-            )
-        }
-        
-        composable("mod_settings") {
-            com.Azelmods.App.ui.screens.settings.ModSettingsScreen(
-                navController = navController
-            )
-        }
-        
-        composable("mod_functions") {
-            com.Azelmods.App.ui.screens.settings.ModFunctionsScreen(
-                navController = navController
-            )
-        }
-        
-        composable("mod_about") {
-            com.Azelmods.App.ui.screens.settings.ModAboutScreen(
                 navController = navController
             )
         }

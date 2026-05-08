@@ -3,8 +3,9 @@ package com.Azelmods.App.domain.usecase
 import com.Azelmods.App.data.model.Message
 import com.Azelmods.App.data.model.MessageStatus
 import com.Azelmods.App.data.repository.GroupRepository
-import com.Azelmods.App.data.repository.MessageRepository
+import com.Azelmods.App.data.repository.ChatRepository
 import com.Azelmods.App.data.repository.UserRepository
+import com.Azelmods.App.util.Resource
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,7 +21,7 @@ import javax.inject.Inject
  */
 class SendWelcomeMessageUseCase @Inject constructor(
     private val groupRepository: GroupRepository,
-    private val messageRepository: MessageRepository,
+    private val chatRepository: ChatRepository,
     private val userRepository: UserRepository,
     private val auth: FirebaseAuth
 ) {
@@ -41,8 +42,11 @@ class SendWelcomeMessageUseCase @Inject constructor(
             }
             
             // Get new member's name
-            val newMember = userRepository.getUserById(newMemberId)
-            val memberName = newMember?.name ?: "New Member"
+            val newMemberResource = userRepository.getUserById(newMemberId)
+            val memberName = when (newMemberResource) {
+                is Resource.Success -> newMemberResource.data?.name ?: "New Member"
+                else -> "New Member"
+            }
             
             // Format welcome message
             val welcomeText = settings.formatWelcomeMessage(memberName)
@@ -62,7 +66,7 @@ class SendWelcomeMessageUseCase @Inject constructor(
             )
             
             // Send message
-            messageRepository.sendMessage(message)
+            chatRepository.sendMessage(groupId, message)
             
             Result.success(Unit)
         } catch (e: Exception) {

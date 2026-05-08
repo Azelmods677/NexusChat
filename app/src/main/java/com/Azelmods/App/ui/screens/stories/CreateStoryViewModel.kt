@@ -23,6 +23,7 @@ data class CreateStoryState(
 class CreateStoryViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
     private val databaseRepository: RealtimeDatabaseRepository,
+    private val userRepository: com.Azelmods.App.data.repository.UserRepository,
     private val auth: FirebaseAuth
 ) : ViewModel() {
     
@@ -51,9 +52,18 @@ class CreateStoryViewModel @Inject constructor(
                 // Step 1: Upload to Storage FIRST and AWAIT completion
                 val imageUrl = storageRepository.uploadStory(imageUri, userId)
                 
+                // Step 1.5: Get user name
+                val userResult = userRepository.getUserById(userId)
+                val userName = if (userResult is com.Azelmods.App.util.Resource.Success) {
+                    userResult.data?.name ?: "Unknown"
+                } else {
+                    "Unknown"
+                }
+                
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
                 val storyData = mapOf(
                     "userId" to userId,
+                    "userName" to userName,
                     "type" to "IMAGE",
                     "mediaUrl" to imageUrl,
                     "caption" to caption,
@@ -107,9 +117,18 @@ class CreateStoryViewModel @Inject constructor(
                 // Step 1: Upload video to Storage FIRST and AWAIT completion
                 val videoUrl = storageRepository.uploadStoryVideo(videoUri, userId)
                 
+                // Step 1.5: Get user name
+                val userResult = userRepository.getUserById(userId)
+                val userName = if (userResult is com.Azelmods.App.util.Resource.Success) {
+                    userResult.data?.name ?: "Unknown"
+                } else {
+                    "Unknown"
+                }
+                
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
                 val storyData = mapOf(
                     "userId" to userId,
+                    "userName" to userName,
                     "type" to "VIDEO",
                     "mediaUrl" to videoUrl,
                     "caption" to caption,
@@ -160,8 +179,17 @@ class CreateStoryViewModel @Inject constructor(
                 }
                 
                 // TEXT stories skip Storage entirely
+                // Get user name
+                val userResult = userRepository.getUserById(userId)
+                val userName = if (userResult is com.Azelmods.App.util.Resource.Success) {
+                    userResult.data?.name ?: "Unknown"
+                } else {
+                    "Unknown"
+                }
+                
                 val storyData = mapOf(
                     "userId" to userId,
+                    "userName" to userName,
                     "type" to "TEXT",
                     "text" to text,
                     "backgroundColor" to backgroundColor,

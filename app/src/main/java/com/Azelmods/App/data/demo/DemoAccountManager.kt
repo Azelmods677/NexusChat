@@ -12,7 +12,7 @@ import javax.inject.Singleton
 
 /**
  * Demo Account Manager
- * Creates and manages the "Kiro Assistant" demo account for testing
+ * Creates and manages the "Azel Assistant" demo account for testing
  */
 @Singleton
 class DemoAccountManager @Inject constructor(
@@ -24,10 +24,10 @@ class DemoAccountManager @Inject constructor(
     companion object {
         private const val TAG = "DemoAccountManager"
         private const val DEMO_ACCOUNT_CREATED_KEY = "demo_account_created"
-        private const val DEMO_USER_ID = "demo_kiro_assistant"
-        private const val DEMO_USER_NAME = "Kiro Assistant"
-        private const val DEMO_USERNAME = "@kiro"
-        private const val DEMO_BIO = "I'm here to help you explore NexusChat features!"
+        private const val DEMO_USER_ID = "demo_azel_assistant"
+        private const val DEMO_USER_NAME = "Azel Assistant"
+        private const val DEMO_USERNAME = "@azel"
+        private const val DEMO_BIO = "I'm here to help you explore AzelGram features!"
     }
     
     /**
@@ -137,12 +137,12 @@ class DemoAccountManager @Inject constructor(
             
             val baseTime = System.currentTimeMillis() - (5 * 60 * 1000) // 5 minutes ago
             
-            // Message 1: Welcome from Kiro
+            // Message 1: Welcome from Azel
             val message1 = mapOf(
                 "messageId" to "demo_msg_1",
                 "senderId" to DEMO_USER_ID,
                 "senderName" to DEMO_USER_NAME,
-                "text" to "¡Hola! 👋 Soy Kiro Assistant, tu guía en NexusChat.",
+                "text" to "¡Hola! 👋 Soy Azel Assistant, tu guía en AzelGram.",
                 "timestamp" to baseTime,
                 "type" to "TEXT",
                 "isRead" to false
@@ -185,7 +185,7 @@ class DemoAccountManager @Inject constructor(
             )
             messagesRef.child("demo_msg_4").setValue(message4).await()
             
-            // Message 5: Follow-up from Kiro
+            // Message 5: Follow-up from Azel
             val message5 = mapOf(
                 "messageId" to "demo_msg_5",
                 "senderId" to DEMO_USER_ID,

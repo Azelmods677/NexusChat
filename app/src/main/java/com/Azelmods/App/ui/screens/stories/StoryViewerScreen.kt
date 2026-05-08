@@ -35,6 +35,7 @@ import androidx.media3.ui.PlayerView
 import androidx.navigation.NavController
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
@@ -175,7 +176,7 @@ fun StoryViewerScreen(
                     SubcomposeAsyncImage(
                         model = ImageRequest.Builder(context)
                             .data(currentStory.mediaUrl)
-                            .crossfade(true)
+                            .crossfade(300)
                             .build(),
                         contentDescription = "Story image",
                         modifier = Modifier.fillMaxSize(),

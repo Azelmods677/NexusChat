@@ -56,8 +56,6 @@ sealed class Screen(val route: String) {
     object Security : Screen(NavRoutes.SECURITY)
     object TorControl : Screen(NavRoutes.TOR_CONTROL)
     object TorBrowser : Screen(NavRoutes.TOR_BROWSER)
-    object PayloadGenerator : Screen(NavRoutes.PAYLOAD_GENERATOR)
-    object PayloadHistory : Screen(NavRoutes.PAYLOAD_HISTORY)
     
     // Background Picker
     object BackgroundPicker : Screen("background_picker?chatId={chatId}") {
@@ -70,8 +68,5 @@ sealed class Screen(val route: String) {
     
     // Mod Screens
     object ModHome : Screen("mod_home")
-    object ModSettings : Screen("mod_settings")
-    object ModFunctions : Screen("mod_functions")
-    object ModAbout : Screen("mod_about")
     object InternalBot : Screen("internal_bot")
 }

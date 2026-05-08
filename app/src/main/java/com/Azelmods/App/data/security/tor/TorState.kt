@@ -29,6 +29,18 @@ sealed class TorState {
     ) : TorState()
 
     /**
+     * Tor is actively bootstrapping and connecting to the network.
+     * Alias for Connecting to maintain compatibility with TorBrowserScreenNew.
+     *
+     * @param progress Bootstrap progress percentage in the range [0, 100].
+     * @param message  Human-readable description of the current bootstrap phase.
+     */
+    data class Bootstrapping(
+        val progress: Int,
+        val message: String = ""
+    ) : TorState()
+
+    /**
      * Tor is fully connected and routing traffic through the Tor network.
      *
      * @param circuitInfo Details about the active Tor circuit.

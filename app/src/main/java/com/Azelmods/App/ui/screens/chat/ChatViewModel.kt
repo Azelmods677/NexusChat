@@ -30,17 +30,22 @@ data class ChatState(
     val isLoading: Boolean = false,
     val isUploading: Boolean = false,
     val error: String? = null,
-    val replyingTo: Message? = null
+    val replyingTo: Message? = null,
+    val editingMessage: Message? = null
 )
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
-    private val databaseRepository: RealtimeDatabaseRepository
+    private val databaseRepository: RealtimeDatabaseRepository,
+    private val backgroundRepository: com.Azelmods.App.data.repository.ChatBackgroundRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatState())
     val state: StateFlow<ChatState> = _state.asStateFlow()
+    
+    private val _chatBackground = MutableStateFlow(com.Azelmods.App.data.model.BackgroundConfig())
+    val chatBackground: StateFlow<com.Azelmods.App.data.model.BackgroundConfig> = _chatBackground.asStateFlow()
 
     /**
      * Holds the full chatId once loadChat is called.
@@ -51,6 +56,22 @@ class ChatViewModel @Inject constructor(
     private var lastTypingStatus: Boolean = false
     private var typingDebounceJob: Job? = null
     private var typingObserverJob: Job? = null
+    
+    /**
+     * Load chat background configuration
+     */
+    fun loadChatBackground(chatId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                backgroundRepository.loadBackground(chatId)
+                backgroundRepository.getBackground(chatId).collect { config ->
+                    _chatBackground.value = config
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     /**
      * Load a chat session.
@@ -113,22 +134,34 @@ class ChatViewModel @Inject constructor(
                 // Collect messages in real-time (suspends until cancelled)
                 @Suppress("UNCHECKED_CAST")
                 databaseRepository.getChatMessages(chatId).collect { messagesData ->
-                    val messages = messagesData.map { data ->
-                        Message(
-                            messageId = data["messageId"] as? String ?: "",
-                            chatId = chatId,
-                            senderId = data["senderId"] as? String ?: "",
-                            senderName = data["senderName"] as? String ?: "",
-                            content = data["content"] as? String ?: "",
-                            timestamp = data["timestamp"] as? Long ?: 0L,
-                            status = MessageStatus.SENT,
-                            replyTo = data["replyTo"] as? String,
-                            reactions = (data["reactions"] as? Map<String, String>)
-                                ?: emptyMap(),
-                            mediaUrl = data["mediaUrl"] as? String,
-                            mediaType = data["mediaType"] as? String
-                        )
-                    }
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                    val messages = messagesData
+                        .map { data ->
+                            Message(
+                                messageId = data["messageId"] as? String ?: "",
+                                chatId = chatId,
+                                senderId = data["senderId"] as? String ?: "",
+                                senderName = data["senderName"] as? String ?: "",
+                                content = data["content"] as? String ?: "",
+                                timestamp = data["timestamp"] as? Long ?: 0L,
+                                status = MessageStatus.SENT,
+                                replyTo = data["replyTo"] as? String,
+                                reactions = (data["reactions"] as? Map<String, String>)
+                                    ?: emptyMap(),
+                                mediaUrl = data["mediaUrl"] as? String,
+                                mediaType = data["mediaType"] as? String,
+                                deletedFor = (data["deletedFor"] as? Map<String, Boolean>)
+                                    ?: emptyMap(),
+                                deletedForEveryone = data["deletedForEveryone"] as? Boolean ?: false,
+                                edited = data["edited"] as? Boolean ?: false,
+                                editedAt = data["editedAt"] as? Long ?: 0L,
+                                forwardedFrom = data["forwardedFrom"] as? String
+                            )
+                        }
+                        .filter { message ->
+                            // Filter out messages deleted for current user (but keep messages deleted for everyone to show placeholder)
+                            message.deletedFor[currentUserId] != true
+                        }
                     _state.value = _state.value.copy(messages = messages)
                 }
 
@@ -369,5 +402,105 @@ class ChatViewModel @Inject constructor(
 
     fun clearError() {
         _state.value = _state.value.copy(error = null)
+    }
+    
+    /**
+     * Delete a message (REAL implementation)
+     */
+    fun deleteMessage(message: Message, forEveryone: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+                if (currentChatId.isBlank()) return@launch
+                
+                if (forEveryone) {
+                    // Mark as deleted for everyone and clear content
+                    val updates = mapOf(
+                        "deletedForEveryone" to true,
+                        "content" to "",
+                        "mediaUrl" to null,
+                        "mediaType" to null
+                    )
+                    FirebaseDatabase.getInstance().reference
+                        .child("messages")
+                        .child(currentChatId)
+                        .child(message.messageId)
+                        .updateChildren(updates)
+                        .await()
+                    
+                    // Update chat's lastMessage if this was the last message
+                    val chatSnapshot = FirebaseDatabase.getInstance().reference
+                        .child("chats")
+                        .child(currentChatId)
+                        .get()
+                        .await()
+                    
+                    val lastMessageTime = chatSnapshot.child("lastMessageTime").getValue(Long::class.java)
+                    if (lastMessageTime == message.timestamp) {
+                        // This was the last message, update to previous message or "Este mensaje fue eliminado"
+                        FirebaseDatabase.getInstance().reference
+                            .child("chats")
+                            .child(currentChatId)
+                            .child("lastMessage")
+                            .setValue("Este mensaje fue eliminado")
+                            .await()
+                    }
+                } else {
+                    // Mark as deleted only for this user
+                    FirebaseDatabase.getInstance().reference
+                        .child("messages")
+                        .child(currentChatId)
+                        .child(message.messageId)
+                        .child("deletedFor")
+                        .child(currentUserId)
+                        .setValue(true)
+                        .await()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _state.value = _state.value.copy(
+                    error = "Error al eliminar mensaje: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Edit a message (REAL implementation)
+     */
+    fun editMessage(messageId: String, newContent: String) {
+        if (newContent.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (currentChatId.isBlank()) return@launch
+                
+                val updates = mapOf(
+                    "content" to newContent,
+                    "edited" to true,
+                    "editedAt" to System.currentTimeMillis()
+                )
+                
+                FirebaseDatabase.getInstance().reference
+                    .child("messages")
+                    .child(currentChatId)
+                    .child(messageId)
+                    .updateChildren(updates)
+                    .await()
+                
+                _state.value = _state.value.copy(editingMessage = null)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _state.value = _state.value.copy(
+                    error = "Error al editar mensaje: ${e.message}"
+                )
+            }
+        }
+    }
+    
+    /**
+     * Set message to edit
+     */
+    fun setEditingMessage(message: Message?) {
+        _state.value = _state.value.copy(editingMessage = message)
     }
 }

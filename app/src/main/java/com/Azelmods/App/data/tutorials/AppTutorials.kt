@@ -114,17 +114,18 @@ StoryViewerScreen → Visualización fullscreen
 
 **Foto:**
 - Captura con cámara o galería
-- Filtros y stickers
-- Texto personalizable
+- Ajuste bidimensional (X+Y) con drag gestures
+- Texto y emojis draggables
 
 **Video:**
 - Máximo 30 segundos
 - Reproducción automática
 - Controles de pausa/play
+- Texto y emojis draggables
 
 **Texto:**
-- Fondo de color sólido (negro por defecto)
-- Texto draggable
+- Fondo negro sólido
+- Texto draggable con posicionamiento libre
 - Emojis draggables
 
 ### Crear una Story
@@ -133,19 +134,43 @@ StoryViewerScreen → Visualización fullscreen
 ```
 Cámara → Foto/Video
 Galería → Seleccionar existente
-Texto → Story de texto puro
+Texto → Story de texto puro (fondo negro)
 ```
 
 **Paso 2: Editar**
-- Añadir texto (tap en pantalla)
-- Añadir emojis (selector inferior)
+- Añadir texto (tap en "Text") → Draggable
+- Añadir emojis (tap en "Sticker") → Selector completo
+- Ajustar foto (tap en "Ajustar") → Drag X+Y
 - Mover elementos (drag & drop)
 - Eliminar (long press)
 
 **Paso 3: Publicar**
-- Tap en "Publicar"
+- Tap en "Share"
 - Se sube a Firebase Storage
 - Visible para tus contactos por 24h
+
+### Selector de Emojis NUEVO
+
+**4 Categorías Completas:**
+- 😀 **Caritas**: Emojis faciales y expresiones
+- 🐶 **Animales**: Fauna y naturaleza
+- 🍎 **Comida**: Alimentos y bebidas
+- ⚽ **Deportes**: Actividades físicas
+
+**Funcionalidades:**
+- Grid de 8 columnas para mejor organización
+- ScrollableTabRow para navegar entre categorías
+- ModalBottomSheet con diseño moderno
+- Tap para agregar emoji draggable
+- Posicionamiento inicial en centro (150f, 300f)
+
+### Ajuste de Fotos NUEVO
+
+**Drag Bidimensional:**
+- Arrastra horizontalmente (eje X)
+- Arrastra verticalmente (eje Y)
+- Display en tiempo real: "X: [valor] Y: [valor]"
+- Posicionamiento libre en cualquier dirección
 
 ### Ver Stories
 
@@ -164,10 +189,17 @@ Texto → Story de texto puro
 
 ## Funcionalidades Avanzadas
 
-**Emojis Draggables:**
-- Tap en emoji picker
-- Drag para posicionar
+**Emojis Draggables MEJORADO:**
+- Tap en emoji picker → ModalBottomSheet completo
+- 4 categorías organizadas
+- Drag para posicionar en cualquier lugar
 - Long press para eliminar
+- Tamaño fijo de 64sp para consistencia
+
+**Texto Draggable:**
+- Posicionamiento libre en toda la pantalla
+- Fondo transparente en stories de texto
+- Contraste automático sobre fondo negro
 
 **Música (Coming Soon):**
 - Añadir música de fondo
@@ -266,13 +298,13 @@ rememberThemeSecondaryColor() // Color secundario
     // ═══════════════════════════════════════════════════════════════
     
     val AI_AGENT_TUTORIAL = """
-# 🤖 Sistema de AI Agent (Dual AI)
+# 🤖 Sistema de Asistente Inteligente
 
 ## Arquitectura del Sistema
 
-La app integra DOS sistemas de IA diferentes:
+La app integra un sistema de asistente inteligente local.
 
-### 1. Ollama (Local)
+### Ollama (Local)
 ```
 Android App → OllamaApiService → Ollama Server (localhost:11434)
 ```
@@ -503,20 +535,42 @@ Audio/Video Streams
 - Resoluciones: 480p, 720p, 1080p
 - Cámara frontal/trasera
 
+### Permisos ACTUALIZADOS
+
+**Nuevos permisos requeridos:**
+- `FOREGROUND_SERVICE_PHONE_CALL`: Para llamadas en primer plano
+- `MANAGE_OWN_CALLS`: Para gestionar llamadas propias
+- `RECORD_AUDIO`: Para capturar audio
+- `CAMERA`: Para videollamadas
+
+**Verificación automática:**
+- Comprobación en tiempo real antes de iniciar llamada
+- Solicitud automática si faltan permisos
+- Manejo de errores si se deniegan
+
 ### Realizar una Llamada
 
-**Paso 1: Iniciar**
+**Paso 1: Verificación de Permisos**
+```kotlin
+// Verificación automática en IncomingCallScreen
+if (ContextCompat.checkSelfPermission(context, RECORD_AUDIO) != GRANTED ||
+    ContextCompat.checkSelfPermission(context, CAMERA) != GRANTED) {
+    // Solicitar permisos
+}
+```
+
+**Paso 2: Iniciar**
 ```kotlin
 // Desde ChatScreen
 onCallClick(contactId, "audio") // o "video"
 ```
 
-**Paso 2: Signaling**
+**Paso 3: Signaling**
 - Crear oferta SDP
 - Enviar via Firebase
 - Esperar respuesta
 
-**Paso 3: Conexión**
+**Paso 4: Conexión**
 - Establecer PeerConnection
 - Intercambiar ICE candidates
 - Iniciar streams
@@ -548,11 +602,16 @@ onCallClick(contactId, "audio") // o "video"
 - Llamada terminada
 - Mostrando razón
 
-⚠️ **Permisos:** Requiere permisos de cámara y micrófono
+⚠️ **Permisos:** Requiere permisos de cámara y micrófono actualizados
 
 ℹ️ **Calidad:** Depende de la conexión a internet de ambos usuarios
 
 ## Troubleshooting
+
+**"Permission denied" al iniciar llamada:**
+- Verifica permisos en Configuración → Apps → NexusChat → Permisos
+- Otorga permisos de Micrófono y Cámara
+- Reinicia la app si es necesario
 
 **No se escucha audio:**
 - Verifica permisos de micrófono
@@ -568,6 +627,11 @@ onCallClick(contactId, "audio") // o "video"
 - Conexión inestable
 - Usa WiFi en lugar de datos móviles
 - Acércate al router
+
+**Crash al iniciar llamada (SOLUCIONADO):**
+- Problema resuelto con permisos actualizados
+- Verificación previa antes de iniciar llamada
+- Manejo de errores mejorado
     """.trimIndent()
     
     // ═══════════════════════════════════════════════════════════════
@@ -605,8 +669,8 @@ La app ofrece configuración completa de todos los aspectos.
 
 **Apariencia:**
 - Tema (Claro/Oscuro/Auto)
-- Colores de acento (Verde, Rojo, Azul, Morado, Teal)
-- Tamaño de fuente (Pequeño, Mediano, Grande)
+- **NUEVO:** 15 colores de acento (Verde, Rojo, Azul, Morado, Teal, Rosa, Naranja, Amarillo, Cian, Índigo, Lima, Ámbar, Marrón, Gris, Azul Gris)
+- **ACTUALIZADO:** Tamaño de fuente simplificado (Pequeño, Mediano, Grande)
 - Wallpaper de chat (Predeterminado, Galería, Colores sólidos)
 
 **Almacenamiento:**
@@ -616,28 +680,26 @@ La app ofrece configuración completa de todos los aspectos.
 - Gestionar archivos
 
 **Ayuda y Soporte:**
-- Tutoriales integrados (7 guías completas)
+- Tutoriales integrados (8 guías completas)
 - FAQ
 - Reportar problema
 - Términos y condiciones
 
 **Acerca de:**
-- Versión de la app
+- Versión de la app (v1.0.0)
 - Licencias
 - Créditos
 
 ## Configuración Avanzada
 
-### Colores de Acento Dinámicos
+### Colores de Acento Dinámicos AMPLIADO
 
-La app permite seleccionar colores de acento que se aplican a TODA la interfaz:
+La app permite seleccionar entre 15 colores de acento que se aplican a TODA la interfaz:
 ```kotlin
-// Colores disponibles:
-- Verde (Green)
-- Rojo (Red)
-- Azul (Blue)
-- Morado (Purple) - Por defecto
-- Teal (Teal)
+// Colores disponibles (grid 5x3):
+Fila 1: Verde, Rojo, Azul, Morado, Teal
+Fila 2: Rosa, Naranja, Amarillo, Cian, Índigo  
+Fila 3: Lima, Ámbar, Marrón, Gris, Azul Gris
 
 // Automático en toda la app
 MaterialTheme.colorScheme.primary
@@ -654,12 +716,17 @@ MaterialTheme.colorScheme.secondary
 - Burbujas de mensajes
 - Todos los elementos interactivos
 
-### Tamaño de Fuente
+### Tamaño de Fuente SIMPLIFICADO
 
-Ajusta el tamaño del texto en toda la app:
+Sistema simplificado con SharedPreferences:
 - **Pequeño**: Ideal para pantallas grandes
 - **Mediano**: Tamaño estándar (recomendado)
 - **Grande**: Mejor legibilidad
+
+**Cambios técnicos:**
+- Eliminado SegmentedButton problemático
+- Implementación directa con SharedPreferences
+- Sin crashes ni errores de compilación
 
 ### Wallpaper de Chat
 
@@ -922,8 +989,8 @@ La app extrae colores de tu foto de perfil para personalizar la interfaz.
 **🔒 Privacidad:**
 Control total sobre quién ve tu información.
 
-**🤖 IA Integrada:**
-Dos sistemas de IA para diferentes necesidades.
+**🤖 Asistente Inteligente:**
+Sistema de asistente local para diferentes necesidades.
 
 **🛡️ Herramientas de Seguridad:**
 Framework completo para pentesting y análisis.

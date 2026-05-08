@@ -1,5 +1,6 @@
 ﻿package com.Azelmods.App.ui.screens.call
 
+import android.Manifest
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -24,8 +25,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.data.model.CallType
 import com.Azelmods.App.ui.components.safeClickable
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun IncomingCallScreen(
     contactId: String,
@@ -33,6 +37,20 @@ fun IncomingCallScreen(
     navController: NavController,
     viewModel: CallViewModel = hiltViewModel()
 ) {
+    // Permission check
+    val permissions = rememberMultiplePermissionsState(
+        listOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CAMERA
+        )
+    )
+    
+    LaunchedEffect(Unit) {
+        if (!permissions.allPermissionsGranted) {
+            permissions.launchMultiplePermissionRequest()
+        }
+    }
+    
     val contactState by viewModel.contactProfile.collectAsState()
     
     LaunchedEffect(contactId) {

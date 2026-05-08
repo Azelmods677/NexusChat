@@ -166,12 +166,15 @@ fun VoiceRecorderUI(
 /**
  * Audio recorder helper class.
  */
-class AudioRecorder(private val outputFile: File) {
+class AudioRecorder(
+    private val context: android.content.Context,
+    private val outputFile: File
+) {
     private var mediaRecorder: MediaRecorder? = null
     
     fun startRecording() {
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(outputFile.parentFile)
+            MediaRecorder(context)
         } else {
             @Suppress("DEPRECATION")
             MediaRecorder()

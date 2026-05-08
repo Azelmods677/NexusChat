@@ -100,6 +100,64 @@ fun NewConversationScreen(
                 )
             }
             
+            // Demo Chat - Special card with avatar
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .safeClickable { viewModel.createDemoChat(navController) },
+                shape = RoundedCornerShape(16.dp),
+                color = Color(0xFF1A1A2E),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF7B5CFA).copy(0.4f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Bot avatar with animated ring
+                    Surface(
+                        modifier = Modifier.size(48.dp),
+                        shape = CircleShape,
+                        color = Color(0xFF7B5CFA)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🤖", fontSize = 24.sp)
+                        }
+                    }
+                    
+                    Spacer(Modifier.width(12.dp))
+                    
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Demo Chat",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            "Prueba el chat sin contactos",
+                            color = Color.White.copy(0.5f),
+                            fontSize = 13.sp
+                        )
+                    }
+                    
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF00E676).copy(0.15f)
+                    ) {
+                        Text(
+                            "DEMO",
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = Color(0xFF00E676),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            
             // Contacts list
             Text(
                 text = "CONTACTS",

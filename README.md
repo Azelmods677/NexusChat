@@ -1,336 +1,530 @@
 # NexusChat
 
-[![Android](https://img.shields.io/badge/Android-API%2026+-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://www.android.com/)
-[![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2025.04.01-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Firebase](https://img.shields.io/badge/Firebase-Realtime-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
-[![WebRTC](https://img.shields.io/badge/WebRTC-Enabled-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
+<div align="center">
 
-**Aplicación de mensajería moderna para Android construida con Kotlin y Jetpack Compose**
+![Android](https://img.shields.io/badge/Android-API%2026%2B-brightgreen?logo=android)
+![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?logo=kotlin)
+![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202025.04.01-4285F4?logo=jetpackcompose)
+![Firebase](https://img.shields.io/badge/Firebase-BOM%2033.7.0-FFCA28?logo=firebase)
+![WebRTC](https://img.shields.io/badge/WebRTC-1.1.3-333333?logo=webrtc)
+![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
----
+**Aplicación de mensajería instantánea nativa para Android**  
+Construida con Kotlin y Jetpack Compose
 
-## 📖 Descripción General
+[Características](#características) • [Arquitectura](#arquitectura) • [Instalación](#instalación) • [Documentación](#documentación)
 
-NexusChat es una aplicación de mensajería instantánea nativa para Android que combina comunicación en tiempo real con una interfaz de usuario moderna y personalizable. Desarrollada completamente en Kotlin utilizando Jetpack Compose, la aplicación implementa Clean Architecture para garantizar escalabilidad, mantenibilidad y separación de responsabilidades.
-
-Diseñada para usuarios que valoran tanto la funcionalidad como la estética, NexusChat ofrece características avanzadas como historias efímeras, llamadas de voz y video mediante WebRTC, un sistema de temas completamente personalizable con 15 opciones predefinidas, y un bot interno con capacidades de automatización. La aplicación utiliza Firebase Realtime Database para sincronización instantánea de mensajes, garantizando una experiencia fluida incluso en condiciones de red variables.
-
-Lo que distingue a NexusChat es su enfoque en la personalización profunda: desde fondos de video por conversación hasta burbujas de mensaje en 3D, pasando por un panel de control estilo mod que proporciona estadísticas en tiempo real y configuraciones avanzadas. La arquitectura modular permite extensibilidad futura mientras mantiene un rendimiento óptimo en dispositivos desde Android 8.0 (API 26) hasta Android 16 (API 36).
+</div>
 
 ---
 
-## ✨ Características
+## Descripción
 
-### 💬 Mensajería
+NexusChat es una aplicación de mensajería instantánea desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patrón MVVM para garantizar escalabilidad y mantenibilidad del código.
 
-- **Chat en tiempo real** con Firebase Realtime Database
-- **Mensajes de voz** con visualización de forma de onda animada
-- **Compartir multimedia**: imágenes, videos y archivos con compresión automática
-- **Indicadores de estado**: ✓ enviado / ✓✓ entregado / ✓✓ azul leído
-- **Indicador de escritura** en tiempo real
-- **Responder mensajes** deslizando a la derecha
-- **Reacciones con emojis** manteniendo pulsado el mensaje
-- **Chats grupales** con controles de administrador
-- **Mensajes fijados, silenciados y archivados**
-- **Búsqueda** de mensajes y conversaciones
+La aplicación ofrece funcionalidades completas de mensajería en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efímeras con duración de 24 horas, y un sistema de personalización que incluye temas, fondos personalizados y configuraciones de interfaz.
 
-### 📖 Historias
-
-- **Caducidad automática** a las 24 horas
-- **Barra de progreso** estilo Instagram con animación suave
-- **Reacciones y respuestas** rápidas a historias
-- **Lista de visualizaciones** con marcas de tiempo
-- **Anillos animados**: rojo pulsante para no vistas, gris para vistas
-- **Soporte multimedia**: imágenes y videos
-
-### 🎨 Temas y Personalización
-
-- **15 temas de color**: Tóxico, Perverso, Crimson Dark, Neon Red, Blood Moon, Midnight Purple, Ocean Blue, Forest Green, Sunset Orange, Rose Gold, Arctic Ice, Lava, Electric Blue, Golden Hour, Monochrome
-- **Burbujas 3D** con efectos de profundidad, sombras y gradientes
-- **Fondo de aplicación global**: imagen, video, color sólido o degradado
-- **Fondo por chat**: personalizable individualmente para cada conversación
-- **Tamaños de fuente ajustables**: Pequeño, Mediano, Grande
-- **Navegación por gestos**: deslizar entre pestañas (Chats ↔ Historias ↔ Llamadas ↔ Perfil)
-- **Reordenamiento de pestañas** según preferencias del usuario
-- **Modo oscuro** optimizado
-
-### 🤖 Bot Interno
-
-- **Respuesta automática** en chats privados con mensajes personalizados
-- **Respuesta automática en grupos** con configuración independiente
-- **Modo Fantasma**: ocultar última vez, estado en línea y recibos de lectura
-- **Mensajes en masa** a múltiples contactos simultáneamente
-- **Traductor automático** de entrada de texto
-- **Mensajes citados personalizados** con formato especial
-- **Mencionar a todos** en grupos con un solo toque
-- **Creador de stickers** desde imágenes de la galería
-
-### 📞 Llamadas
-
-- **Llamadas de voz** con WebRTC
-- **Videollamadas** con calidad HD
-- **Comunicación P2P nativa** con señalización Firebase
-- **Calidad adaptativa** según condiciones de red
-- **Controles en llamada**: silenciar, altavoz, cambiar cámara
-- **Historial de llamadas** con duración y estado
-
-### 🔔 Notificaciones
-
-- **Agrupadas por conversación** para mejor organización
-- **Respuesta rápida** desde el panel de notificaciones
-- **Marcar como leído** sin abrir la aplicación
-- **Avatar del remitente** en cada notificación
-- **Firebase Cloud Messaging** para entrega confiable
-
-### ⚙️ Panel Mod
-
-- **Dashboard estilo mod** con interfaz personalizada
-- **Estadísticas en vivo**: porcentaje de batería, modelo de dispositivo, reloj en tiempo real
-- **Configuraciones avanzadas** agrupadas por categoría (Cuenta, Conversaciones, Privacidad, Avatar, Notificaciones, Almacenamiento, Ayuda, Invitar)
-- **Pantalla About** con información del mod, versión y enlaces sociales
-- **Gestión de funciones** con interruptores visuales
-- **Sistema de tutoriales** integrado (8 guías completas)
+**Compatibilidad:** Android 8.0 (API 26) hasta Android 16 (API 36)
 
 ---
 
-## 🏗️ Arquitectura
+## Características
 
-### Diagrama General
+### Mensajería
+- Chat en tiempo real con sincronización instantánea
+- Mensajes de texto, voz, imágenes, videos y archivos
+- Indicadores de estado: enviado, entregado, leído
+- Indicador de escritura en tiempo real
+- Respuestas rápidas deslizando mensajes
+- Reacciones con emojis
+- Chats grupales con gestión de miembros
+- Búsqueda de mensajes y conversaciones
+- Fijar, silenciar y archivar conversaciones
+
+### Historias
+- Publicación de fotos, videos y texto
+- Caducidad automática a las 24 horas
+- Visualización con barra de progreso
+- Reacciones y respuestas directas
+- Lista de visualizaciones con timestamps
+- Editor con emojis y texto posicionable
+- Ajuste bidimensional de imágenes
+
+### Llamadas
+- Llamadas de voz y videollamadas
+- Comunicación P2P mediante WebRTC
+- Señalización a través de Firebase
+- Calidad adaptativa según conexión
+- Controles: silenciar, altavoz, cambiar cámara
+
+### Personalización
+- 15 temas de color predefinidos
+- Fondos personalizados (imagen, video, color, degradado)
+- Fondos independientes por conversación
+- Configuración de tamaños de fuente
+- Modo oscuro
+- Navegación por gestos
+
+### Notificaciones
+- Notificaciones push con Firebase Cloud Messaging
+- Agrupación por conversación
+- Respuesta rápida desde notificaciones
+- Marcar como leído sin abrir la app
+
+---
+
+## Arquitectura
+
+NexusChat implementa **Clean Architecture** dividida en tres capas principales con separación clara de responsabilidades.
+
+### Diagrama de Arquitectura General
 
 ```mermaid
-graph TD
-    A[Jetpack Compose UI] --> B[ViewModel + StateFlow]
-    B --> C[Use Cases]
-    C --> D[Repository Layer]
-    D --> E[(Firebase Realtime DB)]
-    D --> F[(Firebase Storage)]
-    D --> G[(Room Cache)]
-    D --> H[(DataStore)]
-```
-
-### Diagrama de Capas Clean Architecture
-
-```mermaid
-graph LR
-    subgraph Presentación
-        UI[Compose Screens]
-        VM[ViewModels]
+graph TB
+    subgraph "Capa de Presentación"
+        UI[Jetpack Compose UI<br/>Screens & Components]
+        VM[ViewModels<br/>State Management]
+        NAV[Navigation<br/>NavGraph & Routes]
     end
-    subgraph Dominio
-        UC[Use Cases]
-        RI[Repository Interfaces]
+    
+    subgraph "Capa de Dominio"
+        UC[Use Cases<br/>Business Logic]
+        REPO_INT[Repository Interfaces<br/>Contracts]
+        MODELS[Domain Models<br/>Entities]
     end
-    subgraph Datos
-        REPO[Repository Impl]
-        FB[Firebase DataSource]
-        LOCAL[Local DataSource]
+    
+    subgraph "Capa de Datos"
+        REPO[Repository Implementations<br/>Data Operations]
+        DS_REMOTE[Remote DataSource<br/>Firebase]
+        DS_LOCAL[Local DataSource<br/>Room & DataStore]
     end
+    
+    subgraph "Fuentes de Datos"
+        FB_DB[(Firebase<br/>Realtime DB)]
+        FB_STORAGE[(Firebase<br/>Storage)]
+        FB_AUTH[Firebase<br/>Auth]
+        ROOM[(Room<br/>Database)]
+        DATASTORE[(DataStore<br/>Preferences)]
+    end
+    
     UI --> VM
     VM --> UC
-    UC --> RI
-    RI --> REPO
-    REPO --> FB
-    REPO --> LOCAL
-```
-
-### Flujo de Mensajes en Tiempo Real
-
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant VM as ViewModel
-    participant R as Repository
-    participant FB as Firebase
+    UC --> REPO_INT
+    REPO_INT --> REPO
+    REPO --> DS_REMOTE
+    REPO --> DS_LOCAL
+    DS_REMOTE --> FB_DB
+    DS_REMOTE --> FB_STORAGE
+    DS_REMOTE --> FB_AUTH
+    DS_LOCAL --> ROOM
+    DS_LOCAL --> DATASTORE
     
-    U->>VM: Enviar mensaje
-    VM->>R: sendMessage(message)
-    R->>FB: push to /chats/{id}
-    FB-->>R: onDataChange listener
-    R-->>VM: Flow<List<Message>>
-    VM-->>U: StateFlow actualiza UI
+    classDef presentacion fill:#1e88e5,stroke:#0d47a1,stroke-width:2px,color:#fff
+    classDef dominio fill:#43a047,stroke:#2e7d32,stroke-width:2px,color:#fff
+    classDef datos fill:#fb8c00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef fuentes fill:#7b1fa2,stroke:#4a148c,stroke-width:2px,color:#fff
+    
+    class UI,VM,NAV presentacion
+    class UC,REPO_INT,MODELS dominio
+    class REPO,DS_REMOTE,DS_LOCAL datos
+    class FB_DB,FB_STORAGE,FB_AUTH,ROOM,DATASTORE fuentes
 ```
+
+### Capas de la Arquitectura
+
+#### 1. Capa de Presentación
+- **Jetpack Compose**: Interfaz de usuario declarativa
+- **ViewModels**: Gestión de estado con StateFlow
+- **Navigation Component**: Navegación entre pantallas
+- **Theme System**: Sistema de temas y estilos
+
+#### 2. Capa de Dominio
+- **Use Cases**: Lógica de negocio encapsulada
+- **Repository Interfaces**: Contratos de acceso a datos
+- **Domain Models**: Entidades del dominio
+
+#### 3. Capa de Datos
+- **Repositories**: Implementación de acceso a datos
+- **Remote DataSource**: Integración con Firebase
+- **Local DataSource**: Caché local con Room y DataStore
+
+---
+
+## Flujos de la Aplicación
 
 ### Flujo de Autenticación
 
 ```mermaid
 flowchart TD
-    A[Abrir App] --> B{¿Usuario autenticado?}
-    B -->|Sí| C[ModHomeScreen]
-    B -->|No| D[LoginScreen]
-    D --> E{Método}
-    E -->|Email| F[Firebase Email Auth]
-    E -->|Google| G[Google Sign-In]
-    F --> C
-    G --> C
+    START([Iniciar App]) --> CHECK{¿Usuario<br/>autenticado?}
+    
+    CHECK -->|Sí| LOAD_USER[Cargar datos<br/>del usuario]
+    CHECK -->|No| LOGIN[LoginScreen]
+    
+    LOAD_USER --> HOME([HomeScreen])
+    
+    LOGIN --> METHOD{Método de acceso}
+    
+    METHOD -->|Email| EMAIL_FORM[Formulario Email]
+    METHOD -->|Google| GOOGLE_FLOW[Google Sign-In Flow]
+    
+    EMAIL_FORM --> VALIDATE{Validar<br/>credenciales}
+    VALIDATE -->|Error| ERROR1[Mostrar error]
+    ERROR1 --> EMAIL_FORM
+    VALIDATE -->|OK| FB_AUTH[Firebase Auth]
+    
+    GOOGLE_FLOW --> GOOGLE_API[Google API]
+    GOOGLE_API --> VALIDATE_GOOGLE{Token<br/>válido?}
+    VALIDATE_GOOGLE -->|Error| ERROR2[Mostrar error]
+    ERROR2 --> LOGIN
+    VALIDATE_GOOGLE -->|OK| FB_AUTH
+    
+    FB_AUTH --> CREATE_USER{¿Usuario<br/>existe?}
+    CREATE_USER -->|No| CREATE[Crear perfil<br/>en Realtime DB]
+    CREATE_USER -->|Sí| LOAD_PROFILE[Cargar perfil]
+    
+    CREATE --> SAVE_LOCAL[Guardar en<br/>DataStore]
+    LOAD_PROFILE --> SAVE_LOCAL
+    SAVE_LOCAL --> HOME
+    
+    classDef success fill:#43a047,stroke:#2e7d32,stroke-width:2px,color:#fff
+    classDef error fill:#e53935,stroke:#c62828,stroke-width:2px,color:#fff
+    classDef process fill:#1e88e5,stroke:#0d47a1,stroke-width:2px,color:#fff
+    classDef decision fill:#fb8c00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef firebase fill:#ff6f00,stroke:#e65100,stroke-width:2px,color:#fff
+    
+    class START,HOME success
+    class ERROR1,ERROR2 error
+    class LOAD_USER,EMAIL_FORM,GOOGLE_FLOW,GOOGLE_API,CREATE,LOAD_PROFILE,SAVE_LOCAL process
+    class CHECK,METHOD,VALIDATE,VALIDATE_GOOGLE,CREATE_USER decision
+    class FB_AUTH firebase
+```
+
+### Flujo de Mensajería en Tiempo Real
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Usuario
+    participant UI as ChatScreen
+    participant VM as ChatViewModel
+    participant UC as SendMessageUseCase
+    participant REPO as ChatRepository
+    participant FB as Firebase Realtime DB
+    participant FCM as Cloud Messaging
+
+    rect rgb(30, 136, 229)
+    Note over Usuario,UI: Envío de Mensaje
+    Usuario->>+UI: Escribe y envía mensaje
+    UI->>+VM: sendMessage(text, chatId)
+    VM->>+UC: execute(message)
+    UC->>+REPO: sendMessage(message)
+    REPO->>+FB: push("/chats/{chatId}/messages")
+    FB-->>-REPO: onSuccess
+    FB->>FCM: Trigger notification
+    FCM-->>Usuario: Push notification al receptor
+    end
+    
+    rect rgb(67, 160, 71)
+    Note over FB,UI: Sincronización en Tiempo Real
+    FB-->>REPO: onDataChange (listener activo)
+    REPO-->>-VM: Flow<List<Message>>
+    VM-->>-UI: StateFlow actualiza
+    UI-->>-Usuario: Mensaje visible en UI
+    end
+    
+    Note right of Usuario: Todos los dispositivos<br/>sincronizados
+```
+
+### Flujo de Llamadas WebRTC
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Usuario A
+    participant UI_A as UI A
+    participant VM_A as CallViewModel A
+    participant FB as Firebase Signaling
+    participant VM_B as CallViewModel B
+    participant UI_B as UI B
+    actor Usuario B
+    
+    rect rgb(30, 136, 229)
+    Note over Usuario A,FB: Iniciar Llamada
+    Usuario A->>+UI_A: Iniciar llamada
+    UI_A->>+VM_A: startCall(userId)
+    VM_A->>VM_A: Crear PeerConnection
+    VM_A->>VM_A: Generar Offer SDP
+    VM_A->>+FB: Enviar offer a /calls/{callId}
+    VM_A->>FB: Enviar ICE candidates
+    end
+    
+    rect rgb(251, 140, 0)
+    Note over FB,Usuario B: Recibir Llamada
+    FB-->>+VM_B: onCallReceived (listener)
+    VM_B-->>+UI_B: Mostrar pantalla de llamada entrante
+    UI_B-->>Usuario B: Notificación de llamada
+    
+    Usuario B->>UI_B: Aceptar llamada
+    UI_B->>VM_B: acceptCall()
+    VM_B->>VM_B: Crear PeerConnection
+    VM_B->>VM_B: Generar Answer SDP
+    VM_B->>FB: Enviar answer a /calls/{callId}
+    VM_B->>FB: Enviar ICE candidates
+    end
+    
+    rect rgb(67, 160, 71)
+    Note over VM_A,VM_B: Conexión P2P Establecida
+    FB-->>VM_A: onAnswerReceived
+    VM_A->>VM_A: setRemoteDescription(answer)
+    VM_A->>VM_B: Stream de audio/video directo
+    VM_B->>VM_A: Stream de audio/video directo
+    end
+    
+    Note over Usuario A,Usuario B: Durante la llamada...
+    
+    rect rgb(229, 57, 53)
+    Note over Usuario A,UI_B: Finalizar Llamada
+    Usuario A->>UI_A: Colgar
+    UI_A->>VM_A: endCall()
+    VM_A->>FB: Actualizar estado a "ended"
+    VM_A->>VM_A: Cerrar PeerConnection
+    FB-->>VM_B: onCallEnded
+    VM_B->>VM_B: Cerrar PeerConnection
+    VM_B-->>-UI_B: Volver a HomeScreen
+    deactivate VM_A
+    deactivate UI_A
+    deactivate FB
+    end
+```
+
+### Flujo de Historias
+
+```mermaid
+flowchart TD
+    START([Usuario crea historia]) --> TYPE_SELECT{Tipo de historia}
+    
+    TYPE_SELECT -->|Foto| SELECT_IMAGE[Seleccionar imagen]
+    TYPE_SELECT -->|Video| SELECT_VIDEO[Seleccionar video]
+    TYPE_SELECT -->|Texto| TEXT_STORY[Historia de texto<br/>Fondo negro]
+    
+    SELECT_IMAGE --> PREVIEW[Vista previa]
+    SELECT_VIDEO --> PREVIEW
+    TEXT_STORY --> TEXT_INPUT[Agregar texto posicionable]
+    
+    TEXT_INPUT --> PREVIEW
+    PREVIEW --> EDIT{¿Editar?}
+    
+    EDIT -->|Sí| TOOLS[Herramientas de edición]
+    EDIT -->|No| CONFIRM
+    
+    TOOLS --> TEXT_TOOL[Texto posicionable]
+    TOOLS --> EMOJI_TOOL[Emojis posicionables<br/>4 categorías]
+    TOOLS --> ADJUST_TOOL[Ajustar foto X+Y]
+    
+    TEXT_TOOL --> CONFIRM{Publicar}
+    EMOJI_TOOL --> CONFIRM
+    ADJUST_TOOL --> CONFIRM
+    
+    CONFIRM -->|Cancelar| START
+    CONFIRM -->|Publicar| UPLOAD[Subir a<br/>Firebase Storage]
+    
+    UPLOAD --> GET_URL[Obtener URL]
+    GET_URL --> CREATE_STORY[Crear documento<br/>en Realtime DB]
+    
+    CREATE_STORY --> SET_EXPIRY[Configurar<br/>expiración 24h]
+    SET_EXPIRY --> NOTIFY[Notificar<br/>a seguidores]
+    
+    NOTIFY --> PUBLISHED([Historia publicada])
+    
+    PUBLISHED --> WAIT[Esperar 24 horas]
+    WAIT --> AUTO_DELETE[Eliminación automática]
+    
+    AUTO_DELETE --> DELETE_STORAGE[Eliminar de Storage]
+    DELETE_STORAGE --> DELETE_DB[Eliminar de Realtime DB]
+    DELETE_DB --> END([Historia eliminada])
+    
+    classDef success fill:#43a047,stroke:#2e7d32,stroke-width:2px,color:#fff
+    classDef process fill:#1e88e5,stroke:#0d47a1,stroke-width:2px,color:#fff
+    classDef decision fill:#fb8c00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef firebase fill:#ff6f00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef delete fill:#757575,stroke:#424242,stroke-width:2px,color:#fff
+    
+    class START,PUBLISHED success
+    class END delete
+    class SELECT_IMAGE,SELECT_VIDEO,TEXT_STORY,PREVIEW,TOOLS,GET_URL,CREATE_STORY,SET_EXPIRY,NOTIFY,WAIT process
+    class TYPE_SELECT,EDIT,CONFIRM decision
+    class UPLOAD,DELETE_STORAGE,DELETE_DB,AUTO_DELETE firebase
+```
+
+### Flujo de Personalización de Fondos
+
+```mermaid
+flowchart TD
+    START([Usuario abre<br/>BackgroundPicker]) --> SCOPE{Ámbito}
+    
+    SCOPE -->|Global| GLOBAL[Fondo para toda la app]
+    SCOPE -->|Chat| CHAT[Fondo para chat específico]
+    
+    GLOBAL --> TYPE{Tipo de fondo}
+    CHAT --> TYPE
+    
+    TYPE -->|Color| COLOR[ColorPicker]
+    TYPE -->|Degradado| GRADIENT[GradientPicker]
+    TYPE -->|Imagen| IMAGE[Selector de galería]
+    TYPE -->|Video| VIDEO[Selector de video]
+    TYPE -->|Ninguno| NONE[Eliminar fondo]
+    
+    COLOR --> PREVIEW[Vista previa]
+    GRADIENT --> PREVIEW
+    IMAGE --> CROP[Recortar imagen]
+    VIDEO --> VALIDATE{Validar<br/>tamaño y formato}
+    NONE --> SAVE
+    
+    CROP --> PREVIEW
+    VALIDATE -->|Error| ERROR[Mostrar error]
+    ERROR --> VIDEO
+    VALIDATE -->|OK| PREVIEW
+    
+    PREVIEW --> CONFIRM{Confirmar}
+    CONFIRM -->|Cancelar| START
+    CONFIRM -->|Guardar| SAVE[Guardar configuración]
+    
+    SAVE --> STORAGE_CHECK{¿Archivo<br/>multimedia?}
+    STORAGE_CHECK -->|Sí| UPLOAD[Subir a<br/>Firebase Storage]
+    STORAGE_CHECK -->|No| DATASTORE_SAVE
+    
+    UPLOAD --> GET_URL[Obtener URL]
+    GET_URL --> DATASTORE_SAVE[Guardar en DataStore]
+    
+    DATASTORE_SAVE --> FIREBASE_SAVE{¿Fondo<br/>de chat?}
+    FIREBASE_SAVE -->|Sí| FB_UPDATE[Actualizar en<br/>Realtime DB]
+    FIREBASE_SAVE -->|No| APPLY
+    
+    FB_UPDATE --> APPLY[Aplicar en tiempo real]
+    APPLY --> END([Fondo actualizado])
+    
+    classDef success fill:#43a047,stroke:#2e7d32,stroke-width:2px,color:#fff
+    classDef error fill:#e53935,stroke:#c62828,stroke-width:2px,color:#fff
+    classDef process fill:#1e88e5,stroke:#0d47a1,stroke-width:2px,color:#fff
+    classDef decision fill:#fb8c00,stroke:#e65100,stroke-width:2px,color:#fff
+    classDef firebase fill:#ff6f00,stroke:#e65100,stroke-width:2px,color:#fff
+    
+    class START,END success
+    class ERROR error
+    class GLOBAL,CHAT,COLOR,GRADIENT,IMAGE,VIDEO,NONE,CROP,PREVIEW,SAVE,GET_URL,DATASTORE_SAVE,APPLY process
+    class SCOPE,TYPE,VALIDATE,CONFIRM,STORAGE_CHECK,FIREBASE_SAVE decision
+    class UPLOAD,FB_UPDATE firebase
 ```
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
-| Capa | Tecnología | Versión |
-|------|-----------|---------|
-| **UI** | Jetpack Compose BOM | 2025.04.01 |
-| **Lenguaje** | Kotlin | 100% |
-| **Arquitectura** | Clean Architecture + MVVM | — |
-| **Base de datos** | Firebase Realtime Database | BOM 33.7.0 |
-| **Almacenamiento** | Firebase Storage | BOM 33.7.0 |
-| **Autenticación** | Firebase Auth | BOM 33.7.0 |
-| **Mensajería push** | Firebase Cloud Messaging | BOM 33.7.0 |
-| **Inyección de dependencias** | Hilt | 2.52 |
-| **Carga de imágenes** | Coil | 3.1.0 |
-| **Reproductor de video** | ExoPlayer media3 | 1.3.1 |
-| **Llamadas** | Stream WebRTC Android | 1.1.3 |
-| **Caché local** | Room | — |
-| **Preferencias** | DataStore | — |
-| **Corrutinas** | Kotlin Coroutines + Flow | 1.9.0 |
-| **SDK mínimo** | Android 8.0 (Oreo) | API 26 |
-| **SDK objetivo** | Android 16 | API 36 |
+| Componente | Tecnología | Versión |
+|-----------|-----------|---------|
+| UI Framework | Jetpack Compose BOM | 2025.04.01 |
+| Lenguaje | Kotlin | 100% |
+| Arquitectura | Clean Architecture + MVVM | - |
+| Base de datos | Firebase Realtime Database | BOM 33.7.0 |
+| Almacenamiento | Firebase Storage | BOM 33.7.0 |
+| Autenticación | Firebase Auth | BOM 33.7.0 |
+| Mensajería push | Firebase Cloud Messaging | BOM 33.7.0 |
+| Inyección de dependencias | Hilt | 2.52 |
+| Carga de imágenes | Coil | 3.1.0 |
+| Reproductor de video | ExoPlayer media3 | 1.3.1 |
+| Llamadas | Stream WebRTC Android | 1.1.3 |
+| Caché local | Room | - |
+| Preferencias | DataStore | - |
+| Corrutinas | Kotlin Coroutines + Flow | 1.9.0 |
+| SDK mínimo | Android 8.0 (Oreo) | API 26 |
+| SDK objetivo | Android 16 | API 36 |
 
 ---
 
-## 📂 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 app/src/main/java/com/Azelmods/App/
 │
 ├── data/                           # Capa de Datos
+│   ├── api/                        # Servicios API
+│   │   └── AzelAIApiService.kt
 │   ├── repository/                 # Implementaciones de repositorios
 │   │   ├── ChatRepository.kt
 │   │   ├── UserRepository.kt
 │   │   ├── StoryRepository.kt
 │   │   ├── CallRepository.kt
-│   │   ├── ChatBackgroundRepository.kt
-│   │   ├── GroupRepository.kt
-│   │   └── InternalBotRepository.kt
-│   │
+│   │   └── ChatBackgroundRepository.kt
 │   ├── remote/                     # Fuentes de datos remotas
 │   │   └── FirebaseDataSource.kt
-│   │
 │   ├── local/                      # Fuentes de datos locales
 │   │   ├── RoomDatabase.kt
 │   │   └── DataStoreManager.kt
-│   │
-│   ├── preferences/                # Preferencias con DataStore
+│   ├── preferences/                # Preferencias persistentes
 │   │   ├── ThemePreferences.kt
-│   │   └── BotPreferences.kt
-│   │
-│   ├── manager/                    # Gestores de funcionalidades
-│   │   └── AppBackgroundManager.kt
-│   │
+│   │   └── UserPreferences.kt
 │   └── model/                      # Modelos de datos
 │       ├── User.kt
 │       ├── Message.kt
 │       ├── Story.kt
-│       ├── Call.kt
-│       └── BackgroundConfig.kt
+│       └── Call.kt
 │
 ├── domain/                         # Capa de Dominio
-│   ├── model/                      # Modelos de dominio
-│   │
 │   ├── repository/                 # Interfaces de repositorios
 │   │   ├── IChatRepository.kt
 │   │   ├── IUserRepository.kt
 │   │   └── IStoryRepository.kt
-│   │
-│   └── usecase/                    # Casos de uso (lógica de negocio)
+│   └── usecase/                    # Casos de uso
 │       ├── SendMessageUseCase.kt
 │       ├── CreateStoryUseCase.kt
-│       ├── StartCallUseCase.kt
-│       ├── SendFileUseCase.kt
-│       ├── ArchiveChatUseCase.kt
-│       ├── PinChatUseCase.kt
-│       └── MuteChatUseCase.kt
+│       └── StartCallUseCase.kt
 │
 ├── ui/                             # Capa de Presentación
-│   ├── screens/                    # Pantallas Compose
+│   ├── screens/                    # Pantallas
 │   │   ├── chat/
 │   │   │   ├── ChatScreen.kt
-│   │   │   ├── ChatViewModel.kt
-│   │   │   └── MediaGalleryScreen.kt
-│   │   │
+│   │   │   └── ChatViewModel.kt
 │   │   ├── stories/
 │   │   │   ├── StoriesScreen.kt
-│   │   │   ├── StoriesViewModel.kt
-│   │   │   ├── StoryViewerScreen.kt
-│   │   │   └── StoryViewerViewModel.kt
-│   │   │
-│   │   ├── profile/
-│   │   │   ├── ProfileScreen.kt
-│   │   │   ├── ProfileViewModel.kt
-│   │   │   └── EditProfileScreen.kt
-│   │   │
+│   │   │   └── StoriesViewModel.kt
 │   │   ├── calls/
 │   │   │   ├── CallsScreen.kt
-│   │   │   ├── ActiveCallScreen.kt
-│   │   │   └── IncomingCallScreen.kt
-│   │   │
-│   │   ├── home/
-│   │   │   ├── HomeScreen.kt
-│   │   │   ├── ModHomeScreen.kt
-│   │   │   ├── ChatListScreen.kt
-│   │   │   └── NewConversationScreen.kt
-│   │   │
-│   │   ├── settings/
-│   │   │   ├── SettingsScreen.kt
-│   │   │   ├── ModSettingsScreen.kt
-│   │   │   ├── ModFunctionsScreen.kt
-│   │   │   ├── ModAboutScreen.kt
-│   │   │   ├── ThemeCustomizationScreen.kt
-│   │   │   ├── PrivacySecurityScreen.kt
-│   │   │   └── NotificationsScreen.kt
-│   │   │
-│   │   ├── bot/
-│   │   │   └── InternalBotScreen.kt
-│   │   │
-│   │   ├── background/
-│   │   │   └── BackgroundPickerScreen.kt
-│   │   │
-│   │   └── viewer/
-│   │       └── PhotoViewerScreen.kt
-│   │
+│   │   │   └── ActiveCallScreen.kt
+│   │   └── settings/
+│   │       └── SettingsScreen.kt
 │   ├── components/                 # Componentes reutilizables
 │   │   ├── AppBackground.kt
-│   │   ├── VideoBackgroundPlayer.kt
-│   │   ├── VideoWallpaper.kt
-│   │   ├── VoiceRecorder.kt
-│   │   └── ColorPickerDialog.kt
-│   │
-│   ├── theme/                      # Configuración de tema
+│   │   └── VoiceRecorder.kt
+│   ├── theme/                      # Sistema de temas
 │   │   ├── Theme.kt
 │   │   ├── Color.kt
 │   │   └── Type.kt
-│   │
 │   └── navigation/                 # Navegación
 │       ├── NavGraph.kt
 │       └── Screen.kt
 │
-├── di/                             # Inyección de Dependencias (Hilt)
+├── di/                             # Inyección de Dependencias
 │   ├── AppModule.kt
-│   ├── RepositoryModule.kt
-│   ├── NetworkModule.kt
-│   └── SecurityModule.kt
+│   └── RepositoryModule.kt
 │
-├── services/                       # Servicios de Android
+├── services/                       # Servicios Android
 │   ├── CallService.kt
-│   ├── NexusFirebaseMessagingService.kt
-│   └── NotificationService.kt
+│   └── NexusFirebaseMessagingService.kt
 │
-└── MainActivity.kt                 # Punto de entrada
+└── MainActivity.kt
 ```
 
 ---
 
-## 🚀 Configuración e Instalación
+## Instalación
 
 ### Requisitos Previos
 
-- **Android Studio** Hedgehog (2023.1.1) o superior
-- **JDK** 17 o superior
-- **Android SDK** API 36
-- **Cuenta de Firebase** (gratuita)
+- Android Studio Hedgehog (2023.1.1) o superior
+- JDK 17 o superior
+- Android SDK API 36
+- Cuenta de Firebase (gratuita)
 
 ### Clonar y Compilar
 
@@ -345,37 +539,31 @@ cd NexusChat
 # Instalar en dispositivo conectado
 ./gradlew installDebug
 
-# Compilar APK de lanzamiento (requiere configuración de firma)
+# Compilar APK de lanzamiento
 ./gradlew assembleRelease
 ```
 
-**Salida**: `app/build/outputs/apk/debug/app-debug.apk`
+**Salida:** `app/build/outputs/apk/debug/app-debug.apk`
 
 ---
 
-## 🔥 Configuración de Firebase
+## Configuración de Firebase
 
-### Paso 1: Crear Proyecto en Firebase
+### Paso 1: Crear Proyecto
 
-1. Accede a [Firebase Console](https://console.firebase.google.com)
-2. Haz clic en "Agregar proyecto" y sigue el asistente
-3. Agrega una aplicación Android a tu proyecto:
-   - **Nombre del paquete**: `com.Azelmods.App`
-   - Descarga el archivo `google-services.json`
-   - Colócalo en el directorio `app/`
+1. Accede a [Firebase Console](https://console.firebase.google.com/)
+2. Crea un nuevo proyecto y agrega una aplicación Android
+3. Nombre del paquete: `com.Azelmods.App`
+4. Descarga `google-services.json` y colócalo en el directorio `app/`
 
-### Paso 2: Habilitar Servicios de Firebase
+### Paso 2: Habilitar Servicios
 
-Activa los siguientes servicios en Firebase Console:
+- **Realtime Database**: Modo de prueba o producción
+- **Storage**: Modo de prueba o producción
+- **Authentication**: Email/Contraseña + Google Sign-In
+- **Cloud Messaging**: Se habilita automáticamente
 
-- **Realtime Database** (Modo de prueba o producción)
-- **Storage** (Modo de prueba o producción)
-- **Authentication** (Habilita Email/Contraseña y Google Sign-In)
-- **Cloud Messaging** (Se habilita automáticamente)
-
-### Paso 3: Configurar Reglas de Base de Datos
-
-Ve a **Realtime Database → Reglas** y configura:
+### Paso 3: Reglas de Base de Datos
 
 ```json
 {
@@ -390,12 +578,6 @@ Ve a **Realtime Database → Reglas** y configura:
     },
     "chats": {
       "$chatId": {
-        ".read": "auth != null && (data.child('participants').child(auth.uid).exists() || !data.exists())",
-        ".write": "auth != null && (data.child('participants').child(auth.uid).exists() || !data.exists())"
-      }
-    },
-    "messages": {
-      "$chatId": {
         ".read": "auth != null",
         ".write": "auth != null"
       }
@@ -405,164 +587,128 @@ Ve a **Realtime Database → Reglas** y configura:
       "$storyId": {
         ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)"
       }
-    },
-    "calls": {
-      "$callId": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
     }
   }
 }
 ```
 
-### Paso 4: Configurar Reglas de Storage
-
-Ve a **Storage → Reglas** y configura:
+### Paso 4: Reglas de Storage
 
 ```
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
-      // Permitir lectura a usuarios autenticados
       allow read: if request.auth != null;
-      
-      // Permitir escritura con límite de tamaño (10 MB)
-      allow write: if request.auth != null 
-                   && request.resource.size < 10 * 1024 * 1024;
-    }
-    
-    // Reglas específicas para perfiles
-    match /profile_images/{userId}/{fileName} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-                   && request.auth.uid == userId
-                   && request.resource.size < 5 * 1024 * 1024;
-    }
-    
-    // Reglas específicas para historias
-    match /stories/{userId}/{storyId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null 
-                   && request.auth.uid == userId
+      allow write: if request.auth != null
                    && request.resource.size < 10 * 1024 * 1024;
     }
   }
 }
 ```
 
-### Paso 5: Configurar Google Sign-In
+### Paso 5: Google Sign-In
 
-1. Ve a **Authentication → Método de inicio de sesión**
-2. Habilita el proveedor **Google**
-3. Agrega tu huella digital SHA-1:
-   ```bash
-   keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
-   ```
-4. Descarga el archivo `google-services.json` actualizado y reemplázalo en `app/`
+```bash
+keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+```
+
+Agrega el SHA-1 resultante en **Firebase Console → Configuración del proyecto → Huella digital**.
 
 ---
 
-## 📝 Registro de Cambios
+## Registro de Cambios
 
-### v2.0.0 — 2026
+### v1.0.0 - Lanzamiento Inicial (2026)
 
-- ✨ **Rediseño completo de UI** con interfaz estilo mod
-- 🎨 **15 temas personalizados** con selector de color de acento
-- 🎥 **Fondos de video** por chat y globales
-- 🎤 **Mensajes de voz** con visualización de forma de onda
-- 🤖 **Sistema de bot interno** (respuesta automática, modo fantasma, mensajes en masa)
-- 🖼️ **Selector de fondos** con galería, colores sólidos y degradados
-- 📸 **Visor de fotos** con zoom (1x-4x)
-- ✂️ **Recorte de imágenes** con posicionamiento
-- 👆 **Navegación por gestos** (deslizar entre pestañas)
-- 📚 **Sistema de tutoriales** integrado (8 guías completas)
-- 🔧 **Tamaños de fuente ajustables** (Pequeño, Mediano, Grande)
-- 🐛 **Corrección de navegación de historias** con codificación URL
-- 🐛 **Corrección de integración de Google Sign-In**
-- 🐛 **Eliminación de colores hardcodeados** en toda la aplicación
-- ⚡ **Mejoras de rendimiento** y optimización de memoria
-- 🔒 **Mejoras de seguridad** en autenticación y almacenamiento
+#### Funcionalidades Principales
+- Mensajería en tiempo real con Firebase Realtime Database
+- Historias con caducidad de 24 horas
+- Llamadas de voz y video con WebRTC
+- Autenticación Firebase (Email + Google Sign-In)
+- Notificaciones push con Firebase Cloud Messaging
 
-### v1.0.0 — 2025
+#### Sistema de Personalización
+- 15 temas de color predefinidos
+- Fondos personalizados (imagen, video, color, degradado)
+- Fondos independientes por conversación
+- Configuración de tamaños de fuente
+- Modo oscuro
 
-- 🎉 **Lanzamiento inicial**
-- 💬 **Mensajería en tiempo real** con Firebase
-- 📖 **Historias** con caducidad de 24 horas
-- 📞 **Llamadas de voz y video** con WebRTC
-- 🔐 **Autenticación Firebase** (Email + Google)
-- 🔔 **Notificaciones push** con FCM
-- 🎨 **Material Design 3** con modo oscuro
-- 👥 **Chats grupales** con gestión de miembros
-- 🔍 **Búsqueda** de mensajes y conversaciones
+#### Historias
+- Selector de emojis con 4 categorías
+- Emojis y texto posicionables
+- Ajuste bidimensional de fotos
+- Grid de 8 columnas para emojis
+
+#### Llamadas
+- Permisos actualizados para Android 12+
+- Verificación de permisos en tiempo real
+- Comunicación P2P con WebRTC
+
+#### Mensajería
+- Envío de videos optimizado
+- Mensajes de voz con visualización de forma de onda
+- Soporte mejorado para teclado
+
+#### Mejoras Técnicas
+- Arquitectura Clean con MVVM
+- Material Design 3
+- Visor de fotos con zoom
+- Recorte de imágenes
 
 ---
 
-## 🤝 Contribuir
+## Roadmap
 
-¡Las contribuciones son bienvenidas! Si deseas contribuir a NexusChat, sigue estos pasos:
+### Próximas Funciones
 
-1. **Fork** el proyecto
-2. Crea una rama para tu funcionalidad (`git checkout -b feature/NuevaFuncionalidad`)
-3. Realiza tus cambios y haz commit (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Sube los cambios a tu fork (`git push origin feature/NuevaFuncionalidad`)
-5. Abre un **Pull Request** describiendo tus cambios
+- Bot interno con respuestas automáticas
+- Gestión avanzada de grupos
+- Creador de stickers personalizado
+- Sistema de respaldo y restauración
+
+---
+
+## Contribuir
+
+1. Haz fork del proyecto
+2. Crea una rama: `git checkout -b feature/nueva-funcionalidad`
+3. Realiza tus cambios y haz commit: `git commit -m 'feat: descripción del cambio'`
+4. Sube los cambios: `git push origin feature/nueva-funcionalidad`
+5. Abre un Pull Request
 
 ### Guías de Contribución
 
-- Escribe código en **Kotlin 100%**
-- Sigue los principios de **Clean Architecture**
-- Usa **Jetpack Compose** para toda la UI
-- Escribe **tests unitarios** cuando sea posible
-- Documenta funciones públicas con **KDoc**
-- Respeta las convenciones de código del proyecto
-- Asegúrate de que el código compile sin errores antes de hacer commit
+- Kotlin 100%, Jetpack Compose para toda la UI
+- Seguir Clean Architecture en todos los cambios
+- Documentar funciones públicas con KDoc
+- Verificar compilación sin errores antes de hacer commit
 
 ---
 
-## 📄 Licencia
+## Licencia
 
-```
-MIT License
+**MIT License** - Copyright (c) 2026 AzelMods677
 
-Copyright (c) 2026 AzelMods677
+Se concede permiso, de forma gratuita, a cualquier persona que obtenga una copia de este software para utilizarlo sin restricción, incluyendo los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias, sujeto a que el aviso de copyright anterior se incluya en todas las copias.
 
-Se concede permiso, de forma gratuita, a cualquier persona que obtenga una copia
-de este software y de los archivos de documentación asociados (el "Software"),
-para utilizar el Software sin restricción, incluyendo sin limitación los derechos
-a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender
-copias del Software, y a permitir a las personas a las que se les proporcione el
-Software a hacer lo mismo, sujeto a las siguientes condiciones:
-
-El aviso de copyright anterior y este aviso de permiso se incluirán en todas las
-copias o partes sustanciales del Software.
-
-EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O
-IMPLÍCITA, INCLUYENDO PERO NO LIMITADO A GARANTÍAS DE COMERCIALIZACIÓN, IDONEIDAD
-PARA UN PROPÓSITO PARTICULAR Y NO INFRACCIÓN. EN NINGÚN CASO LOS AUTORES O
-TITULARES DEL COPYRIGHT SERÁN RESPONSABLES DE NINGUNA RECLAMACIÓN, DAÑOS U OTRAS
-RESPONSABILIDADES, YA SEA EN UNA ACCIÓN DE CONTRATO, AGRAVIO O CUALQUIER OTRO
-MOTIVO, QUE SURJA DE O EN CONEXIÓN CON EL SOFTWARE O EL USO U OTROS TRATOS EN EL
-SOFTWARE.
-```
+EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO.
 
 ---
 
-## 📞 Contacto
+## Contacto
 
-- **YouTube**: [@AzelModsx677](https://www.youtube.com/@AzelModsx677)
-- **TikTok**: [@azelmodsx677](https://www.tiktok.com/@azelmodsx677)
-- **Telegram**: [@AzelModsx67779](https://t.me/AzelModsx67779)
+- **YouTube:** [@AzelModsx677](https://youtube.com/@AzelModsx677)
+- **TikTok:** [@azelmodsx677](https://tiktok.com/@azelmodsx677)
+- **Telegram:** [@AzelModsx67779](https://t.me/AzelModsx67779)
 
 ---
 
 <div align="center">
 
-⭐ **¡Si te gusta este proyecto, dale una estrella!** ⭐
+**Si te gusta el proyecto, dale una estrella ⭐**
 
-Hecho con ❤️ por [AzelMods677](https://github.com/AzelMods677)
-
-© 2026 AzelMods677. Todos los derechos reservados.
+**Desarrollado por AzelMods677 © 2026**
 
 </div>

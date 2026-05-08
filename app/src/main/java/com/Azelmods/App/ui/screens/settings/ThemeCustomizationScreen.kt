@@ -33,6 +33,7 @@ import com.Azelmods.App.data.preferences.ChatBackground
 import com.Azelmods.App.data.preferences.MessageStyle
 import com.Azelmods.App.data.preferences.ThemePreferences
 import com.Azelmods.App.data.preferences.ThemePreset
+import com.Azelmods.App.data.preferences.UserPreferences
 
 /**
  * Screen for customizing app theme and colors.
@@ -50,6 +51,20 @@ fun ThemeCustomizationScreen(
 ) {
     val context = LocalContext.current
     val themePrefs = remember { ThemePreferences(context) }
+    val userPrefs = remember { 
+        try {
+            // Try to get injected UserPreferences from Hilt
+            val appContext = context.applicationContext as? com.Azelmods.App.NexusChatApplication
+            appContext?.let {
+                dagger.hilt.android.EntryPointAccessors.fromApplication(
+                    it,
+                    UserPreferencesEntryPoint::class.java
+                ).userPreferences()
+            } ?: UserPreferences(context)
+        } catch (e: Exception) {
+            UserPreferences(context)
+        }
+    }
     
     var selectedPreset by remember { mutableStateOf(themePrefs.getThemePreset()) }
     var selectedBackground by remember { mutableStateOf(themePrefs.getChatBackground()) }
@@ -167,6 +182,8 @@ fun ThemeCustomizationScreen(
                     onClick = {
                         selectedPreset = preset
                         themePrefs.setThemePreset(preset)
+                        // Also update UserPreferences for app-wide theme
+                        userPrefs.setAccentColor(preset.name)
                     }
                 )
             }
@@ -310,6 +327,13 @@ private fun ThemePresetCard(
     }
 }
 
+// Hilt EntryPoint for UserPreferences
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface UserPreferencesEntryPoint {
+    fun userPreferences(): com.Azelmods.App.data.preferences.UserPreferences
+}
+
 @Composable
 private fun BackgroundOption(
     background: ChatBackground,
@@ -374,12 +398,6 @@ private fun BackgroundOption(
                     text = "Video seleccionado",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
-                )
-            }
-        }
-    }
-}
-                    tint = Color(0xFF7C3AED)
                 )
             }
         }

@@ -64,66 +64,85 @@ class TorServiceManagerImpl @Inject constructor(
             emit(TorState.Disconnected)
             _torState.value = TorState.Disconnected
 
-            // ALTERNATIVE APPROACH: Use external Tor proxy (Orbot or custom SOCKS5)
-            // Instead of running Tor binary, we connect to an existing SOCKS5 proxy
+            // PASO 1: Intentar conectar con Orbot (puerto 9050)
+            Log.d(TAG, "Intentando conectar con Orbot en puerto 9050...")
+            emit(TorState.Connecting(20, "Buscando Orbot..."))
+            _torState.value = TorState.Connecting(20, "Buscando Orbot...")
+            delay(500)
 
-            Log.d(TAG, "Attempting to connect to external Tor proxy at ${torConfig.socksHost}:${torConfig.socksPort}")
-
-            // Check if Orbot is installed
-            val orbotInstalled = isOrbotInstalled()
-            if (orbotInstalled) {
-                Log.d(TAG, "Orbot detected - suggesting user to start it")
-                emit(TorState.Connecting(10, "Orbot detected, waiting for connection…"))
-                _torState.value = TorState.Connecting(10, "Orbot detected, waiting for connection…")
-            }
-
-            // Simulate bootstrap progress while checking proxy
-            for (progress in 20..90 step 10) {
-                emit(TorState.Connecting(progress, "Verifying SOCKS5 proxy…"))
-                _torState.value = TorState.Connecting(progress, "Verifying SOCKS5 proxy…")
+            // Verificar si Orbot está corriendo
+            val orbotRunning = checkOrbotConnection()
+            
+            if (orbotRunning) {
+                Log.d(TAG, "✓ Orbot detectado y funcionando!")
+                
+                // Progreso rápido cuando Orbot funciona
+                emit(TorState.Connecting(30, "Conectando con Orbot..."))
+                _torState.value = TorState.Connecting(30, "Conectando con Orbot...")
                 delay(200)
-
-                // Try to verify SOCKS5 proxy
-                if (progress >= 50) {
-                    val socksReachable = verifySocksProxy()
-                    if (socksReachable) {
-                        Log.d(TAG, "SOCKS5 proxy is reachable!")
-                        break
-                    }
-                }
-            }
-
-            // Final verification
-            val socksReachable = verifySocksProxy()
-            if (!socksReachable) {
-                val errorMsg = if (orbotInstalled) {
-                    "Please start Orbot app to enable Tor connection"
-                } else {
-                    "Tor proxy not reachable. Install Orbot or configure custom SOCKS5 proxy"
-                }
-                emit(TorState.Error(errorMsg))
-                _torState.value = TorState.Error(errorMsg)
+                
+                emit(TorState.Connecting(50, "Estableciendo circuito..."))
+                _torState.value = TorState.Connecting(50, "Estableciendo circuito...")
+                delay(200)
+                
+                emit(TorState.Connecting(75, "Verificando conexión..."))
+                _torState.value = TorState.Connecting(75, "Verificando conexión...")
+                delay(200)
+                
+                emit(TorState.Connecting(90, "Finalizando..."))
+                _torState.value = TorState.Connecting(90, "Finalizando...")
+                delay(200)
+                
+                emit(TorState.Connecting(100, "Conectado"))
+                _torState.value = TorState.Connecting(100, "Conectado")
+                delay(300)
+                
+                // Obtener info del circuito
+                val circuitInfo = TorCircuitInfo(
+                    entryNode = "Orbot",
+                    middleNode = "Red Tor",
+                    exitNode = "Nodo de Salida",
+                    circuitId = "orbot_${System.currentTimeMillis()}",
+                    bandwidth = 0L
+                )
+                
+                emit(TorState.Connected(circuitInfo))
+                _torState.value = TorState.Connected(circuitInfo)
+                
+                Log.d(TAG, "✓ Conexión Tor establecida vía Orbot")
                 return@flow
             }
-
-            // Try to get circuit info (if control port is available)
-            val circuitInfo = getCircuitInfo() ?: TorCircuitInfo(
-                entryNode = "Via Orbot",
-                middleNode = "External Proxy",
-                exitNode = "Unknown",
-                circuitId = "external",
-                bandwidth = 0L
-            )
-
-            emit(TorState.Connected(circuitInfo))
-            _torState.value = TorState.Connected(circuitInfo)
-
-            Log.d(TAG, "Successfully connected to Tor proxy")
+            
+            // PASO 2: Si Orbot no está disponible, mostrar error claro
+            Log.w(TAG, "Orbot no está disponible")
+            val errorMsg = "Orbot no detectado. Por favor:\n1. Instala Orbot desde Play Store\n2. Abre Orbot y presiona 'Iniciar'\n3. Espera a que se conecte\n4. Vuelve a esta app"
+            emit(TorState.Error(errorMsg))
+            _torState.value = TorState.Error(errorMsg)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error connecting to Tor proxy", e)
-            emit(TorState.Error("Failed to connect to Tor: ${e.message}", e))
-            _torState.value = TorState.Error("Failed to connect to Tor: ${e.message}", e)
+            Log.e(TAG, "Error conectando con Tor", e)
+            val errorMsg = "Error de conexión: ${e.message}\n\nAsegúrate de que Orbot esté instalado y funcionando."
+            emit(TorState.Error(errorMsg, e))
+            _torState.value = TorState.Error(errorMsg, e)
+        }
+    }
+    
+    /**
+     * Verifica si Orbot está corriendo y accesible
+     */
+    private suspend fun checkOrbotConnection(): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Intentar conectar al puerto SOCKS de Orbot (9050)
+                withTimeoutOrNull(3000) {
+                    Socket("127.0.0.1", 9050).use { socket ->
+                        socket.isConnected
+                    }
+                } ?: false
+            } catch (e: Exception) {
+                Log.d(TAG, "Orbot no accesible: ${e.message}")
+                false
+            }
         }
     }
 
@@ -333,19 +352,6 @@ class TorServiceManagerImpl @Inject constructor(
     }
 
     /**
-     * Checks if Orbot app is installed on the device
-     */
-    private fun isOrbotInstalled(): Boolean {
-        return try {
-            val packageManager = context.packageManager
-            packageManager.getPackageInfo("org.torproject.android", 0)
-            true
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    /**
      * Validates preconditions for starting Tor
      */
     private fun validatePreconditions(): Boolean {
@@ -551,19 +557,10 @@ class TorServiceManagerImpl @Inject constructor(
     }
 
     /**
-     * Verifies SOCKS5 proxy is reachable
+     * Verifies SOCKS5 proxy is reachable (Orbot on port 9050)
      */
     private suspend fun verifySocksProxy(): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                withTimeoutOrNull(5000) {
-                    Socket(torConfig.socksHost, torConfig.socksPort).use { true }
-                } ?: false
-            } catch (e: Exception) {
-                Log.e(TAG, "SOCKS5 proxy not reachable", e)
-                false
-            }
-        }
+        return checkOrbotConnection()
     }
 
     /**

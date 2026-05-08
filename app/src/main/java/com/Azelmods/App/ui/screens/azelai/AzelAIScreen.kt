@@ -2,11 +2,11 @@
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -21,34 +21,30 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Azelmods.App.data.model.AIMessage
-import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
+import kotlinx.coroutines.delay
 import java.util.*
 
-// ── Colores temáticos Azel IA ─────────────────────────
-private val AzelPurple = Color(0xFF7C3AED)
-private val AzelPurpleLight = Color(0xFFEDE9FE)
-private val AzelPurpleDark = Color(0xFF4C1D95)
-private val AzelGradient = listOf(Color(0xFF0F0F1A), Color(0xFF1A1A2E), Color(0xFF2D2A52))
-private val BubbleAI = Color(0xFF1E1B4B)
-private val BubbleUser = Color(0xFF7C3AED)
-private val TextOnDark = Color(0xFFF5F3FF)
-private val TextOnPurple = Color.White
-private val CodeBg = Color(0xFF0D1117)
-private val CodeBorder = Color(0xFF30363D)
+// ── Paleta Claude Premium (Onyx & Slate) ───────────────────
+private val BgDark = Color(0xFF0D0F12)       
+private val SurfaceDark = Color(0xFF1A1D21)  
+private val AzelPurple = Color(0xFFAB7FEF)   
+private val AzelBlue = Color(0xFF63B3ED)     
+private val TextPrimary = Color(0xFFE2E8F0)
+private val TextSecondary = Color(0xFF94A3B8)
+private val BorderColor = Color(0xFF2D3748)
+private val UserBubble = Color(0xFF2D3748)
 
-// ─────────────────────────────────────────────────────
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AzelAIScreen(
@@ -58,614 +54,537 @@ fun AzelAIScreen(
     val state by viewModel.state.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
+    
     var showClearDialog by remember { mutableStateOf(false) }
     var showStatsDialog by remember { mutableStateOf(false) }
+    var showSidebar by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     
-    // Auto-scroll al nuevo mensaje
     LaunchedEffect(state.messages.size) {
         if (state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.lastIndex)
         }
     }
     
-    // Limpiar error automáticamente
     LaunchedEffect(state.error) {
         if (state.error != null) {
-            kotlinx.coroutines.delay(5000)
+            delay(5000)
             viewModel.clearError()
         }
     }
     
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(AzelGradient))
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            
-            // ── TopBar ──────────────────────────────────
+    Scaffold(
+        topBar = {
             AzelAITopBar(
                 onBack = onBack,
                 onClear = { showClearDialog = true },
                 onStats = { showStatsDialog = true },
-                stats = state.stats
+                onToggleSidebar = { showSidebar = !showSidebar },
+                currentChatTitle = state.currentChatTitle,
+                isConnected = true // SIEMPRE CONECTADO
             )
-            
-            // ── Lista de mensajes ────────────────────────
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = PaddingValues(
-                    start = 12.dp, end = 12.dp,
-                    top = 8.dp, bottom = 8.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Pantalla bienvenida si no hay mensajes
-                if (state.messages.isEmpty()) {
-                    item { AzelAIWelcome() }
-                }
-                
-                items(
-                    items = state.messages,
-                    key = { it.id.ifBlank { it.timestamp.toString() } }
-                ) { message ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = slideInVertically(initialOffsetY = { 40 }) + fadeIn()
-                    ) {
-                        AzelAIMessageBubble(message = message)
-                    }
-                }
-                
-                // Indicador "pensando"
-                if (state.isThinking) {
-                    item { AzelAIThinkingBubble() }
-                }
-            }
-            
-            // ── Error banner ─────────────────────────────
-            AnimatedVisibility(visible = state.error != null) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color(0xFFEF4444),
-                    onClick = { viewModel.clearError() }
+        },
+        containerColor = BgDark
+    ) { padding ->
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = showSidebar,
+                    enter = slideInHorizontally { -it },
+                    exit = slideOutHorizontally { -it }
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Error, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = state.error ?: "",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    AzelAISidebar(
+                        modifier = Modifier.width(280.dp),
+                        searchQuery = searchQuery,
+                        onSearchChange = { searchQuery = it },
+                        onChatSelect = { viewModel.loadChat(it); showSidebar = false },
+                        onNewChat = { viewModel.startNewChat(); showSidebar = false },
+                        viewModel = viewModel
+                    )
+                }
+                
+                        Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            if (state.messages.isEmpty()) {
+                                item { AzelAIWelcome() }
+                                item { AzelAIQuickTools(viewModel) }
+                            }
+                            
+                            items(
+                                items = state.messages,
+                                key = { it.id.ifBlank { it.timestamp.toString() } }
+                            ) { message ->
+                                AzelAIMessageBubble(message = message)
+                            }
+                            
+                            if (state.isThinking) {
+                                item { AzelAIThinkingBubble() }
+                            }
+                        }
+                        
+                        this@Column.AnimatedVisibility(
+                            visible = state.error != null,
+                            enter = fadeIn() + slideInVertically(),
+                            exit = fadeOut() + slideOutVertically(),
+                            modifier = Modifier.align(Alignment.TopCenter)
+                        ) {
+                            ErrorBanner(state.error ?: "", onClose = { viewModel.clearError() })
+                        }
                     }
+                    
+                    AzelAIInputBar(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        isThinking = state.isThinking,
+                        onSend = {
+                            if (inputText.isNotBlank()) {
+                                viewModel.sendMessage(inputText.trim())
+                                inputText = ""
+                            }
+                        }
+                    )
                 }
             }
-            
-            // ── Input bar ───────────────────────────────
-            AzelAIInputBar(
-                value = inputText,
-                onValueChange = { inputText = it },
-                isThinking = state.isThinking,
-                onSend = {
-                    val msg = inputText.trim()
-                    if (msg.isNotEmpty()) {
-                        viewModel.sendMessage(msg)
-                        inputText = ""
-                        scope.launch {
-                            kotlinx.coroutines.delay(300)
-                            if (state.messages.isNotEmpty())
-                                listState.animateScrollToItem(state.messages.lastIndex)
-                        }
-                    }
-                },
-                suggestions = listOf(
-                    "🔐 Explica SQL injection",
-                    "💻 Código Python para...",
-                    "🌐 Cómo funciona HTTPS",
-                    "🛡️ Técnicas de pentesting",
-                    "🔧 Script bash para...",
-                    "📡 Análisis de red con Wireshark"
-                ),
-                onSuggestionClick = { inputText = it },
-                isConnected = true // SIEMPRE conectado - sin verificación de servidor
-            )
         }
-        
-        // ── Diálogo limpiar historial ────────────────────
-        if (showClearDialog) {
-            AlertDialog(
-                onDismissRequest = { showClearDialog = false },
-                containerColor = Color(0xFF1E1B4B),
-                title = {
-                    Text("Limpiar historial", color = TextOnDark, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Text(
-                        "¿Eliminar toda la conversación con Azel IA?\n\nEsta acción no se puede deshacer.",
-                        color = TextOnDark.copy(alpha = 0.8f)
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.clearHistory()
-                        showClearDialog = false
-                    }) {
-                        Text("Eliminar", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showClearDialog = false }) {
-                        Text("Cancelar", color = AzelPurple)
-                    }
-                }
-            )
-        }
-        
-        // ── Diálogo estadísticas ─────────────────────────
-        if (showStatsDialog) {
-            AlertDialog(
-                onDismissRequest = { showStatsDialog = false },
-                containerColor = Color(0xFF1E1B4B),
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Analytics, null, tint = AzelPurple, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Estadísticas", color = TextOnDark, fontWeight = FontWeight.Bold)
-                    }
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        StatRow("Mensajes totales", state.stats["messageCount"]?.toString() ?: "0")
-                        StatRow("Tokens usados", state.stats["totalTokens"]?.toString() ?: "0")
-                        val lastActivity = state.stats["lastActivity"] as? Long ?: 0L
-                        if (lastActivity > 0) {
-                            val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                                .format(Date(lastActivity))
-                            StatRow("Última actividad", date)
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showStatsDialog = false }) {
-                        Text("Cerrar", color = AzelPurple)
-                    }
-                }
-            )
-        }
+    }
+
+    if (showClearDialog) {
+        AzelConfirmDialog(
+            title = "Limpiar Chat",
+            desc = "¿Estás seguro de eliminar todo el historial de esta conversación?",
+            onConfirm = { viewModel.clearHistory(); showClearDialog = false },
+            onDismiss = { showClearDialog = false }
+        )
+    }
+    
+    if (showStatsDialog) {
+        AzelStatsDialog(
+            stats = state.stats,
+            onDismiss = { showStatsDialog = false }
+        )
     }
 }
 
-@Composable
-fun StatRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, color = TextOnDark.copy(alpha = 0.7f), fontSize = 14.sp)
-        Text(value, color = AzelPurple, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-// ── TopBar ────────────────────────────────────────────────
 @Composable
 fun AzelAITopBar(
     onBack: () -> Unit,
     onClear: () -> Unit,
     onStats: () -> Unit,
-    stats: Map<String, Any>
+    onToggleSidebar: () -> Unit,
+    currentChatTitle: String,
+    isConnected: Boolean
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.Black.copy(alpha = 0.4f)
+        color = BgDark,
+        border = BorderStroke(0.5.dp, BorderColor)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onToggleSidebar) {
+                Icon(Icons.Default.Menu, "Menu", tint = TextSecondary)
+            }
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary)
             }
             
-            // Avatar IA animado
-            val pulse = rememberInfiniteTransition(label = "pulse")
-            val scale by pulse.animateFloat(
-                initialValue = 1f, targetValue = 1.08f, label = "scale",
-                animationSpec = infiniteRepeatable(
-                    tween(1200, easing = EaseInOut),
-                    RepeatMode.Reverse
-                )
-            )
-            Box(
-                modifier = Modifier
-                    .scale(scale)
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(Color(0xFFA78BFA), AzelPurple, AzelPurpleDark)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome, null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            
-            Spacer(Modifier.width(10.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
                 Text(
-                    "Azel IA",
-                    color = Color.White,
+                    text = currentChatTitle.ifEmpty { "Azel IA" },
+                    color = TextPrimary,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    fontSize = 17.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF10B981)) // Verde - siempre en línea
+                        modifier = Modifier.size(7.dp).clip(CircleShape)
+                            .background(Color(0xFF48BB78)) // SIEMPRE VERDE
                     )
-                    Spacer(Modifier.width(4.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        "En línea • ${stats["messageCount"] ?: 0} mensajes",
-                        color = Color(0xFF86EFAC),
+                        text = "API Key Activa",
+                        color = TextSecondary,
                         fontSize = 11.sp
                     )
                 }
             }
             
-            IconButton(onClick = onStats) {
-                Icon(Icons.Default.Analytics, null, tint = Color.White.copy(alpha = 0.7f))
-            }
-            
-            IconButton(onClick = onClear) {
-                Icon(Icons.Default.DeleteOutline, null, tint = Color.White.copy(alpha = 0.7f))
-            }
+            IconButton(onClick = onStats) { Icon(Icons.Default.AutoAwesome, null, tint = AzelPurple) }
+            IconButton(onClick = onClear) { Icon(Icons.Default.DeleteOutline, null, tint = TextSecondary) }
         }
     }
 }
 
-// ── Pantalla bienvenida ────────────────────────────────────
 @Composable
 fun AzelAIWelcome() {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 40.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 60.dp, bottom = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Icono grande animado
-        val rotation = rememberInfiniteTransition(label = "rot")
-        val angle by rotation.animateFloat(
-            0f, 360f, label = "angle",
-            animationSpec = infiniteRepeatable(tween(8000, easing = LinearEasing))
-        )
         Box(
-            modifier = Modifier
-                .size(100.dp)
-                .graphicsLayer { rotationZ = angle }
-                .clip(CircleShape)
-                .background(
-                    Brush.sweepGradient(
-                        listOf(
-                            AzelPurple, Color(0xFF06B6D4),
-                            Color(0xFF8B5CF6), Color(0xFFEC4899),
-                            AzelPurple
-                        )
-                    )
-                ),
+            modifier = Modifier.size(64.dp).clip(CircleShape)
+                .background(Brush.linearGradient(listOf(AzelPurple, AzelBlue))),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(88.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF1E1B4B)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome, null,
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
-                )
-            }
+            Icon(Icons.Outlined.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(32.dp))
         }
-        
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
         Text(
-            "Hola, soy Azel IA",
-            color = Color.White,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "Asistente técnico avanzado sin restricciones",
-            color = AzelPurple,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            "Experto en:\n• Hacking ético y pentesting\n• Programación avanzada\n• Seguridad informática\n• Análisis de vulnerabilidades\n• Desarrollo de exploits",
-            color = Color.White.copy(alpha = 0.6f),
-            fontSize = 13.sp,
+            "¿En qué puedo ayudarte?",
+            color = TextPrimary,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Normal,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
-            modifier = Modifier.padding(horizontal = 32.dp)
+            letterSpacing = (-0.5).sp
+        )
+        Text(
+            "Azel IA utiliza Ollama Cloud con DeepSeek R1 70B para proporcionarte respuestas precisas y creativas sin restricciones.",
+            color = TextSecondary,
+            fontSize = 15.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 16.dp, start = 24.dp, end = 24.dp),
+            lineHeight = 22.sp
         )
     }
 }
 
-// ── Bubble de mensaje ────────────────────────────────────────
 @Composable
-fun AzelAIMessageBubble(message: AIMessage) {
-    val isUser = message.role == "user"
-    val time = SimpleDateFormat("HH:mm", Locale.getDefault())
-        .format(Date(message.timestamp))
+fun AzelAIQuickTools(viewModel: AzelAIViewModel) {
+    val items = listOf(
+        Triple("✨", "Mejorar redacción", "Mejora el estilo y la claridad de este texto:"),
+        Triple("🧠", "Explicar concepto", "Explícame de forma sencilla y profunda el concepto de:"),
+        Triple("💻", "Optimizar código", "Analiza y optimiza este código para mejorar su eficiencia:"),
+        Triple("🛡️", "Análisis de seguridad", "Realiza un análisis exhaustivo de seguridad sobre:")
+    )
     
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
-    ) {
-        // Avatar IA
-        if (!isUser) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(Color(0xFFA78BFA), AzelPurpleDark)
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Outlined.AutoAwesome, null,
-                    tint = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-        }
-        
-        Column(
-            horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
-        ) {
-            Surface(
-                modifier = Modifier.widthIn(max = 300.dp),
-                shape = RoundedCornerShape(
-                    topStart = 20.dp, topEnd = 20.dp,
-                    bottomStart = if (isUser) 20.dp else 6.dp,
-                    bottomEnd = if (isUser) 6.dp else 20.dp
-                ),
-                color = if (isUser)
-                    AzelPurple
-                else
-                    BubbleAI,
-                shadowElevation = 2.dp
-            ) {
-                SelectionContainer {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                        Text(
-                            text = message.content,
-                            color = if (message.error) Color(0xFFFCA5A5) else TextOnPurple,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            fontFamily = if (message.content.contains("```")) FontFamily.Monospace else FontFamily.Default
-                        )
-                        
-                        // Mostrar tokens si es respuesta de IA
-                        if (!isUser && message.tokens > 0) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                "${message.tokens} tokens",
-                                color = Color.White.copy(alpha = 0.4f),
-                                fontSize = 10.sp
-                            )
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+        items.chunked(2).forEach { rowItems ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                rowItems.forEach { (emoji, title, prompt) ->
+                    Surface(
+                        modifier = Modifier.weight(1f).padding(bottom = 12.dp)
+                            .clickable { viewModel.sendMessage(prompt) },
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(0.5.dp, BorderColor)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(emoji, fontSize = 20.sp)
+                            Spacer(Modifier.height(12.dp))
+                            Text(title, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                         }
                     }
                 }
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                time,
-                color = Color.White.copy(alpha = 0.35f),
-                fontSize = 10.sp
-            )
         }
-        
-        if (isUser) Spacer(Modifier.width(8.dp))
     }
 }
 
-// ── Bubble "pensando" animado ────────────────────────────────
 @Composable
-fun AzelAIThinkingBubble() {
-    val transition = rememberInfiniteTransition(label = "dots")
+fun AzelAIMessageBubble(message: AIMessage) {
+    val isUser = message.role == "user"
+    
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start,
-        verticalAlignment = Alignment.Bottom
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start
     ) {
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(
-                    Brush.radialGradient(
-                        listOf(Color(0xFFA78BFA), AzelPurpleDark)
-                    )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Outlined.AutoAwesome, null,
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Surface(
-            shape = RoundedCornerShape(20.dp, 20.dp, 20.dp, 6.dp),
-            color = BubbleAI,
-            shadowElevation = 2.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+        if (!isUser) {
+            Box(
+                modifier = Modifier.padding(top = 4.dp, end = 12.dp).size(32.dp)
+                    .clip(CircleShape).background(AzelPurple.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
             ) {
-                (0..2).forEach { i ->
-                    val alpha by transition.animateFloat(
-                        0.3f, 1f, label = "dot$i",
-                        animationSpec = infiniteRepeatable(
-                            tween(600, delayMillis = i * 200, easing = EaseInOut),
-                            RepeatMode.Reverse
-                        )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFA78BFA).copy(alpha = alpha))
-                    )
-                }
+                Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(18.dp))
+            }
+        }
+        
+        Surface(
+            modifier = Modifier.widthIn(max = 320.dp),
+            color = if (isUser) UserBubble else Color.Transparent,
+            shape = RoundedCornerShape(18.dp),
+            border = if (!isUser) null else BorderStroke(0.5.dp, BorderColor)
+        ) {
+            SelectionContainer {
+                Text(
+                    text = message.content,
+                    color = TextPrimary,
+                    fontSize = 15.sp,
+                    lineHeight = 24.sp,
+                    fontFamily = if (message.content.contains("```")) FontFamily.Monospace else FontFamily.Default,
+                    modifier = Modifier.padding(12.dp)
+                )
             }
         }
     }
 }
 
-// ── Input Bar ────────────────────────────────────────────────
 @Composable
 fun AzelAIInputBar(
     value: String,
     onValueChange: (String) -> Unit,
     isThinking: Boolean,
-    onSend: () -> Unit,
-    suggestions: List<String>,
-    onSuggestionClick: (String) -> Unit,
-    isConnected: Boolean = true // Parámetro con valor por defecto
+    onSend: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.5f))
-            .navigationBarsPadding()
+    // Professional gradient animation for send button
+    val infiniteTransition = rememberInfiniteTransition(label = "send_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+    
+    Surface(
+        modifier = Modifier.fillMaxWidth().imePadding().navigationBarsPadding(),
+        color = BgDark,
+        border = BorderStroke(0.5.dp, BorderColor),
+        shadowElevation = 8.dp
     ) {
-        // Chips de sugerencias
-        AnimatedVisibility(visible = value.isEmpty() && !isThinking) {
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Modern text input with subtle border
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(24.dp),
+                color = SurfaceDark,
+                border = BorderStroke(1.dp, BorderColor.copy(alpha = 0.5f))
             ) {
-                items(suggestions) { suggestion ->
-                    SuggestionChip(
-                        onClick = { onSuggestionClick(suggestion) },
-                        label = {
-                            Text(
-                                suggestion,
-                                fontSize = 12.sp,
-                                maxLines = 1
+                TextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { 
+                        Text(
+                            "Escribe tu consulta...", 
+                            color = TextSecondary,
+                            fontSize = 15.sp
+                        ) 
+                    },
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = AzelPurple,
+                        disabledContainerColor = Color.Transparent,
+                        disabledTextColor = TextPrimary
+                    ),
+                    maxLines = 6,
+                    enabled = true, // SIEMPRE HABILITADO
+                    textStyle = LocalTextStyle.current.copy(fontSize = 15.sp)
+                )
+            }
+            
+            // Professional send button with gradient and glow
+            Box(
+                modifier = Modifier.size(52.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Glow effect when active
+                if (value.isNotBlank() && !isThinking) {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        AzelPurple.copy(alpha = glowAlpha * 0.4f),
+                                        Color.Transparent
+                                    )
+                                )
                             )
-                        },
-                        colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = Color.White.copy(alpha = 0.1f),
-                            labelColor = Color.White.copy(alpha = 0.8f)
-                        ),
-                        border = SuggestionChipDefaults.suggestionChipBorder(
-                            enabled = true,
-                            borderColor = AzelPurple.copy(alpha = 0.3f)
-                        )
                     )
                 }
-            }
-        }
-        
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedTextField(
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier.weight(1f),
-                placeholder = {
-                    Text(
-                        "Pregunta sobre hacking, código, seguridad...",
-                        color = Color.White.copy(alpha = 0.4f),
-                        fontSize = 14.sp
-                    )
-                },
-                enabled = !isThinking, // Solo deshabilitado cuando está pensando
-                shape = RoundedCornerShape(28.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AzelPurple,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = AzelPurple,
-                    focusedContainerColor = Color.White.copy(alpha = 0.08f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                    disabledContainerColor = Color.White.copy(alpha = 0.03f),
-                    disabledBorderColor = Color.White.copy(alpha = 0.1f)
-                ),
-                maxLines = 5
-            )
-            
-            Spacer(Modifier.width(12.dp))
-            
-            // Botón enviar
-            FloatingActionButton(
-                onClick = onSend,
-                modifier = Modifier.size(52.dp),
-                containerColor = if (value.isNotBlank() && !isThinking)
-                    AzelPurple
-                else
-                    Color.Gray.copy(0.3f),
-                elevation = FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 4.dp,
-                    pressedElevation = 8.dp
-                )
-            ) {
-                if (isThinking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        null,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                
+                // Send button
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    shape = CircleShape,
+                    color = Color.Transparent,
+                    onClick = {
+                        if (value.isNotBlank() && !isThinking) {
+                            onSend()
+                        }
+                    }
+                ) {
+                    Box(
+                        modifier = Modifier.background(
+                            if (value.isNotBlank() && !isThinking) {
+                                Brush.linearGradient(
+                                    listOf(AzelPurple, AzelBlue)
+                                )
+                            } else {
+                                Brush.linearGradient(
+                                    listOf(SurfaceDark, SurfaceDark)
+                                )
+                            }
+                        ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isThinking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = Color.White,
+                                strokeWidth = 2.5.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Enviar",
+                                tint = if (value.isNotBlank()) Color.White else TextSecondary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
+
+@Composable
+fun ErrorBanner(error: String, onClose: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        color = Color(0xFF2D1212),
+        border = BorderStroke(1.dp, Color(0xFFF56565)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Info, null, tint = Color(0xFFF56565))
+            Text(error, color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
+            IconButton(onClick = onClose) { Icon(Icons.Default.Close, null, tint = Color.White.copy(0.6f)) }
+        }
+    }
+}
+
+@Composable
+fun AzelAIThinkingBubble() {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(AzelPurple.copy(0.1f)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(16.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        repeat(3) { i ->
+            val anim = rememberInfiniteTransition(label = "dots").animateFloat(
+                0.3f, 1f, infiniteRepeatable(tween(600, i * 200), RepeatMode.Reverse), label = "alpha"
+            )
+            Box(Modifier.size(8.dp).clip(CircleShape).background(AzelPurple.copy(anim.value)).padding(2.dp))
+            Spacer(Modifier.width(4.dp))
+        }
+    }
+}
+
+@Composable
+fun AzelConfirmDialog(title: String, desc: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text(title, color = TextPrimary) },
+        text = { Text(desc, color = TextSecondary) },
+        confirmButton = {
+            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF56565))) {
+                Text("Confirmar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = AzelPurple) }
+        }
+    )
+}
+
+@Composable
+fun AzelStatsDialog(stats: Map<String, Any>, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SurfaceDark,
+        title = { Text("Uso de la IA", color = TextPrimary) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatItem("Mensajes totales", stats["messageCount"]?.toString() ?: "0")
+                StatItem("Tokens procesados", stats["totalTokens"]?.toString() ?: "0")
+                StatItem("Tipo de acceso", "Directo (API Key)")
+            }
+        },
+        confirmButton = { Button(onClick = onDismiss) { Text("Cerrar") } }
+    )
+}
+
+@Composable
+fun StatItem(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = TextSecondary, fontSize = 14.sp)
+        Text(value, color = AzelBlue, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun AzelAISidebar(
+    modifier: Modifier = Modifier,
+    searchQuery: String,
+    onSearchChange: (String) -> Unit,
+    onChatSelect: (String) -> Unit,
+    onNewChat: () -> Unit,
+    viewModel: AzelAIViewModel
+) {
+    val history by viewModel.chatHistory.collectAsState()
+    Surface(modifier = modifier.fillMaxHeight(), color = BgDark, border = BorderStroke(0.5.dp, BorderColor)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Chats", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                IconButton(onClick = onNewChat) { Icon(Icons.Default.Add, null, tint = AzelPurple) }
+            }
+            Spacer(Modifier.height(16.dp))
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Buscar...", color = TextSecondary) },
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AzelPurple, unfocusedBorderColor = BorderColor)
+            )
+            Spacer(Modifier.height(16.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(history.filter { it.title.contains(searchQuery, true) }) { chat ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable { onChatSelect(chat.id) },
+                        color = SurfaceDark,
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(0.5.dp, BorderColor)
+                    ) {
+                        Column(Modifier.padding(12.dp)) {
+                            Text(chat.title, color = TextPrimary, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(chat.lastMessage, color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class ChatHistoryItem(
+    val id: String,
+    val title: String,
+    val lastMessage: String,
+    val lastActivity: Long,
+    val messageCount: Int
+)

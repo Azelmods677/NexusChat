@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.Azelmods.App.data.model.Message
 
 /**
@@ -141,7 +142,7 @@ private fun MediaGridItem(
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(context)
                 .data(message.mediaUrl)
-                .crossfade(true)
+                .crossfade(300)
                 .build(),
             contentDescription = "Media",
             modifier = Modifier.fillMaxSize(),
@@ -351,7 +352,7 @@ private fun ZoomableImage(
         SubcomposeAsyncImage(
             model = ImageRequest.Builder(context)
                 .data(imageUrl)
-                .crossfade(true)
+                .crossfade(300)
                 .build(),
             contentDescription = "Full screen image",
             modifier = Modifier

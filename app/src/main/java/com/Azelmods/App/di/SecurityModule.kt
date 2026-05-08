@@ -18,7 +18,6 @@ import javax.inject.Singleton
  * Provides:
  * - TorService for embedded Tor integration
  * - TorServiceManager for Tor integration
- * - PayloadGenerator for payload generation
  * - TorPreferences for settings persistence (automatically provided via @Inject constructor)
  */
 @Module
@@ -30,12 +29,6 @@ abstract class SecurityModule {
     abstract fun bindTorServiceManager(
         torServiceManagerImpl: TorServiceManagerImpl
     ): TorServiceManager
-    
-    @Binds
-    @Singleton
-    abstract fun bindPayloadGenerator(
-        payloadGeneratorImpl: com.Azelmods.App.data.security.payload.PayloadGeneratorImpl
-    ): com.Azelmods.App.data.security.payload.PayloadGenerator
     
     companion object {
         @Provides

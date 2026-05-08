@@ -39,6 +39,15 @@ class ProfileViewModel @Inject constructor(
     private val _state = MutableStateFlow(ProfileState())
     val state: StateFlow<ProfileState> = _state.asStateFlow()
 
+    // Convenience property for screens that expect userProfile
+    val userProfile: StateFlow<User?> = MutableStateFlow<User?>(null).apply {
+        viewModelScope.launch {
+            _state.collect { state ->
+                (this@apply as MutableStateFlow).value = state.user
+            }
+        }
+    }
+
     private val _userId = MutableStateFlow<String?>(null)
     val userId: StateFlow<String?> = _userId.asStateFlow()
 
@@ -151,13 +160,45 @@ class ProfileViewModel @Inject constructor(
                     .collect { result ->
                         result.fold(
                             onSuccess = {
-                                // Update local state
+                                // Force recompose with new URL
                                 val updatedUser = _state.value.user?.copy(photoUrl = photoUrl)
                                 _state.value = _state.value.copy(
                                     user = updatedUser,
                                     isUploadingProfile = false,
                                     uploadSuccess = true
                                 )
+                                
+                                // Refresh from database to ensure sync
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val refreshedData = databaseRepository.getUserById(currentUserId)
+                                        refreshedData?.let { data ->
+                                            val refreshedUser = User(
+                                                uid = data["uid"] as? String ?: currentUserId,
+                                                name = data["name"] as? String ?: "",
+                                                displayName = data["displayName"] as? String ?: data["name"] as? String ?: "",
+                                                username = data["username"] as? String ?: "",
+                                                email = data["email"] as? String ?: "",
+                                                phone = data["phone"] as? String ?: "",
+                                                photoUrl = data["photoUrl"] as? String,
+                                                coverUrl = data["coverUrl"] as? String,
+                                                bio = data["bio"] as? String ?: "",
+                                                status = data["status"] as? String ?: "Hey there! I'm using Nexus Chat",
+                                                isOnline = data["isOnline"] as? Boolean ?: false,
+                                                lastSeen = (data["lastSeen"] as? Long) ?: System.currentTimeMillis(),
+                                                isPremium = data["isPremium"] as? Boolean ?: false,
+                                                createdAt = (data["createdAt"] as? Long) ?: System.currentTimeMillis(),
+                                                fcmToken = data["fcmToken"] as? String,
+                                                messageCount = (data["messageCount"] as? Long)?.toInt() ?: 0,
+                                                filesShared = (data["filesShared"] as? Long)?.toInt() ?: 0
+                                            )
+                                            _state.value = _state.value.copy(user = refreshedUser)
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error refreshing profile after upload", e)
+                                    }
+                                }
+                                
                                 Log.d(TAG, "Profile photo uploaded successfully")
                             },
                             onFailure = { e ->
@@ -214,13 +255,45 @@ class ProfileViewModel @Inject constructor(
                     .collect { result ->
                         result.fold(
                             onSuccess = {
-                                // Update local state
+                                // Force recompose with new URL
                                 val updatedUser = _state.value.user?.copy(coverUrl = coverUrl)
                                 _state.value = _state.value.copy(
                                     user = updatedUser,
                                     isUploadingCover = false,
                                     uploadSuccess = true
                                 )
+                                
+                                // Refresh from database to ensure sync
+                                viewModelScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val refreshedData = databaseRepository.getUserById(currentUserId)
+                                        refreshedData?.let { data ->
+                                            val refreshedUser = User(
+                                                uid = data["uid"] as? String ?: currentUserId,
+                                                name = data["name"] as? String ?: "",
+                                                displayName = data["displayName"] as? String ?: data["name"] as? String ?: "",
+                                                username = data["username"] as? String ?: "",
+                                                email = data["email"] as? String ?: "",
+                                                phone = data["phone"] as? String ?: "",
+                                                photoUrl = data["photoUrl"] as? String,
+                                                coverUrl = data["coverUrl"] as? String,
+                                                bio = data["bio"] as? String ?: "",
+                                                status = data["status"] as? String ?: "Hey there! I'm using Nexus Chat",
+                                                isOnline = data["isOnline"] as? Boolean ?: false,
+                                                lastSeen = (data["lastSeen"] as? Long) ?: System.currentTimeMillis(),
+                                                isPremium = data["isPremium"] as? Boolean ?: false,
+                                                createdAt = (data["createdAt"] as? Long) ?: System.currentTimeMillis(),
+                                                fcmToken = data["fcmToken"] as? String,
+                                                messageCount = (data["messageCount"] as? Long)?.toInt() ?: 0,
+                                                filesShared = (data["filesShared"] as? Long)?.toInt() ?: 0
+                                            )
+                                            _state.value = _state.value.copy(user = refreshedUser)
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error refreshing profile after upload", e)
+                                    }
+                                }
+                                
                                 Log.d(TAG, "Cover photo uploaded successfully")
                             },
                             onFailure = { e ->

@@ -23,11 +23,13 @@ import androidx.media3.ui.PlayerView
  * - Muted audio
  * - Scales to fill screen
  * - Fallback to solid color if video fails
+ * - Adjustable opacity
  */
 @Composable
 fun VideoWallpaper(
     videoUri: Uri?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    alpha: Float = 1f
 ) {
     val context = LocalContext.current
     var isError by remember { mutableStateOf(false) }
@@ -66,19 +68,22 @@ fun VideoWallpaper(
         }
     }
     
-    AndroidView(
-        factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT
-                )
-                // Scale to fill
-                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-            }
-        },
-        modifier = modifier.fillMaxSize()
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
+                    // Scale to fill
+                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                    this.alpha = alpha
+                }
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+    }
 }

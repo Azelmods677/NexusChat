@@ -258,11 +258,39 @@ class BackupEncryptor @Inject constructor() {
     /**
      * Calculates HMAC-SHA256 for integrity verification.
      */
-    private fun calculateHMAC(data: ByteArray, key: ByteArray): ByteArray {
+    fun calculateHMAC(data: ByteArray, key: ByteArray): ByteArray {
         val mac = Mac.getInstance(HMAC_ALGORITHM)
         val secretKey = SecretKeySpec(key, HMAC_ALGORITHM)
         mac.init(secretKey)
         return mac.doFinal(data)
+    }
+    
+    /**
+     * Encrypts raw data with a key.
+     */
+    fun encrypt(data: ByteArray, key: ByteArray): ByteArray {
+        val iv = ByteArray(IV_SIZE).apply { SecureRandom().nextBytes(this) }
+        val cipher = Cipher.getInstance(ALGORITHM)
+        val secretKey = SecretKeySpec(key, "AES")
+        val gcmSpec = GCMParameterSpec(TAG_SIZE, iv)
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec)
+        val encrypted = cipher.doFinal(data)
+        // Prepend IV to encrypted data
+        return iv + encrypted
+    }
+    
+    /**
+     * Decrypts raw data with a key.
+     */
+    fun decrypt(data: ByteArray, key: ByteArray): ByteArray {
+        // Extract IV from beginning
+        val iv = data.take(IV_SIZE).toByteArray()
+        val encryptedData = data.drop(IV_SIZE).toByteArray()
+        val cipher = Cipher.getInstance(ALGORITHM)
+        val secretKey = SecretKeySpec(key, "AES")
+        val gcmSpec = GCMParameterSpec(TAG_SIZE, iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec)
+        return cipher.doFinal(encryptedData)
     }
 
     /**

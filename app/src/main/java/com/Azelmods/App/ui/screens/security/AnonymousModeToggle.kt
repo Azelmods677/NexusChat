@@ -142,6 +142,9 @@ private fun StatusText(torState: TorState) {
         is TorState.Connecting -> {
             "Connecting..." to Purple
         }
+        is TorState.Bootstrapping -> {
+            "Connecting..." to Purple
+        }
         is TorState.Connected -> {
             "Connected" to Color.Green
         }

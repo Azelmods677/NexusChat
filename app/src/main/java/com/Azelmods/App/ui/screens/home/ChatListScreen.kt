@@ -5,6 +5,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -372,122 +375,160 @@ private fun ChatListItem(
     onLongPress: () -> Unit,
     themeColor: Color
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "card_scale"
+    )
+    
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .scale(scale)
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onClick() },
                     onLongPress = { onLongPress() }
                 )
             },
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF111111)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar with online dot
-            Box {
-                UserAvatar(
-                    name = chat.contactName,
-                    photoUrl = chat.contactPhotoUrl,
-                    size = 56.dp
+        shape = RoundedCornerShape(18.dp),
+        color = Color(0xFF1A1A2E),
+        shadowElevation = if (isPressed) 2.dp else 8.dp,
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            Brush.linearGradient(
+                listOf(
+                    themeColor.copy(0.3f),
+                    Color.Transparent
                 )
-                
-                if (chat.isOnline) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(14.dp)
-                            .border(2.dp, Color(0xFF111111), CircleShape)
-                            .background(themeColor, CircleShape)
+            )
+        )
+    ) {
+        // 3D shine overlay
+        Box {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                Color.White.copy(0.04f),
+                                Color.Transparent
+                            )
+                        )
                     )
-                }
-            }
+            )
             
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            // Content
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = chat.contactName,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar with online indicator
+                Box {
+                    UserAvatar(
+                        name = chat.contactName,
+                        photoUrl = chat.contactPhotoUrl,
+                        size = 52.dp
                     )
                     
-                    if (chat.isPinned) {
-                        Icon(
-                            Icons.Default.PushPin,
-                            contentDescription = "Pinned",
-                            tint = themeColor,
-                            modifier = Modifier.size(16.dp)
+                    // Online dot
+                    if (chat.isOnline) {
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .align(Alignment.BottomEnd)
+                                .border(2.dp, Color(0xFF1A1A2E), CircleShape)
+                                .background(Color(0xFF00E676), CircleShape)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                    }
-                    
-                    if (chat.isMuted) {
-                        Icon(
-                            Icons.Default.VolumeOff,
-                            contentDescription = "Muted",
-                            tint = Color.Gray,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = chat.lastMessage,
-                        fontSize = 14.sp,
-                        color = Color.Gray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                chat.contactName,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                            if (chat.isPinned) {
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.PushPin,
+                                    tint = themeColor,
+                                    modifier = Modifier.size(12.dp),
+                                    contentDescription = null
+                                )
+                            }
+                            if (chat.isMuted) {
+                                Spacer(Modifier.width(4.dp))
+                                Icon(
+                                    Icons.Default.VolumeOff,
+                                    tint = Color.White.copy(0.4f),
+                                    modifier = Modifier.size(12.dp),
+                                    contentDescription = null
+                                )
+                            }
+                        }
+                        
+                        Text(
+                            formatTimestamp(chat.lastMessageTimestamp),
+                            fontSize = 11.sp,
+                            color = if (chat.getTotalUnreadCount() > 0)
+                                themeColor
+                            else
+                                Color.White.copy(0.4f)
+                        )
+                    }
                     
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(Modifier.height(3.dp))
                     
-                    Text(
-                        text = formatTimestamp(chat.lastMessageTimestamp),
-                        fontSize = 12.sp,
-                        color = themeColor
-                    )
-                }
-            }
-            
-            // Unread badge
-            if (chat.unreadCount > 0) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .background(themeColor, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (chat.unreadCount > 99) "99+" else chat.unreadCount.toString(),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            chat.lastMessage,
+                            fontSize = 13.sp,
+                            color = Color.White.copy(0.5f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        
+                        val totalUnread = chat.getTotalUnreadCount()
+                        if (totalUnread > 0) {
+                            Surface(
+                                shape = CircleShape,
+                                color = themeColor,
+                                modifier = Modifier
+                                    .padding(start = 8.dp)
+                                    .defaultMinSize(minWidth = 20.dp, minHeight = 20.dp)
+                            ) {
+                                Text(
+                                    if (totalUnread > 99) "99+" else totalUnread.toString(),
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -623,14 +664,29 @@ class ChatListViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true, error = null)
             
             try {
-                withContext(Dispatchers.IO) {
-                    // Load chats from Firebase
-                    // This is a placeholder - implement actual Firebase logic
-                    _state.value = _state.value.copy(
-                        chats = emptyList(),
-                        isLoading = false
-                    )
-                }
+                database.reference
+                    .child("userChats")
+                    .child(currentUserId)
+                    .addValueEventListener(object : com.google.firebase.database.ValueEventListener {
+                        override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                            val chats = snapshot.children.mapNotNull { child ->
+                                child.getValue(Chat::class.java)?.copy(chatId = child.key ?: "")
+                            }.sortedByDescending { it.lastMessageTimestamp }
+                            
+                            _state.value = _state.value.copy(
+                                chats = chats,
+                                isLoading = false,
+                                error = null
+                            )
+                        }
+                        
+                        override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                            _state.value = _state.value.copy(
+                                isLoading = false,
+                                error = error.message
+                            )
+                        }
+                    })
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     isLoading = false,

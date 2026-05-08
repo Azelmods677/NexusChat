@@ -1,35 +1,57 @@
 package com.Azelmods.App.ui.screens.settings
 
+import android.content.Context
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FontSizeScreen(
-    navController: NavController,
-    viewModel: SettingsViewModel = hiltViewModel()
-) {
-    val fontSize by viewModel.fontSize.collectAsState()
+fun FontSizeScreen(navController: NavController) {
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("nexus_prefs", Context.MODE_PRIVATE)
+    var selectedSize by remember {
+        mutableStateOf(prefs.getString("font_size", "Medium") ?: "Medium")
+    }
+    
+    val sizes = listOf(
+        Triple("Pequeño", "Small", 13.sp),
+        Triple("Normal", "Medium", 15.sp),
+        Triple("Grande", "Large", 17.sp),
+        Triple("Muy Grande", "XLarge", 19.sp)
+    )
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Font Size", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { 
+                    Text(
+                        "Tamaño de Fuente",
+                        color = Color.White, 
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            tint = Color.White, 
+                            contentDescription = null
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -37,90 +59,81 @@ fun FontSizeScreen(
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = Color(0xFF0D0D1A)
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Font size selector
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                listOf("Small", "Medium", "Large").forEachIndexed { index, size ->
-                    SegmentedButton(
-                        selected = fontSize == size,
-                        onClick = { viewModel.setFontSize(size) },
-                        shape = when (index) {
-                            0 -> RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
-                            2 -> RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
-                            else -> RoundedCornerShape(0.dp)
-                        },
-                        colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = MaterialTheme.colorScheme.primary,
-                            activeContentColor = Color.White,
-                            inactiveContainerColor = Color(0xFF1A1A2E),
-                            inactiveContentColor = Color.Gray
-                        )
-                    ) {
-                        Text(size)
-                    }
-                }
-            }
-            
-            // Preview card
+            // Preview
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                tonalElevation = 2.dp,
-                color = Color(0xFF1A1A2E)
+                color = Color(0xFF1A1A2E),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(Modifier.padding(16.dp)) {
                     Text(
-                        text = "Preview",
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        "Vista Previa", 
+                        color = Color(0xFF7B5CFA),
+                        fontSize = 12.sp
                     )
-                    
-                    val scale = when (fontSize) {
-                        "Small" -> 0.85f
-                        "Large" -> 1.15f
-                        else -> 1.0f
-                    }
-                    
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "The quick brown fox jumps over the lazy dog",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = MaterialTheme.typography.bodyLarge.fontSize * scale
-                        ),
+                        "Hola! ¿Cómo estás?",
                         color = Color.White,
-                        lineHeight = (MaterialTheme.typography.bodyLarge.lineHeight.value * scale).sp
-                    )
-                    
-                    Text(
-                        text = "This is how your messages will look with the selected font size.",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = MaterialTheme.typography.bodyMedium.fontSize * scale
-                        ),
-                        color = Color.Gray,
-                        lineHeight = (MaterialTheme.typography.bodyMedium.lineHeight.value * scale).sp
+                        fontSize = when(selectedSize) {
+                            "Small" -> 13.sp
+                            "Large" -> 17.sp
+                            "XLarge" -> 19.sp
+                            else -> 15.sp
+                        }
                     )
                 }
             }
             
-            // Info text
-            Text(
-                text = "Font size changes apply immediately throughout the app",
-                color = Color.Gray,
-                fontSize = 13.sp,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
+            Spacer(Modifier.height(8.dp))
+            
+            sizes.forEach { (label, key, size) ->
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedSize = key
+                            prefs.edit().putString("font_size", key).apply()
+                        },
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (selectedSize == key)
+                        Color(0xFF7B5CFA).copy(0.2f)
+                    else 
+                        Color(0xFF1A1A2E),
+                    border = BorderStroke(
+                        if (selectedSize == key) 1.dp else 0.dp,
+                        Color(0xFF7B5CFA)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            label, 
+                            color = Color.White,
+                            fontSize = size, 
+                            modifier = Modifier.weight(1f)
+                        )
+                        if (selectedSize == key) {
+                            Icon(
+                                Icons.Default.Check,
+                                tint = Color(0xFF7B5CFA),
+                                contentDescription = null
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

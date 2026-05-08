@@ -1,10 +1,15 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
@@ -14,7 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -72,57 +81,126 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Profile card
-            Row(
+            // PREMIUM PROFILE HEADER
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        try {
-                            navController.navigate(Screen.Profile.createRoute(""))
-                        } catch (e: Exception) {
-                            android.util.Log.e("SettingsScreen", "Navigation error: ${e.message}")
+                    .padding(16.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = Color(0xFF1A1A2E),
+                border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(0.3f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .clickable {
+                            try {
+                                navController.navigate(Screen.Profile.createRoute(""))
+                            } catch (e: Exception) {
+                                android.util.Log.e("SettingsScreen", "Navigation error: ${e.message}")
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Avatar with animated gradient ring
+                    Box(contentAlignment = Alignment.Center) {
+                        // Animated gradient ring
+                        val rotation by rememberInfiniteTransition(label = "ring").animateFloat(
+                            initialValue = 0f,
+                            targetValue = 360f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(3000, easing = LinearEasing),
+                                repeatMode = RepeatMode.Restart
+                            ),
+                            label = "ring_rotation"
+                        )
+                        
+                        Canvas(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .rotate(rotation)
+                        ) {
+                            drawArc(
+                                brush = Brush.sweepGradient(
+                                    listOf(
+                                        Color(0xFF7B5CFA), 
+                                        Color(0xFF00D4FF),
+                                        Color(0xFF7B5CFA)
+                                    )
+                                ),
+                                startAngle = 0f,
+                                sweepAngle = 360f,
+                                useCenter = false,
+                                style = Stroke(
+                                    width = 3.dp.toPx(),
+                                    cap = StrokeCap.Round
+                                )
+                            )
+                        }
+                        
+                        // Avatar image/initials
+                        Surface(
+                            modifier = Modifier.size(56.dp),
+                            shape = CircleShape,
+                            color = Color(0xFF7B5CFA)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                // TODO: Load actual user photo
+                                Text(
+                                    text = "U", // TODO: Get first letter of user name
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
-                    .background(DarkSurface)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(Purple),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "U",
-                        color = Color.White,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Usuario", // TODO: Load actual user name
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Usando Nexus Chat", // TODO: Load actual user bio
+                            fontSize = 13.sp,
+                            color = Color.White.copy(0.5f),
+                            maxLines = 1
+                        )
+                        
+                        // Online status
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .background(Color(0xFF00E676), CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "En línea",
+                                fontSize = 11.sp,
+                                color = Color(0xFF00E676)
+                            )
+                        }
+                    }
+                    
+                    // Settings gear (animated)
+                    IconButton(onClick = { /* already on settings */ }) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = Color(0xFF7B5CFA),
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "User Name",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Hey there! I'm using Nexus Chat",
-                        color = Color.Gray,
-                        fontSize = 14.sp
-                    )
-                }
-                
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = Color.Gray
-                )
             }
             
             Spacer(modifier = Modifier.height(8.dp))

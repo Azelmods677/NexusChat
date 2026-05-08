@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -28,6 +29,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
 import com.Azelmods.App.ui.components.AutoTutorial
@@ -212,7 +214,7 @@ fun YourStoryItem(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(currentUserPhotoUrl)
-                        .crossfade(true)
+                        .crossfade(300)
                         .build(),
                     contentDescription = "Your profile photo",
                     modifier = Modifier
@@ -277,7 +279,7 @@ fun StoryItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "story_gradient")
+    val infiniteTransition = rememberInfiniteTransition(label = "story_ring")
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -285,7 +287,7 @@ fun StoryItem(
             animation = tween(3000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "gradient_rotation"
+        label = "ring_rotation"
     )
 
     Column(
@@ -299,15 +301,33 @@ fun StoryItem(
             modifier = Modifier.size(68.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Animated gradient ring (unviewed) or grey ring (viewed)
+            // Animated rotating rainbow ring (unviewed) or grey ring (viewed)
             if (!story.isViewed) {
-                Box(
+                androidx.compose.foundation.Canvas(
                     modifier = Modifier
                         .size(68.dp)
-                        .graphicsLayer { rotationZ = rotation }
-                        .clip(CircleShape)
-                        .background(Brush.sweepGradient(StoryGradient))
-                )
+                        .rotate(rotation)
+                ) {
+                    drawArc(
+                        brush = Brush.sweepGradient(
+                            listOf(
+                                Color(0xFF7B5CFA),
+                                Color(0xFF00D4FF),
+                                Color(0xFFFC5C7D),
+                                Color(0xFF00E676),
+                                Color(0xFFFFD700),
+                                Color(0xFF7B5CFA)
+                            )
+                        ),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            width = 3.dp.toPx(),
+                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                    )
+                }
             } else {
                 Box(
                     modifier = Modifier
@@ -330,7 +350,7 @@ fun StoryItem(
                 AsyncImage(
                     model = ImageRequest.Builder(context)
                         .data(story.userPhotoUrl)
-                        .crossfade(true)
+                        .crossfade(300)
                         .build(),
                     contentDescription = "Profile photo of ${story.userName}",
                     modifier = Modifier

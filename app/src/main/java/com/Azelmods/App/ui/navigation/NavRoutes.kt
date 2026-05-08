@@ -59,8 +59,6 @@ object NavRoutes {
     const val SECURITY = "security"
     const val TOR_CONTROL = "tor_control"
     const val TOR_BROWSER = "tor_browser"
-    const val PAYLOAD_GENERATOR = "payload_generator"
-    const val PAYLOAD_HISTORY = "payload_history"
     
     // Helper functions
     fun chatRoute(chatId: String) = "chat/$chatId"

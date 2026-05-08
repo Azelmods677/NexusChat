@@ -6,8 +6,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.signal.libsignal.protocol.*
 import org.signal.libsignal.protocol.ecc.Curve
+import org.signal.libsignal.protocol.ecc.ECKeyPair
 import org.signal.libsignal.protocol.state.*
 import org.signal.libsignal.protocol.util.KeyHelper
+import org.signal.libsignal.protocol.fingerprint.NumericFingerprintGenerator
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -66,8 +68,14 @@ class SignalProtocolManager @Inject constructor(
      *
      * @param userId The unique identifier for the current user
      * @return [SignalProtocolInitResult] containing keys to upload to server
+     * 
+     * TODO: Update to libsignal 0.40.1 API - KeyHelper methods have been removed
+     * Need to use IdentityKeyPair.generate(), ECKeyPair.generate(), etc.
      */
     suspend fun initialize(userId: String): SignalProtocolInitResult = withContext(Dispatchers.IO) {
+        return@withContext SignalProtocolInitResult.Error("Signal Protocol initialization temporarily disabled - API migration needed")
+        
+        /* TODO: Migrate to libsignal 0.40.1 API
         try {
             Log.d(TAG, "Initializing Signal Protocol for user: $userId")
 
@@ -77,7 +85,8 @@ class SignalProtocolManager @Inject constructor(
                 return@withContext SignalProtocolInitResult.AlreadyInitialized
             }
 
-            // Generate identity key pair
+            // Generate identity key pair - OLD API: KeyHelper.generateIdentityKeyPair()
+            // NEW API: val identityKeyPair = IdentityKeyPair.generate()
             val identityKeyPair = KeyHelper.generateIdentityKeyPair()
             val registrationId = KeyHelper.generateRegistrationId(false)
 
@@ -118,106 +127,33 @@ class SignalProtocolManager @Inject constructor(
             Log.e(TAG, "Error initializing Signal Protocol", e)
             SignalProtocolInitResult.Error(e.message ?: "Unknown error")
         }
+        */
     }
 
     /**
      * Encrypts a message for a specific recipient.
      *
-     * If no session exists with the recipient, this will establish one using
-     * their PreKey bundle (which must be fetched from the server first).
-     *
-     * @param recipientId The unique identifier of the message recipient
-     * @param plaintext The message content to encrypt
-     * @param recipientPreKeyBundle Optional PreKey bundle if establishing new session
-     * @return [EncryptionResult] containing the encrypted message
+     * TODO: Update to libsignal 0.40.1 API
      */
     suspend fun encryptMessage(
         recipientId: String,
         plaintext: String,
         recipientPreKeyBundle: PreKeyBundle? = null
     ): EncryptionResult = withContext(Dispatchers.IO) {
-        try {
-            val recipientAddress = SignalProtocolAddress(recipientId, 1)
-
-            // Check if session exists
-            if (!keyStore.containsSession(recipientAddress)) {
-                if (recipientPreKeyBundle == null) {
-                    return@withContext EncryptionResult.Error(
-                        "No session exists and no PreKey bundle provided"
-                    )
-                }
-
-                // Establish new session using PreKey bundle
-                val sessionBuilder = SessionBuilder(keyStore, recipientAddress)
-                sessionBuilder.process(recipientPreKeyBundle)
-
-                Log.d(TAG, "Established new session with: $recipientId")
-            }
-
-            // Encrypt message
-            val sessionCipher = SessionCipher(keyStore, recipientAddress)
-            val ciphertext = sessionCipher.encrypt(plaintext.toByteArray())
-
-            Log.d(TAG, "Encrypted message for: $recipientId (type: ${ciphertext.type})")
-
-            EncryptionResult.Success(
-                ciphertext = ciphertext.serialize(),
-                messageType = when (ciphertext.type) {
-                    CiphertextMessage.PREKEY_TYPE -> MessageType.PREKEY
-                    CiphertextMessage.WHISPER_TYPE -> MessageType.WHISPER
-                    else -> MessageType.UNKNOWN
-                }
-            )
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error encrypting message", e)
-            EncryptionResult.Error(e.message ?: "Encryption failed")
-        }
+        return@withContext EncryptionResult.Error("Signal Protocol encryption temporarily disabled - API migration needed")
     }
 
     /**
      * Decrypts a message from a specific sender.
      *
-     * Automatically handles session establishment if this is a PreKey message.
-     *
-     * @param senderId The unique identifier of the message sender
-     * @param ciphertext The encrypted message bytes
-     * @param messageType The type of encrypted message (PreKey or Whisper)
-     * @return [DecryptionResult] containing the decrypted plaintext
+     * TODO: Update to libsignal 0.40.1 API
      */
     suspend fun decryptMessage(
         senderId: String,
         ciphertext: ByteArray,
         messageType: MessageType
     ): DecryptionResult = withContext(Dispatchers.IO) {
-        try {
-            val senderAddress = SignalProtocolAddress(senderId, 1)
-            val sessionCipher = SessionCipher(keyStore, senderAddress)
-
-            val plaintext = when (messageType) {
-                MessageType.PREKEY -> {
-                    // PreKey message - establishes new session
-                    val preKeyMessage = PreKeySignalMessage(ciphertext)
-                    sessionCipher.decrypt(preKeyMessage)
-                }
-                MessageType.WHISPER -> {
-                    // Regular message in existing session
-                    val signalMessage = SignalMessage(ciphertext)
-                    sessionCipher.decrypt(signalMessage)
-                }
-                MessageType.UNKNOWN -> {
-                    return@withContext DecryptionResult.Error("Unknown message type")
-                }
-            }
-
-            Log.d(TAG, "Decrypted message from: $senderId")
-
-            DecryptionResult.Success(String(plaintext))
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error decrypting message", e)
-            DecryptionResult.Error(e.message ?: "Decryption failed")
-        }
+        return@withContext DecryptionResult.Error("Signal Protocol decryption temporarily disabled - API migration needed")
     }
 
     /**
@@ -254,63 +190,19 @@ class SignalProtocolManager @Inject constructor(
     /**
      * Checks if PreKeys need to be replenished and generates new ones if needed.
      *
-     * Should be called periodically (e.g., daily) to maintain a healthy pool of PreKeys.
-     *
-     * @return Number of new PreKeys generated, or 0 if no replenishment needed
+     * TODO: Update to libsignal 0.40.1 API
      */
     suspend fun replenishPreKeysIfNeeded(): Int = withContext(Dispatchers.IO) {
-        try {
-            val currentPreKeyCount = keyStore.getPreKeyCount()
-
-            if (currentPreKeyCount < PREKEY_MINIMUM_THRESHOLD) {
-                Log.d(TAG, "PreKey count ($currentPreKeyCount) below threshold, generating new batch")
-
-                val nextPreKeyId = keyStore.getNextPreKeyId()
-                val identityKeyPair = keyStore.getIdentityKeyPair()
-
-                val newPreKeys = KeyHelper.generatePreKeys(nextPreKeyId, PREKEY_BATCH_SIZE)
-                newPreKeys.forEach { preKey ->
-                    keyStore.storePreKey(preKey.id, PreKeyRecord(preKey.id, preKey))
-                }
-
-                Log.d(TAG, "Generated ${newPreKeys.size} new PreKeys")
-                return@withContext newPreKeys.size
-            }
-
-            0
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error replenishing PreKeys", e)
-            0
-        }
+        return@withContext 0 // Temporarily disabled
     }
 
     /**
      * Rotates the signed PreKey.
      *
-     * Should be called periodically (e.g., weekly) for forward secrecy.
-     *
-     * @return `true` if rotation succeeded, `false` otherwise
+     * TODO: Update to libsignal 0.40.1 API
      */
     suspend fun rotateSignedPreKey(): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val identityKeyPair = keyStore.getIdentityKeyPair()
-            val nextSignedPreKeyId = keyStore.getNextSignedPreKeyId()
-
-            val newSignedPreKey = KeyHelper.generateSignedPreKey(identityKeyPair, nextSignedPreKeyId)
-            keyStore.storeSignedPreKey(nextSignedPreKeyId, SignedPreKeyRecord(
-                nextSignedPreKeyId,
-                System.currentTimeMillis(),
-                newSignedPreKey
-            ))
-
-            Log.d(TAG, "Rotated signed PreKey to ID: $nextSignedPreKeyId")
-            true
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error rotating signed PreKey", e)
-            false
-        }
+        return@withContext false // Temporarily disabled
     }
 
     /**

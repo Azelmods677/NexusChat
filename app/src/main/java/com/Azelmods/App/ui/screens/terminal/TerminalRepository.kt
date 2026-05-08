@@ -41,14 +41,19 @@ class TerminalRepository {
     suspend fun executeShell(command: String): String =
         withContext(Dispatchers.IO) {
             try {
-                val parts = command.trim().split("\\s+".toRegex())
-                val process = ProcessBuilder(parts)
+                val process = ProcessBuilder("/system/bin/sh", "-c", command)
                     .redirectErrorStream(true)
                     .start()
-                val output = process.inputStream
-                    .bufferedReader().readText()
+                
+                val output = StringBuilder()
+                process.inputStream.bufferedReader().forEachLine {
+                    output.appendLine(it)
+                }
+                
                 process.waitFor()
-                output.ifBlank { "[Sin salida]" }
+                output.toString().ifBlank { "[Sin salida]" }
+            } catch (e: SecurityException) {
+                "Error: Permiso denegado - ${e.message}"
             } catch (e: Exception) {
                 "Error: ${e.message}"
             }

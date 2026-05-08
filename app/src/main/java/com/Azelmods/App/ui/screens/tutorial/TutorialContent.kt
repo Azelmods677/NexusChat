@@ -165,8 +165,8 @@ object TutorialContent {
                     content = "Nexus Chat incluye herramientas avanzadas:\n• Automatización de tareas\n• Terminal integrado\n• Herramientas de ciberseguridad\n• Generación de payloads"
                 ),
                 TutorialSection(
-                    title = "AI Ollama",
-                    content = "IA local integrada:\n• Chat sin restricciones\n• 90 prompts especializados\n• 9 categorías técnicas\n\nAccede desde el menú 'IA'"
+                    title = "Azel IA",
+                    content = "IA avanzada integrada:\n• Chat sin restricciones\n• Conocimiento técnico supremo\n• Análisis de código y vulnerabilidades\n• Generación de exploits\n\nAccede desde el menú 'IA'"
                 ),
                 TutorialSection(
                     title = "Terminal",

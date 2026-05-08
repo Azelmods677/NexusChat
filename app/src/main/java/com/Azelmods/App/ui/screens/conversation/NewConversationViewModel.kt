@@ -31,7 +31,8 @@ data class NewConversationState(
 
 @HiltViewModel
 class NewConversationViewModel @Inject constructor(
-    private val databaseRepository: RealtimeDatabaseRepository
+    private val databaseRepository: RealtimeDatabaseRepository,
+    private val demoAccountManager: com.Azelmods.App.data.demo.DemoAccountManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NewConversationState())
@@ -216,6 +217,35 @@ class NewConversationViewModel @Inject constructor(
                 error = "Failed to send friend request: ${e.message}"
             )
             false
+        }
+    }
+    
+    /**
+     * Create demo chat with Azel Assistant
+     */
+    fun createDemoChat(navController: NavController) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+                if (currentUid == null) {
+                    android.util.Log.e("NewConversation", "User not logged in")
+                    return@launch
+                }
+                
+                // Initialize demo account
+                demoAccountManager.initializeDemoAccount(currentUid)
+                
+                // Navigate to demo chat
+                val demoUserId = "demo_azel_assistant"
+                val chatId = listOf(currentUid, demoUserId).sorted().joinToString("_")
+                
+                withContext(Dispatchers.Main) {
+                    navController.navigate("chat/$chatId")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("NewConversation", "Error creating demo chat: ${e.message}", e)
+                _state.value = _state.value.copy(error = "Error creating demo chat: ${e.message}")
+            }
         }
     }
 }

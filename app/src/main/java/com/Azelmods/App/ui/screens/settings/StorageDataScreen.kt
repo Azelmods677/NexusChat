@@ -1,5 +1,4 @@
 ﻿package com.Azelmods.App.ui.screens.settings
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -23,9 +22,43 @@ fun StorageDataScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val autoDownloadPhotos by viewModel.autoDownloadPhotos.collectAsState()
     val autoDownloadVideos by viewModel.autoDownloadVideos.collectAsState()
     val autoDownloadFiles by viewModel.autoDownloadFiles.collectAsState()
+    
+    // Real-time storage info
+    var totalStorage by remember { mutableStateOf(0L) }
+    var usedStorage by remember { mutableStateOf(0L) }
+    var availableStorage by remember { mutableStateOf(0L) }
+    var cacheSize by remember { mutableStateOf(0L) }
+    
+    // Update storage info every 2 seconds
+    LaunchedEffect(Unit) {
+        while (true) {
+            val statFs = android.os.StatFs(android.os.Environment.getDataDirectory().path)
+            totalStorage = statFs.totalBytes
+            availableStorage = statFs.availableBytes
+            usedStorage = totalStorage - availableStorage
+            
+            // Get cache size
+            cacheSize = context.cacheDir.walkTopDown()
+                .filter { it.isFile }
+                .map { it.length() }
+                .sum()
+            
+            kotlinx.coroutines.delay(2000)
+        }
+    }
+    
+    fun formatBytes(bytes: Long): String {
+        return when {
+            bytes >= 1_000_000_000 -> String.format("%.2f GB", bytes / 1_000_000_000.0)
+            bytes >= 1_000_000 -> String.format("%.2f MB", bytes / 1_000_000.0)
+            bytes >= 1_000 -> String.format("%.2f KB", bytes / 1_000.0)
+            else -> "$bytes B"
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -49,7 +82,7 @@ fun StorageDataScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Storage usage
+            // Storage usage with real-time data
             Text(
                 text = "Storage Usage",
                 color = MaterialTheme.colorScheme.primary,
@@ -58,18 +91,63 @@ fun StorageDataScreen(
                 modifier = Modifier.padding(16.dp)
             )
             
-            SettingsItem(
-                title = "Manage Storage",
-                subtitle = "2.3 GB used",
-                icon = Icons.Default.Storage,
-                onClick = { /* TODO: Storage management */ }
-            )
+            // Storage card with progress
+            androidx.compose.material3.Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = androidx.compose.material3.CardDefaults.cardColors(
+                    containerColor = Color(0xFF1A1A2E)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Usado: ${formatBytes(usedStorage)}",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "Total: ${formatBytes(totalStorage)}",
+                            color = Color.Gray,
+                            fontSize = 14.sp
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    LinearProgressIndicator(
+                        progress = if (totalStorage > 0) usedStorage.toFloat() / totalStorage.toFloat() else 0f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp),
+                        color = Color(0xFF7B5CFA),
+                        trackColor = Color(0xFF2D2D44)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Disponible: ${formatBytes(availableStorage)}",
+                        color = Color(0xFF00E676),
+                        fontSize = 12.sp
+                    )
+                }
+            }
             
             SettingsItem(
                 title = "Clear Cache",
-                subtitle = "Free up 450 MB",
+                subtitle = "Liberar ${formatBytes(cacheSize)}",
                 icon = Icons.Default.CleaningServices,
-                onClick = { /* TODO: Clear cache */ }
+                onClick = { 
+                    context.cacheDir.deleteRecursively()
+                    cacheSize = 0L
+                }
             )
             
             HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))

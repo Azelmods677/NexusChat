@@ -123,13 +123,6 @@ fun PrivacySecurityScreen(
                 onClick = { /* TODO: Passcode settings */ }
             )
             
-            SettingsItem(
-                title = "Terminal Shell",
-                subtitle = "Access Android shell commands",
-                icon = Icons.Default.Terminal,
-                onClick = { navController.navigate("terminal") }
-            )
-            
             HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
             
             // Data section

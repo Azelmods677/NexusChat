@@ -187,22 +187,13 @@ fun SecurityScreen(
                 onClick = { navController.navigate(Screen.TorBrowser.route) }
             )
 
-            // ── Payload Generator ────────────────────────────────────────────
+            // ── Terminal ─────────────────────────────────────────────────────
             SecurityFeatureCard(
-                title = "Payload Generator",
-                description = "Generate custom Android payloads with advanced obfuscation",
-                icon = Icons.Default.Build,
+                title = "Terminal",
+                description = "Comandos avanzados del sistema con interfaz hacker",
+                icon = Icons.Default.Terminal,
                 isActive = false,
-                onClick = { navController.navigate(Screen.PayloadGenerator.route) }
-            )
-
-            // ── Payload History ──────────────────────────────────────────────
-            SecurityFeatureCard(
-                title = "Payload History",
-                description = "View and manage previously generated payloads",
-                icon = Icons.Default.History,
-                isActive = false,
-                onClick = { navController.navigate(Screen.PayloadHistory.route) }
+                onClick = { navController.navigate("terminal") }
             )
 
             // ── Coming-soon features ─────────────────────────────────────────

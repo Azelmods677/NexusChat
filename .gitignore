@@ -1,15 +1,8 @@
 # ═══════════════════════════════════════════════════════════
-# AI AGENTS & DEVELOPMENT TOOLS
+# DEVELOPMENT TOOLS
 # ═══════════════════════════════════════════════════════════
-.kiro/
-.replit
-.replitignore
-*.replit
-kiro-backend-server.js
-start-kiro-backend.bat
 .cache/
 .local/
-.agents/
 artifacts/
 attached_assets/
 

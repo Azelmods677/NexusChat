@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.call
 
+import android.Manifest
+import android.util.Log
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -18,16 +20,21 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.Azelmods.App.data.model.CallType
 import com.Azelmods.App.ui.components.VideoRenderer
 import com.Azelmods.App.ui.components.safeClickable
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import kotlinx.coroutines.delay
 import org.webrtc.RendererCommon
 import org.webrtc.SurfaceViewRenderer
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun ActiveCallScreen(
     contactId: String,
@@ -35,10 +42,96 @@ fun ActiveCallScreen(
     navController: NavController,
     viewModel: CallViewModel = hiltViewModel()
 ) {
+    // Null safety check
+    if (contactId.isEmpty()) {
+        LaunchedEffect(Unit) {
+            navController.popBackStack()
+        }
+        return
+    }
+    
+    // Permission check
+    val permissions = com.google.accompanist.permissions.rememberMultiplePermissionsState(
+        listOf(
+            android.Manifest.permission.RECORD_AUDIO,
+            android.Manifest.permission.CAMERA
+        )
+    )
+    
+    LaunchedEffect(Unit) {
+        if (!permissions.allPermissionsGranted) {
+            permissions.launchMultiplePermissionRequest()
+        }
+    }
+    
+    // Show permission rationale if not granted
+    if (!permissions.allPermissionsGranted) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Permisos Requeridos",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Necesitamos acceso al micrófono y cámara para realizar llamadas",
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = { permissions.launchMultiplePermissionRequest() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Conceder Permisos")
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                TextButton(onClick = { navController.popBackStack() }) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            }
+        }
+        return
+    }
+    
     val contactState by viewModel.contactProfile.collectAsState()
     
     LaunchedEffect(contactId) {
-        viewModel.loadContactProfile(contactId)
+        try {
+            viewModel.loadContactProfile(contactId)
+            viewModel.startCall(contactId, if (callType == "video") com.Azelmods.App.data.model.CallType.VIDEO else com.Azelmods.App.data.model.CallType.AUDIO)
+        } catch (e: Exception) {
+            android.util.Log.e("ActiveCallScreen", "Error initializing call: ${e.message}", e)
+            navController.popBackStack()
+        }
     }
     
     val contact = contactState

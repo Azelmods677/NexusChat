@@ -104,14 +104,36 @@ class RealtimeDatabaseRepository @Inject constructor() {
 
     /**
      * Send a text message
+     * ✅ FIXED: Now creates chat if it doesn't exist
      */
     suspend fun sendMessage(chatId: String, content: String, replyTo: String? = null) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to content,
             "timestamp" to ServerValue.TIMESTAMP,
@@ -123,16 +145,19 @@ class RealtimeDatabaseRepository @Inject constructor() {
             messageData["replyTo"] = replyTo
         }
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Message sent: $messageId")
 
-        // Update last message in chat
+        // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to content,
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
 
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
@@ -368,6 +393,7 @@ class RealtimeDatabaseRepository @Inject constructor() {
 
     /**
      * Send a message with media attachment
+     * ✅ FIXED: Now creates chat if it doesn't exist
      */
     suspend fun sendMediaMessage(
         chatId: String,
@@ -377,10 +403,31 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to caption,
             "mediaUrl" to mediaUrl,
@@ -390,16 +437,26 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Media message sent: $messageId")
 
-        // Update last message in chat
+        // Update last message
+        val lastMessageText = when (mediaType) {
+            "IMAGE" -> "📷 Foto"
+            "VIDEO" -> "🎥 Video"
+            "AUDIO" -> "🎤 Audio"
+            else -> if (caption.isNotEmpty()) caption else "[$mediaType]"
+        }
+        
         val lastMessageData = mapOf(
-            "lastMessage" to if (caption.isNotEmpty()) caption else "[$mediaType]",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessage" to lastMessageText,
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
 
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
@@ -640,6 +697,7 @@ class RealtimeDatabaseRepository @Inject constructor() {
 
     /**
      * Send image message
+     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
      */
     suspend fun sendImageMessage(
         chatId: String,
@@ -648,37 +706,61 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
         // Upload image to Storage
         val fileName = "IMG_${System.currentTimeMillis()}.jpg"
         val imageUrl = uploadFile(imageUri, "images", fileName)
 
-        // Send message with image URL
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data with mediaType (not type)
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to caption,
-            "type" to "image",
+            "mediaType" to "IMAGE",
             "mediaUrl" to imageUrl,
             "timestamp" to ServerValue.TIMESTAMP,
             "status" to "sent",
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Image message sent: $messageId")
 
         // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to if (caption.isNotEmpty()) caption else "📷 Foto",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
      * Send video message
+     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
      */
     suspend fun sendVideoMessage(
         chatId: String,
@@ -688,18 +770,38 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
         // Upload video to Storage
         val fileName = "VID_${System.currentTimeMillis()}.mp4"
         val videoUrl = uploadFile(videoUri, "videos", fileName)
 
-        // Send message with video URL
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data with mediaType (not type)
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to caption,
-            "type" to "video",
+            "mediaType" to "VIDEO",
             "mediaUrl" to videoUrl,
             "duration" to duration,
             "timestamp" to ServerValue.TIMESTAMP,
@@ -707,19 +809,23 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Video message sent: $messageId")
 
         // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to if (caption.isNotEmpty()) caption else "🎥 Video",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
      * Send document message
+     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
      */
     suspend fun sendDocumentMessage(
         chatId: String,
@@ -730,17 +836,37 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
         // Upload document to Storage
         val documentUrl = uploadFile(documentUri, "documents", fileName)
 
-        // Send message with document URL
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data with mediaType (not type)
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to fileName,
-            "type" to "document",
+            "mediaType" to "DOCUMENT",
             "mediaUrl" to documentUrl,
             "fileName" to fileName,
             "fileSize" to fileSize,
@@ -750,19 +876,23 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Document message sent: $messageId")
 
         // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to "📄 $fileName",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
      * Send audio message
+     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
      */
     suspend fun sendAudioMessage(
         chatId: String,
@@ -771,18 +901,38 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
         // Upload audio to Storage
         val fileName = "AUD_${System.currentTimeMillis()}.m4a"
         val audioUrl = uploadFile(audioUri, "audio", fileName)
 
-        // Send message with audio URL
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data with mediaType (not type)
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to "",
-            "type" to "audio",
+            "mediaType" to "AUDIO",
             "mediaUrl" to audioUrl,
             "duration" to duration,
             "timestamp" to ServerValue.TIMESTAMP,
@@ -790,19 +940,23 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Audio message sent: $messageId")
 
         // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to "🎤 Audio",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
      * Send location message
+     * ✅ FIXED: Now creates chat if it doesn't exist
      */
     suspend fun sendLocationMessage(
         chatId: String,
@@ -812,13 +966,34 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
             "content" to address,
-            "type" to "location",
+            "mediaType" to "LOCATION",
             "latitude" to latitude,
             "longitude" to longitude,
             "timestamp" to ServerValue.TIMESTAMP,
@@ -826,19 +1001,23 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Location message sent: $messageId")
 
         // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to "📍 Ubicación",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     /**
      * Send sticker message
+     * ✅ FIXED: Now creates chat if it doesn't exist
      */
     suspend fun sendStickerMessage(
         chatId: String,
@@ -847,13 +1026,34 @@ class RealtimeDatabaseRepository @Inject constructor() {
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
-        val messageId = database.child("chats").child(chatId).child("messages").push().key
+        // ✅ Ensure chat exists
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_")
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        }
+
+        // Generate message ID
+        val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
+        // Create message data
         val messageData = hashMapOf(
+            "messageId" to messageId,
             "senderId" to currentUserId,
-            "content" to "",
-            "type" to "sticker",
+            "content" to stickerUrl,
+            "mediaType" to "STICKER",
             "stickerUrl" to stickerUrl,
             "stickerPack" to stickerPack,
             "timestamp" to ServerValue.TIMESTAMP,
@@ -861,15 +1061,18 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .setValue(messageData).await()
+        // Save message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+        android.util.Log.d("RealtimeDB", "Sticker message sent: $messageId")
 
         // Update last message
         val lastMessageData = mapOf(
             "lastMessage" to "Sticker",
-            "lastMessageTime" to ServerValue.TIMESTAMP
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
         )
-        database.child("chats").child(chatId).updateChildren(lastMessageData).await()
+        chatRef.updateChildren(lastMessageData).await()
+        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
     }
 
     // ──────────────────────────────────────────────────────────────────────────

@@ -17,13 +17,15 @@ import javax.inject.Singleton
 
 interface ChatRepository {
     fun getChats(userId: String): Flow<Resource<List<Chat>>>
-    fun getMessages(chatId: String): Flow<Resource<List<Message>>>
+    fun getMessages(chatId: String, currentUserId: String): Flow<Resource<List<Message>>>
     suspend fun sendMessage(chatId: String, message: Message): Resource<Unit>
     suspend fun updateMessageStatus(chatId: String, messageId: String, status: MessageStatus): Resource<Unit>
     suspend fun addReaction(chatId: String, messageId: String, userId: String, emoji: String): Resource<Unit>
     suspend fun createChat(participants: List<String>): Resource<String>
     suspend fun setTypingStatus(chatId: String, userId: String, isTyping: Boolean): Resource<Unit>
     fun observeTypingStatus(chatId: String, userId: String): Flow<Boolean>
+    suspend fun deleteMessage(chatId: String, messageId: String, userId: String, deleteForEveryone: Boolean): Resource<Unit>
+    suspend fun editMessage(chatId: String, messageId: String, newContent: String, userId: String): Resource<Unit>
 }
 
 @Singleton
@@ -59,7 +61,7 @@ class ChatRepositoryImpl @Inject constructor(
         awaitClose { chatsRef.removeEventListener(listener) }
     }
     
-    override fun getMessages(chatId: String): Flow<Resource<List<Message>>> = callbackFlow {
+    override fun getMessages(chatId: String, currentUserId: String): Flow<Resource<List<Message>>> = callbackFlow {
         trySend(Resource.Loading())
         
         val messagesRef = firebaseManager.database.getReference("messages/$chatId")
@@ -69,7 +71,11 @@ class ChatRepositoryImpl @Inject constructor(
                 snapshot.children.forEach { messageSnapshot ->
                     val message = messageSnapshot.getValue(Message::class.java)
                     if (message != null) {
-                        messages.add(message)
+                        // Filter out messages deleted for this user
+                        val isDeletedForUser = message.deletedFor[currentUserId] == true
+                        if (!isDeletedForUser) {
+                            messages.add(message)
+                        }
                     }
                 }
                 // Sort by timestamp
@@ -189,5 +195,172 @@ class ChatRepositoryImpl @Inject constructor(
         typingRef.addValueEventListener(listener)
         
         awaitClose { typingRef.removeEventListener(listener) }
+    }
+    
+    override suspend fun deleteMessage(
+        chatId: String,
+        messageId: String,
+        userId: String,
+        deleteForEveryone: Boolean
+    ): Resource<Unit> {
+        return try {
+            if (deleteForEveryone) {
+                // Check if user is sender
+                val messageSnapshot = firebaseManager.database
+                    .getReference("messages/$chatId/$messageId")
+                    .get()
+                    .await()
+                
+                val message = messageSnapshot.getValue(Message::class.java)
+                    ?: return Resource.Error("Message not found")
+                
+                if (message.senderId != userId) {
+                    return Resource.Error("Only sender can delete for everyone")
+                }
+                
+                // Check 48-hour time window
+                val currentTime = System.currentTimeMillis()
+                val timeDiff = currentTime - message.timestamp
+                val fortyEightHours = 48 * 60 * 60 * 1000L
+                
+                if (timeDiff > fortyEightHours) {
+                    return Resource.Error("Delete for everyone expired (48 hours)")
+                }
+                
+                // Mark as deleted for everyone and clear content
+                val updates = mapOf(
+                    "deletedForEveryone" to true,
+                    "content" to "",
+                    "mediaUrl" to null,
+                    "mediaType" to null
+                )
+                firebaseManager.database
+                    .getReference("messages/$chatId/$messageId")
+                    .updateChildren(updates)
+                    .await()
+                
+                // Update chat's lastMessage if this was the last message
+                val chatSnapshot = firebaseManager.database
+                    .getReference("chats/$chatId")
+                    .get()
+                    .await()
+                
+                val chat = chatSnapshot.getValue(Chat::class.java)
+                if (chat != null && chat.lastMessageTime == message.timestamp) {
+                    // Get previous message
+                    val messagesSnapshot = firebaseManager.database
+                        .getReference("messages/$chatId")
+                        .orderByChild("timestamp")
+                        .limitToLast(2)
+                        .get()
+                        .await()
+                    
+                    val messages = mutableListOf<Message>()
+                    messagesSnapshot.children.forEach { msgSnapshot ->
+                        val msg = msgSnapshot.getValue(Message::class.java)
+                        if (msg != null && msg.messageId != messageId) {
+                            messages.add(msg)
+                        }
+                    }
+                    
+                    if (messages.isNotEmpty()) {
+                        val previousMessage = messages.last()
+                        val lastMessageText = if (previousMessage.deletedForEveryone) {
+                            "Este mensaje fue eliminado"
+                        } else {
+                            previousMessage.content
+                        }
+                        firebaseManager.database
+                            .getReference("chats/$chatId/lastMessage")
+                            .setValue(lastMessageText)
+                            .await()
+                        firebaseManager.database
+                            .getReference("chats/$chatId/lastMessageTime")
+                            .setValue(previousMessage.timestamp)
+                            .await()
+                    } else {
+                        firebaseManager.database
+                            .getReference("chats/$chatId/lastMessage")
+                            .setValue("")
+                            .await()
+                    }
+                }
+            } else {
+                // Mark as deleted only for this user
+                firebaseManager.database
+                    .getReference("messages/$chatId/$messageId/deletedFor/$userId")
+                    .setValue(true)
+                    .await()
+            }
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to delete message")
+        }
+    }
+    
+    override suspend fun editMessage(
+        chatId: String,
+        messageId: String,
+        newContent: String,
+        userId: String
+    ): Resource<Unit> {
+        return try {
+            // Get message to validate
+            val messageSnapshot = firebaseManager.database
+                .getReference("messages/$chatId/$messageId")
+                .get()
+                .await()
+            
+            val message = messageSnapshot.getValue(Message::class.java)
+                ?: return Resource.Error("Message not found")
+            
+            // Validate user is sender
+            if (message.senderId != userId) {
+                return Resource.Error("Only sender can edit message")
+            }
+            
+            // Validate message type (only text messages can be edited)
+            if (message.mediaType != null) {
+                return Resource.Error("Cannot edit media messages")
+            }
+            
+            // Validate edit time window (15 minutes)
+            val currentTime = System.currentTimeMillis()
+            val timeDiff = currentTime - message.timestamp
+            val fifteenMinutes = 15 * 60 * 1000L
+            
+            if (timeDiff > fifteenMinutes) {
+                return Resource.Error("Edit time expired (15 minutes)")
+            }
+            
+            // Update message
+            val updates = mapOf(
+                "content" to newContent,
+                "edited" to true,
+                "editedAt" to currentTime
+            )
+            firebaseManager.database
+                .getReference("messages/$chatId/$messageId")
+                .updateChildren(updates)
+                .await()
+            
+            // Update chat's lastMessage if this was the last message
+            val chatSnapshot = firebaseManager.database
+                .getReference("chats/$chatId")
+                .get()
+                .await()
+            
+            val chat = chatSnapshot.getValue(Chat::class.java)
+            if (chat != null && chat.lastMessageTime == message.timestamp) {
+                firebaseManager.database
+                    .getReference("chats/$chatId/lastMessage")
+                    .setValue(newContent)
+                    .await()
+            }
+            
+            Resource.Success(Unit)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to edit message")
+        }
     }
 }

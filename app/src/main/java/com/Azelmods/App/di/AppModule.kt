@@ -28,12 +28,6 @@ object AppModule {
     
     @Provides
     @Singleton
-    fun provideFirebaseDatabase(): FirebaseDatabase {
-        return FirebaseDatabase.getInstance()
-    }
-    
-    @Provides
-    @Singleton
     fun provideCoroutineScope(): CoroutineScope {
         return CoroutineScope(SupervisorJob() + Dispatchers.Default)
     }

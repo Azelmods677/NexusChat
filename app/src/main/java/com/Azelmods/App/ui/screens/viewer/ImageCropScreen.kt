@@ -30,8 +30,7 @@ import com.Azelmods.App.ui.theme.*
 fun ImageCropScreen(
     imageUri: String,
     photoType: String, // "profile" or "cover"
-    navController: NavController,
-    onConfirm: (scale: Float, offsetX: Float, offsetY: Float) -> Unit
+    navController: NavController
 ) {
     val context = LocalContext.current
     var scale by remember { mutableStateOf(1f) }
@@ -157,7 +156,12 @@ fun ImageCropScreen(
             // Confirm button
             FloatingActionButton(
                 onClick = {
-                    onConfirm(scale, offset.x, offset.y)
+                    // Save crop result to SavedStateHandle
+                    navController.previousBackStackEntry?.savedStateHandle?.set("crop_uri", decodedUri)
+                    navController.previousBackStackEntry?.savedStateHandle?.set("crop_type", photoType)
+                    navController.previousBackStackEntry?.savedStateHandle?.set("crop_scale", scale)
+                    navController.previousBackStackEntry?.savedStateHandle?.set("crop_offset_x", offset.x)
+                    navController.previousBackStackEntry?.savedStateHandle?.set("crop_offset_y", offset.y)
                     navController.popBackStack()
                 },
                 containerColor = Purple,

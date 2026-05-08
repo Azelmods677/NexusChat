@@ -14,8 +14,8 @@ android {
 
     defaultConfig {
         applicationId = "com.Azelmods.App"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
+        targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
         versionCode = 1
         versionName = "1.0"
 
@@ -183,6 +183,7 @@ dependencies {
     // ── Networking 2025 ────────────────────────────────────
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0") // SSE para streaming
 
     // ── Serialization 2025 ─────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
@@ -226,6 +227,13 @@ dependencies {
     implementation("com.github.topjohnwu.libsu:core:6.0.0")
     implementation("com.github.topjohnwu.libsu:service:6.0.0")
     implementation("com.github.topjohnwu.libsu:nio:6.0.0")
+    
+    // ── Terminal Emulator Libraries ────────────────────────
+    // Android Terminal Emulator (Real PTY support)
+    implementation("com.github.termux:termux-app:v0.118.1")
+    
+    // Alternative lightweight terminal
+    implementation("com.github.jackpal:Android-Terminal-Emulator:v1.0.70")
 
     // ── Sora Editor 0.23.5 ─────────────────────────────────
     val soraVersion = "0.23.5"

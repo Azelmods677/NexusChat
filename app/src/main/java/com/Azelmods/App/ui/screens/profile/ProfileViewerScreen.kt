@@ -60,6 +60,7 @@ fun ProfileViewerScreen(
     val themeSecondaryColor = rememberThemeSecondaryColor()
     
     var showFullscreenImage by remember { mutableStateOf(false) }
+    var visible by remember { mutableStateOf(false) }
     
     val userState by viewModel.userProfile.collectAsState()
     
@@ -67,9 +68,23 @@ fun ProfileViewerScreen(
         if (userId.isNotEmpty()) {
             viewModel.loadUserProfile(userId)
         }
+        visible = true
     }
     
     val user = userState
+    
+    // Get display name - never show UID
+    val displayName = when {
+        !user?.name.isNullOrBlank() -> user?.name ?: "Usuario"
+        !user?.displayName.isNullOrBlank() -> user?.displayName ?: "Usuario"
+        else -> "Usuario"
+    }
+    
+    // Get username - never show UID
+    val displayUsername = when {
+        !user?.username.isNullOrBlank() -> "@${user?.username}"
+        else -> "@usuario"
+    }
     
     Box(
         modifier = Modifier
@@ -101,170 +116,192 @@ fun ProfileViewerScreen(
                 )
         )
         
-        // Content
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        // Content with entrance animation
+        androidx.compose.animation.AnimatedVisibility(
+            visible = visible,
+            enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(500)) + 
+                    androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(500)) { it / 2 }
         ) {
-            // Animated Avatar
-            AnimatedFullscreenAvatar(
-                name = user?.name ?: "?",
-                photoUrl = user?.photoUrl,
-                themeColor = themeColor,
-                themeSecondaryColor = themeSecondaryColor,
-                onClick = {
-                    if (!user?.photoUrl.isNullOrBlank()) {
-                        showFullscreenImage = true
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Animated Avatar
+                AnimatedFullscreenAvatar(
+                    name = displayName,
+                    photoUrl = user?.photoUrl,
+                    themeColor = themeColor,
+                    themeSecondaryColor = themeSecondaryColor,
+                    onClick = {
+                        if (!user?.photoUrl.isNullOrBlank()) {
+                            showFullscreenImage = true
+                        }
                     }
-                }
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // User info
-            Text(
-                text = user?.name ?: "Unknown",
-                color = Color.White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = user?.username ?: "@unknown",
-                color = Color(0xFF00BFA6),
-                fontSize = 18.sp,
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Bio
-            if (!user?.bio.isNullOrBlank()) {
-                Text(
-                    text = user?.bio ?: "",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 16.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 32.dp)
                 )
                 
-                Spacer(modifier = Modifier.height(24.dp))
-            }
-            
-            // Online status
-            Surface(
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                color = if (user?.isOnline == true) Color(0xFF10B981) else Color.Gray.copy(alpha = 0.5f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // User info
+                Text(
+                    text = displayName,
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = displayUsername,
+                    color = themeColor,
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Bio
+                if (!user?.bio.isNullOrBlank()) {
+                    Text(
+                        text = user?.bio ?: "",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 16.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+                
+                // Online status with animated dot
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    color = if (user?.isOnline == true) Color(0xFF10B981) else Color.Gray.copy(alpha = 0.5f)
                 ) {
-                    if (user?.isOnline == true) {
-                        val infiniteTransition = rememberInfiniteTransition(label = "online")
-                        val scale by infiniteTransition.animateFloat(
-                            initialValue = 1.0f,
-                            targetValue = 1.3f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1000),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "pulse"
-                        )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (user?.isOnline == true) {
+                            val infiniteTransition = rememberInfiniteTransition(label = "online")
+                            val scale by infiniteTransition.animateFloat(
+                                initialValue = 1.0f,
+                                targetValue = 1.3f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1000),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "pulse"
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .scale(scale)
+                            )
+                        }
                         
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                                .scale(scale)
+                        Text(
+                            text = if (user?.isOnline == true) "Online" else "Visto recientemente",
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                    
-                    Text(
-                        text = if (user?.isOnline == true) "Online" else "Last seen recently",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(40.dp))
-            
-            // Quick actions
-            if (!isOwnProfile) {
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Stats row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    // Message
-                    FloatingActionButton(
-                        onClick = {
-                            try {
-                                navController.navigate("chat/$userId") {
-                                    popUpTo("profile_viewer/$userId") { inclusive = true }
-                                }
-                            } catch (e: Exception) { }
-                        },
-                        containerColor = themeColor,
-                        contentColor = Color.White
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, "Message", modifier = Modifier.size(24.dp))
-                    }
-                    
-                    // Call
-                    FloatingActionButton(
-                        onClick = {
-                            try {
-                                callViewModel.startCall(userId, CallType.AUDIO)
-                                navController.navigate("active_call/$userId/audio")
-                            } catch (e: Exception) { }
-                        },
-                        containerColor = Color(0xFF00BFA6),
-                        contentColor = Color.White
-                    ) {
-                        Icon(Icons.Default.Phone, "Call", modifier = Modifier.size(24.dp))
-                    }
-                    
-                    // Video
-                    FloatingActionButton(
-                        onClick = {
-                            try {
-                                callViewModel.startCall(userId, CallType.VIDEO)
-                                navController.navigate("active_call/$userId/video")
-                            } catch (e: Exception) { }
-                        },
-                        containerColor = Color(0xFFFF6B9D),
-                        contentColor = Color.White
-                    ) {
-                        Icon(Icons.Default.Videocam, "Video", modifier = Modifier.size(24.dp))
-                    }
+                    StatItem("Mensajes", user?.messageCount?.toString() ?: "0", themeColor)
+                    StatItem("Archivos", user?.filesShared?.toString() ?: "0", themeSecondaryColor)
+                    StatItem("Miembro desde", 
+                        java.text.SimpleDateFormat("MMM yyyy", java.util.Locale.getDefault())
+                            .format(java.util.Date(user?.createdAt ?: System.currentTimeMillis())),
+                        Color(0xFFFF6B9D)
+                    )
                 }
-            } else {
-                // Own profile - show edit button
-                Button(
-                    onClick = {
-                        navController.popBackStack()
-                        navController.navigate("profile/$userId")
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = themeColor
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(56.dp)
-                ) {
-                    Icon(Icons.Default.Edit, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Edit Profile", fontSize = 16.sp)
+                
+                Spacer(modifier = Modifier.height(40.dp))
+                
+                // Quick actions
+                if (!isOwnProfile) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+                    ) {
+                        // Message
+                        FloatingActionButton(
+                            onClick = {
+                                try {
+                                    navController.navigate("chat/$userId") {
+                                        popUpTo("profile_viewer/$userId") { inclusive = true }
+                                    }
+                                } catch (e: Exception) { }
+                            },
+                            containerColor = themeColor,
+                            contentColor = Color.White
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Chat, "Mensaje", modifier = Modifier.size(24.dp))
+                        }
+                        
+                        // Call
+                        FloatingActionButton(
+                            onClick = {
+                                try {
+                                    callViewModel.startCall(userId, CallType.AUDIO)
+                                    navController.navigate("active_call/$userId/audio")
+                                } catch (e: Exception) { }
+                            },
+                            containerColor = Color(0xFF10B981),
+                            contentColor = Color.White
+                        ) {
+                            Icon(Icons.Default.Phone, "Llamar", modifier = Modifier.size(24.dp))
+                        }
+                        
+                        // Video
+                        FloatingActionButton(
+                            onClick = {
+                                try {
+                                    callViewModel.startCall(userId, CallType.VIDEO)
+                                    navController.navigate("active_call/$userId/video")
+                                } catch (e: Exception) { }
+                            },
+                            containerColor = Color(0xFF3B82F6),
+                            contentColor = Color.White
+                        ) {
+                            Icon(Icons.Default.Videocam, "Video", modifier = Modifier.size(24.dp))
+                        }
+                    }
+                } else {
+                    // Own profile - show edit button
+                    Button(
+                        onClick = {
+                            navController.popBackStack()
+                            navController.navigate("profile/$userId")
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = themeColor
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth(0.6f)
+                            .height(56.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Editar Perfil", fontSize = 16.sp)
+                    }
                 }
             }
         }
@@ -296,9 +333,29 @@ fun ProfileViewerScreen(
     if (showFullscreenImage && !user?.photoUrl.isNullOrBlank()) {
         FullScreenImageViewer(
             imageUrl = user?.photoUrl ?: "",
-            senderName = user?.name ?: "Profile Photo",
+            senderName = displayName,
             timestamp = "",
             onDismiss = { showFullscreenImage = false }
+        )
+    }
+}
+
+@Composable
+fun StatItem(label: String, value: String, color: Color) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = value,
+            color = color,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.6f),
+            fontSize = 12.sp
         )
     }
 }
@@ -316,7 +373,7 @@ fun AnimatedFullscreenAvatar(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(15000, easing = LinearEasing),
+            animation = tween(3000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "rotation"
@@ -336,29 +393,34 @@ fun AnimatedFullscreenAvatar(
         contentAlignment = Alignment.Center,
         modifier = Modifier.scale(scale)
     ) {
-        // Outer rotating rainbow ring
-        Box(
+        // Outer rotating rainbow ring using Canvas
+        androidx.compose.foundation.Canvas(
             modifier = Modifier
                 .size(180.dp)
                 .rotate(rotation)
-                .background(
-                    Brush.sweepGradient(
-                        listOf(
-                            Color(0xFFFF0000),
-                            Color(0xFFFF7F00),
-                            Color(0xFFFFFF00),
-                            Color(0xFF00FF00),
-                            Color(0xFF0000FF),
-                            Color(0xFF4B0082),
-                            Color(0xFF9400D3),
-                            Color(0xFFFF0000)
-                        )
-                    ),
-                    CircleShape
+        ) {
+            drawArc(
+                brush = Brush.sweepGradient(
+                    listOf(
+                        Color(0xFF7B5CFA),
+                        Color(0xFF00D4FF),
+                        Color(0xFFFC5C7D),
+                        Color(0xFF00E676),
+                        Color(0xFFFFD700),
+                        Color(0xFF7B5CFA)
+                    )
+                ),
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = false,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(
+                    width = 4.dp.toPx(),
+                    cap = androidx.compose.ui.graphics.StrokeCap.Round
                 )
-        )
+            )
+        }
         
-        // Middle ring
+        // Middle ring (black gap)
         Box(
             modifier = Modifier
                 .size(170.dp)

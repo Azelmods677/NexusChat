@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Repository interface for security operations including Tor integration
- * and payload generation (future implementation)
  * 
  * This interface follows Clean Architecture principles by abstracting
  * the data layer from the domain layer.
@@ -46,37 +45,4 @@ interface SecurityRepository {
      * Creates new Tor identity (new circuit)
      */
     suspend fun newIdentity()
-    
-    // Payload Generator Methods
-    /**
-     * Generates a payload with the specified configuration
-     * @param config Payload configuration
-     * @return Flow emitting generation state updates
-     */
-    fun generatePayload(config: com.Azelmods.App.data.security.payload.PayloadConfig): Flow<com.Azelmods.App.data.security.payload.PayloadGenerationState>
-    
-    /**
-     * Gets payload generation history
-     * @return Flow of generated payloads
-     */
-    fun getPayloadHistory(): Flow<List<com.Azelmods.App.data.security.payload.GeneratedPayload>>
-    
-    /**
-     * Deletes a payload from history and storage
-     * @param payloadId ID of the payload to delete
-     */
-    suspend fun deletePayload(payloadId: String)
-    
-    /**
-     * Shares a payload via Android share intent
-     * @param payloadId ID of the payload to share
-     */
-    suspend fun sharePayload(payloadId: String)
-    
-    /**
-     * Uploads a payload to Firebase Storage
-     * @param payloadId ID of the payload to upload
-     * @return Download URL of the uploaded payload
-     */
-    suspend fun uploadPayloadToFirebase(payloadId: String): String
 }

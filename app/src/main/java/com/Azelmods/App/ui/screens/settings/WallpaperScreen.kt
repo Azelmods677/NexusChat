@@ -18,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,13 +89,15 @@ fun WallpaperScreen(
                         // Wallpaper background
                         when (wallpaperType) {
                             "image" -> {
-                                AsyncImage(
-                                    model = wallpaperValue,
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop,
-                                    alpha = 0.35f
-                                )
+                                wallpaperValue.takeIf { it.isNotEmpty() }?.let { uri ->
+                                    AsyncImage(
+                                        model = uri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                        alpha = 0.35f
+                                    )
+                                }
                             }
                             "color" -> {
                                 Box(
@@ -167,8 +171,10 @@ fun WallpaperScreen(
                     title = "Default",
                     subtitle = "Dark background",
                     icon = Icons.Default.Block,
-                    selected = wallpaperType == "default",
-                    onClick = { viewModel.setWallpaper("default", "") }
+                    selected = wallpaperType == "default" || wallpaperType.isEmpty(),
+                    onClick = { 
+                        viewModel.setWallpaper("default", "")
+                    }
                 )
             }
             
@@ -204,13 +210,14 @@ fun WallpaperScreen(
                     
                     colors.forEach { colorValue ->
                         val colorHex = colorValue.toString()
+                        val isSelected = wallpaperType == "color" && wallpaperValue == colorHex
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
                                 .background(Color(colorValue))
                                 .border(
-                                    width = if (wallpaperType == "color" && wallpaperValue == colorHex) 3.dp else 0.dp,
+                                    width = if (isSelected) 3.dp else 0.dp,
                                     color = MaterialTheme.colorScheme.primary,
                                     shape = CircleShape
                                 )

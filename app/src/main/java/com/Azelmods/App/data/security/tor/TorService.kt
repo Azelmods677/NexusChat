@@ -22,9 +22,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Tor Service for Orbot integration.
+ * Tor Service for direct Tor integration.
  *
- * Manages Tor connection via Orbot and monitors bootstrap progress through the
+ * Manages Tor connection and monitors bootstrap progress through the
  * Tor control port. Emits top-level [TorState] values; the former inner
  * `TorState` class has been removed to avoid name conflicts.
  */
@@ -42,63 +42,14 @@ class TorService @Inject constructor(
 
     companion object {
         private const val TAG = "TorService"
-        private const val ORBOT_PACKAGE = "org.torproject.android"
         private const val CONTROL_PORT = 9051
         private const val SOCKS_PORT = 9050
-    }
-
-    // ─── Orbot helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Returns `true` if the Orbot app is installed on this device.
-     */
-    fun isOrbotInstalled(): Boolean {
-        return try {
-            context.packageManager.getPackageInfo(ORBOT_PACKAGE, 0)
-            true
-        } catch (e: PackageManager.NameNotFoundException) {
-            false
-        }
-    }
-
-    /**
-     * Opens the Play Store (or browser fallback) to the Orbot listing.
-     */
-    fun installOrbot() {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("market://details?id=$ORBOT_PACKAGE")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("https://play.google.com/store/apps/details?id=$ORBOT_PACKAGE")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            context.startActivity(intent)
-        }
-    }
-
-    /**
-     * Launches the Orbot app so the user can start it manually.
-     */
-    fun startOrbot() {
-        try {
-            val intent = context.packageManager.getLaunchIntentForPackage(ORBOT_PACKAGE)
-            intent?.let {
-                it.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(it)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to start Orbot", e)
-        }
     }
 
     // ─── Connection lifecycle ─────────────────────────────────────────────────
 
     /**
-     * Starts monitoring the Tor / Orbot connection.
+     * Starts monitoring the Tor connection directly via embedded Tor binary.
      *
      * Transitions through [TorState.Connecting] while bootstrapping and
      * ultimately emits [TorState.Connected] on success or [TorState.Error] on
@@ -113,25 +64,18 @@ class TorService @Inject constructor(
             return
         }
 
-        if (!isOrbotInstalled()) {
-            _torState.value = TorState.Error(
-                message = "Orbot not installed. Please install Orbot from Play Store."
-            )
-            return
-        }
-
         isStarting = true
         scope.launch {
             try {
                 Log.d(TAG, "Starting Tor connection monitoring…")
-                _torState.value = TorState.Connecting(progress = 0, message = "Bootstrapping...")
+                _torState.value = TorState.Connecting(progress = 0, message = "Iniciando Tor...")
 
                 monitorBootstrapProgress()
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting Tor: ${e.message}", e)
                 _torState.value = TorState.Error(
-                    message = e.message ?: "Unknown error starting Tor",
+                    message = e.message ?: "No se pudo conectar a Tor",
                     exception = e
                 )
                 isStarting = false
@@ -181,7 +125,7 @@ class TorService @Inject constructor(
                     val reader: BufferedReader = socket.getInputStream().bufferedReader()
                     val writer: BufferedWriter = socket.getOutputStream().bufferedWriter()
 
-                    // Authenticate (no password – Orbot default)
+                    // Authenticate (no password – default)
                     writer.write("AUTHENTICATE \"\"\r\n")
                     writer.flush()
 
@@ -204,7 +148,7 @@ class TorService @Inject constructor(
                                     progress = parsed
                                     _torState.value = TorState.Connecting(
                                         progress = progress,
-                                        message = "Bootstrapping..."
+                                        message = "Conectando a Tor..."
                                     )
                                     Log.d(TAG, "Tor bootstrap progress: $progress%")
                                 }
@@ -221,17 +165,17 @@ class TorService @Inject constructor(
                     progress = minOf(95, (attempts * 100) / 30)
                     _torState.value = TorState.Connecting(
                         progress = progress,
-                        message = "Bootstrapping..."
+                        message = "Conectando a Tor..."
                     )
                 }
 
                 if (progress >= 100) {
                     _torState.value = TorState.Connected(
                         circuitInfo = TorCircuitInfo(
-                            entryNode = "Via Orbot",
-                            middleNode = "External",
-                            exitNode = "Unknown",
-                            circuitId = "orbot",
+                            entryNode = "Proxy Tor",
+                            middleNode = "Externo",
+                            exitNode = "Desconocido",
+                            circuitId = "tor",
                             bandwidth = 0L
                         )
                     )
@@ -243,7 +187,7 @@ class TorService @Inject constructor(
 
             if (progress < 100) {
                 throw Exception(
-                    "Tor bootstrap timeout after $maxAttempts seconds. Make sure Orbot is running."
+                    "No se pudo conectar a Tor después de $maxAttempts segundos. Intenta de nuevo."
                 )
             }
 
@@ -259,9 +203,9 @@ class TorService @Inject constructor(
 
     // ─── Port accessors ───────────────────────────────────────────────────────
 
-    /** Returns the SOCKS5 proxy port (Orbot default: 9050). */
+    /** Returns the SOCKS5 proxy port (default: 9050). */
     fun getSocksPort(): Int = SOCKS_PORT
 
-    /** Returns the HTTP proxy port (Orbot default: 8118). */
+    /** Returns the HTTP proxy port (default: 8118). */
     fun getHttpPort(): Int = 8118
 }

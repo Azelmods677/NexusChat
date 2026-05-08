@@ -15,6 +15,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.Azelmods.App.data.manager.AppBackgroundManager
 import com.Azelmods.App.data.model.BackgroundType
 import kotlin.math.cos
@@ -74,7 +75,7 @@ fun AppBackground(
                         SubcomposeAsyncImage(
                             model = ImageRequest.Builder(context)
                                 .data(uri)
-                                .crossfade(true)
+                                .crossfade(300)
                                 .build(),
                             contentDescription = "App background",
                             modifier = Modifier.fillMaxSize(),
