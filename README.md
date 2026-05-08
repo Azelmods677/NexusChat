@@ -9,79 +9,79 @@
 ![WebRTC](https://img.shields.io/badge/WebRTC-1.1.3-333333?logo=webrtc)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
-**Aplicación de mensajería instantánea nativa para Android**  
+**Aplicacion de mensajeria instantanea nativa para Android**  
 Construida con Kotlin y Jetpack Compose
 
-[Características](#características) • [Arquitectura](#arquitectura) • [Instalación](#instalación) • [Documentación](#documentación)
+[Caracteristicas](#caracteristicas) | [Arquitectura](#arquitectura) | [Instalacion](#instalacion) | [Documentacion](#documentacion)
 
 </div>
 
 ---
 
-## Descripción
+## Descripcion
 
-NexusChat es una aplicación de mensajería instantánea desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patrón MVVM para garantizar escalabilidad y mantenibilidad del código.
+NexusChat es una aplicacion de mensajeria instantanea desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patron MVVM para garantizar escalabilidad y mantenibilidad del codigo.
 
-La aplicación ofrece funcionalidades completas de mensajería en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efímeras con duración de 24 horas, y un sistema de personalización que incluye temas, fondos personalizados y configuraciones de interfaz.
+La aplicacion ofrece funcionalidades completas de mensajeria en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efimeras con duracion de 24 horas, y un sistema de personalizacion que incluye temas, fondos personalizados y configuraciones de interfaz.
 
 **Compatibilidad:** Android 8.0 (API 26) hasta Android 16 (API 36)
 
 ---
 
-## Características
+## Caracteristicas
 
-### Mensajería
-- Chat en tiempo real con sincronización instantánea
-- Mensajes de texto, voz, imágenes, videos y archivos
-- Indicadores de estado: enviado, entregado, leído
+### Mensajeria
+- Chat en tiempo real con sincronizacion instantanea
+- Mensajes de texto, voz, imagenes, videos y archivos
+- Indicadores de estado: enviado, entregado, leido
 - Indicador de escritura en tiempo real
-- Respuestas rápidas deslizando mensajes
+- Respuestas rapidas deslizando mensajes
 - Reacciones con emojis
-- Chats grupales con gestión de miembros
-- Búsqueda de mensajes y conversaciones
+- Chats grupales con gestion de miembros
+- Busqueda de mensajes y conversaciones
 - Fijar, silenciar y archivar conversaciones
 
 ### Historias
-- Publicación de fotos, videos y texto
-- Caducidad automática a las 24 horas
-- Visualización con barra de progreso
+- Publicacion de fotos, videos y texto
+- Caducidad automatica a las 24 horas
+- Visualizacion con barra de progreso
 - Reacciones y respuestas directas
 - Lista de visualizaciones con timestamps
 - Editor con emojis y texto posicionable
-- Ajuste bidimensional de imágenes
+- Ajuste bidimensional de imagenes
 
 ### Llamadas
 - Llamadas de voz y videollamadas
-- Comunicación P2P mediante WebRTC
-- Señalización a través de Firebase
-- Calidad adaptativa según conexión
-- Controles: silenciar, altavoz, cambiar cámara
+- Comunicacion P2P mediante WebRTC
+- Senalizacion a traves de Firebase
+- Calidad adaptativa segun conexion
+- Controles: silenciar, altavoz, cambiar camara
 
-### Personalización
+### Personalizacion
 - 15 temas de color predefinidos
 - Fondos personalizados (imagen, video, color, degradado)
-- Fondos independientes por conversación
-- Configuración de tamaños de fuente
+- Fondos independientes por conversacion
+- Configuracion de tamanos de fuente
 - Modo oscuro
-- Navegación por gestos
+- Navegacion por gestos
 
 ### Notificaciones
 - Notificaciones push con Firebase Cloud Messaging
-- Agrupación por conversación
-- Respuesta rápida desde notificaciones
-- Marcar como leído sin abrir la app
+- Agrupacion por conversacion
+- Respuesta rapida desde notificaciones
+- Marcar como leido sin abrir la app
 
 ---
 
 ## Arquitectura
 
-NexusChat implementa **Clean Architecture** dividida en tres capas principales con separación clara de responsabilidades.
+NexusChat implementa **Clean Architecture** dividida en tres capas principales con separacion clara de responsabilidades.
 
 ### Diagrama de Arquitectura General
 
 ```mermaid
 graph TB
-    subgraph "Capa de Presentación"
+    subgraph "Capa de Presentacion"
         UI[Jetpack Compose UI<br/>Screens & Components]
         VM[ViewModels<br/>State Management]
         NAV[Navigation<br/>NavGraph & Routes]
@@ -132,38 +132,38 @@ graph TB
 
 ### Capas de la Arquitectura
 
-#### 1. Capa de Presentación
+#### 1. Capa de Presentacion
 - **Jetpack Compose**: Interfaz de usuario declarativa
-- **ViewModels**: Gestión de estado con StateFlow
-- **Navigation Component**: Navegación entre pantallas
+- **ViewModels**: Gestion de estado con StateFlow
+- **Navigation Component**: Navegacion entre pantallas
 - **Theme System**: Sistema de temas y estilos
 
 #### 2. Capa de Dominio
-- **Use Cases**: Lógica de negocio encapsulada
+- **Use Cases**: Logica de negocio encapsulada
 - **Repository Interfaces**: Contratos de acceso a datos
 - **Domain Models**: Entidades del dominio
 
 #### 3. Capa de Datos
-- **Repositories**: Implementación de acceso a datos
-- **Remote DataSource**: Integración con Firebase
-- **Local DataSource**: Caché local con Room y DataStore
+- **Repositories**: Implementacion de acceso a datos
+- **Remote DataSource**: Integracion con Firebase
+- **Local DataSource**: Cache local con Room y DataStore
 
 ---
 
-## Flujos de la Aplicación
+## Flujos de la Aplicacion
 
-### Flujo de Autenticación
+### Flujo de Autenticacion
 
 ```mermaid
 flowchart TD
-    START([Iniciar App]) --> CHECK{¿Usuario<br/>autenticado?}
+    START([Iniciar App]) --> CHECK{Usuario<br/>autenticado?}
     
-    CHECK -->|Sí| LOAD_USER[Cargar datos<br/>del usuario]
+    CHECK -->|Si| LOAD_USER[Cargar datos<br/>del usuario]
     CHECK -->|No| LOGIN[LoginScreen]
     
     LOAD_USER --> HOME([HomeScreen])
     
-    LOGIN --> METHOD{Método de acceso}
+    LOGIN --> METHOD{Metodo de acceso}
     
     METHOD -->|Email| EMAIL_FORM[Formulario Email]
     METHOD -->|Google| GOOGLE_FLOW[Google Sign-In Flow]
@@ -174,14 +174,14 @@ flowchart TD
     VALIDATE -->|OK| FB_AUTH[Firebase Auth]
     
     GOOGLE_FLOW --> GOOGLE_API[Google API]
-    GOOGLE_API --> VALIDATE_GOOGLE{Token<br/>válido?}
+    GOOGLE_API --> VALIDATE_GOOGLE{Token<br/>valido?}
     VALIDATE_GOOGLE -->|Error| ERROR2[Mostrar error]
     ERROR2 --> LOGIN
     VALIDATE_GOOGLE -->|OK| FB_AUTH
     
-    FB_AUTH --> CREATE_USER{¿Usuario<br/>existe?}
+    FB_AUTH --> CREATE_USER{Usuario<br/>existe?}
     CREATE_USER -->|No| CREATE[Crear perfil<br/>en Realtime DB]
-    CREATE_USER -->|Sí| LOAD_PROFILE[Cargar perfil]
+    CREATE_USER -->|Si| LOAD_PROFILE[Cargar perfil]
     
     CREATE --> SAVE_LOCAL[Guardar en<br/>DataStore]
     LOAD_PROFILE --> SAVE_LOCAL
@@ -200,7 +200,7 @@ flowchart TD
     class FB_AUTH firebase
 ```
 
-### Flujo de Mensajería en Tiempo Real
+### Flujo de Mensajeria en Tiempo Real
 
 ```mermaid
 sequenceDiagram
@@ -214,8 +214,8 @@ sequenceDiagram
     participant FCM as Cloud Messaging
 
     rect rgb(30, 136, 229)
-    Note over Usuario,UI: Envío de Mensaje
-    Usuario->>+UI: Escribe y envía mensaje
+    Note over Usuario,UI: Envio de Mensaje
+    Usuario->>+UI: Escribe y envia mensaje
     UI->>+VM: sendMessage(text, chatId)
     VM->>+UC: execute(message)
     UC->>+REPO: sendMessage(message)
@@ -226,7 +226,7 @@ sequenceDiagram
     end
     
     rect rgb(67, 160, 71)
-    Note over FB,UI: Sincronización en Tiempo Real
+    Note over FB,UI: Sincronizacion en Tiempo Real
     FB-->>REPO: onDataChange (listener activo)
     REPO-->>-VM: Flow<List<Message>>
     VM-->>-UI: StateFlow actualiza
@@ -263,7 +263,7 @@ sequenceDiagram
     Note over FB,Usuario B: Recibir Llamada
     FB-->>+VM_B: onCallReceived (listener)
     VM_B-->>+UI_B: Mostrar pantalla de llamada entrante
-    UI_B-->>Usuario B: Notificación de llamada
+    UI_B-->>Usuario B: Notificacion de llamada
     
     Usuario B->>UI_B: Aceptar llamada
     UI_B->>VM_B: acceptCall()
@@ -274,7 +274,7 @@ sequenceDiagram
     end
     
     rect rgb(67, 160, 71)
-    Note over VM_A,VM_B: Conexión P2P Establecida
+    Note over VM_A,VM_B: Conexion P2P Establecida
     FB-->>VM_A: onAnswerReceived
     VM_A->>VM_A: setRemoteDescription(answer)
     VM_A->>VM_B: Stream de audio/video directo
@@ -313,13 +313,13 @@ flowchart TD
     TEXT_STORY --> TEXT_INPUT[Agregar texto posicionable]
     
     TEXT_INPUT --> PREVIEW
-    PREVIEW --> EDIT{¿Editar?}
+    PREVIEW --> EDIT{Editar?}
     
-    EDIT -->|Sí| TOOLS[Herramientas de edición]
+    EDIT -->|Si| TOOLS[Herramientas de edicion]
     EDIT -->|No| CONFIRM
     
     TOOLS --> TEXT_TOOL[Texto posicionable]
-    TOOLS --> EMOJI_TOOL[Emojis posicionables<br/>4 categorías]
+    TOOLS --> EMOJI_TOOL[Emojis posicionables<br/>4 categorias]
     TOOLS --> ADJUST_TOOL[Ajustar foto X+Y]
     
     TEXT_TOOL --> CONFIRM{Publicar}
@@ -332,13 +332,13 @@ flowchart TD
     UPLOAD --> GET_URL[Obtener URL]
     GET_URL --> CREATE_STORY[Crear documento<br/>en Realtime DB]
     
-    CREATE_STORY --> SET_EXPIRY[Configurar<br/>expiración 24h]
+    CREATE_STORY --> SET_EXPIRY[Configurar<br/>expiracion 24h]
     SET_EXPIRY --> NOTIFY[Notificar<br/>a seguidores]
     
     NOTIFY --> PUBLISHED([Historia publicada])
     
     PUBLISHED --> WAIT[Esperar 24 horas]
-    WAIT --> AUTO_DELETE[Eliminación automática]
+    WAIT --> AUTO_DELETE[Eliminacion automatica]
     
     AUTO_DELETE --> DELETE_STORAGE[Eliminar de Storage]
     DELETE_STORAGE --> DELETE_DB[Eliminar de Realtime DB]
@@ -357,28 +357,28 @@ flowchart TD
     class UPLOAD,DELETE_STORAGE,DELETE_DB,AUTO_DELETE firebase
 ```
 
-### Flujo de Personalización de Fondos
+### Flujo de Personalizacion de Fondos
 
 ```mermaid
 flowchart TD
-    START([Usuario abre<br/>BackgroundPicker]) --> SCOPE{Ámbito}
+    START([Usuario abre<br/>BackgroundPicker]) --> SCOPE{Ambito}
     
     SCOPE -->|Global| GLOBAL[Fondo para toda la app]
-    SCOPE -->|Chat| CHAT[Fondo para chat específico]
+    SCOPE -->|Chat| CHAT[Fondo para chat especifico]
     
     GLOBAL --> TYPE{Tipo de fondo}
     CHAT --> TYPE
     
     TYPE -->|Color| COLOR[ColorPicker]
     TYPE -->|Degradado| GRADIENT[GradientPicker]
-    TYPE -->|Imagen| IMAGE[Selector de galería]
+    TYPE -->|Imagen| IMAGE[Selector de galeria]
     TYPE -->|Video| VIDEO[Selector de video]
     TYPE -->|Ninguno| NONE[Eliminar fondo]
     
     COLOR --> PREVIEW[Vista previa]
     GRADIENT --> PREVIEW
     IMAGE --> CROP[Recortar imagen]
-    VIDEO --> VALIDATE{Validar<br/>tamaño y formato}
+    VIDEO --> VALIDATE{Validar<br/>tamano y formato}
     NONE --> SAVE
     
     CROP --> PREVIEW
@@ -388,17 +388,17 @@ flowchart TD
     
     PREVIEW --> CONFIRM{Confirmar}
     CONFIRM -->|Cancelar| START
-    CONFIRM -->|Guardar| SAVE[Guardar configuración]
+    CONFIRM -->|Guardar| SAVE[Guardar configuracion]
     
-    SAVE --> STORAGE_CHECK{¿Archivo<br/>multimedia?}
-    STORAGE_CHECK -->|Sí| UPLOAD[Subir a<br/>Firebase Storage]
+    SAVE --> STORAGE_CHECK{Archivo<br/>multimedia?}
+    STORAGE_CHECK -->|Si| UPLOAD[Subir a<br/>Firebase Storage]
     STORAGE_CHECK -->|No| DATASTORE_SAVE
     
     UPLOAD --> GET_URL[Obtener URL]
     GET_URL --> DATASTORE_SAVE[Guardar en DataStore]
     
-    DATASTORE_SAVE --> FIREBASE_SAVE{¿Fondo<br/>de chat?}
-    FIREBASE_SAVE -->|Sí| FB_UPDATE[Actualizar en<br/>Realtime DB]
+    DATASTORE_SAVE --> FIREBASE_SAVE{Fondo<br/>de chat?}
+    FIREBASE_SAVE -->|Si| FB_UPDATE[Actualizar en<br/>Realtime DB]
     FIREBASE_SAVE -->|No| APPLY
     
     FB_UPDATE --> APPLY[Aplicar en tiempo real]
@@ -419,25 +419,25 @@ flowchart TD
 
 ---
 
-## Stack Tecnológico
+## Stack Tecnologico
 
-| Componente | Tecnología | Versión |
+| Componente | Tecnologia | Version |
 |-----------|-----------|---------|
 | UI Framework | Jetpack Compose BOM | 2025.04.01 |
 | Lenguaje | Kotlin | 100% |
 | Arquitectura | Clean Architecture + MVVM | - |
 | Base de datos | Firebase Realtime Database | BOM 33.7.0 |
 | Almacenamiento | Firebase Storage | BOM 33.7.0 |
-| Autenticación | Firebase Auth | BOM 33.7.0 |
-| Mensajería push | Firebase Cloud Messaging | BOM 33.7.0 |
-| Inyección de dependencias | Hilt | 2.52 |
-| Carga de imágenes | Coil | 3.1.0 |
+| Autenticacion | Firebase Auth | BOM 33.7.0 |
+| Mensajeria push | Firebase Cloud Messaging | BOM 33.7.0 |
+| Inyeccion de dependencias | Hilt | 2.52 |
+| Carga de imagenes | Coil | 3.1.0 |
 | Reproductor de video | ExoPlayer media3 | 1.3.1 |
 | Llamadas | Stream WebRTC Android | 1.1.3 |
-| Caché local | Room | - |
+| Cache local | Room | - |
 | Preferencias | DataStore | - |
 | Corrutinas | Kotlin Coroutines + Flow | 1.9.0 |
-| SDK mínimo | Android 8.0 (Oreo) | API 26 |
+| SDK minimo | Android 8.0 (Oreo) | API 26 |
 | SDK objetivo | Android 16 | API 36 |
 
 ---
@@ -480,7 +480,7 @@ app/src/main/java/com/Azelmods/App/
 │       ├── CreateStoryUseCase.kt
 │       └── StartCallUseCase.kt
 │
-├── ui/                             # Capa de Presentación
+├── ui/                             # Capa de Presentacion
 │   ├── screens/                    # Pantallas
 │   │   ├── chat/
 │   │   │   ├── ChatScreen.kt
@@ -500,11 +500,11 @@ app/src/main/java/com/Azelmods/App/
 │   │   ├── Theme.kt
 │   │   ├── Color.kt
 │   │   └── Type.kt
-│   └── navigation/                 # Navegación
+│   └── navigation/                 # Navegacion
 │       ├── NavGraph.kt
 │       └── Screen.kt
 │
-├── di/                             # Inyección de Dependencias
+├── di/                             # Inyeccion de Dependencias
 │   ├── AppModule.kt
 │   └── RepositoryModule.kt
 │
@@ -517,7 +517,7 @@ app/src/main/java/com/Azelmods/App/
 
 ---
 
-## Instalación
+## Instalacion
 
 ### Requisitos Previos
 
@@ -533,7 +533,7 @@ app/src/main/java/com/Azelmods/App/
 git clone https://github.com/AzelMods677/NexusChat.git
 cd NexusChat
 
-# Compilar APK de depuración
+# Compilar APK de depuracion
 ./gradlew assembleDebug
 
 # Instalar en dispositivo conectado
@@ -547,21 +547,21 @@ cd NexusChat
 
 ---
 
-## Configuración de Firebase
+## Configuracion de Firebase
 
 ### Paso 1: Crear Proyecto
 
 1. Accede a [Firebase Console](https://console.firebase.google.com/)
-2. Crea un nuevo proyecto y agrega una aplicación Android
+2. Crea un nuevo proyecto y agrega una aplicacion Android
 3. Nombre del paquete: `com.Azelmods.App`
-4. Descarga `google-services.json` y colócalo en el directorio `app/`
+4. Descarga `google-services.json` y colocalo en el directorio `app/`
 
 ### Paso 2: Habilitar Servicios
 
-- **Realtime Database**: Modo de prueba o producción
-- **Storage**: Modo de prueba o producción
-- **Authentication**: Email/Contraseña + Google Sign-In
-- **Cloud Messaging**: Se habilita automáticamente
+- **Realtime Database**: Modo de prueba o produccion
+- **Storage**: Modo de prueba o produccion
+- **Authentication**: Email/Contrasena + Google Sign-In
+- **Cloud Messaging**: Se habilita automaticamente
 
 ### Paso 3: Reglas de Base de Datos
 
@@ -613,7 +613,7 @@ service firebase.storage {
 keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
 ```
 
-Agrega el SHA-1 resultante en **Firebase Console → Configuración del proyecto → Huella digital**.
+Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > Huella digital**.
 
 ---
 
@@ -622,51 +622,51 @@ Agrega el SHA-1 resultante en **Firebase Console → Configuración del proyecto
 ### v1.0.0 - Lanzamiento Inicial (2026)
 
 #### Funcionalidades Principales
-- Mensajería en tiempo real con Firebase Realtime Database
+- Mensajeria en tiempo real con Firebase Realtime Database
 - Historias con caducidad de 24 horas
 - Llamadas de voz y video con WebRTC
-- Autenticación Firebase (Email + Google Sign-In)
+- Autenticacion Firebase (Email + Google Sign-In)
 - Notificaciones push con Firebase Cloud Messaging
 
-#### Sistema de Personalización
+#### Sistema de Personalizacion
 - 15 temas de color predefinidos
 - Fondos personalizados (imagen, video, color, degradado)
-- Fondos independientes por conversación
-- Configuración de tamaños de fuente
+- Fondos independientes por conversacion
+- Configuracion de tamanos de fuente
 - Modo oscuro
 
 #### Historias
-- Selector de emojis con 4 categorías
+- Selector de emojis con 4 categorias
 - Emojis y texto posicionables
 - Ajuste bidimensional de fotos
 - Grid de 8 columnas para emojis
 
 #### Llamadas
 - Permisos actualizados para Android 12+
-- Verificación de permisos en tiempo real
-- Comunicación P2P con WebRTC
+- Verificacion de permisos en tiempo real
+- Comunicacion P2P con WebRTC
 
-#### Mensajería
-- Envío de videos optimizado
-- Mensajes de voz con visualización de forma de onda
+#### Mensajeria
+- Envio de videos optimizado
+- Mensajes de voz con visualizacion de forma de onda
 - Soporte mejorado para teclado
 
-#### Mejoras Técnicas
+#### Mejoras Tecnicas
 - Arquitectura Clean con MVVM
 - Material Design 3
 - Visor de fotos con zoom
-- Recorte de imágenes
+- Recorte de imagenes
 
 ---
 
 ## Roadmap
 
-### Próximas Funciones
+### Proximas Funciones
 
-- Bot interno con respuestas automáticas
-- Gestión avanzada de grupos
+- Bot interno con respuestas automaticas
+- Gestion avanzada de grupos
 - Creador de stickers personalizado
-- Sistema de respaldo y restauración
+- Sistema de respaldo y restauracion
 
 ---
 
@@ -674,16 +674,16 @@ Agrega el SHA-1 resultante en **Firebase Console → Configuración del proyecto
 
 1. Haz fork del proyecto
 2. Crea una rama: `git checkout -b feature/nueva-funcionalidad`
-3. Realiza tus cambios y haz commit: `git commit -m 'feat: descripción del cambio'`
+3. Realiza tus cambios y haz commit: `git commit -m 'feat: descripcion del cambio'`
 4. Sube los cambios: `git push origin feature/nueva-funcionalidad`
 5. Abre un Pull Request
 
-### Guías de Contribución
+### Guias de Contribucion
 
 - Kotlin 100%, Jetpack Compose para toda la UI
 - Seguir Clean Architecture en todos los cambios
-- Documentar funciones públicas con KDoc
-- Verificar compilación sin errores antes de hacer commit
+- Documentar funciones publicas con KDoc
+- Verificar compilacion sin errores antes de hacer commit
 
 ---
 
@@ -691,9 +691,9 @@ Agrega el SHA-1 resultante en **Firebase Console → Configuración del proyecto
 
 **MIT License** - Copyright (c) 2026 AzelMods677
 
-Se concede permiso, de forma gratuita, a cualquier persona que obtenga una copia de este software para utilizarlo sin restricción, incluyendo los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias, sujeto a que el aviso de copyright anterior se incluya en todas las copias.
+Se concede permiso, de forma gratuita, a cualquier persona que obtenga una copia de este software para utilizarlo sin restriccion, incluyendo los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias, sujeto a que el aviso de copyright anterior se incluya en todas las copias.
 
-EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO.
+EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTIA DE NINGUN TIPO.
 
 ---
 
@@ -707,8 +707,8 @@ EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO.
 
 <div align="center">
 
-**Si te gusta el proyecto, dale una estrella ⭐**
+**Si te gusta el proyecto, dale una estrella en GitHub**
 
-**Desarrollado por AzelMods677 © 2026**
+**Desarrollado por AzelMods677 - 2026**
 
 </div>

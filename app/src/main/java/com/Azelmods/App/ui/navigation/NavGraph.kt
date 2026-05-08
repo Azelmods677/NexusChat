@@ -12,7 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.Azelmods.App.data.security.tor.TorService
-import com.Azelmods.App.ui.screens.ai.AIFeaturesScreenRedesigned
+import com.Azelmods.App.ui.screens.settings.AiFeaturesScreen
 import com.Azelmods.App.ui.screens.auth.LoginScreen
 import com.Azelmods.App.ui.screens.auth.RegisterScreen
 import com.Azelmods.App.ui.screens.call.ActiveCallScreen
@@ -282,7 +282,7 @@ fun NavGraph(
         }
         
         composable(Screen.AiFeatures.route) {
-            AIFeaturesScreenRedesigned(navController = navController)
+            AiFeaturesScreen(navController = navController)
         }
         
         // Azel IA - Advanced AI chat
@@ -358,10 +358,10 @@ fun NavGraph(
         }
         
        
-        // Ollama Chat
+        // Azel IA Chat
         composable("ai_agent") {
-            com.Azelmods.App.ui.screens.ai.AIAgentScreen(
-                onNavigateBack = { navController.popBackStack() }
+            com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
+                onBack = { navController.popBackStack() }
             )
         }
         

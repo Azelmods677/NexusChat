@@ -114,12 +114,12 @@ fun TerminalScreen(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
                         color = when (line.type) {
-                            TerminalViewModel.TerminalLine.Type.SYSTEM -> Color(0xFF7B5CFA)
-                            TerminalViewModel.TerminalLine.Type.INPUT -> Color(0xFF00FF41)
-                            TerminalViewModel.TerminalLine.Type.OUTPUT -> Color(0xFFCCCCCC)
-                            TerminalViewModel.TerminalLine.Type.SUCCESS -> Color(0xFF00FF41)
-                            TerminalViewModel.TerminalLine.Type.ERROR -> Color(0xFFFF4444)
-                            TerminalViewModel.TerminalLine.Type.WARNING -> Color(0xFFFFAA00)
+                            RealTerminalEmulator.TerminalLine.Type.SYSTEM -> Color(0xFF7B5CFA)
+                            RealTerminalEmulator.TerminalLine.Type.INPUT -> Color(0xFF00FF41)
+                            RealTerminalEmulator.TerminalLine.Type.OUTPUT -> Color(0xFFCCCCCC)
+                            RealTerminalEmulator.TerminalLine.Type.SUCCESS -> Color(0xFF00FF41)
+                            RealTerminalEmulator.TerminalLine.Type.ERROR -> Color(0xFFFF4444)
+                            RealTerminalEmulator.TerminalLine.Type.WARNING -> Color(0xFFFFAA00)
                         }
                     )
                 }

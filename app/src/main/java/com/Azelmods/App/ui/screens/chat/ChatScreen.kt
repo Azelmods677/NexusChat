@@ -9,6 +9,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -1514,7 +1515,7 @@ fun ChatInputArea(
             )
         }
         
-        // ✨ BONITA ENTRY - Main Input Row con diseño mejorado estilo WhatsApp Mods
+        // ✨ BONITA ENTRY - Main Input Row con diseño mejorado
         AnimatedVisibility(visible = !isRecording) {
             // Contenedor principal con gradiente de fondo sutil
             Box(

@@ -437,7 +437,7 @@ sealed class StreamResponse {
 
 data class AIModel(
     val id: String,
-    val name: String = "Azel IA", // Siempre mostrar "Azel IA"
+    val name: String = "Azel IA", 
     val description: String,
     val parameters: Int
 )

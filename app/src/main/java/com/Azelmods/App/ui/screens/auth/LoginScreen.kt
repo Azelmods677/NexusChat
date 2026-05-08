@@ -219,40 +219,6 @@ fun LoginScreen(
                 }
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Phone Auth button
-            OutlinedButton(
-                onClick = { navController.navigate("phone_auth") },
-                enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White
-                ),
-                border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                    brush = Brush.linearGradient(listOf(Purple, Purple.copy(alpha = 0.7f)))
-                )
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "📱",
-                        fontSize = 20.sp,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                    Text(
-                        text = "Login with Phone",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-            
             Spacer(modifier = Modifier.height(24.dp))
             
             // Register link
