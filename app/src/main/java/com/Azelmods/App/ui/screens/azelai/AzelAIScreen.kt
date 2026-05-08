@@ -247,7 +247,7 @@ fun AzelAIWelcome() {
             letterSpacing = (-0.5).sp
         )
         Text(
-            "Azel IA utiliza Ollama Cloud con DeepSeek R1 70B para proporcionarte respuestas precisas y creativas sin restricciones.",
+            "Azel IA esta desarollada para evitar cualquier tipo de filtro etico  por lo cual puede preguntar con confianza",
             color = TextSecondary,
             fontSize = 15.sp,
             textAlign = TextAlign.Center,

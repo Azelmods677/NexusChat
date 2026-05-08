@@ -17,11 +17,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.Azelmods.App.data.preferences.UserPreferences
 import com.Azelmods.App.ui.navigation.NavGraph
 import com.Azelmods.App.ui.theme.NexusChatTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -46,7 +48,7 @@ class MainActivity : ComponentActivity() {
         window.decorView.setOnHoverListener { _, _ -> true }
         
         // ✅ Set user online when app starts
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        lifecycleScope.launch {
             runCatching { databaseRepository.updatePresence(isOnline = true) }
         }
         
@@ -104,7 +106,7 @@ class MainActivity : ComponentActivity() {
         window.decorView.setOnHoverListener { _, _ -> true }
         
         // ✅ Set user online when app resumes
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        lifecycleScope.launch {
             runCatching { databaseRepository.updatePresence(isOnline = true) }
         }
     }
@@ -112,7 +114,7 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         // ✅ Set user offline when app goes to background
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        lifecycleScope.launch {
             runCatching { databaseRepository.updatePresence(isOnline = false) }
         }
     }

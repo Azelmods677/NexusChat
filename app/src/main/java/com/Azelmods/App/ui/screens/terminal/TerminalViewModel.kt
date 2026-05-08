@@ -9,6 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+// Type alias for compatibility
+typealias TerminalLine = RealTerminalEmulator.TerminalLine
+
 /**
  * TerminalViewModel - REAL TERMINAL using libsu
  * 
@@ -26,9 +29,6 @@ class TerminalViewModel @Inject constructor(
     // Expose terminal state
     val lines: StateFlow<List<RealTerminalEmulator.TerminalLine>> = terminalEmulator.lines
     val isRoot: StateFlow<Boolean> = terminalEmulator.isRoot
-    
-    // Type alias for compatibility
-    typealias TerminalLine = RealTerminalEmulator.TerminalLine
     
     fun execute(command: String) {
         viewModelScope.launch {
