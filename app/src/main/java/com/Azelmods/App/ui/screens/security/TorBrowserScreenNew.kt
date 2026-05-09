@@ -108,21 +108,21 @@ fun TorBrowserScreenNew(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                shape = RoundedCornerShape(16.dp),
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = DarkSurface,
                 shadowElevation = 4.dp
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(12.dp),
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Back button
                     Surface(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(36.dp),
                         shape = CircleShape,
                         color = if (canGoBack) Purple.copy(alpha = 0.2f) else Color.Transparent,
                         onClick = { if (canGoBack) webView?.goBack() }
@@ -132,14 +132,14 @@ fun TorBrowserScreenNew(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
                                 tint = if (canGoBack) Purple else Color.Gray,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                     
                     // Forward button
                     Surface(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(36.dp),
                         shape = CircleShape,
                         color = if (canGoForward) Purple.copy(alpha = 0.2f) else Color.Transparent,
                         onClick = { if (canGoForward) webView?.goForward() }
@@ -149,7 +149,7 @@ fun TorBrowserScreenNew(
                                 Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = "Forward",
                                 tint = if (canGoForward) Purple else Color.Gray,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -162,6 +162,7 @@ fun TorBrowserScreenNew(
                         onValueChange = { urlInput = it },
                         modifier = Modifier
                             .weight(1f)
+                            .height(48.dp)
                             .onFocusChanged { focusState ->
                                 isFocused = focusState.isFocused
                                 if (focusState.isFocused) {
@@ -172,7 +173,7 @@ fun TorBrowserScreenNew(
                             Text(
                                 "Buscar o ingresar URL",
                                 color = Color.Gray,
-                                fontSize = 14.sp
+                                fontSize = 13.sp
                             )
                         },
                         leadingIcon = {
@@ -180,27 +181,27 @@ fun TorBrowserScreenNew(
                                 Icons.Default.Search,
                                 contentDescription = null,
                                 tint = Purple,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         },
                         trailingIcon = {
                             if (isFocused && urlInput.isNotEmpty()) {
                                 IconButton(
                                     onClick = { urlInput = "" },
-                                    modifier = Modifier.size(32.dp)
+                                    modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(
                                         Icons.Default.Close,
                                         contentDescription = "Clear",
                                         tint = Color.Gray,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
                             }
                         },
                         singleLine = true,
                         enabled = true,
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
@@ -212,17 +213,24 @@ fun TorBrowserScreenNew(
                             unfocusedBorderColor = Color.Transparent,
                             disabledBorderColor = Color.Transparent
                         ),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                         keyboardActions = KeyboardActions(
                             onGo = {
-                                val url = if (urlInput.startsWith("http://") || 
-                                             urlInput.startsWith("https://")) {
-                                    urlInput
+                                val url = processUrl(urlInput)
+                                
+                                // Check if it's a .onion URL
+                                if (url.contains(".onion")) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            message = "⚠️ Los sitios .onion requieren Orbot (Tor). Instálalo desde F-Droid o Play Store",
+                                            duration = SnackbarDuration.Long
+                                        )
+                                    }
                                 } else {
-                                    "https://duckduckgo.com/?q=${urlInput}"
+                                    webView?.loadUrl(url)
                                 }
-                                webView?.loadUrl(url)
+                                
                                 urlInput = ""
                                 isFocused = false
                             }
@@ -231,7 +239,7 @@ fun TorBrowserScreenNew(
                     
                     // Reload/Stop button
                     Surface(
-                        modifier = Modifier.size(40.dp),
+                        modifier = Modifier.size(36.dp),
                         shape = CircleShape,
                         color = Purple.copy(alpha = 0.2f),
                         onClick = { 
@@ -243,7 +251,7 @@ fun TorBrowserScreenNew(
                                 if (isLoading) Icons.Default.Close else Icons.Default.Refresh,
                                 contentDescription = if (isLoading) "Stop" else "Refresh",
                                 tint = Purple,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -269,10 +277,28 @@ fun TorBrowserScreenNew(
                     }
                 },
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .weight(1f)
             )
         }
+    }
+}
+
+/**
+ * Process URL input with smart logic
+ */
+private fun processUrl(input: String): String {
+    val trimmed = input.trim()
+    
+    return when {
+        // Already has protocol
+        trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
+        
+        // Looks like a domain (has dot and no spaces)
+        trimmed.contains(".") && !trimmed.contains(" ") -> "https://$trimmed"
+        
+        // Everything else is a search query
+        else -> "https://duckduckgo.com/?q=${java.net.URLEncoder.encode(trimmed, "UTF-8")}"
     }
 }
 
@@ -287,11 +313,23 @@ private fun WebView.setupWebView(
     settings.apply {
         javaScriptEnabled = true
         domStorageEnabled = true
+        databaseEnabled = true
         setSupportZoom(true)
         builtInZoomControls = true
         displayZoomControls = false
         setGeolocationEnabled(false)
-        userAgentString = "Mozilla/5.0 (Android) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        allowFileAccess = false
+        allowContentAccess = false
+        mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+        
+        // Configuración mejorada para mejor visualización
+        useWideViewPort = true
+        loadWithOverviewMode = true
+        layoutAlgorithm = android.webkit.WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
+        
+        // User agent actualizado
+        userAgentString = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36"
     }
     
     webViewClient = object : android.webkit.WebViewClient() {
@@ -308,6 +346,249 @@ private fun WebView.setupWebView(
         
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             return false
+        }
+        
+        override fun onReceivedError(
+            view: WebView?,
+            request: WebResourceRequest?,
+            error: android.webkit.WebResourceError?
+        ) {
+            super.onReceivedError(view, request, error)
+            
+            // Only show error page for main frame errors
+            if (request?.isForMainFrame == true) {
+                val url = request.url.toString()
+                val isOnionSite = url.contains(".onion")
+                
+                val errorHtml = if (isOnionSite) {
+                    """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {
+                                background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
+                                color: #FFFFFF;
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                padding: 20px;
+                                text-align: center;
+                            }
+                            .container {
+                                max-width: 500px;
+                            }
+                            .icon {
+                                font-size: 80px;
+                                margin-bottom: 20px;
+                            }
+                            h1 {
+                                font-size: 28px;
+                                margin: 0 0 10px 0;
+                                background: linear-gradient(135deg, #7C3AED, #00D4FF);
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                            }
+                            p {
+                                color: #AAAAAA;
+                                font-size: 16px;
+                                line-height: 1.6;
+                                margin: 0 0 30px 0;
+                            }
+                            .onion-url {
+                                background: rgba(124, 58, 237, 0.1);
+                                border: 1px solid rgba(124, 58, 237, 0.3);
+                                border-radius: 8px;
+                                padding: 12px;
+                                margin: 20px 0;
+                                font-family: 'Courier New', monospace;
+                                font-size: 13px;
+                                color: #7C3AED;
+                                word-break: break-all;
+                            }
+                            .instructions {
+                                text-align: left;
+                                background: rgba(255, 255, 255, 0.05);
+                                border-radius: 12px;
+                                padding: 20px;
+                                margin-top: 20px;
+                            }
+                            .instructions h3 {
+                                margin: 0 0 15px 0;
+                                font-size: 18px;
+                                color: #7C3AED;
+                            }
+                            .instructions ol {
+                                margin: 0;
+                                padding-left: 20px;
+                            }
+                            .instructions li {
+                                margin: 12px 0;
+                                color: #CCCCCC;
+                                line-height: 1.6;
+                            }
+                            .instructions strong {
+                                color: #00D4FF;
+                            }
+                            .brand {
+                                margin-top: 30px;
+                                font-size: 14px;
+                                color: #666666;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="icon">🧅</div>
+                            <h1>Sitio .onion detectado</h1>
+                            <p>Los sitios .onion solo son accesibles a través de la red Tor. Este navegador no tiene soporte nativo para Tor.</p>
+                            
+                            <div class="onion-url">
+                                $url
+                            </div>
+                            
+                            <div class="instructions">
+                                <h3>🔐 Cómo acceder a sitios .onion</h3>
+                                <ol>
+                                    <li>Instala <strong>Orbot</strong> desde F-Droid o Play Store</li>
+                                    <li>Abre Orbot y presiona <strong>"Iniciar"</strong></li>
+                                    <li>Espera a que se conecte a la red Tor</li>
+                                    <li>Usa <strong>Tor Browser</strong> o configura un navegador con proxy SOCKS5 (localhost:9050)</li>
+                                    <li>Ahora podrás acceder a sitios .onion de forma anónima</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="brand">Nexus Chat - Navegador Privado</div>
+                        </div>
+                    </body>
+                    </html>
+                    """.trimIndent()
+                } else {
+                    """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body {
+                                background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
+                                color: #FFFFFF;
+                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                display: flex;
+                                justify-content: center;
+                                align-items: center;
+                                min-height: 100vh;
+                                margin: 0;
+                                padding: 20px;
+                                text-align: center;
+                            }
+                            .container {
+                                max-width: 500px;
+                            }
+                            .icon {
+                                font-size: 80px;
+                                margin-bottom: 20px;
+                                animation: pulse 2s infinite;
+                            }
+                            @keyframes pulse {
+                                0%, 100% { opacity: 1; }
+                                50% { opacity: 0.5; }
+                            }
+                            h1 {
+                                font-size: 28px;
+                                margin: 0 0 10px 0;
+                                background: linear-gradient(135deg, #7C3AED, #00D4FF);
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                            }
+                            p {
+                                color: #AAAAAA;
+                                font-size: 16px;
+                                line-height: 1.6;
+                                margin: 0 0 30px 0;
+                            }
+                            .error-code {
+                                background: rgba(124, 58, 237, 0.1);
+                                border: 1px solid rgba(124, 58, 237, 0.3);
+                                border-radius: 8px;
+                                padding: 12px;
+                                margin: 20px 0;
+                                font-family: 'Courier New', monospace;
+                                font-size: 14px;
+                                color: #7C3AED;
+                            }
+                            .suggestions {
+                                text-align: left;
+                                background: rgba(255, 255, 255, 0.05);
+                                border-radius: 12px;
+                                padding: 20px;
+                                margin-top: 20px;
+                            }
+                            .suggestions h3 {
+                                margin: 0 0 15px 0;
+                                font-size: 18px;
+                                color: #7C3AED;
+                            }
+                            .suggestions ul {
+                                margin: 0;
+                                padding-left: 20px;
+                            }
+                            .suggestions li {
+                                margin: 8px 0;
+                                color: #CCCCCC;
+                                line-height: 1.5;
+                            }
+                            .brand {
+                                margin-top: 30px;
+                                font-size: 14px;
+                                color: #666666;
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <div class="icon">🔒</div>
+                            <h1>Página no disponible</h1>
+                            <p>No se pudo cargar la página solicitada. Verifica tu conexión a internet o intenta nuevamente.</p>
+                            
+                            <div class="error-code">
+                                Error: ${error?.description ?: "Desconocido"}<br>
+                                Código: ${error?.errorCode ?: -1}
+                            </div>
+                            
+                            <div class="suggestions">
+                                <h3>💡 Sugerencias</h3>
+                                <ul>
+                                    <li>Verifica tu conexión a internet</li>
+                                    <li>Comprueba que la URL sea correcta</li>
+                                    <li>Intenta recargar la página</li>
+                                    <li>El sitio podría estar temporalmente no disponible</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="brand">Nexus Chat - Navegador Privado</div>
+                        </div>
+                    </body>
+                    </html>
+                    """.trimIndent()
+                }
+                
+                view?.loadDataWithBaseURL(
+                    null,
+                    errorHtml,
+                    "text/html",
+                    "UTF-8",
+                    null
+                )
+            }
         }
     }
 }
