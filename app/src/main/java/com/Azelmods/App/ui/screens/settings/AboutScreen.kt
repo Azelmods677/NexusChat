@@ -228,7 +228,7 @@ fun AboutScreen(navController: NavController) {
                         )
                         
                         Text(
-                            "Mensajero",
+                            "Mensajero Seguro",
                             fontSize = 14.sp,
                             color = Color(0xFF7B5CFA),
                             fontWeight = FontWeight.Medium
@@ -253,7 +253,7 @@ fun AboutScreen(navController: NavController) {
                         Spacer(Modifier.height(12.dp))
                         
                         Text(
-                            "Mensajería segura con IA sin censura,\nnavegador Tor y herramientas avanzadas",
+                            "Mensajería segura con IA sin censura,\nnavegador Tor, terminal y herramientas avanzadas.\nComunicación privada y anónima.",
                             textAlign = TextAlign.Center,
                             fontSize = 13.sp,
                             color = Color.White.copy(alpha = 0.6f),

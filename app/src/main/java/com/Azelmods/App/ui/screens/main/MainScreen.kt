@@ -19,9 +19,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.Azelmods.App.data.preferences.ThemePreferences
+import com.Azelmods.App.data.manager.AppBackgroundManager
+import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.screens.calls.CallsScreen
 import com.Azelmods.App.ui.screens.home.HomeScreenRedesigned
@@ -30,6 +33,7 @@ import com.Azelmods.App.ui.screens.stories.StoriesScreen
 import com.Azelmods.App.ui.theme.DarkSurface
 import com.Azelmods.App.ui.theme.Purple
 import kotlinx.coroutines.launch
+import androidx.hilt.navigation.compose.hiltViewModel
 
 data class TabItem(
     val route: String,
@@ -51,10 +55,14 @@ sealed class BottomNavItem(
 
 @Composable
 fun MainScreen(
-    navController: NavController
+    navController: NavController,
+    appBackgroundManager: AppBackgroundManager = hiltViewModel<MainViewModel>().appBackgroundManager
 ) {
     val context = LocalContext.current
     val themePrefs = remember { ThemePreferences(context) }
+    
+    // Get app-wide background configuration
+    val backgroundConfig by appBackgroundManager.backgroundConfig.collectAsState()
     
     // Define all available tabs
     val allTabs = listOf(
@@ -141,23 +149,86 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            userScrollEnabled = true,      // ← enables swipe
-            beyondViewportPageCount = 1    // preload adjacent pages
-        ) { page ->
-            // Map the page index to the original tab index
-            val originalIndex = tabOrder.getOrNull(page) ?: page
-            when (originalIndex) {
-                0 -> HomeScreenRedesigned(navController = navController)
-                1 -> StoriesScreen(navController = navController)
-                2 -> CallsScreen(navController = navController)
-                3 -> {
-                    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                    ProfileScreen(navController = navController, userId = userId)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // ═══ APP-WIDE BACKGROUND ═══
+            when (backgroundConfig.type) {
+                BackgroundType.IMAGE -> {
+                    backgroundConfig.imageUri?.let { uri ->
+                        coil3.compose.AsyncImage(
+                            model = uri,
+                            contentDescription = "App Background",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
+                BackgroundType.VIDEO -> {
+                    backgroundConfig.videoUri?.let { uri ->
+                        androidx.compose.ui.viewinterop.AndroidView(
+                            factory = { ctx ->
+                                android.widget.VideoView(ctx).apply {
+                                    setVideoURI(android.net.Uri.parse(uri))
+                                    setOnPreparedListener { mp ->
+                                        mp.isLooping = true
+                                        mp.setVolume(0f, 0f)
+                                    }
+                                    start()
+                                }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+                BackgroundType.SOLID_COLOR -> {
+                    androidx.compose.foundation.background(
+                        color = androidx.compose.ui.graphics.Color(
+                            android.graphics.Color.parseColor(backgroundConfig.colorHex ?: "#0D0D1A")
+                        ),
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                BackgroundType.GRADIENT -> {
+                    androidx.compose.foundation.Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .androidx.compose.foundation.background(
+                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    listOf(
+                                        androidx.compose.ui.graphics.Color(0xFF1A1A2E),
+                                        androidx.compose.ui.graphics.Color(0xFF0D0D1A)
+                                    )
+                                )
+                            )
+                    )
+                }
+                else -> {
+                    // Default dark background
+                    androidx.compose.foundation.Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .androidx.compose.foundation.background(androidx.compose.ui.graphics.Color(0xFF0D0D1A))
+                    )
+                }
+            }
+            
+            // ═══ CONTENT ON TOP OF BACKGROUND ═══
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                userScrollEnabled = true,
+                beyondViewportPageCount = 1
+            ) { page ->
+                val originalIndex = tabOrder.getOrNull(page) ?: page
+                when (originalIndex) {
+                    0 -> HomeScreenRedesigned(navController = navController)
+                    1 -> StoriesScreen(navController = navController)
+                    2 -> CallsScreen(navController = navController)
+                    3 -> {
+                        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        ProfileScreen(navController = navController, userId = userId)
+                    }
                 }
             }
         }

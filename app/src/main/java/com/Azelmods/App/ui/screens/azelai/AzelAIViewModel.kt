@@ -48,8 +48,9 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
             Log.d(TAG, "🚀 Initializing AzelAIViewModel for user: $userId")
             loadAvailableModels()
             startNewChat()
-            loadChatHistory()
-            loadStats()
+            // Comentado temporalmente para evitar crash de Firebase
+            // loadChatHistory()
+            // loadStats()
             checkApiHealth()
         } else {
             Log.e(TAG, "❌ User not authenticated")

@@ -278,7 +278,7 @@ fun TorBrowserScreenNew(
                     }
                 },
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .weight(1f)
             )
         }

@@ -41,6 +41,8 @@ fun ProfileScreen(
     var displayName by remember { mutableStateOf("") }
     var bio by remember { mutableStateOf("") }
     var showFullscreenImage by remember { mutableStateOf(false) }
+    var fullscreenImageUrl by remember { mutableStateOf("") }
+    var fullscreenImageType by remember { mutableStateOf("avatar") } // "avatar" or "cover"
     
     // Request permissions
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -178,12 +180,21 @@ fun ProfileScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .clickable(enabled = state.isOwnProfile) {
-                            coverPicker.launch(
-                                androidx.activity.result.PickVisualMediaRequest(
-                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                        .clickable {
+                            val currentUser = state.user
+                            if (state.isOwnProfile) {
+                                // Own profile: open picker
+                                coverPicker.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
                                 )
-                            )
+                            } else if (currentUser?.coverUrl != null) {
+                                // Other user: view fullscreen
+                                fullscreenImageUrl = currentUser.coverUrl
+                                fullscreenImageType = "cover"
+                                showFullscreenImage = true
+                            }
                         }
                 ) {
                     // Show cover photo if available, otherwise gradient
@@ -288,12 +299,15 @@ fun ProfileScreen(
                             .size(104.dp)
                             .clip(CircleShape)
                             .background(Purple)
-                            .then(
-                                if (!state.user?.photoUrl.isNullOrBlank()) {
-                                    Modifier.clickable {
+                            .clickable(
+                                enabled = !state.user?.photoUrl.isNullOrBlank(),
+                                onClick = {
+                                    if (!state.user?.photoUrl.isNullOrBlank()) {
+                                        fullscreenImageUrl = state.user?.photoUrl ?: ""
+                                        fullscreenImageType = "avatar"
                                         showFullscreenImage = true
                                     }
-                                } else Modifier
+                                }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
@@ -437,12 +451,15 @@ fun ProfileScreen(
     }
     
     // Fullscreen image viewer
-    if (showFullscreenImage && !state.user?.photoUrl.isNullOrBlank()) {
+    if (showFullscreenImage && fullscreenImageUrl.isNotBlank()) {
         com.Azelmods.App.ui.components.FullScreenImageViewer(
-            imageUrl = state.user?.photoUrl ?: "",
+            imageUrl = fullscreenImageUrl,
             senderName = state.user?.displayName ?: state.user?.name ?: "Usuario",
             timestamp = "",
-            onDismiss = { showFullscreenImage = false }
+            onDismiss = { 
+                showFullscreenImage = false
+                fullscreenImageUrl = ""
+            }
         )
     }
 }
