@@ -2,7 +2,9 @@ package com.Azelmods.App.data.api
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
@@ -164,7 +166,7 @@ FORMATO DE RESPUESTA SUPREMO:
         topP: Float = TOP_P,
         frequencyPenalty: Float = FREQUENCY_PENALTY,
         presencePenalty: Float = PRESENCE_PENALTY
-    ): Flow<StreamResponse> = flow {
+    ): Flow<StreamResponse> = kotlinx.coroutines.flow.callbackFlow {
         try {
             Log.d(TAG, "🚀 Starting streaming chat completion with model: $model")
             
@@ -179,9 +181,12 @@ FORMATO DE RESPUESTA SUPREMO:
                 stream = true
             )
             
+            val requestBodyString = requestBody.toString()
+            Log.d(TAG, "📤 Request body: ${requestBodyString.take(200)}...")
+            
             val request = Request.Builder()
                 .url("$BASE_URL/chat/completions")
-                .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                .post(requestBodyString.toRequestBody("application/json".toMediaType()))
                 .addHeader("Authorization", "Bearer $API_KEY")
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", "text/event-stream")
@@ -201,34 +206,46 @@ FORMATO DE RESPUESTA SUPREMO:
                         data: String
                     ) {
                         try {
-                            if (data == "[DONE]") {
+                            if (data.trim() == "[DONE]") {
                                 Log.d(TAG, "✅ Stream completed")
+                                trySend(StreamResponse.Done)
+                                close()
                                 return
                             }
                             
-                            val json = JSONObject(data)
+                            // Validar que data no esté vacío y sea JSON válido
+                            if (data.isBlank()) {
+                                Log.d(TAG, "⚠️ Received empty data, skipping")
+                                return
+                            }
+                            
+                            val json = try {
+                                JSONObject(data)
+                            } catch (e: org.json.JSONException) {
+                                Log.e(TAG, "❌ Invalid JSON received: ${data.take(100)}", e)
+                                return
+                            }
+                            
                             val choices = json.optJSONArray("choices")
                             if (choices != null && choices.length() > 0) {
                                 val choice = choices.getJSONObject(0)
                                 val delta = choice.optJSONObject("delta")
-                                val content = delta?.optString("content", "")
+                                val content = delta?.optString("content")
                                 
                                 if (!content.isNullOrEmpty()) {
-                                    // Emit content chunk
-                                    kotlinx.coroutines.runBlocking {
-                                        emit(StreamResponse.Content(content))
-                                    }
+                                    trySend(StreamResponse.Content(content))
                                 }
                                 
-                                val finishReason = choice.optString("finish_reason", null)
-                                if (finishReason == "stop") {
-                                    kotlinx.coroutines.runBlocking {
-                                        emit(StreamResponse.Done)
-                                    }
+                                val finishReason = choice.optString("finish_reason")
+                                if (finishReason == "stop" || finishReason == "length") {
+                                    Log.d(TAG, "✅ Stream finished: $finishReason")
+                                    trySend(StreamResponse.Done)
+                                    close()
                                 }
                             }
                         } catch (e: Exception) {
-                            Log.e(TAG, "Error parsing stream event", e)
+                            Log.e(TAG, "❌ Error parsing stream event: ${data.take(100)}", e)
+                            trySend(StreamResponse.Error("Error al procesar respuesta: ${e.message}"))
                         }
                     }
                     
@@ -244,24 +261,28 @@ FORMATO DE RESPUESTA SUPREMO:
                             500, 502, 503 -> "🔧 Servidor temporalmente no disponible"
                             else -> "❌ Error de conexión: ${t?.message ?: "Desconocido"}"
                         }
-                        Log.e(TAG, "Stream failed: $errorMsg", t)
-                        kotlinx.coroutines.runBlocking {
-                            emit(StreamResponse.Error(errorMsg))
-                        }
+                        Log.e(TAG, "❌ Stream failed: $errorMsg", t)
+                        trySend(StreamResponse.Error(errorMsg))
+                        close(Exception(errorMsg))
                     }
                     
                     override fun onClosed(eventSource: EventSource) {
-                        Log.d(TAG, "Stream closed")
+                        Log.d(TAG, "🔒 Stream closed")
+                        close()
                     }
                 }
             )
             
-            // Keep flow alive until stream completes
-            kotlinx.coroutines.delay(Long.MAX_VALUE)
+            // Esperar hasta que el canal se cierre
+            awaitClose {
+                Log.d(TAG, "🛑 Closing event source")
+                eventSource.cancel()
+            }
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error in streaming", e)
-            emit(StreamResponse.Error("Error: ${e.message}"))
+            Log.e(TAG, "❌ Error in streaming setup", e)
+            trySend(StreamResponse.Error("Error: ${e.message}"))
+            close(e)
         }
     }.flowOn(Dispatchers.IO)
     
@@ -291,19 +312,22 @@ FORMATO DE RESPUESTA SUPREMO:
                 stream = false
             )
             
+            val requestBodyString = requestBody.toString()
+            Log.d(TAG, "📤 Request body: ${requestBodyString.take(200)}...")
+            
             val request = Request.Builder()
                 .url("$BASE_URL/chat/completions")
-                .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
+                .post(requestBodyString.toRequestBody("application/json".toMediaType()))
                 .addHeader("Authorization", "Bearer $API_KEY")
                 .addHeader("Content-Type", "application/json")
                 .build()
             
             val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: throw Exception("Respuesta vacía del servidor")
             
-            Log.d(TAG, "Response code: ${response.code}")
+            Log.d(TAG, "📥 Response code: ${response.code}")
             
             if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "Sin detalles"
                 val errorMsg = when (response.code) {
                     401 -> "🔑 API Key inválida o expirada"
                     403 -> "🚫 Acceso denegado a la API"
@@ -311,20 +335,55 @@ FORMATO DE RESPUESTA SUPREMO:
                     500, 502, 503 -> "🔧 Servidor temporalmente no disponible"
                     else -> "❌ Error del servidor (${response.code})"
                 }
+                Log.e(TAG, "❌ API Error: $errorMsg - Body: ${errorBody.take(200)}")
                 throw Exception(errorMsg)
             }
             
-            val jsonResponse = JSONObject(responseBody)
+            val responseBody = response.body?.string()
+            if (responseBody.isNullOrBlank()) {
+                throw Exception("Respuesta vacía del servidor")
+            }
+            
+            Log.d(TAG, "📥 Response body: ${responseBody.take(200)}...")
+            
+            val jsonResponse = try {
+                JSONObject(responseBody)
+            } catch (e: org.json.JSONException) {
+                Log.e(TAG, "❌ Invalid JSON response: ${responseBody.take(200)}", e)
+                throw Exception("Respuesta inválida del servidor: ${e.message}")
+            }
+            
+            // Validar estructura de la respuesta
+            if (!jsonResponse.has("choices")) {
+                Log.e(TAG, "❌ Missing 'choices' in response")
+                throw Exception("Respuesta del servidor sin campo 'choices'")
+            }
+            
             val choices = jsonResponse.getJSONArray("choices")
+            if (choices.length() == 0) {
+                Log.e(TAG, "❌ Empty 'choices' array")
+                throw Exception("Respuesta del servidor sin opciones")
+            }
+            
             val firstChoice = choices.getJSONObject(0)
+            if (!firstChoice.has("message")) {
+                Log.e(TAG, "❌ Missing 'message' in first choice")
+                throw Exception("Respuesta del servidor sin mensaje")
+            }
+            
             val message = firstChoice.getJSONObject("message")
+            if (!message.has("content")) {
+                Log.e(TAG, "❌ Missing 'content' in message")
+                throw Exception("Respuesta del servidor sin contenido")
+            }
+            
             val content = message.getString("content")
             
             val usage = jsonResponse.optJSONObject("usage")
             val totalTokens = usage?.optInt("total_tokens", 0) ?: 0
             
             Log.d(TAG, "✅ Response received: ${content.take(100)}...")
-            Log.d(TAG, "Tokens used: $totalTokens")
+            Log.d(TAG, "📊 Tokens used: $totalTokens")
             
             ChatResponse(
                 content = content,
@@ -333,7 +392,7 @@ FORMATO DE RESPUESTA SUPREMO:
             )
             
         } catch (e: Exception) {
-            Log.e(TAG, "Error in chat completion", e)
+            Log.e(TAG, "❌ Error in chat completion", e)
             throw e
         }
     }
