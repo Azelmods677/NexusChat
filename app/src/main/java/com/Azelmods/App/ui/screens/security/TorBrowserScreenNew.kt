@@ -28,6 +28,7 @@ import com.Azelmods.App.data.security.tor.TorService
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
 import com.Azelmods.App.ui.theme.Purple
+import kotlinx.coroutines.launch
 
 /**
  * Tor Browser Screen - Simplified Version
