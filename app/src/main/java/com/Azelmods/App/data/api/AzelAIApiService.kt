@@ -167,6 +167,8 @@ FORMATO DE RESPUESTA SUPREMO:
         frequencyPenalty: Float = FREQUENCY_PENALTY,
         presencePenalty: Float = PRESENCE_PENALTY
     ): Flow<StreamResponse> = kotlinx.coroutines.flow.callbackFlow {
+        var isClosed = false
+        
         try {
             Log.d(TAG, "🚀 Starting streaming chat completion with model: $model")
             
@@ -205,11 +207,16 @@ FORMATO DE RESPUESTA SUPREMO:
                         type: String?,
                         data: String
                     ) {
+                        if (isClosed) return
+                        
                         try {
                             if (data.trim() == "[DONE]") {
                                 Log.d(TAG, "✅ Stream completed")
-                                trySend(StreamResponse.Done)
-                                close()
+                                if (!isClosed) {
+                                    trySend(StreamResponse.Done)
+                                    isClosed = true
+                                    close()
+                                }
                                 return
                             }
                             
@@ -232,20 +239,23 @@ FORMATO DE RESPUESTA SUPREMO:
                                 val delta = choice.optJSONObject("delta")
                                 val content = delta?.optString("content")
                                 
-                                if (!content.isNullOrEmpty()) {
+                                if (!content.isNullOrEmpty() && !isClosed) {
                                     trySend(StreamResponse.Content(content))
                                 }
                                 
                                 val finishReason = choice.optString("finish_reason")
-                                if (finishReason == "stop" || finishReason == "length") {
+                                if ((finishReason == "stop" || finishReason == "length") && !isClosed) {
                                     Log.d(TAG, "✅ Stream finished: $finishReason")
                                     trySend(StreamResponse.Done)
+                                    isClosed = true
                                     close()
                                 }
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "❌ Error parsing stream event: ${data.take(100)}", e)
-                            trySend(StreamResponse.Error("Error al procesar respuesta: ${e.message}"))
+                            if (!isClosed) {
+                                trySend(StreamResponse.Error("Error al procesar respuesta: ${e.message}"))
+                            }
                         }
                     }
                     
@@ -254,6 +264,8 @@ FORMATO DE RESPUESTA SUPREMO:
                         t: Throwable?,
                         response: okhttp3.Response?
                     ) {
+                        if (isClosed) return
+                        
                         val errorMsg = when (response?.code) {
                             401 -> "🔑 API Key inválida o expirada"
                             403 -> "🚫 Acceso denegado a la API"
@@ -262,13 +274,19 @@ FORMATO DE RESPUESTA SUPREMO:
                             else -> "❌ Error de conexión: ${t?.message ?: "Desconocido"}"
                         }
                         Log.e(TAG, "❌ Stream failed: $errorMsg", t)
-                        trySend(StreamResponse.Error(errorMsg))
-                        close(Exception(errorMsg))
+                        if (!isClosed) {
+                            trySend(StreamResponse.Error(errorMsg))
+                            isClosed = true
+                            close(Exception(errorMsg))
+                        }
                     }
                     
                     override fun onClosed(eventSource: EventSource) {
                         Log.d(TAG, "🔒 Stream closed")
-                        close()
+                        if (!isClosed) {
+                            isClosed = true
+                            close()
+                        }
                     }
                 }
             )
@@ -276,13 +294,17 @@ FORMATO DE RESPUESTA SUPREMO:
             // Esperar hasta que el canal se cierre
             awaitClose {
                 Log.d(TAG, "🛑 Closing event source")
+                isClosed = true
                 eventSource.cancel()
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error in streaming setup", e)
-            trySend(StreamResponse.Error("Error: ${e.message}"))
-            close(e)
+            if (!isClosed) {
+                trySend(StreamResponse.Error("Error: ${e.message}"))
+                isClosed = true
+                close(e)
+            }
         }
     }.flowOn(Dispatchers.IO)
     
@@ -399,6 +421,7 @@ FORMATO DE RESPUESTA SUPREMO:
     
     /**
      * 🔧 CONSTRUIR REQUEST BODY
+     * IMPORTANTE: JSONObject en Android NO soporta Float, solo Double
      */
     private fun buildRequestBody(
         model: String,
@@ -426,16 +449,42 @@ FORMATO DE RESPUESTA SUPREMO:
             })
         }
         
-        return JSONObject().apply {
+        return buildSafeJSONObject {
             put("model", model)
             put("messages", messagesArray)
-            put("temperature", temperature)
+            putFloat("temperature", temperature)
             put("max_tokens", maxTokens)
-            put("top_p", topP)
-            put("frequency_penalty", frequencyPenalty)
-            put("presence_penalty", presencePenalty)
+            putFloat("top_p", topP)
+            putFloat("frequency_penalty", frequencyPenalty)
+            putFloat("presence_penalty", presencePenalty)
             put("stream", stream)
         }
+    }
+    
+    /**
+     * 🛡️ HELPER: Construir JSONObject de forma segura
+     * Evita el error NoSuchMethodError al usar Float
+     */
+    private fun buildSafeJSONObject(block: SafeJSONBuilder.() -> Unit): JSONObject {
+        return SafeJSONBuilder().apply(block).build()
+    }
+    
+    /**
+     * 🛡️ BUILDER: JSONObject seguro para Android
+     * Convierte automáticamente Float a Double
+     */
+    private class SafeJSONBuilder {
+        private val jsonObject = JSONObject()
+        
+        fun put(key: String, value: Any?) {
+            jsonObject.put(key, value)
+        }
+        
+        fun putFloat(key: String, value: Float) {
+            jsonObject.put(key, value.toDouble())
+        }
+        
+        fun build(): JSONObject = jsonObject
     }
     
     /**
