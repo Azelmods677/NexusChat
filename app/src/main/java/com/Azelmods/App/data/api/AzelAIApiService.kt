@@ -1,5 +1,4 @@
 package com.Azelmods.App.data.api
-
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -255,6 +254,8 @@ FORMATO DE RESPUESTA SUPREMO:
                             Log.e(TAG, "❌ Error parsing stream event: ${data.take(100)}", e)
                             if (!isClosed) {
                                 trySend(StreamResponse.Error("Error al procesar respuesta: ${e.message}"))
+                                isClosed = true
+                                close(Exception("Error parsing stream event: ${e.message}"))
                             }
                         }
                     }
