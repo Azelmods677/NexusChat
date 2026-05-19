@@ -39,10 +39,32 @@ class NewConversationViewModel @Inject constructor(
     val state: StateFlow<NewConversationState> = _state.asStateFlow()
 
     init {
-        loadContacts()
+        // ✅ VERIFICAR AUTENTICACIÓN ANTES DE CARGAR
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            android.util.Log.d("NewConversation", "User authenticated: ${currentUser.uid}")
+            loadContacts()
+        } else {
+            android.util.Log.e("NewConversation", "User NOT authenticated - cannot load contacts")
+            _state.value = _state.value.copy(
+                isLoading = false,
+                error = "Please sign in to view contacts"
+            )
+        }
     }
 
     private fun loadContacts() {
+        // ✅ DOBLE VERIFICACIÓN DE AUTENTICACIÓN
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser == null) {
+            android.util.Log.e("NewConversation", "Cannot load contacts: user not authenticated")
+            _state.value = _state.value.copy(
+                isLoading = false,
+                error = "Authentication required"
+            )
+            return
+        }
+        
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
             databaseRepository.getAllUsers().collect { result ->
