@@ -77,18 +77,38 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    // ── Action stubs ──────────────────────────────────────────────────────────
-
-    fun togglePin(chatId: String) { /* TODO: persist pin state in DataStore   */
+    fun togglePin(chatId: String) {
+        val chat = _state.value.chats.find { it.chatId == chatId } ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                databaseRepository.setChatBooleanField(chatId, "isPinned", !chat.isPinned)
+            }
+        }
     }
 
-    fun toggleMute(chatId: String) { /* TODO: persist mute state in DataStore  */
+    fun toggleMute(chatId: String) {
+        val chat = _state.value.chats.find { it.chatId == chatId } ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                databaseRepository.setChatBooleanField(chatId, "isMuted", !chat.isMuted)
+            }
+        }
     }
 
-    fun archiveChat(chatId: String) { /* TODO: mark chat as archived in Firebase */
+    fun archiveChat(chatId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                databaseRepository.setChatBooleanField(chatId, "isArchived", true)
+            }
+        }
     }
 
-    fun deleteChat(chatId: String) { /* TODO: delete chat node from Firebase    */
+    fun deleteChat(chatId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                databaseRepository.deleteChat(chatId)
+            }
+        }
     }
 
     // ── Core logic ────────────────────────────────────────────────────────────
@@ -161,12 +181,16 @@ class HomeViewModel @Inject constructor(
     ): Chat {
         val chatId = data["chatId"] as? String ?: ""
 
-        // Firebase may store members as  List<String>  or  Map<uid, Boolean>.
-        val members: List<String> = when (val m = data["members"]) {
-            is List<*> -> m.filterIsInstance<String>()
-            is Map<*, *> -> m.keys.filterIsInstance<String>()
+        val members: List<String> = when {
+            data["members"] is List<*> -> (data["members"] as List<*>).filterIsInstance<String>()
+            data["members"] is Map<*, *> -> (data["members"] as Map<*, *>).keys.filterIsInstance<String>()
+            data["participants"] is List<*> -> (data["participants"] as List<*>).filterIsInstance<String>()
             else -> emptyList()
         }
+
+        val isPinned = data["isPinned"] as? Boolean ?: false
+        val isMuted = data["isMuted"] as? Boolean ?: false
+        val isArchived = data["isArchived"] as? Boolean ?: false
 
         val chatType = if ((data["type"] as? String) == "group") {
             ChatType.GROUP
@@ -218,7 +242,10 @@ class HomeViewModel @Inject constructor(
             lastMessageSenderId = data["lastMessageSenderId"] as? String ?: "",
             unreadCount = emptyMap(),
             isTyping = emptyMap(),
-            chatType = chatType
+            chatType = chatType,
+            isPinned = isPinned,
+            isMuted = isMuted,
+            isArchived = isArchived
         )
     }
 
@@ -227,7 +254,7 @@ class HomeViewModel @Inject constructor(
         query: String,
         filter: ChatFilter
     ): List<Chat> {
-        var result = chats
+        var result = chats.filter { !it.isArchived }
 
         // Text search — match against participant display names or last message.
         if (query.isNotBlank()) {
@@ -249,7 +276,10 @@ class HomeViewModel @Inject constructor(
             ChatFilter.GROUPS -> result.filter { it.chatType == ChatType.GROUP }
         }
 
-        return result
+        return result.sortedWith(
+            compareByDescending<Chat> { it.isPinned }
+                .thenByDescending { it.lastMessageTime }
+        )
     }
 
     override fun onCleared() {

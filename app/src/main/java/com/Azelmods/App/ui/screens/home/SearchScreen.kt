@@ -21,14 +21,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
+import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
+import com.google.firebase.auth.FirebaseAuth
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed class SearchResult {
     data class ChatResult(
         val chatId: String,
+        val contactId: String,
         val name: String,
         val lastMessage: String,
         val photoUrl: String? = null
@@ -52,24 +66,25 @@ sealed class SearchResult {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: SearchViewModel = hiltViewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    var isSearching by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(0) }
     val focusRequester = remember { FocusRequester() }
-    
-    // TODO: Replace with actual search results from ViewModel
-    val searchResults = remember { mutableStateListOf<SearchResult>() }
+    val isSearching by viewModel.isSearching.collectAsState()
+    val searchResults by viewModel.results.collectAsState()
     
     LaunchedEffect(searchQuery) {
-        if (searchQuery.length >= 2) {
-            isSearching = true
-            delay(300) // Debounce
-            // TODO: Perform actual search
-            isSearching = false
-        } else {
-            searchResults.clear()
+        viewModel.search(searchQuery)
+    }
+    
+    val filteredResults = remember(searchResults, selectedTab) {
+        when (selectedTab) {
+            1 -> searchResults.filterIsInstance<SearchResult.ChatResult>()
+            2 -> searchResults.filterIsInstance<SearchResult.ContactResult>()
+            3 -> searchResults.filterIsInstance<SearchResult.MessageResult>()
+            else -> searchResults
         }
     }
     
@@ -187,7 +202,7 @@ fun SearchScreen(
                         CircularProgressIndicator(color = Purple)
                     }
                 }
-                searchResults.isEmpty() -> {
+                filteredResults.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -219,13 +234,13 @@ fun SearchScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(searchResults) { result ->
+                        items(filteredResults) { result ->
                             when (result) {
                                 is SearchResult.ChatResult -> {
                                     ChatSearchResultItem(
                                         result = result,
                                         onClick = {
-                                            navController.navigate(Screen.Chat.createRoute(result.chatId))
+                                            navController.navigate(Screen.Chat.createRoute(result.contactId))
                                         }
                                     )
                                 }
@@ -387,6 +402,88 @@ fun MessageSearchResultItem(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
+        }
+    }
+}
+
+@HiltViewModel
+class SearchViewModel @Inject constructor(
+    private val repository: RealtimeDatabaseRepository
+) : ViewModel() {
+
+    private val _results = MutableStateFlow<List<SearchResult>>(emptyList())
+    val results: StateFlow<List<SearchResult>> = _results.asStateFlow()
+
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    private var searchJob: Job? = null
+
+    fun search(query: String) {
+        searchJob?.cancel()
+        if (query.length < 2) {
+            _results.value = emptyList()
+            _isSearching.value = false
+            return
+        }
+        searchJob = viewModelScope.launch {
+            _isSearching.value = true
+            delay(300)
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+            val q = query.trim().lowercase()
+            val found = mutableListOf<SearchResult>()
+            try {
+                val chats = repository.getUserChats(userId).first()
+                chats.forEach { data ->
+                    val chatId = data["chatId"] as? String ?: return@forEach
+                    val members = when {
+                        data["members"] is List<*> ->
+                            (data["members"] as List<*>).filterIsInstance<String>()
+                        data["participants"] is List<*> ->
+                            (data["participants"] as List<*>).filterIsInstance<String>()
+                        else -> emptyList()
+                    }
+                    val otherId = members.firstOrNull { it != userId } ?: return@forEach
+                    val other = repository.getUserById(otherId)
+                    val name = (other?.get("displayName") as? String)
+                        ?: (other?.get("username") as? String) ?: ""
+                    val lastMessage = data["lastMessage"] as? String ?: ""
+                    if (name.lowercase().contains(q) || lastMessage.lowercase().contains(q)) {
+                        found.add(
+                            SearchResult.ChatResult(
+                                chatId = chatId,
+                                contactId = otherId,
+                                name = name.ifBlank { "Chat" },
+                                lastMessage = lastMessage,
+                                photoUrl = other?.get("photoUrl") as? String
+                            )
+                        )
+                    }
+                }
+                repository.getAllUsers().first().getOrNull()?.forEach { user ->
+                    val uid = user["uid"] as? String ?: return@forEach
+                    if (uid == userId) return@forEach
+                    val name = (user["displayName"] as? String) ?: (user["name"] as? String) ?: ""
+                    val username = user["username"] as? String ?: ""
+                    if (name.lowercase().contains(q) || username.lowercase().contains(q)) {
+                        if (found.none { it is SearchResult.ContactResult && it.userId == uid }) {
+                            found.add(
+                                SearchResult.ContactResult(
+                                    userId = uid,
+                                    name = name.ifBlank { username },
+                                    username = username,
+                                    photoUrl = user["photoUrl"] as? String
+                                )
+                            )
+                        }
+                    }
+                }
+                _results.value = found
+            } catch (_: Exception) {
+                _results.value = emptyList()
+            } finally {
+                _isSearching.value = false
+            }
         }
     }
 }

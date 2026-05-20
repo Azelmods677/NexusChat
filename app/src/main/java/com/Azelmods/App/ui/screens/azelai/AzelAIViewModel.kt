@@ -7,12 +7,13 @@ import com.Azelmods.App.data.api.AzelAIApiService
 import com.Azelmods.App.data.model.AIMessage
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * 🚀 AZEL AI VIEW MODEL - ARQUITECTURA MODERNA CON STREAMING
+ * 🚀 AZEL AI VIEW MODEL 
  */
 data class AzelAIState(
     val messages: List<AIMessage> = emptyList(),
@@ -28,14 +29,18 @@ data class AzelAIState(
 )
 
 @HiltViewModel
-class AzelAIViewModel @Inject constructor() : ViewModel() {
+class AzelAIViewModel @Inject constructor(
+    private val repository: AzelAIRepository
+) : ViewModel() {
     
     companion object {
         private const val TAG = "AzelAIViewModel"
     }
     
-    private val repository = AzelAIRepository()
-    private val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private fun currentUserId(): String =
+        FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    
+    private var messagesCollectJob: Job? = null
     
     private val _state = MutableStateFlow(AzelAIState())
     val state: StateFlow<AzelAIState> = _state.asStateFlow()
@@ -44,13 +49,11 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
     val chatHistory: StateFlow<List<ChatHistoryItem>> = _chatHistory.asStateFlow()
     
     init {
-        if (userId.isNotEmpty()) {
-            Log.d(TAG, "🚀 Initializing AzelAIViewModel for user: $userId")
+        if (currentUserId().isNotEmpty()) {
+            Log.d(TAG, "🚀 Initializing AzelAIViewModel for user: ${currentUserId()}")
             loadAvailableModels()
             startNewChat()
-            // Comentado temporalmente para evitar crash de Firebase
-            // loadChatHistory()
-            // loadStats()
+            loadChatHistory()
             checkApiHealth()
         } else {
             Log.e(TAG, "❌ User not authenticated")
@@ -94,9 +97,11 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
      */
     private fun loadMessages() {
         val currentChatId = _state.value.currentChatId
-        if (currentChatId.isEmpty()) return
+        val userId = currentUserId()
+        if (currentChatId.isEmpty() || userId.isEmpty()) return
         
-        viewModelScope.launch {
+        messagesCollectJob?.cancel()
+        messagesCollectJob = viewModelScope.launch {
             repository.getMessageHistory("$userId/$currentChatId")
                 .catch { e ->
                     Log.e(TAG, "❌ Error loading messages", e)
@@ -113,6 +118,8 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
      * 📜 CARGAR HISTORIAL DE CHATS
      */
     private fun loadChatHistory() {
+        val userId = currentUserId()
+        if (userId.isEmpty()) return
         viewModelScope.launch {
             try {
                 val chats = repository.getChatHistory(userId)
@@ -128,6 +135,8 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
      * 📊 CARGAR ESTADÍSTICAS
      */
     private fun loadStats() {
+        val userId = currentUserId()
+        if (userId.isEmpty()) return
         viewModelScope.launch {
             try {
                 val stats = repository.getChatStats(userId)
@@ -143,6 +152,7 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
      * 🆕 INICIAR NUEVO CHAT
      */
     fun startNewChat() {
+        messagesCollectJob?.cancel()
         val newChatId = "chat_${System.currentTimeMillis()}"
         _state.update { 
             it.copy(
@@ -160,6 +170,7 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
      * 📂 CARGAR CHAT ESPECÍFICO
      */
     fun loadChat(chatId: String) {
+        messagesCollectJob?.cancel()
         _state.update { 
             it.copy(
                 currentChatId = chatId,
@@ -193,10 +204,12 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
         }
         
         viewModelScope.launch {
-            _state.update { it.copy(isThinking = true, isStreaming = useStreaming, streamingContent = "", error = null) }
-            Log.d(TAG, "💬 Sending message (streaming: $useStreaming): ${content.take(50)}...")
-            
             try {
+                val userId = currentUserId()
+                if (userId.isEmpty()) {
+                    throw Exception("Usuario no autenticado")
+                }
+                
                 val currentChatId = _state.value.currentChatId
                 val chatPath = "$userId/$currentChatId"
                 
@@ -205,67 +218,125 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
                     updateChatTitle(content)
                 }
                 
-                // Guardar mensaje del usuario
+                // Agregar mensaje del usuario a la UI INMEDIATAMENTE
                 val userMsg = AIMessage(
+                    id = "user_${System.currentTimeMillis()}",
                     content = content,
                     role = "user",
                     timestamp = System.currentTimeMillis()
                 )
-                repository.saveMessage(chatPath, userMsg)
-                Log.d(TAG, "✅ User message saved")
+                
+                // Actualizar UI con mensaje del usuario
+                val currentMessages = _state.value.messages.toMutableList()
+                currentMessages.add(userMsg)
+                _state.update { it.copy(messages = currentMessages) }
+                
+                // IMPORTANTE: Activar isThinking DESPUÉS de agregar el mensaje del usuario
+                // para que el scroll automático funcione y el usuario vea el indicador
+                kotlinx.coroutines.delay(100) // Pequeño delay para que la UI se actualice
+                _state.update { it.copy(isThinking = true, isStreaming = useStreaming, streamingContent = "", error = null) }
+                Log.d(TAG, "💬 Sending message (streaming: $useStreaming): ${content.take(50)}...")
+                
+                // Intentar guardar en Firebase (opcional)
+                try {
+                    repository.saveMessage(chatPath, userMsg)
+                    Log.d(TAG, "✅ User message saved to Firebase")
+                } catch (e: Exception) {
+                    Log.e(TAG, "⚠️ Failed to save user message to Firebase: ${e.message}")
+                    // Continuar sin guardar en Firebase
+                }
                 
                 val history = _state.value.messages
                 val selectedModel = _state.value.selectedModel
                 
+                Log.d(TAG, "🚀 Calling API with model: $selectedModel")
+                
                 if (useStreaming) {
-                    // MODO STREAMING
                     var fullResponse = ""
                     repository.sendMessageStream(content, history, selectedModel)
                         .collect { chunk ->
                             if (chunk.isNotEmpty()) {
                                 fullResponse += chunk
                                 _state.update { it.copy(streamingContent = fullResponse) }
+                                Log.d(TAG, "📥 Streaming chunk received: ${chunk.take(50)}...")
                             }
                         }
                     
-                    // Guardar respuesta completa
+                    Log.d(TAG, "✅ Streaming complete. Total length: ${fullResponse.length}")
+                    
                     if (fullResponse.isNotEmpty()) {
                         val aiMsg = AIMessage(
+                            id = "ai_${System.currentTimeMillis()}",
                             content = fullResponse,
                             role = "assistant",
                             timestamp = System.currentTimeMillis(),
-                            tokens = fullResponse.split(" ").size, // Estimación aproximada
+                            tokens = fullResponse.split(" ").size,
                             model = selectedModel
                         )
-                        repository.saveMessage(chatPath, aiMsg)
-                        Log.d(TAG, "✅ AI streaming response saved")
+                        
+                        // Actualizar UI con respuesta de la IA
+                        val updatedMessages = _state.value.messages.toMutableList()
+                        updatedMessages.add(aiMsg)
+                        _state.update { it.copy(messages = updatedMessages) }
+                        
+                        // Intentar guardar en Firebase (opcional)
+                        try {
+                            repository.saveMessage(chatPath, aiMsg)
+                            Log.d(TAG, "✅ AI streaming response saved to Firebase")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "⚠️ Failed to save AI response to Firebase: ${e.message}")
+                            // Continuar sin guardar en Firebase
+                        }
+                    } else {
+                        Log.w(TAG, "⚠️ Empty response from API")
+                        throw Exception("La API no devolvió ninguna respuesta")
                     }
                 } else {
                     // MODO NO-STREAMING
+                    Log.d(TAG, "📡 Calling non-streaming API...")
                     val (aiResponse, tokens) = repository.sendMessage(content, history, selectedModel).getOrThrow()
+                    Log.d(TAG, "✅ API response received: ${aiResponse.take(100)}... (tokens: $tokens)")
                     
                     val aiMsg = AIMessage(
+                        id = "ai_${System.currentTimeMillis()}",
                         content = aiResponse,
                         role = "assistant",
                         timestamp = System.currentTimeMillis(),
                         tokens = tokens,
                         model = selectedModel
                     )
-                    repository.saveMessage(chatPath, aiMsg)
-                    Log.d(TAG, "✅ AI response saved (tokens: $tokens)")
+                    
+                    // Actualizar UI con respuesta de la IA
+                    val updatedMessages = _state.value.messages.toMutableList()
+                    updatedMessages.add(aiMsg)
+                    _state.update { it.copy(messages = updatedMessages) }
+                    
+                    // Intentar guardar en Firebase (opcional)
+                    try {
+                        repository.saveMessage(chatPath, aiMsg)
+                        Log.d(TAG, "✅ AI response saved to Firebase (tokens: $tokens)")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "⚠️ Failed to save AI response to Firebase: ${e.message}")
+                        // Continuar sin guardar en Firebase
+                    }
                 }
                 
-                // Actualizar historial de chats
-                repository.updateChatHistory(userId, currentChatId, _state.value.currentChatTitle, content)
-                loadChatHistory()
-                loadStats()
+                // Actualizar historial de chats (con try-catch)
+                try {
+                    repository.updateChatHistory(userId, currentChatId, _state.value.currentChatTitle, content)
+                } catch (e: Exception) {
+                    Log.e(TAG, "⚠️ Failed to update chat history: ${e.message}")
+                    // Continuar sin actualizar historial
+                }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ Error sending message", e)
                 val errorMessage = when {
+                    e.message?.contains("no autenticado", ignoreCase = true) == true -> 
+                        "Debes iniciar sesión para usar la IA"
                     e is java.net.UnknownHostException -> "Sin conexión a internet"
                     e is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
-                    e is java.net.ConnectException -> "No se pudo conectar a Ollama Cloud"
+                    e is java.net.ConnectException -> "No se pudo conectar al servidor"
                     e.message?.contains("401") == true -> "API Key inválida o expirada"
                     e.message?.contains("403") == true -> "Acceso denegado"
                     e.message?.contains("429") == true -> "Límite de solicitudes excedido"
@@ -276,16 +347,21 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
                 
                 _state.update { it.copy(error = errorMessage) }
                 
-                // Guardar mensaje de error
+                // Agregar mensaje de error a la UI
                 val errorMsg = AIMessage(
+                    id = "error_${System.currentTimeMillis()}",
                     content = "❌ $errorMessage\n\nPor favor intenta de nuevo.",
                     role = "assistant",
                     timestamp = System.currentTimeMillis(),
                     error = true
                 )
-                repository.saveMessage("$userId/${_state.value.currentChatId}", errorMsg)
+                
+                val updatedMessages = _state.value.messages.toMutableList()
+                updatedMessages.add(errorMsg)
+                _state.update { it.copy(messages = updatedMessages) }
             } finally {
                 _state.update { it.copy(isThinking = false, isStreaming = false, streamingContent = "") }
+                Log.d(TAG, "🏁 Message sending complete")
             }
         }
     }
@@ -294,9 +370,12 @@ class AzelAIViewModel @Inject constructor() : ViewModel() {
      * 🗑️ LIMPIAR HISTORIAL
      */
     fun clearHistory() {
+        val userId = currentUserId()
+        if (userId.isEmpty()) return
         viewModelScope.launch {
             try {
                 Log.d(TAG, "🗑️ Clearing all history")
+                messagesCollectJob?.cancel()
                 repository.clearHistory(userId)
                 _state.update { it.copy(messages = emptyList(), stats = emptyMap()) }
                 _chatHistory.update { emptyList() }

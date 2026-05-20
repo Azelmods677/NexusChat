@@ -2,6 +2,8 @@
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,7 @@ import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -215,6 +219,18 @@ fun HomeScreenRedesigned(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
+                        // ═══ DEMO CHAT - ALWAYS FIRST ═══
+                        item {
+                            DemoChatCard(
+                                onClick = {
+                                    try {
+                                        navController.navigate("chat/demo_azel_assistant")
+                                    } catch (e: Exception) { }
+                                },
+                                themeColor = themeColor
+                            )
+                        }
+                        
                         items(
                             items = state.filteredChats,
                             key = { it.chatId }
@@ -266,24 +282,36 @@ fun HomeScreenRedesigned(
             ) {
                 ChatActionItem(
                     icon = Icons.Default.PushPin,
-                    text = "Pin Chat",
-                    onClick = { showBottomSheet = false }
+                    text = if (selectedChat!!.isPinned) "Unpin Chat" else "Pin Chat",
+                    onClick = {
+                        viewModel.togglePin(selectedChat!!.chatId)
+                        showBottomSheet = false
+                    }
                 )
                 ChatActionItem(
                     icon = Icons.AutoMirrored.Filled.VolumeOff,
-                    text = "Mute",
-                    onClick = { showBottomSheet = false }
+                    text = if (selectedChat!!.isMuted) "Unmute" else "Mute",
+                    onClick = {
+                        viewModel.toggleMute(selectedChat!!.chatId)
+                        showBottomSheet = false
+                    }
                 )
                 ChatActionItem(
                     icon = Icons.Default.Archive,
                     text = "Archive",
-                    onClick = { showBottomSheet = false }
+                    onClick = {
+                        viewModel.archiveChat(selectedChat!!.chatId)
+                        showBottomSheet = false
+                    }
                 )
                 ChatActionItem(
                     icon = Icons.Default.Delete,
                     text = "Delete",
                     textColor = Color(0xFFEF4444),
-                    onClick = { showBottomSheet = false }
+                    onClick = {
+                        viewModel.deleteChat(selectedChat!!.chatId)
+                        showBottomSheet = false
+                    }
                 )
             }
         }
@@ -682,6 +710,145 @@ private fun formatTimestamp(timestamp: Long): String {
         else -> {
             val date = Date(timestamp)
             SimpleDateFormat("MM/dd", Locale.getDefault()).format(date)
+        }
+    }
+}
+
+@Composable
+fun DemoChatCard(
+    onClick: () -> Unit,
+    themeColor: Color = MaterialTheme.colorScheme.primary
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "demo_card")
+    
+    // Animated border glow
+    val borderGlow by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "border_glow"
+    )
+    
+    // Rotating gradient
+    val gradientAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "gradient_angle"
+    )
+    
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Animated glow border
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+        ) {
+            val angleRad = Math.toRadians(gradientAngle.toDouble())
+            
+            drawRoundRect(
+                brush = Brush.sweepGradient(
+                    listOf(
+                        Color(0xFF7B5CFA).copy(alpha = borderGlow),
+                        Color(0xFF00D4FF).copy(alpha = borderGlow * 0.6f),
+                        Color(0xFFFC5C7D).copy(alpha = borderGlow),
+                        Color(0xFF7B5CFA).copy(alpha = borderGlow)
+                    ),
+                    center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx())
+            )
+        }
+        
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(80.dp)
+                .safeClickable(onClick = onClick),
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF1A1A2E),
+            shadowElevation = 8.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Robot avatar with gradient
+                Box(
+                    modifier = Modifier.size(54.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        Color(0xFF7B5CFA),
+                                        Color(0xFF00D4FF)
+                                    )
+                                ),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "🤖",
+                            fontSize = 28.sp
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.width(14.dp))
+                
+                // Chat info
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        "Demo Chat",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(Modifier.height(4.dp))
+                    
+                    Text(
+                        "Prueba el chat sin contactos",
+                        color = Color.Gray,
+                        fontSize = 14.sp
+                    )
+                }
+                
+                // DEMO badge
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color(0xFF00E676).copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, Color(0xFF00E676))
+                ) {
+                    Text(
+                        "DEMO",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        color = Color(0xFF00E676),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

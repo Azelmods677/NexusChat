@@ -171,7 +171,13 @@ class RealtimeDatabaseRepository @Inject constructor() {
                 snapshot.children.forEach { chatSnapshot ->
                     val chatData = chatSnapshot.value as? Map<String, Any>
                     if (chatData != null) {
-                        val members = chatData["members"] as? List<String> ?: emptyList()
+                        val members = when {
+                            chatData["members"] is List<*> ->
+                                (chatData["members"] as List<*>).filterIsInstance<String>()
+                            chatData["participants"] is List<*> ->
+                                (chatData["participants"] as List<*>).filterIsInstance<String>()
+                            else -> emptyList()
+                        }
                         if (members.contains(userId)) {
                             chats.add(chatData.plus("chatId" to chatSnapshot.key!!))
                         }
@@ -190,6 +196,38 @@ class RealtimeDatabaseRepository @Inject constructor() {
         awaitClose {
             database.child("chats").removeEventListener(listener)
         }
+    }
+
+    suspend fun setChatBooleanField(chatId: String, field: String, value: Boolean) {
+        database.child("chats").child(chatId).child(field).setValue(value).await()
+    }
+
+    suspend fun deleteChat(chatId: String) {
+        database.child("chats").child(chatId).removeValue().await()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun getUserCallHistory(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val calls = mutableListOf<Map<String, Any>>()
+                snapshot.children.forEach { callSnapshot ->
+                    val callData = callSnapshot.value as? Map<String, Any> ?: return@forEach
+                    val callerId = callData["callerId"] as? String ?: ""
+                    val receiverId = callData["receiverId"] as? String ?: ""
+                    if (callerId == userId || receiverId == userId) {
+                        calls.add(callData.plus("callId" to (callSnapshot.key ?: "")))
+                    }
+                }
+                trySend(calls.sortedByDescending { it["startTime"] as? Long ?: 0L })
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        database.child("calls").addValueEventListener(listener)
+        awaitClose { database.child("calls").removeEventListener(listener) }
     }
 
     /**

@@ -30,12 +30,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.Azelmods.App.data.model.AIMessage
 import kotlinx.coroutines.delay
 import java.util.*
 
-// ── Paleta Claude Premium (Onyx & Slate) ───────────────────
+// ── Paleta  Premium (Onyx & Slate) ───────────────────
 private val BgDark = Color(0xFF0D0F12)       
 private val SurfaceDark = Color(0xFF1A1D21)  
 private val AzelPurple = Color(0xFFAB7FEF)   
@@ -49,7 +48,7 @@ private val UserBubble = Color(0xFF2D3748)
 @Composable
 fun AzelAIScreen(
     onBack: () -> Unit,
-    viewModel: AzelAIViewModel = viewModel()
+    viewModel: AzelAIViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     var inputText by remember { mutableStateOf("") }
@@ -84,9 +83,10 @@ fun AzelAIScreen(
                 isConnected = true // SIEMPRE CONECTADO
             )
         },
-        containerColor = BgDark
+        containerColor = BgDark,
+        contentWindowInsets = WindowInsets(0) // Edge-to-Edge: control manual de insets
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).navigationBarsPadding()) {
             Row(modifier = Modifier.fillMaxSize()) {
                 AnimatedVisibility(
                     visible = showSidebar,
@@ -123,7 +123,18 @@ fun AzelAIScreen(
                                 AzelAIMessageBubble(message = message)
                             }
                             
-                            if (state.isThinking) {
+                            if (state.isStreaming && state.streamingContent.isNotEmpty()) {
+                                item {
+                                    AzelAIMessageBubble(
+                                        message = AIMessage(
+                                            id = "streaming",
+                                            content = state.streamingContent,
+                                            role = "assistant",
+                                            timestamp = System.currentTimeMillis()
+                                        )
+                                    )
+                                }
+                            } else if (state.isThinking) {
                                 item { AzelAIThinkingBubble() }
                             }
                         }

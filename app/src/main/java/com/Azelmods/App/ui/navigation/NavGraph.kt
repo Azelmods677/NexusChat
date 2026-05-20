@@ -285,13 +285,6 @@ fun NavGraph(
             AiFeaturesScreen(navController = navController)
         }
         
-        // Azel IA - Advanced AI chat
-        composable("azel_ai") {
-            com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-        
         // Photo Viewer - Full screen image viewer with zoom
         composable(
             route = "photo_viewer?url={url}",
@@ -354,14 +347,6 @@ fun NavGraph(
             com.Azelmods.App.ui.screens.security.TorBrowserScreenNew(
                 navController = navController,
                 torService = torService
-            )
-        }
-        
-       
-        // Azel IA Chat
-        composable("ai_agent") {
-            com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
-                onBack = { navController.popBackStack() }
             )
         }
         
