@@ -1,6 +1,7 @@
 package com.Azelmods.App.ui.screens.security
 
 import android.annotation.SuppressLint
+import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.compose.foundation.layout.*
@@ -24,61 +25,187 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
-import com.Azelmods.App.data.security.tor.TorService
+import androidx.webkit.ProxyConfig
+import androidx.webkit.ProxyController
+import androidx.webkit.WebViewFeature
+import com.Azelmods.App.data.security.tor.OrbotDetector
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.util.concurrent.Executors
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
 import com.Azelmods.App.ui.theme.Purple
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private const val TAG = "TorBrowser"
+
+/** Tiempo máximo de espera para conectar al proxy de Orbot */
+private const val PROXY_CONNECT_TIMEOUT_MS = 2000
+
+/** URL inicial por defecto (NO depende de Tor) */
+private const val DEFAULT_HOMEPAGE = "https://duckduckgo.com"
 
 /**
- * Tor Browser Screen - Simplified Version
- * 
- * Features:
- * - Direct WebView with Tor-like privacy settings
- * - DuckDuckGo as default search engine
- * - Privacy-focused browsing
- * - No external Tor dependency (simplified for stability)
+ * 🌐 Tor Browser — Navegador privado con soporte opcional de Tor vía Orbot
+ *
+ * ## Cambios críticos (fix 404):
+ *
+ * ### 1. El navegador NO depende de Tor para funcionar
+ * Si Orbot no está activo, el WebView carga páginas directamente (sin proxy).
+ * Solo cuando Orbot está CONFIRMADO funcionando se activa el proxy Tor.
+ *
+ * ### 2. Proxy configurado ANTES de cargar URLs
+ * Se eliminó la race condition: el WebView inicia con "about:blank",
+ * se configura el proxy si está disponible, y SOLO ENTONCES se carga la URL inicial.
+ *
+ * ### 3. Manejo completo de errores HTTP
+ * - `onReceivedHttpError` captura errores 404, 500, etc. y muestra página de error.
+ * - `onReceivedError` captura errores de red y muestra página de error.
+ * - Las URLs .onion tienen su propio mensaje de ayuda cuando Tor no está activo.
+ *
+ * ### 4. Verificación del proxy antes de aplicarlo
+ * Se verifica que el puerto HTTP de Orbot (127.0.0.1:8118) esté realmente
+ * aceptando conexiones antes de configurarlo via ProxyController.
+ *
+ * @param navController Controlador de navegación para retroceder
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TorBrowserScreenNew(
-    navController: NavController,
-    torService: TorService
+    navController: NavController
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    
-    var currentUrl by remember { mutableStateOf("https://duckduckgo.com") }
+
+    var currentUrl by remember { mutableStateOf(DEFAULT_HOMEPAGE) }
     var urlInput by remember { mutableStateOf("") }
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var webView by remember { mutableStateOf<WebView?>(null) }
-    var browserReady by remember { mutableStateOf(true) } // Siempre listo
+    var orbotStatus by remember { mutableStateOf("") }
+    var proxyEnabled by remember { mutableStateOf(false) }
+    var browsingMode by remember { mutableStateOf("directo") } // "directo" | "tor"
+    var isWebViewReady by remember { mutableStateOf(false) }
     
-    LaunchedEffect(Unit) {
-        snackbarHostState.showSnackbar(
-            message = "✓ Navegador privado listo - Navegación anónima activada",
-            duration = SnackbarDuration.Short
-        )
+    // ── PASO 1: Configurar proxy de Orbot ANTES de cargar URLs ──
+    LaunchedEffect(isWebViewReady) {
+        if (!isWebViewReady) return@LaunchedEffect
+        
+        try {
+            // Pequeño delay para asegurar que el WebView esté completamente listo
+            kotlinx.coroutines.delay(300)
+            
+            withContext(Dispatchers.IO) {
+                try {
+                    val hasSocks = OrbotDetector.isSocksProxyAvailable()
+                    val hasHttp = OrbotDetector.isHttpProxyAvailable()
+                    val torAvailable = hasSocks || hasHttp
+
+                    if (torAvailable && hasHttp) {
+                        // Verificar que el puerto HTTP (8118) realmente acepte conexiones
+                        val proxyWorks = verifyProxyPort(ORBOT_HTTP_HOST, ORBOT_HTTP_PORT)
+                        if (proxyWorks) {
+                            val ok = setupOrbotProxy()
+                            if (ok) {
+                                proxyEnabled = true
+                                browsingMode = "tor"
+                                Log.d(TAG, "✓ Proxy Tor activado: $ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT")
+                            }
+                        }
+                    }
+
+                    orbotStatus = OrbotDetector.getStatus(context)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error detectando Orbot", e)
+                    orbotStatus = "Error al detectar Orbot"
+                }
+            }
+
+            // Mostrar snackbar con el estado
+            try {
+                when {
+                    proxyEnabled -> {
+                        snackbarHostState.showSnackbar(
+                            message = "🧅 Proxy Tor activo — Sitios .onion y navegación anónima",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
+                    OrbotDetector.isTorAvailable() && !proxyEnabled -> {
+                        snackbarHostState.showSnackbar(
+                            message = "⚠️ Proxy SOCKS disponible pero HTTP (8118) no responde. Usando modo directo.",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                    OrbotDetector.isOrbotInstalled(context) -> {
+                        snackbarHostState.showSnackbar(
+                            message = "🌐 Modo directo — Orbot instalado pero no activo. Abre Orbot para .onion",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                    else -> {
+                        snackbarHostState.showSnackbar(
+                            message = "🌐 Modo directo — Tor no disponible. Descarga Orbot para navegación anónima",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error mostrando snackbar", e)
+            }
+
+            // ── PASO 2: Cargar URL inicial DESPUÉS de configurar el proxy ──
+            // Esto elimina la race condition: el proxy ya está listo antes de cualquier loadUrl()
+            try {
+                webView?.loadUrl(DEFAULT_HOMEPAGE)
+                Log.d(TAG, "✓ Loading initial URL: $DEFAULT_HOMEPAGE")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error loading initial URL", e)
+                snackbarHostState.showSnackbar(
+                    message = "❌ Error al cargar el navegador: ${e.message}",
+                    duration = SnackbarDuration.Long
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error crítico en inicialización del navegador", e)
+            try {
+                snackbarHostState.showSnackbar(
+                    message = "❌ Error al inicializar el navegador. Intenta de nuevo.",
+                    duration = SnackbarDuration.Long
+                )
+            } catch (snackbarError: Exception) {
+                Log.e(TAG, "❌ No se pudo mostrar error al usuario", snackbarError)
+            }
+        }
     }
-    
+
+    // ── Limpiar proxy al salir ──
+    DisposableEffect(Unit) {
+        onDispose {
+            clearOrbotProxy()
+            Log.d(TAG, "Proxy Tor limpiado al salir del navegador")
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Security,
+                            imageVector = if (proxyEnabled) Icons.Default.Shield
+                                          else Icons.Default.Public,
                             contentDescription = null,
-                            tint = Purple
+                            tint = if (proxyEnabled) Color(0xFF00FF00) else Purple
                         )
                         Text(
-                            text = "🔒 Navegador Privado",
+                            text = if (proxyEnabled) "🧅 Navegador Tor" else "🌐 Navegador",
                             color = Color.White,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -105,7 +232,70 @@ fun TorBrowserScreenNew(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // URL Bar
+            // ── Status bar ──
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFF1A1A2E)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Icon(
+                        imageVector = if (proxyEnabled) Icons.Default.Shield
+                                       else Icons.Default.Wifi,
+                        contentDescription = null,
+                        tint = if (proxyEnabled) Color(0xFF00FF00) else Color(0xFF4CAF50),
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = when {
+                            proxyEnabled -> "✅ Navegando por Tor (Orbot)"
+                            browsingMode == "directo" -> "🌐 Modo directo — sin proxy"
+                            else -> orbotStatus.ifEmpty { "Inicializando..." }
+                        },
+                        color = Color.Gray,
+                        fontSize = 11.sp,
+                        modifier = Modifier.weight(1f).padding(start = 6.dp)
+                    )
+                    if (!OrbotDetector.isOrbotInstalled(context)) {
+                        TextButton(
+                            onClick = {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                    data = android.net.Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.android")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    scope.launch {
+                                        snackbarHostState.showSnackbar(
+                                            "Descarga Orbot desde Play Store o F-Droid: org.torproject.android"
+                                        )
+                                    }
+                                }
+                            },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Descargar Orbot", fontSize = 10.sp, color = Purple)
+                        }
+                    } else if (!proxyEnabled) {
+                        TextButton(
+                            onClick = { OrbotDetector.launchOrbot(context) },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text("Abrir Orbot", fontSize = 10.sp, color = Purple)
+                        }
+                    }
+                }
+            }
+
+            // ── URL Bar ──
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -121,7 +311,7 @@ fun TorBrowserScreenNew(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Back button
+                    // Back
                     Surface(
                         modifier = Modifier.size(36.dp),
                         shape = CircleShape,
@@ -137,8 +327,8 @@ fun TorBrowserScreenNew(
                             )
                         }
                     }
-                    
-                    // Forward button
+
+                    // Forward
                     Surface(
                         modifier = Modifier.size(36.dp),
                         shape = CircleShape,
@@ -154,10 +344,10 @@ fun TorBrowserScreenNew(
                             )
                         }
                     }
-                    
-                    // URL input field
+
+                    // URL input
                     var isFocused by remember { mutableStateOf(false) }
-                    
+
                     OutlinedTextField(
                         value = if (isFocused) urlInput else currentUrl,
                         onValueChange = { urlInput = it },
@@ -166,13 +356,12 @@ fun TorBrowserScreenNew(
                             .height(48.dp)
                             .onFocusChanged { focusState ->
                                 isFocused = focusState.isFocused
-                                if (focusState.isFocused) {
-                                    urlInput = ""
-                                }
+                                if (focusState.isFocused) urlInput = ""
                             },
-                        placeholder = { 
+                        placeholder = {
                             Text(
-                                "Buscar o ingresar URL",
+                                if (proxyEnabled) "Buscar o ingresar URL (.onion compatible)"
+                                else "Buscar o ingresar URL",
                                 color = Color.Gray,
                                 fontSize = 13.sp
                             )
@@ -201,49 +390,33 @@ fun TorBrowserScreenNew(
                             }
                         },
                         singleLine = true,
-                        enabled = true,
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            disabledTextColor = Color.Gray,
                             focusedContainerColor = Color(0xFF2D2D44),
                             unfocusedContainerColor = Color(0xFF2D2D44),
-                            disabledContainerColor = Color(0xFF2D2D44),
                             focusedBorderColor = Purple,
-                            unfocusedBorderColor = Color.Transparent,
-                            disabledBorderColor = Color.Transparent
+                            unfocusedBorderColor = Color.Transparent
                         ),
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                         keyboardActions = KeyboardActions(
                             onGo = {
                                 val url = processUrl(urlInput)
-                                
-                                // Check if it's a .onion URL
-                                if (url.contains(".onion")) {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar(
-                                            message = "⚠️ Los sitios .onion requieren Orbot (Tor). Instálalo desde F-Droid o Play Store",
-                                            duration = SnackbarDuration.Long
-                                        )
-                                    }
-                                } else {
-                                    webView?.loadUrl(url)
-                                }
-                                
+                                webView?.loadUrl(url)
                                 urlInput = ""
                                 isFocused = false
                             }
                         )
                     )
-                    
-                    // Reload/Stop button
+
+                    // Reload/Stop
                     Surface(
                         modifier = Modifier.size(36.dp),
                         shape = CircleShape,
                         color = Purple.copy(alpha = 0.2f),
-                        onClick = { 
+                        onClick = {
                             if (isLoading) webView?.stopLoading() else webView?.reload()
                         }
                     ) {
@@ -258,8 +431,8 @@ fun TorBrowserScreenNew(
                     }
                 }
             }
-            
-            // WebView
+
+            // ── WebView ──
             AndroidView(
                 factory = { ctx ->
                     WebView(ctx).apply {
@@ -270,325 +443,547 @@ fun TorBrowserScreenNew(
                                 canGoBack = this.canGoBack()
                                 canGoForward = this.canGoForward()
                             },
-                            onLoadingChanged = { loading ->
-                                isLoading = loading
-                            }
+                            onLoadingChanged = { loading -> isLoading = loading },
+                            context = context,
+                            scope = scope,
+                            snackbarHostState = snackbarHostState,
+                            proxyEnabled = { proxyEnabled }
                         )
-                        loadUrl("https://duckduckgo.com")
+                        // Marcar que el WebView está listo
+                        isWebViewReady = true
+                        Log.d(TAG, "✓ WebView initialized and ready")
                     }
                 },
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f)
             )
+
+            // ── Loading indicator ──
+            if (isLoading && currentUrl.isNotEmpty()) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp),
+                    color = Purple,
+                    trackColor = Color.Transparent
+                )
+            }
         }
     }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTES
+// ═══════════════════════════════════════════════════════════════
+
+/** Host del proxy HTTP de Orbot */
+private const val ORBOT_HTTP_HOST = "127.0.0.1"
+
+/** Puerto del proxy HTTP de Orbot */
+private const val ORBOT_HTTP_PORT = 8118
+
+/** Puerto SOCKS5 de Orbot (para verificación) */
+private const val ORBOT_SOCKS_PORT = 9050
+
+// ═══════════════════════════════════════════════════════════════
+//  PROXY CONFIG — AndroidX WebKit oficial API
+// ═══════════════════════════════════════════════════════════════
+
 /**
- * Process URL input with smart logic
+ * Verifica que el puerto del proxy HTTP de Orbot esté realmente aceptando conexiones.
+ * Esto evita configurar un proxy que no funciona y causaría errores 404.
+ */
+private fun verifyProxyPort(host: String, port: Int): Boolean {
+    return try {
+        Socket().use { socket ->
+            socket.connect(InetSocketAddress(host, port), PROXY_CONNECT_TIMEOUT_MS)
+            Log.d(TAG, "✓ Puerto $host:$port verificada — acepta conexiones")
+            true
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "✗ Puerto $host:$port no responde: ${e.message}")
+        false
+    }
+}
+
+/**
+ * Configura el proxy de Orbot a nivel de WebView usando la API oficial.
+ *
+ * Orbot expone un proxy HTTP en 127.0.0.1:8118 que internamente
+ * traduce HTTP → SOCKS5 → Tor. Esto permite que WebView acceda
+ * a sitios .onion sin necesidad de reflection ni hacks.
+ *
+ * Usa [ProxyController.setProxyOverride] que es la API oficial de AndroidX WebKit.
+ */
+private fun setupOrbotProxy(): Boolean {
+    return try {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+            Log.w(TAG, "PROXY_OVERRIDE no soportado en este dispositivo")
+            return false
+        }
+
+        val config = ProxyConfig.Builder()
+            .addProxyRule("http://$ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT")
+            .build()
+
+        val executor = Executors.newSingleThreadExecutor()
+        ProxyController.getInstance().setProxyOverride(config, executor, Runnable { })
+        executor.shutdown()
+
+        Log.d(TAG, "✓ Proxy Orbot configurado: $ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT (HTTP → SOCKS5 → Tor)")
+        true
+    } catch (e: Exception) {
+        Log.e(TAG, "✗ Error configurando proxy Orbot", e)
+        false
+    }
+}
+
+/**
+ * Limpia la configuración del proxy para que el resto de la app
+ * no quede enrutando tráfico a través de Tor.
+ */
+private fun clearOrbotProxy() {
+    try {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) return
+
+        val executor = Executors.newSingleThreadExecutor()
+        ProxyController.getInstance().clearProxyOverride(executor, Runnable { })
+        executor.shutdown()
+
+        Log.d(TAG, "✓ Proxy limpiado — tráfico directo restaurado")
+    } catch (e: Exception) {
+        Log.e(TAG, "Error limpiando proxy", e)
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WEBVIEW SETUP
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Procesa la entrada del usuario: si es una URL, la completa;
+ * si es texto, busca en DuckDuckGo.
+ * 
+ * Manejo especial para .onion:
+ * - Los enlaces .onion siempre usan http:// (no https://)
+ * - Se valida el formato correcto de direcciones .onion
+ * 
+ * DuckDuckGo:
+ * - Búsquedas normales usan HTTPS
+ * - Soporte para búsquedas en la dark web cuando Tor está activo
  */
 private fun processUrl(input: String): String {
     val trimmed = input.trim()
-    
     return when {
-        // Already has protocol
+        // URLs completas (http:// o https://)
         trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
         
-        // Looks like a domain (has dot and no spaces)
-        trimmed.contains(".") && !trimmed.contains(" ") -> "https://$trimmed"
+        // Enlaces .onion (siempre usar http://)
+        trimmed.endsWith(".onion") || trimmed.contains(".onion/") -> {
+            if (trimmed.contains("://")) trimmed else "http://$trimmed"
+        }
         
-        // Everything else is a search query
+        // URLs sin protocolo pero con dominio
+        trimmed.contains(".") && !trimmed.contains(" ") -> {
+            // Si parece una URL .onion sin protocolo
+            if (trimmed.endsWith(".onion")) "http://$trimmed"
+            else "https://$trimmed"
+        }
+        
+        // Búsqueda en DuckDuckGo
         else -> "https://duckduckgo.com/?q=${java.net.URLEncoder.encode(trimmed, "UTF-8")}"
     }
 }
 
 /**
- * Setup WebView with privacy settings
+ * Genera una página de error HTML estilizada para mostrar cuando una URL falla.
+ *
+ * @param url La URL que falló
+ * @param errorCode Código de error HTTP (404, 500, etc.) o -1 para error de red
+ * @param description Descripción del error
+ */
+private fun getErrorPage(url: String, errorCode: Int, description: String): String = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
+            color: #FFFFFF;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 520px; text-align: center; }
+        .error-icon { font-size: 72px; margin-bottom: 16px; }
+        h1 {
+            font-size: 26px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #7C3AED, #00D4FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .error-code {
+            font-size: 48px;
+            font-weight: bold;
+            color: #FF6B6B;
+            margin-bottom: 8px;
+        }
+        p { color: #AAAAAA; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+        .url-box {
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 24px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #7C3AED;
+            word-break: break-all;
+        }
+        .desc-box {
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .desc-box p { margin-bottom: 0; font-size: 14px; color: #CCCCCC; }
+        .brand { margin-top: 24px; font-size: 13px; color: #666666; }
+        .hint { font-size: 12px; color: #888888; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-icon">⚠️</div>
+        <div class="error-code">${if (errorCode > 0) "$errorCode" else "RED"}</div>
+        <h1>${if (errorCode == 404) "Página no encontrada" else if (errorCode in 500..599) "Error del servidor" else "Error de conexión"}</h1>
+        <p>${description}</p>
+        <div class="url-box">${url}</div>
+        <div class="desc-box">
+            <p>💡 Sugerencias:</p>
+            <p style="margin-top: 8px; font-size: 13px;">
+                ${getSuggestionsForError(errorCode, url)}
+            </p>
+        </div>
+        <div class="hint">Intenta recargar la página o verifica la URL</div>
+        <div class="brand">Azelgram — Navegador Privado</div>
+    </div>
+</body>
+</html>
+""".trimIndent()
+
+/**
+ * Genera sugerencias contextuales según el tipo de error.
+ */
+private fun getSuggestionsForError(errorCode: Int, url: String): String {
+    return when {
+        errorCode == 404 -> "La página que buscas no existe en este servidor. Verifica que la URL sea correcta."
+        errorCode in 500..599 -> "El servidor está teniendo problemas. Espera un momento e intenta de nuevo."
+        url.contains(".onion") -> "Los sitios .onion requieren Orbot activo. Abre Orbot, presiona 'Iniciar' y vuelve a intentar."
+        errorCode == -1 || errorCode == 0 -> "No se pudo conectar al servidor. Verifica tu conexión a internet."
+        else -> "Ocurrió un error inesperado. Intenta recargar la página."
+    }
+}
+
+/**
+ * Página de ayuda cuando un sitio .onion no carga (Orbot inactivo).
+ */
+private fun getOnionHelpPage(url: String): String = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
+            color: #FFFFFF;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 520px; text-align: center; }
+        .onion-icon { font-size: 72px; margin-bottom: 16px; }
+        h1 {
+            font-size: 26px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #7C3AED, #00D4FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        p { color: #AAAAAA; font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+        .url-box {
+            background: rgba(124, 58, 237, 0.1);
+            border: 1px solid rgba(124, 58, 237, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 24px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #7C3AED;
+            word-break: break-all;
+        }
+        .steps {
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .steps h3 { margin-bottom: 16px; font-size: 18px; color: #7C3AED; }
+        .steps ol { padding-left: 20px; }
+        .steps li { margin: 12px 0; color: #CCCCCC; line-height: 1.6; }
+        .steps strong { color: #00D4FF; }
+        .brand { margin-top: 24px; font-size: 13px; color: #666666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="onion-icon">🧅</div>
+        <h1>Sitio .onion detectado</h1>
+        <p>Los sitios .onion solo son accesibles a través de la red Tor. Necesitas Orbot para acceder.</p>
+        <div class="url-box">$url</div>
+        <div class="steps">
+            <h3>🔐 Pasos para acceder</h3>
+            <ol>
+                <li><strong>1.</strong> Descarga e instala <strong>Orbot</strong> desde Google Play Store</li>
+                <li><strong>2.</strong> Abre Orbot y presiona el botón <strong>"Iniciar"</strong></li>
+                <li><strong>3.</strong> Espera a que se conecte a la red Tor (puede tardar 1-2 minutos)</li>
+                <li><strong>4.</strong> Vuelve a este navegador y recarga la página</li>
+                <li><strong>5.</strong> ¡Listo! El sitio .onion se cargará a través de Tor</li>
+            </ol>
+        </div>
+        <div class="brand">Azelgram — Navegación Privada con Tor</div>
+    </div>
+</body>
+</html>
+""".trimIndent()
+/**
+ * Configura el WebView con ajustes de privacidad y navegación.
+ *
+ * - El proxy se configura ANTES de cargar URLs (en [LaunchedEffect])
+ * - Los errores HTTP y de red muestran páginas de error claras al usuario
+ * - Las URLs .onion sin Tor activo muestran guía de configuración
  */
 @SuppressLint("SetJavaScriptEnabled")
 private fun WebView.setupWebView(
     onUrlChanged: (String) -> Unit,
-    onLoadingChanged: (Boolean) -> Unit
+    onLoadingChanged: (Boolean) -> Unit,
+    context: android.content.Context,
+    scope: kotlinx.coroutines.CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    proxyEnabled: () -> Boolean
 ) {
-    settings.apply {
-        javaScriptEnabled = true
-        domStorageEnabled = true
-        databaseEnabled = true
-        setSupportZoom(true)
-        builtInZoomControls = true
-        displayZoomControls = false
-        setGeolocationEnabled(false)
-        allowFileAccess = false
-        allowContentAccess = false
-        mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-        cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
-        
-        // Configuración mejorada para mejor visualización
-        useWideViewPort = true
-        loadWithOverviewMode = true
-        layoutAlgorithm = android.webkit.WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
-        
-        // User agent actualizado
-        userAgentString = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36"
-    }
-    
-    webViewClient = object : android.webkit.WebViewClient() {
-        override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-            super.onPageStarted(view, url, favicon)
-            onLoadingChanged(true)
-            url?.let { onUrlChanged(it) }
+    try {
+        settings.apply {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            setSupportZoom(true)
+            builtInZoomControls = true
+            displayZoomControls = false
+            setGeolocationEnabled(false)
+            allowFileAccess = false
+            allowContentAccess = false
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+            cacheMode = android.webkit.WebSettings.LOAD_DEFAULT
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            layoutAlgorithm = android.webkit.WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
+            userAgentString = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36"
         }
-        
-        override fun onPageFinished(view: WebView?, url: String?) {
-            super.onPageFinished(view, url)
-            onLoadingChanged(false)
-        }
-        
-        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-            return false
-        }
-        
-        override fun onReceivedError(
-            view: WebView?,
-            request: WebResourceRequest?,
-            error: android.webkit.WebResourceError?
-        ) {
-            super.onReceivedError(view, request, error)
-            
-            // Only show error page for main frame errors
-            if (request?.isForMainFrame == true) {
-                val url = request.url.toString()
-                val isOnionSite = url.contains(".onion")
-                
-                val errorHtml = if (isOnionSite) {
-                    """
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <style>
-                            body {
-                                background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
-                                color: #FFFFFF;
-                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                min-height: 100vh;
-                                margin: 0;
-                                padding: 20px;
-                                text-align: center;
-                            }
-                            .container {
-                                max-width: 500px;
-                            }
-                            .icon {
-                                font-size: 80px;
-                                margin-bottom: 20px;
-                            }
-                            h1 {
-                                font-size: 28px;
-                                margin: 0 0 10px 0;
-                                background: linear-gradient(135deg, #7C3AED, #00D4FF);
-                                -webkit-background-clip: text;
-                                -webkit-text-fill-color: transparent;
-                                background-clip: text;
-                            }
-                            p {
-                                color: #AAAAAA;
-                                font-size: 16px;
-                                line-height: 1.6;
-                                margin: 0 0 30px 0;
-                            }
-                            .onion-url {
-                                background: rgba(124, 58, 237, 0.1);
-                                border: 1px solid rgba(124, 58, 237, 0.3);
-                                border-radius: 8px;
-                                padding: 12px;
-                                margin: 20px 0;
-                                font-family: 'Courier New', monospace;
-                                font-size: 13px;
-                                color: #7C3AED;
-                                word-break: break-all;
-                            }
-                            .instructions {
-                                text-align: left;
-                                background: rgba(255, 255, 255, 0.05);
-                                border-radius: 12px;
-                                padding: 20px;
-                                margin-top: 20px;
-                            }
-                            .instructions h3 {
-                                margin: 0 0 15px 0;
-                                font-size: 18px;
-                                color: #7C3AED;
-                            }
-                            .instructions ol {
-                                margin: 0;
-                                padding-left: 20px;
-                            }
-                            .instructions li {
-                                margin: 12px 0;
-                                color: #CCCCCC;
-                                line-height: 1.6;
-                            }
-                            .instructions strong {
-                                color: #00D4FF;
-                            }
-                            .brand {
-                                margin-top: 30px;
-                                font-size: 14px;
-                                color: #666666;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="icon">🧅</div>
-                            <h1>Sitio .onion detectado</h1>
-                            <p>Los sitios .onion solo son accesibles a través de la red Tor. Este navegador no tiene soporte nativo para Tor.</p>
-                            
-                            <div class="onion-url">
-                                $url
-                            </div>
-                            
-                            <div class="instructions">
-                                <h3>🔐 Cómo acceder a sitios .onion</h3>
-                                <ol>
-                                    <li>Instala <strong>Orbot</strong> desde F-Droid o Play Store</li>
-                                    <li>Abre Orbot y presiona <strong>"Iniciar"</strong></li>
-                                    <li>Espera a que se conecte a la red Tor</li>
-                                    <li>Usa <strong>Tor Browser</strong> o configura un navegador con proxy SOCKS5 (localhost:9050)</li>
-                                    <li>Ahora podrás acceder a sitios .onion de forma anónima</li>
-                                </ol>
-                            </div>
-                            
-                            <div class="brand">Nexus Chat - Navegador Privado</div>
-                        </div>
-                    </body>
-                    </html>
-                    """.trimIndent()
-                } else {
-                    """
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset="UTF-8">
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <style>
-                            body {
-                                background: linear-gradient(135deg, #0A0A0A 0%, #1A1A2E 100%);
-                                color: #FFFFFF;
-                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                min-height: 100vh;
-                                margin: 0;
-                                padding: 20px;
-                                text-align: center;
-                            }
-                            .container {
-                                max-width: 500px;
-                            }
-                            .icon {
-                                font-size: 80px;
-                                margin-bottom: 20px;
-                                animation: pulse 2s infinite;
-                            }
-                            @keyframes pulse {
-                                0%, 100% { opacity: 1; }
-                                50% { opacity: 0.5; }
-                            }
-                            h1 {
-                                font-size: 28px;
-                                margin: 0 0 10px 0;
-                                background: linear-gradient(135deg, #7C3AED, #00D4FF);
-                                -webkit-background-clip: text;
-                                -webkit-text-fill-color: transparent;
-                                background-clip: text;
-                            }
-                            p {
-                                color: #AAAAAA;
-                                font-size: 16px;
-                                line-height: 1.6;
-                                margin: 0 0 30px 0;
-                            }
-                            .error-code {
-                                background: rgba(124, 58, 237, 0.1);
-                                border: 1px solid rgba(124, 58, 237, 0.3);
-                                border-radius: 8px;
-                                padding: 12px;
-                                margin: 20px 0;
-                                font-family: 'Courier New', monospace;
-                                font-size: 14px;
-                                color: #7C3AED;
-                            }
-                            .suggestions {
-                                text-align: left;
-                                background: rgba(255, 255, 255, 0.05);
-                                border-radius: 12px;
-                                padding: 20px;
-                                margin-top: 20px;
-                            }
-                            .suggestions h3 {
-                                margin: 0 0 15px 0;
-                                font-size: 18px;
-                                color: #7C3AED;
-                            }
-                            .suggestions ul {
-                                margin: 0;
-                                padding-left: 20px;
-                            }
-                            .suggestions li {
-                                margin: 8px 0;
-                                color: #CCCCCC;
-                                line-height: 1.5;
-                            }
-                            .brand {
-                                margin-top: 30px;
-                                font-size: 14px;
-                                color: #666666;
-                            }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <div class="icon">🔒</div>
-                            <h1>Página no disponible</h1>
-                            <p>No se pudo cargar la página solicitada. Verifica tu conexión a internet o intenta nuevamente.</p>
-                            
-                            <div class="error-code">
-                                Error: ${error?.description ?: "Desconocido"}<br>
-                                Código: ${error?.errorCode ?: -1}
-                            </div>
-                            
-                            <div class="suggestions">
-                                <h3>💡 Sugerencias</h3>
-                                <ul>
-                                    <li>Verifica tu conexión a internet</li>
-                                    <li>Comprueba que la URL sea correcta</li>
-                                    <li>Intenta recargar la página</li>
-                                    <li>El sitio podría estar temporalmente no disponible</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="brand">Nexus Chat - Navegador Privado</div>
-                        </div>
-                    </body>
-                    </html>
-                    """.trimIndent()
+
+        webViewClient = object : android.webkit.WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                try {
+                    onLoadingChanged(true)
+                    url?.let { onUrlChanged(it) }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error en onPageStarted", e)
                 }
-                
-                view?.loadDataWithBaseURL(
-                    null,
-                    errorHtml,
-                    "text/html",
-                    "UTF-8",
-                    null
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                try {
+                    onLoadingChanged(false)
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error en onPageFinished", e)
+                }
+            }
+
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                return try {
+                    val url = request?.url?.toString() ?: return false
+                    
+                    // Verificar si es un enlace .onion y Tor no está activo
+                    if (url.contains(".onion") && !proxyEnabled()) {
+                        Log.w(TAG, "⚠️ Intento de cargar .onion sin Tor activo: $url")
+                        val helpHtml = getOnionHelpPage(url)
+                        view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
+                        
+                        scope.launch {
+                            try {
+                                snackbarHostState.showSnackbar(
+                                    message = "🧅 Los sitios .onion requieren Orbot activo",
+                                    duration = SnackbarDuration.Long
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "❌ Error mostrando snackbar", e)
+                            }
+                        }
+                        return true // Bloquear la carga
+                    }
+                    
+                    false // Permitir la carga normal
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error en shouldOverrideUrlLoading", e)
+                    false
+                }
+            }
+
+            /**
+             * Maneja ERRORES DE RED (DNS, timeout, conexión rechazada, etc.)
+             * Se muestra una página de error clara al usuario.
+             */
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: android.webkit.WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                try {
+                    if (request?.isForMainFrame == true) {
+                        val url = request.url.toString()
+                        val errorCode = error?.errorCode ?: -1
+                        val description = error?.description?.toString()
+                            ?: "No se pudo cargar la página"
+
+                        Log.w(TAG, "Error de red en $url: code=$errorCode desc=$description")
+
+                        // Mostrar página de error apropiada según el tipo de URL
+                        if (url.contains(".onion")) {
+                            val helpHtml = getOnionHelpPage(url)
+                            view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
+                        } else {
+                            val errorHtml = getErrorPage(url, errorCode, description)
+                            view?.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null)
+                        }
+
+                        scope.launch {
+                            try {
+                                snackbarHostState.showSnackbar(
+                                    message = "⚠️ Error al cargar $url — ${if (errorCode > 0) "Código $errorCode" else "Sin conexión"}",
+                                    duration = SnackbarDuration.Long
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "❌ Error mostrando snackbar", e)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error en onReceivedError", e)
+                }
+            }
+
+            /**
+             * Maneja ERRORES HTTP (404, 500, 403, etc.)
+             * Esto es NUEVO — antes solo se manejaban errores de red, no HTTP.
+             * Los errores HTTP 404 ahora muestran una página de error informativa.
+             */
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                try {
+                    if (request?.isForMainFrame == true) {
+                        val url = request.url.toString()
+                        val statusCode = errorResponse?.statusCode ?: 0
+                        val reasonPhrase = errorResponse?.reasonPhrase ?: "Error"
+
+                        Log.w(TAG, "Error HTTP en $url: $statusCode $reasonPhrase")
+
+                        // Para .onion con error, mostrar la guía de ayuda
+                        if (url.contains(".onion")) {
+                            val helpHtml = getOnionHelpPage(url)
+                            view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
+                            scope.launch {
+                                try {
+                                    snackbarHostState.showSnackbar(
+                                        message = "🧅 No se pudo cargar $url — ¿Orbot activo?",
+                                        duration = SnackbarDuration.Long
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "❌ Error mostrando snackbar", e)
+                                }
+                            }
+                            return
+                        }
+
+                        // Para errores HTTP específicos, mostrar página de error detallada
+                        val description = when (statusCode) {
+                            404 -> "La página o recurso solicitado no existe en este servidor."
+                            403 -> "No tienes permiso para acceder a esta página."
+                            408 -> "La conexión con el servidor se agotó. Intenta de nuevo."
+                            429 -> "Demasiadas solicitudes. Espera un momento e intenta de nuevo."
+                            500 -> "El servidor encontró un error interno. Intenta más tarde."
+                            502 -> "El servidor recibió una respuesta inválida de otro servidor."
+                            503 -> "El servidor está temporalmente fuera de servicio. Intenta más tarde."
+                            504 -> "El servidor no respondió a tiempo. Verifica tu conexión."
+                            else -> "HTTP $statusCode: $reasonPhrase"
+                        }
+
+                        val errorHtml = getErrorPage(url, statusCode, description)
+                        view?.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null)
+
+                        scope.launch {
+                            try {
+                                val msg = when (statusCode) {
+                                    404 -> "❌ 404 — Página no encontrada"
+                                    in 500..599 -> "⚠️ Error del servidor ($statusCode)"
+                                    else -> "⚠️ HTTP $statusCode"
+                                }
+                                snackbarHostState.showSnackbar(
+                                    message = "$msg: $url",
+                                    duration = SnackbarDuration.Long
+                                )
+                            } catch (e: Exception) {
+                                Log.e(TAG, "❌ Error mostrando snackbar", e)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error en onReceivedHttpError", e)
+                }
+            }
+        }
+        
+        Log.d(TAG, "✓ WebView configurado exitosamente")
+    } catch (e: Exception) {
+        Log.e(TAG, "❌ Error crítico configurando WebView", e)
+        scope.launch {
+            try {
+                snackbarHostState.showSnackbar(
+                    message = "❌ Error al configurar el navegador: ${e.message}",
+                    duration = SnackbarDuration.Long
                 )
+            } catch (snackbarError: Exception) {
+                Log.e(TAG, "❌ No se pudo mostrar error al usuario", snackbarError)
             }
         }
     }
