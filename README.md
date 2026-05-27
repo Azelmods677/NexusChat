@@ -1,4 +1,4 @@
-# Azelgram Messenger
+# NexusChat
 
 <div align="center">
 
@@ -20,7 +20,7 @@ Construida con Kotlin y Jetpack Compose
 
 ## Descripción
 
-Azelgram Messenger es una aplicación de mensajería instantánea avanzada desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patrón MVVM para garantizar escalabilidad y mantenibilidad del código.
+NexusChat es una aplicación de mensajería instantánea avanzada desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patrón MVVM para garantizar escalabilidad y mantenibilidad del código.
 
 La aplicación combina funcionalidades completas de mensajería en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efímeras con duración de 24 horas, **asistente de IA integrado (AzelAI)**, **navegador Tor privado**, y un sistema de personalización que incluye temas, fondos personalizados y configuraciones de interfaz.
 
@@ -114,7 +114,7 @@ La aplicación combina funcionalidades completas de mensajería en tiempo real m
 
 ## Arquitectura
 
-Azelgram Messenger implementa **Clean Architecture** dividida en tres capas principales con separación clara de responsabilidades.
+NexusChat implementa **Clean Architecture** dividida en tres capas principales con separación clara de responsabilidades.
 
 ### Diagrama de Arquitectura General
 
@@ -573,8 +573,8 @@ app/src/main/java/com/Azelmods/App/
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/AzelMods677/Azelgram-Messenger.git
-cd Azelgram-Messenger
+git clone https://github.com/AzelMods677/NexusChat.git
+cd NexusChat
 
 # Compilar APK de depuracion
 ./gradlew assembleDebug
@@ -605,8 +605,8 @@ cd Azelgram-Messenger
    - Espera a que se conecte a la red Tor (puede tardar 1-2 minutos)
    - Verás "Conectado a la red Tor" cuando esté listo
 
-3. **Uso en Azelgram**:
-   - Abre Azelgram Messenger
+3. **Uso en NexusChat**:
+   - Abre NexusChat
    - Ve a **Seguridad** → **Navegador Tor**
    - La app detectará automáticamente si Orbot está activo
    - Podrás navegar por sitios .onion y navegar anónimamente
