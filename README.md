@@ -24,7 +24,7 @@ NexusChat es una aplicación de mensajería instantánea avanzada desarrollada n
 
 La aplicación combina funcionalidades completas de mensajería en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efímeras con duración de 24 horas, **asistente de IA integrado (AzelAI)**, **navegador Tor privado**, y un sistema de personalización que incluye temas, fondos personalizados y configuraciones de interfaz.
 
-**Compatibilidad:** Android 8.0 (API 26) hasta Android 16 (API 36)
+**Compatibilidad:** Android 12 (API 31) hasta Android 16 (API 36)
 
 ---
 
@@ -61,8 +61,7 @@ La aplicación combina funcionalidades completas de mensajería en tiempo real m
 - **Múltiples proveedores de IA**: OpenAI, Anthropic, Google Gemini, Groq, Ollama local
 - **Modelos avanzados**: GPT-4, Claude 3.5 Sonnet, Gemini 2.0 Flash, Llama 3.3, y más
 - **Modos de conversación**:
-  - Modo Normal: Conversaciones generales
-  - Modo Uncensored: Sin restricciones de contenido
+  - Modo Normal: Conversaciones generales con filtros de contenido
   - Modo Agente: Ejecución de herramientas y comandos locales
 - **Herramientas de agente**:
   - Ejecución de comandos shell
@@ -480,7 +479,7 @@ flowchart TD
 | Cache local | Room | - |
 | Preferencias | DataStore | - |
 | Corrutinas | Kotlin Coroutines + Flow | 1.9.0 |
-| SDK minimo | Android 8.0 (Oreo) | API 26 |
+| SDK minimo | Android 12 | API 31 |
 | SDK objetivo | Android 16 | API 36 |
 
 ---
@@ -699,7 +698,6 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 #### 🤖 AzelAI - Asistente de IA
 - Integración de múltiples proveedores de IA (OpenAI, Anthropic, Google, Groq, Ollama)
 - Modo Agente con herramientas locales (shell, archivos, búsqueda web)
-- Modo Uncensored para conversaciones sin restricciones
 - Streaming en tiempo real de respuestas
 - Configuración avanzada de parámetros de IA
 - Historial de conversaciones y exportación
