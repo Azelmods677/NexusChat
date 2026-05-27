@@ -810,6 +810,6 @@ EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTIA DE NINGUN TIPO.
 
 **Si te gusta el proyecto, dale una estrella en GitHub ⭐**
 
-**Desarrollado por AzelMods677 - 2025**
+**Desarrollado por AzelMods677 - 2026**
 
 </div>
