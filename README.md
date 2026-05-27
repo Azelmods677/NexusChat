@@ -61,7 +61,8 @@ La aplicación combina funcionalidades completas de mensajería en tiempo real m
 - **Múltiples proveedores de IA**: OpenAI, Anthropic, Google Gemini, Groq, Ollama local
 - **Modelos avanzados**: GPT-4, Claude 3.5 Sonnet, Gemini 2.0 Flash, Llama 3.3, y más
 - **Modos de conversación**:
-  - Modo Normal: Conversaciones generales con filtros de contenido
+  - Modo Normal: Conversaciones generales
+  - Modo Sin Censura: Sin restricciones de contenido usando modelos locales
   - Modo Agente: Ejecución de herramientas y comandos locales
 - **Herramientas de agente**:
   - Ejecución de comandos shell
@@ -698,6 +699,7 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 #### 🤖 AzelAI - Asistente de IA
 - Integración de múltiples proveedores de IA (OpenAI, Anthropic, Google, Groq, Ollama)
 - Modo Agente con herramientas locales (shell, archivos, búsqueda web)
+- Modo Sin Censura para conversaciones sin restricciones
 - Streaming en tiempo real de respuestas
 - Configuración avanzada de parámetros de IA
 - Historial de conversaciones y exportación
