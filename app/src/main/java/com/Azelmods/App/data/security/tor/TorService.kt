@@ -1,9 +1,6 @@
 package com.Azelmods.App.data.security.tor
 
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -14,198 +11,173 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.io.BufferedReader
-import java.io.BufferedWriter
-import java.net.Socket
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Tor Service for direct Tor integration.
+ * 🔍 TorService — Detecta Orbot y gestiona el ProxySelector global
  *
- * Manages Tor connection and monitors bootstrap progress through the
- * Tor control port. Emits top-level [TorState] values; the former inner
- * `TorState` class has been removed to avoid name conflicts.
+ * Responsabilidades:
+ * 1. Detectar si Orbot está instalado y funcionando
+ * 2. Instalar/restaurar [TorProxySelector] para enrutar todo el
+ *    tráfico HTTP de la app a través de Orbot → Tor cuando
+ *    el modo anónimo está activo
+ * 3. Exponer el estado de Tor para la UI
+ * 4. Gestionar [TorDnsResolver] para evitar DNS leaks
+ * 5. Configurar [FirebaseProxyConfigurator] para Firebase sobre Tor
+ *
+ * Cuando Tor se conecta, [TorProxySelector] se instala globalmente
+ * via [java.net.ProxySelector.setDefault], enrutando todas las
+ * conexiones HTTP/HTTPS/WebSocket a través de SOCKS5 de Orbot.
+ * Adicionalmente, [TorDnsResolver] y [FirebaseProxyConfigurator]
+ * se activan para cubrir DNS y Firebase respectivamente.
  */
 @Singleton
 class TorService @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val torDnsResolver: TorDnsResolver,
+    private val firebaseProxyConfigurator: FirebaseProxyConfigurator
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Publicly observable Tor connection state (top-level [TorState]). */
     private val _torState = MutableStateFlow<TorState>(TorState.Disconnected)
     val torState: StateFlow<TorState> = _torState.asStateFlow()
 
-    private var isStarting = false
+    private var isMonitoring = false
+
+    /** ProxySelector global para enrutar tráfico por Tor */
+    private val torProxySelector = TorProxySelector()
 
     companion object {
         private const val TAG = "TorService"
-        private const val CONTROL_PORT = 9051
-        private const val SOCKS_PORT = 9050
+        const val SOCKS_PORT = 9050
+        const val HTTP_PROXY_PORT = 8118
     }
 
-    // ─── Connection lifecycle ─────────────────────────────────────────────────
-
     /**
-     * Starts monitoring the Tor connection directly via embedded Tor binary.
+     * Inicia la detección de Orbot.
      *
-     * Transitions through [TorState.Connecting] while bootstrapping and
-     * ultimately emits [TorState.Connected] on success or [TorState.Error] on
-     * failure. No-ops when already starting or connected.
+     * 1. Escanea los puertos proxy de Orbot cada segundo
+     * 2. Cuando Orbot responde, instala [TorProxySelector] globalmente
+     * 3. Todo el tráfico HTTP/HTTPS de la app se enruta por Tor
      */
     fun startTor() {
-        if (isStarting
-            || _torState.value is TorState.Connected
-            || _torState.value is TorState.Connecting
-        ) {
-            Log.d(TAG, "Tor already starting or connected – skipping")
+        if (isMonitoring) {
+            Log.d(TAG, "Ya monitoreando Orbot")
             return
         }
 
-        isStarting = true
+        isMonitoring = true
         scope.launch {
             try {
-                Log.d(TAG, "Starting Tor connection monitoring…")
-                _torState.value = TorState.Connecting(progress = 0, message = "Iniciando Tor...")
+                Log.d(TAG, "Buscando Orbot...")
+                _torState.value = TorState.Connecting(progress = 0, message = "Buscando Orbot...")
 
-                monitorBootstrapProgress()
+                // Verificar si Orbot está instalado
+                if (!OrbotDetector.isOrbotInstalled(context)) {
+                    _torState.value = TorState.Error(
+                        message = "Orbot no está instalado. Descárgalo desde Play Store o F-Droid (org.torproject.android)",
+                        exception = null
+                    )
+                    isMonitoring = false
+                    return@launch
+                }
+
+                // Monitorear hasta que Orbot esté activo (máx 30 segundos)
+                var attempts = 0
+                val maxAttempts = 30
+
+                while (attempts < maxAttempts) {
+                    attempts++
+                    val progress = ((attempts * 100) / maxAttempts).coerceAtMost(95)
+                    _torState.value = TorState.Connecting(
+                        progress = progress,
+                        message = "Esperando que Orbot se conecte a Tor... ($attempts/$maxAttempts)"
+                    )
+
+                    if (OrbotDetector.isTorAvailable()) {
+                        Log.d(TAG, "✓ Orbot detectado y conectado!")
+
+                        // ── 1. Instalar ProxySelector global ──
+                        // A partir de aquí, TODAS las conexiones HTTP/HTTPS
+                        // de la app (OkHttp, Firebase, Coil, etc.) pasan
+                        // por Orbot → SOCKS5 → Tor
+                        torProxySelector.install(enableTor = true)
+                        Log.i(TAG, "✓ TorProxySelector instalado — Todo el tráfico enrutado por Tor")
+
+                        // ── 2. Activar TorDnsResolver (evita DNS leaks) ──
+                        torDnsResolver.isTorEnabled = true
+                        Log.i(TAG, "✓ TorDnsResolver activado — DNS por Tor sin leaks")
+
+                        // ── 3. Activar FirebaseProxyConfigurator ──
+                        firebaseProxyConfigurator.enableTorMode()
+                        Log.i(TAG, "✓ FirebaseProxyConfigurator activado — Firebase por Tor")
+
+                        _torState.value = TorState.Connected(
+                            circuitInfo = TorCircuitInfo(
+                                entryNode = "Orbot",
+                                middleNode = "Red Tor",
+                                exitNode = "Nodo de salida",
+                                circuitId = "orbot_${System.currentTimeMillis()}",
+                                bandwidth = 0L
+                            )
+                        )
+                        isMonitoring = false
+                        return@launch
+                    }
+
+                    delay(1000)
+                }
+
+                // Timeout
+                _torState.value = TorState.Error(
+                    message = "Orbot no responde. Abre Orbot y presiona 'Iniciar' para conectar a Tor.",
+                    exception = null
+                )
+                isMonitoring = false
 
             } catch (e: Exception) {
-                Log.e(TAG, "Error starting Tor: ${e.message}", e)
+                Log.e(TAG, "Error monitoreando Orbot", e)
                 _torState.value = TorState.Error(
-                    message = e.message ?: "No se pudo conectar a Tor",
+                    message = "Error: ${e.message}",
                     exception = e
                 )
-                isStarting = false
+                isMonitoring = false
             }
         }
     }
 
     /**
-     * Stops Tor monitoring and resets state to [TorState.Disconnected].
+     * Detiene Tor y restaura la conectividad normal.
+     *
+     * - Restaura el ProxySelector original del sistema
+     * - Las conexiones HTTP vuelven a la configuración normal
      */
     fun stopTor() {
         scope.launch {
-            try {
-                Log.d(TAG, "Stopping Tor monitoring…")
-                _torState.value = TorState.Disconnected
-                isStarting = false
-                Log.d(TAG, "Tor monitoring stopped")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error stopping Tor: ${e.message}", e)
-            }
+            // ── 1. Desactivar TorDnsResolver ──
+            torDnsResolver.isTorEnabled = false
+            Log.i(TAG, "✓ TorDnsResolver desactivado — DNS del sistema")
+
+            // ── 2. Desactivar FirebaseProxyConfigurator ──
+            firebaseProxyConfigurator.disableTorMode()
+            Log.i(TAG, "✓ FirebaseProxyConfigurator desactivado — Firebase directo")
+
+            // ── 3. Restaurar ProxySelector original ──
+            torProxySelector.restore()
+            Log.i(TAG, "✓ ProxySelector restaurado — Tráfico directo")
+
+            _torState.value = TorState.Disconnected
+            isMonitoring = false
+            Log.d(TAG, "Monitoreo de Orbot detenido")
         }
     }
-
-    // ─── Bootstrap monitoring ─────────────────────────────────────────────────
 
     /**
-     * Polls the Tor control port once per second to read bootstrap progress.
-     *
-     * Falls back to a time-based progress estimate when the control port is
-     * not yet reachable. Times out after 60 seconds.
+     * Retorna el TorProxySelector para consultar/ajustar estado
      */
-    private suspend fun monitorBootstrapProgress() {
-        try {
-            var progress = 0
-            var attempts = 0
-            val maxAttempts = 60
+    fun getProxySelector(): TorProxySelector = torProxySelector
 
-            while (progress < 100 && attempts < maxAttempts) {
-                delay(1000)
-                attempts++
-
-                try {
-                    val socket = withContext(Dispatchers.IO) {
-                        Socket("127.0.0.1", CONTROL_PORT)
-                    }
-
-                    val reader: BufferedReader = socket.getInputStream().bufferedReader()
-                    val writer: BufferedWriter = socket.getOutputStream().bufferedWriter()
-
-                    // Authenticate (no password – default)
-                    writer.write("AUTHENTICATE \"\"\r\n")
-                    writer.flush()
-
-                    val authResponse = reader.readLine()
-                    Log.d(TAG, "Auth response: $authResponse")
-
-                    if (authResponse?.contains("250 OK") == true) {
-                        writer.write("GETINFO status/bootstrap-phase\r\n")
-                        writer.flush()
-
-                        val statusLine = reader.readLine()
-                        Log.d(TAG, "Bootstrap status: $statusLine")
-
-                        // e.g. "250-status/bootstrap-phase=NOTICE BOOTSTRAP PROGRESS=80 TAG=…"
-                        if (statusLine?.contains("PROGRESS=") == true) {
-                            Regex("PROGRESS=(\\d+)").find(statusLine)
-                                ?.groupValues?.get(1)
-                                ?.toIntOrNull()
-                                ?.let { parsed ->
-                                    progress = parsed
-                                    _torState.value = TorState.Connecting(
-                                        progress = progress,
-                                        message = "Conectando a Tor..."
-                                    )
-                                    Log.d(TAG, "Tor bootstrap progress: $progress%")
-                                }
-                        }
-                    }
-
-                    writer.write("QUIT\r\n")
-                    writer.flush()
-                    socket.close()
-
-                } catch (e: Exception) {
-                    // Control port not ready yet – use time-based estimate
-                    Log.d(TAG, "Control port not ready (attempt $attempts): ${e.message}")
-                    progress = minOf(95, (attempts * 100) / 30)
-                    _torState.value = TorState.Connecting(
-                        progress = progress,
-                        message = "Conectando a Tor..."
-                    )
-                }
-
-                if (progress >= 100) {
-                    _torState.value = TorState.Connected(
-                        circuitInfo = TorCircuitInfo(
-                            entryNode = "Proxy Tor",
-                            middleNode = "Externo",
-                            exitNode = "Desconocido",
-                            circuitId = "tor",
-                            bandwidth = 0L
-                        )
-                    )
-                    Log.d(TAG, "Tor connected successfully!")
-                    isStarting = false
-                    return
-                }
-            }
-
-            if (progress < 100) {
-                throw Exception(
-                    "No se pudo conectar a Tor después de $maxAttempts segundos. Intenta de nuevo."
-                )
-            }
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error monitoring bootstrap: ${e.message}", e)
-            _torState.value = TorState.Error(
-                message = e.message ?: "Bootstrap failed",
-                exception = e
-            )
-            isStarting = false
-        }
-    }
-
-    // ─── Port accessors ───────────────────────────────────────────────────────
-
-    /** Returns the SOCKS5 proxy port (default: 9050). */
     fun getSocksPort(): Int = SOCKS_PORT
-
-    /** Returns the HTTP proxy port (default: 8118). */
-    fun getHttpPort(): Int = 8118
+    fun getHttpPort(): Int = HTTP_PROXY_PORT
 }

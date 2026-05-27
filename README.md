@@ -1,4 +1,4 @@
-# NexusChat
+# Azelgram Messenger
 
 <div align="center">
 
@@ -9,73 +9,112 @@
 ![WebRTC](https://img.shields.io/badge/WebRTC-1.1.3-333333?logo=webrtc)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 
-**Aplicacion de mensajeria instantanea nativa para Android**  
+**Aplicación de mensajería instantánea con IA integrada y navegación anónima**  
 Construida con Kotlin y Jetpack Compose
 
-[Caracteristicas](#caracteristicas) | [Arquitectura](#arquitectura) | [Instalacion](#instalacion) | [Documentacion](#documentacion)
+[Características](#caracteristicas) | [Arquitectura](#arquitectura) | [Instalación](#instalacion) | [Seguridad](#seguridad-y-privacidad)
 
 </div>
 
 ---
 
-## Descripcion
+## Descripción
 
-NexusChat es una aplicacion de mensajeria instantanea desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patron MVVM para garantizar escalabilidad y mantenibilidad del codigo.
+Azelgram Messenger es una aplicación de mensajería instantánea avanzada desarrollada nativamente para Android utilizando Kotlin y Jetpack Compose. Implementa Clean Architecture con el patrón MVVM para garantizar escalabilidad y mantenibilidad del código.
 
-La aplicacion ofrece funcionalidades completas de mensajeria en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efimeras con duracion de 24 horas, y un sistema de personalizacion que incluye temas, fondos personalizados y configuraciones de interfaz.
+La aplicación combina funcionalidades completas de mensajería en tiempo real mediante Firebase Realtime Database, llamadas de voz y video con WebRTC, historias efímeras con duración de 24 horas, **asistente de IA integrado (AzelAI)**, **navegador Tor privado**, y un sistema de personalización que incluye temas, fondos personalizados y configuraciones de interfaz.
 
 **Compatibilidad:** Android 8.0 (API 26) hasta Android 16 (API 36)
 
 ---
 
-## Caracteristicas
+## Características
 
-### Mensajeria
-- Chat en tiempo real con sincronizacion instantanea
-- Mensajes de texto, voz, imagenes, videos y archivos
-- Indicadores de estado: enviado, entregado, leido
+### Mensajería
+- Chat en tiempo real con sincronización instantánea
+- Mensajes de texto, voz, imágenes, videos y archivos
+- Indicadores de estado: enviado, entregado, leído
 - Indicador de escritura en tiempo real
-- Respuestas rapidas deslizando mensajes
+- Respuestas rápidas deslizando mensajes
 - Reacciones con emojis
-- Chats grupales con gestion de miembros
-- Busqueda de mensajes y conversaciones
+- Chats grupales con gestión de miembros
+- Búsqueda de mensajes y conversaciones
 - Fijar, silenciar y archivar conversaciones
 
 ### Historias
-- Publicacion de fotos, videos y texto
-- Caducidad automatica a las 24 horas
-- Visualizacion con barra de progreso
+- Publicación de fotos, videos y texto
+- Caducidad automática a las 24 horas
+- Visualización con barra de progreso
 - Reacciones y respuestas directas
 - Lista de visualizaciones con timestamps
 - Editor con emojis y texto posicionable
-- Ajuste bidimensional de imagenes
+- Ajuste bidimensional de imágenes
 
 ### Llamadas
 - Llamadas de voz y videollamadas
-- Comunicacion P2P mediante WebRTC
-- Senalizacion a traves de Firebase
-- Calidad adaptativa segun conexion
-- Controles: silenciar, altavoz, cambiar camara
+- Comunicación P2P mediante WebRTC
+- Señalización a través de Firebase
+- Calidad adaptativa según conexión
+- Controles: silenciar, altavoz, cambiar cámara
 
-### Personalizacion
+### 🤖 AzelAI - Asistente de IA Integrado
+- **Múltiples proveedores de IA**: OpenAI, Anthropic, Google Gemini, Groq, Ollama local
+- **Modelos avanzados**: GPT-4, Claude 3.5 Sonnet, Gemini 2.0 Flash, Llama 3.3, y más
+- **Modos de conversación**:
+  - Modo Normal: Conversaciones generales
+  - Modo Uncensored: Sin restricciones de contenido
+  - Modo Agente: Ejecución de herramientas y comandos locales
+- **Herramientas de agente**:
+  - Ejecución de comandos shell
+  - Lectura y escritura de archivos
+  - Búsqueda web
+  - Gestión del sistema
+- **Personalización completa**:
+  - Configuración de temperatura, top_p, max_tokens
+  - System prompts personalizados
+  - Historial de conversaciones
+  - Exportación de chats
+- **Streaming en tiempo real**: Respuestas progresivas para mejor experiencia
+
+### 🔒 Seguridad y Privacidad
+
+#### Navegador Tor Privado
+- **Integración con Orbot**: Navegación anónima a través de la red Tor
+- **Soporte para sitios .onion**: Acceso a la dark web
+- **Modo dual**: Navegación directa o a través de Tor
+- **Detección automática**: Verifica y configura Orbot automáticamente
+- **Proxy HTTP/SOCKS5**: Configuración transparente del proxy
+- **Manejo de errores**: Páginas de error personalizadas y sugerencias contextuales
+- **DuckDuckGo integrado**: Motor de búsqueda privado por defecto
+
+#### Herramientas de Seguridad
+- **Backup y Restauración Encriptada**:
+  - Encriptación AES-256-GCM
+  - Backup de mensajes, configuraciones y preferencias
+  - Protección con contraseña
+  - Exportación/importación segura
+- **Terminal Emulator**: Acceso a shell local para usuarios avanzados
+- **Gestión de permisos**: Control granular de permisos de la app
+
+### Personalización
 - 15 temas de color predefinidos
 - Fondos personalizados (imagen, video, color, degradado)
-- Fondos independientes por conversacion
-- Configuracion de tamanos de fuente
+- Fondos independientes por conversación
+- Configuración de tamaños de fuente
 - Modo oscuro
-- Navegacion por gestos
+- Navegación por gestos
 
 ### Notificaciones
 - Notificaciones push con Firebase Cloud Messaging
-- Agrupacion por conversacion
-- Respuesta rapida desde notificaciones
-- Marcar como leido sin abrir la app
+- Agrupación por conversación
+- Respuesta rápida desde notificaciones
+- Marcar como leído sin abrir la app
 
 ---
 
 ## Arquitectura
 
-NexusChat implementa **Clean Architecture** dividida en tres capas principales con separacion clara de responsabilidades.
+Azelgram Messenger implementa **Clean Architecture** dividida en tres capas principales con separación clara de responsabilidades.
 
 ### Diagrama de Arquitectura General
 
@@ -430,10 +469,14 @@ flowchart TD
 | Almacenamiento | Firebase Storage | BOM 33.7.0 |
 | Autenticacion | Firebase Auth | BOM 33.7.0 |
 | Mensajeria push | Firebase Cloud Messaging | BOM 33.7.0 |
+| IA | OpenAI, Anthropic, Google Gemini, Groq, Ollama | - |
+| Navegación privada | Orbot/Tor | - |
+| Encriptación | AES-256-GCM | - |
 | Inyeccion de dependencias | Hilt | 2.52 |
 | Carga de imagenes | Coil | 3.1.0 |
 | Reproductor de video | ExoPlayer media3 | 1.3.1 |
 | Llamadas | Stream WebRTC Android | 1.1.3 |
+| HTTP Client | OkHttp + Retrofit | 4.12.0 / 2.11.0 |
 | Cache local | Room | - |
 | Preferencias | DataStore | - |
 | Corrutinas | Kotlin Coroutines + Flow | 1.9.0 |
@@ -530,8 +573,8 @@ app/src/main/java/com/Azelmods/App/
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/AzelMods677/NexusChat.git
-cd NexusChat
+git clone https://github.com/AzelMods677/Azelgram-Messenger.git
+cd Azelgram-Messenger
 
 # Compilar APK de depuracion
 ./gradlew assembleDebug
@@ -547,7 +590,39 @@ cd NexusChat
 
 ---
 
-## Configuracion de Firebase
+## Configuración de Orbot para Navegación Anónima
+
+### Instalación de Orbot
+
+1. **Descarga Orbot** desde una de estas fuentes:
+   - [Google Play Store](https://play.google.com/store/apps/details?id=org.torproject.android)
+   - [F-Droid](https://f-droid.org/packages/org.torproject.android)
+   - [Sitio oficial](https://orbot.app)
+
+2. **Configuración inicial**:
+   - Abre Orbot
+   - Presiona el botón "Iniciar" (ícono de cebolla)
+   - Espera a que se conecte a la red Tor (puede tardar 1-2 minutos)
+   - Verás "Conectado a la red Tor" cuando esté listo
+
+3. **Uso en Azelgram**:
+   - Abre Azelgram Messenger
+   - Ve a **Seguridad** → **Navegador Tor**
+   - La app detectará automáticamente si Orbot está activo
+   - Podrás navegar por sitios .onion y navegar anónimamente
+
+### Características del Navegador Tor
+
+- **Detección automática**: La app verifica si Orbot está instalado y activo
+- **Modo dual**: Navega directamente o a través de Tor según disponibilidad
+- **Proxy transparente**: Configuración automática del proxy HTTP (8118) y SOCKS5 (9050)
+- **Sitios .onion**: Acceso completo a servicios ocultos de Tor
+- **Indicadores visuales**: Estado de conexión claramente visible
+- **Manejo de errores**: Mensajes de ayuda cuando Tor no está disponible
+
+---
+
+## Configuración de Firebase
 
 ### Paso 1: Crear Proyecto
 
@@ -619,7 +694,31 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 
 ## Registro de Cambios
 
-### v1.0.0 - Lanzamiento Inicial (2026)
+### v2.0.0 - Actualización Mayor (2025)
+
+#### 🤖 AzelAI - Asistente de IA
+- Integración de múltiples proveedores de IA (OpenAI, Anthropic, Google, Groq, Ollama)
+- Modo Agente con herramientas locales (shell, archivos, búsqueda web)
+- Modo Uncensored para conversaciones sin restricciones
+- Streaming en tiempo real de respuestas
+- Configuración avanzada de parámetros de IA
+- Historial de conversaciones y exportación
+
+#### 🔒 Seguridad y Privacidad
+- Navegador Tor integrado con soporte para Orbot
+- Acceso a sitios .onion
+- Backup encriptado con AES-256-GCM
+- Terminal emulator para usuarios avanzados
+- Gestión avanzada de permisos
+
+#### 🐛 Correcciones
+- **CRÍTICO**: Corregidos enlaces rotos a guardianproject.info (404)
+- Actualizados todos los enlaces de descarga de Orbot a fuentes oficiales
+- Mejorada detección y configuración del proxy Tor
+- Eliminada race condition en inicialización del navegador
+- Manejo completo de errores HTTP (404, 500, etc.)
+
+### v1.0.0 - Lanzamiento Inicial (2024)
 
 #### Funcionalidades Principales
 - Mensajeria en tiempo real con Firebase Realtime Database
@@ -661,12 +760,16 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 
 ## Roadmap
 
-### Proximas Funciones
+### Próximas Funciones
 
-- Bot interno con respuestas automaticas
+- Mejoras en el modo Agente de AzelAI
+- Más herramientas locales para el agente
+- Integración de más modelos de IA
+- VPN integrada
+- Mensajería encriptada end-to-end
 - Gestion avanzada de grupos
 - Creador de stickers personalizado
-- Sistema de respaldo y restauracion
+- Sistema de respaldo automático en la nube
 
 ---
 
@@ -689,7 +792,7 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 
 ## Licencia
 
-**MIT License** - Copyright (c) 2026 AzelMods677
+**MIT License** - Copyright (c) 2025 AzelMods677
 
 Se concede permiso, de forma gratuita, a cualquier persona que obtenga una copia de este software para utilizarlo sin restriccion, incluyendo los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias, sujeto a que el aviso de copyright anterior se incluya en todas las copias.
 
@@ -707,8 +810,8 @@ EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTIA DE NINGUN TIPO.
 
 <div align="center">
 
-**Si te gusta el proyecto, dale una estrella en GitHub**
+**Si te gusta el proyecto, dale una estrella en GitHub ⭐**
 
-**Desarrollado por AzelMods677 - 2026**
+**Desarrollado por AzelMods677 - 2025**
 
 </div>
