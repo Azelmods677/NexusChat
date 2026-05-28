@@ -43,7 +43,6 @@ class RealTerminalEmulator(private val context: Context) {
         Shell.enableVerboseLogging = true
         Shell.setDefaultBuilder(
             Shell.Builder.create()
-                .setFlags(Shell.FLAG_REDIRECT_STDERR)
                 .setTimeout(60)
         )
         
@@ -57,12 +56,10 @@ class RealTerminalEmulator(private val context: Context) {
         // Create shell instance
         shell = if (_isRoot.value) {
             Shell.Builder.create()
-                .setFlags(Shell.FLAG_REDIRECT_STDERR or Shell.FLAG_MOUNT_MASTER)
                 .setTimeout(60)
                 .build()
         } else {
             Shell.Builder.create()
-                .setFlags(Shell.FLAG_REDIRECT_STDERR or Shell.FLAG_NON_ROOT_SHELL)
                 .setTimeout(60)
                 .build()
         }

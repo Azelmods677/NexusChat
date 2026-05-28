@@ -36,7 +36,15 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideFirebaseMessaging(): FirebaseMessaging = FirebaseMessaging.getInstance()
-    
+
+    @Provides
+    @Singleton
+    fun provideChatBackgroundRepository(
+        database: FirebaseDatabase
+    ): com.Azelmods.App.data.repository.ChatBackgroundRepository {
+        return com.Azelmods.App.data.repository.ChatBackgroundRepository(database)
+    }
+
     @Provides
     @Singleton
     fun provideFirebaseManager(

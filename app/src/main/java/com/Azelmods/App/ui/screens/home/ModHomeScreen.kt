@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,6 +38,9 @@ import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -55,6 +59,27 @@ fun ModHomeScreen(
     var batteryLevel by remember { mutableStateOf(0) }
     var currentTime by remember { mutableStateOf("") }
     var currentDate by remember { mutableStateOf("") }
+    var actualDisplayName by remember { mutableStateOf("") }
+    var actualPhotoUrl by remember { mutableStateOf<String?>(null) }
+    
+    // Load actual user data from Realtime Database (FirebaseAuth.displayName is null for email users)
+    LaunchedEffect(currentUser?.uid) {
+        val uid = currentUser?.uid ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            try {
+                val snapshot = FirebaseDatabase.getInstance().reference
+                    .child("users").child(uid)
+                    .get()
+                    .await()
+                val name = snapshot.child("displayName").getValue(String::class.java)
+                val photo = snapshot.child("photoUrl").getValue(String::class.java)
+                if (!name.isNullOrBlank()) actualDisplayName = name
+                if (!photo.isNullOrBlank()) actualPhotoUrl = photo
+            } catch (e: Exception) {
+                android.util.Log.e("ModHomeScreen", "Error loading user data", e)
+            }
+        }
+    }
     
     // Battery receiver
     DisposableEffect(Unit) {
@@ -129,8 +154,8 @@ fun ModHomeScreen(
                         .padding(4.dp)
                 ) {
                     UserAvatar(
-                        name = currentUser?.displayName ?: "User",
-                        photoUrl = currentUser?.photoUrl?.toString(),
+                        name = actualDisplayName.ifBlank { currentUser?.displayName ?: "User" },
+                        photoUrl = actualPhotoUrl ?: currentUser?.photoUrl?.toString(),
                         size = 92.dp
                     )
                 }
@@ -145,7 +170,7 @@ fun ModHomeScreen(
                 )
                 
                 Text(
-                    text = currentUser?.displayName ?: "Usuario",
+                    text = actualDisplayName.ifBlank { currentUser?.displayName ?: "Usuario" },
                     fontSize = 16.sp,
                     color = Color.Gray
                 )
@@ -238,7 +263,7 @@ fun ModHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 NavigationCard(
-                    icon = Icons.Default.Chat,
+                    icon = Icons.AutoMirrored.Filled.Chat,
                     label = "Chats",
                     onClick = { navController.navigate("home") },
                     modifier = Modifier.weight(1f),

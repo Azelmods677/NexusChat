@@ -18,6 +18,7 @@ interface UserRepository {
     suspend fun updateProfile(user: User): Resource<Unit>
     suspend fun updateOnlineStatus(userId: String, isOnline: Boolean): Resource<Unit>
     suspend fun searchUsers(query: String): Resource<List<User>>
+    suspend fun getAllUsers(): Resource<List<User>>
     fun observeUserStatus(userId: String): Flow<Boolean>
 }
 
@@ -92,6 +93,27 @@ class UserRepositoryImpl @Inject constructor(
             Resource.Success(users)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Search failed")
+        }
+    }
+    
+    override suspend fun getAllUsers(): Resource<List<User>> {
+        return try {
+            val snapshot = firebaseManager.database
+                .getReference("users")
+                .get()
+                .await()
+            
+            val users = mutableListOf<User>()
+            snapshot.children.forEach { userSnapshot ->
+                val user = userSnapshot.getValue(User::class.java)
+                if (user != null) {
+                    users.add(user)
+                }
+            }
+            
+            Resource.Success(users)
+        } catch (e: Exception) {
+            Resource.Error(e.message ?: "Failed to get users")
         }
     }
     

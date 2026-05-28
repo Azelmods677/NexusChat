@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -86,7 +86,7 @@ fun ThemeCustomizationScreen(
     // Tab order state
     val tabNames = listOf("Chats", "Stories", "Calls", "Profile")
     val tabIcons = listOf(
-        Icons.Default.Chat,
+        Icons.AutoMirrored.Filled.Chat,
         Icons.Default.AutoStories,
         Icons.Default.Call,
         Icons.Default.Person
@@ -138,7 +138,7 @@ fun ThemeCustomizationScreen(
             itemsIndexed(tabOrder) { index, tabIndex ->
                 TabOrderItem(
                     tabName = tabNames.getOrNull(tabIndex) ?: "",
-                    tabIcon = tabIcons.getOrNull(tabIndex) ?: Icons.Default.Chat,
+                    tabIcon = tabIcons.getOrNull(tabIndex) ?: Icons.AutoMirrored.Filled.Chat,
                     position = index + 1,
                     onMoveUp = if (index > 0) {
                         {

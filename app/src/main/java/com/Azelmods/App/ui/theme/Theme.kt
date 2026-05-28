@@ -16,27 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import com.Azelmods.App.data.preferences.UserPreferences
 import com.Azelmods.App.data.preferences.ThemePreferences
 
-// Map accent color names to actual colors - 15 themes support
-fun getAccentColor(colorName: String): Color {
-    return when (colorName.uppercase()) {
-        "PURPLE", "MORADO" -> Purple
-        "BLUE", "AZUL" -> Color(0xFF3B82F6)
-        "GREEN", "VERDE" -> Color(0xFF10B981)
-        "RED", "ROJO" -> Color(0xFFEF4444)
-        "PINK", "ROSA" -> Color(0xFFEC4899)
-        "ORANGE", "NARANJA" -> Color(0xFFF97316)
-        "CYAN", "CIAN" -> Color(0xFF06B6D4)
-        "TOXIC", "TÓXICO" -> Color(0xFF00FF00)
-        "DARK", "OSCURO" -> Color(0xFF1F2937)
-        "GOLD", "DORADO" -> Color(0xFFFBBF24)
-        "TOXICO_RED" -> Color(0xFFFF0000)
-        "PERVERSO" -> Color(0xFFCC0000)
-        "CRIMSON_DARK", "CRIMSONDARK" -> Color(0xFF8B0000)
-        "NEON_RED", "NEONRED" -> Color(0xFFFF1744)
-        "BLOOD_MOON", "BLOODMOON" -> Color(0xFFB71C1C)
-        else -> Purple // Default fallback
-    }
-}
+// Map accent color names to actual colors - delegates to AppTheme
+fun getAccentColor(colorName: String): Color =
+    AppTheme.getPrimaryColor(colorName)
 
 // Get typography based on font size preference
 @Composable

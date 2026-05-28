@@ -1,4 +1,3 @@
-
 package com.Azelmods.App.ui.screens.chat
 
 import android.net.Uri
@@ -9,7 +8,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,20 +30,18 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
+import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.data.model.Message
-import com.Azelmods.App.data.model.MessageStatus
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.components.CompleteEmojiPicker
@@ -54,12 +50,13 @@ import com.Azelmods.App.ui.components.AttachmentBottomSheet
 import com.Azelmods.App.ui.components.AttachmentType
 import com.Azelmods.App.ui.components.FullScreenImageViewer
 import com.Azelmods.App.ui.components.VideoWallpaper
+import com.Azelmods.App.ui.components.chat.MessageBubble
 import com.Azelmods.App.ui.components.AudioMessagePlayer
 import com.Azelmods.App.ui.components.ReadReceiptIndicator
+import com.Azelmods.App.ui.theme.linearGradientBrush
+import com.Azelmods.App.ui.theme.parseHexColor
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
-import com.Azelmods.App.data.preferences.ThemePreferences
-import com.Azelmods.App.data.preferences.ChatBackground
 import com.Azelmods.App.utils.AudioRecorder
 import com.Azelmods.App.utils.PermissionHelper
 import com.google.firebase.auth.FirebaseAuth
@@ -92,8 +89,8 @@ fun ChatScreen(
     
     // Populate messageText when entering edit mode
     LaunchedEffect(state.editingMessage) {
-        if (state.editingMessage != null) {
-            messageText = state.editingMessage!!.content
+        state.editingMessage?.let { editingMsg ->
+            messageText = editingMsg.content
         }
     }
     
@@ -144,7 +141,7 @@ fun ChatScreen(
                 onMoreClick = { showMenu = true }
             )
         },
-        containerColor = Color(0xFF0D0D1A)
+        containerColor = Color.Transparent
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -153,7 +150,7 @@ fun ChatScreen(
         ) {
             // Wallpaper background from ChatBackgroundRepository (per-chat)
             when (backgroundConfig.type) {
-                com.Azelmods.App.data.model.BackgroundType.IMAGE -> {
+                BackgroundType.IMAGE -> {
                     backgroundConfig.imageUri?.let { uri ->
                         AsyncImage(
                             model = uri,
@@ -164,7 +161,7 @@ fun ChatScreen(
                         )
                     }
                 }
-                com.Azelmods.App.data.model.BackgroundType.VIDEO -> {
+                BackgroundType.VIDEO -> {
                     backgroundConfig.videoUri?.let { uri ->
                         VideoWallpaper(
                             videoUri = Uri.parse(uri),
@@ -173,36 +170,34 @@ fun ChatScreen(
                         )
                     }
                 }
-                com.Azelmods.App.data.model.BackgroundType.SOLID_COLOR -> {
+                BackgroundType.SOLID_COLOR -> {
                     backgroundConfig.colorHex?.let { hex ->
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(android.graphics.Color.parseColor(hex)))
+                                .background(parseHexColor(hex))
                         )
                     }
                 }
-                com.Azelmods.App.data.model.BackgroundType.GRADIENT -> {
-                    if (backgroundConfig.gradientColors.size >= 2) {
+                BackgroundType.GRADIENT -> {
+                    val brush = linearGradientBrush(
+                        gradientColors = backgroundConfig.gradientColors,
+                        gradientAngle = backgroundConfig.gradientAngle
+                    )
+                    if (brush != null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = backgroundConfig.gradientColors.map { 
-                                            Color(android.graphics.Color.parseColor(it))
-                                        }
-                                    )
-                                )
+                                .background(brush)
                         )
                     }
                 }
                 else -> {
-                    // Default dark background
+                    // No per-chat background — global wallpaper from MainActivity shows through
+                    // Just use a transparent spacer so content layout is consistent
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF0D0D1A))
                     )
                 }
             }
@@ -220,6 +215,52 @@ fun ChatScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // ⬆️ Loading MORE indicator at the top (pagination)
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            color = Color(0xFF7C3AED),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Text(
+                                            "Cargando mensajes anteriores...",
+                                            color = Color.Gray,
+                                            fontSize = 13.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // No more messages indicator
+                        if (!state.hasMoreMessages && state.messages.isNotEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        "— No hay más mensajes —",
+                                        color = Color.Gray.copy(alpha = 0.5f),
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+
                         items(
                             items = state.messages,
                             key = { it.messageId }
@@ -243,6 +284,9 @@ fun ChatScreen(
                                 },
                                 onEditClick = {
                                     viewModel.setEditingMessage(message)
+                                },
+                                onMessageViewed = {
+                                    viewModel.markMessageViewed(message)
                                 }
                             )
                         }
@@ -252,6 +296,20 @@ fun ChatScreen(
                             item {
                                 TypingIndicator()
                             }
+                        }
+                    }
+                    
+                    // 🆕 Scroll-to-top detection for pagination
+                    val firstVisibleItem by remember {
+                        derivedStateOf {
+                            listState.firstVisibleItemIndex
+                        }
+                    }
+                    
+                    LaunchedEffect(firstVisibleItem) {
+                        // When scrolled to the very top (index 0), load more messages
+                        if (firstVisibleItem == 0 && !state.isLoadingMore && state.hasMoreMessages) {
+                            viewModel.loadMoreMessages()
                         }
                     }
                 }
@@ -309,7 +367,7 @@ fun ChatScreen(
                                             text = message.content,
                                             color = Color.Gray,
                                             fontSize = 13.sp,
-                                            maxLines = 1,
+                                            maxLines = 5,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }
@@ -330,18 +388,25 @@ fun ChatScreen(
                         messageText = messageText,
                         onMessageChange = { messageText = it },
                         onSendClick = {
-                            if (state.editingMessage != null) {
+                            state.editingMessage?.let { editingMsg ->
                                 // Edit mode - save edited message
-                                viewModel.editMessage(state.editingMessage!!.messageId, messageText)
+                                viewModel.editMessage(editingMsg.messageId, messageText)
                                 messageText = ""
-                            } else {
+                            } ?: run {
                                 // Normal mode - send new message
                                 viewModel.sendMessage(messageText, contactId)
                                 messageText = ""
                             }
                         },
                         contactId = contactId,
-                        viewModel = viewModel
+                        viewModel = viewModel,
+                        isEphemeralMode = state.isEphemeralMode,
+                        ephemeralDuration = state.ephemeralDuration,
+                        showEphemeralPicker = state.showEphemeralPicker,
+                        onToggleEphemeral = { viewModel.toggleEphemeralMode() },
+                        onSetEphemeralDuration = { viewModel.setEphemeralDuration(it) },
+                        onToggleEphemeralPicker = { viewModel.toggleEphemeralPicker() },
+                        onDismissEphemeralPicker = { viewModel.dismissEphemeralPicker() }
                     )
                 }
             }
@@ -380,7 +445,7 @@ fun ChatScreen(
                 DropdownMenuItem(
                     text = { Text("Mute", color = Color.White) },
                     onClick = { showMenu = false },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.VolumeOff, null, tint = Color.White) }
+                    leadingIcon = { Icon(Icons.Default.NotificationsOff, null, tint = Color.White) }
                 )
                 DropdownMenuItem(
                     text = { Text("Clear Chat", color = Color(0xFFEF4444)) },
@@ -481,7 +546,7 @@ fun ChatTopBar(
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
+                    maxLines = 5,
                     overflow = TextOverflow.Ellipsis
                 )
                 
@@ -552,538 +617,6 @@ fun TypingDots() {
                 color = Color(0xFF00BFA6).copy(alpha = alpha),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
-fun MessageBubble(
-    message: Message,
-    isOwnMessage: Boolean,
-    onLongPress: () -> Unit,
-    onReactionClick: (String) -> Unit,
-    onImageClick: ((String, String, String) -> Unit)? = null,
-    themeColor: Color = Color(0xFF7C3AED),
-    themeSecondaryColor: Color = Color(0xFF5B21B6),
-    onDeleteClick: ((Boolean) -> Unit)? = null,
-    onEditClick: (() -> Unit)? = null
-) {
-    var showReactionPicker by remember { mutableStateOf(false) }
-    var showMessageOptions by remember { mutableStateOf(false) }
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    val quickReactions = listOf("❤️", "👍", "😂", "😮", "😢", "🙏")
-    
-    // Check if message is deleted for current user
-    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val isDeleted = message.deletedFor[currentUserId] == true
-    val isDeletedForEveryone = message.deletedForEveryone
-    
-    // Calculate time since message was sent
-    val timeSinceMessage = System.currentTimeMillis() - message.timestamp
-    val canEdit = isOwnMessage && timeSinceMessage < 15 * 60 * 1000 && message.mediaType == null && !isDeletedForEveryone
-    val canDeleteForEveryone = isOwnMessage && timeSinceMessage < 48 * 60 * 60 * 1000 && !isDeletedForEveryone
-    
-    // Entry animation - use remember with key to prevent reset
-    var visible by remember(message.messageId) { mutableStateOf(false) }
-    LaunchedEffect(message.messageId) {
-        visible = true
-    }
-    
-    val offsetX by animateDpAsState(
-        targetValue = if (visible) 0.dp else if (isOwnMessage) 50.dp else (-50).dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "slide_${message.messageId}"
-    )
-    
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(300),
-        label = "fade_${message.messageId}"
-    )
-    
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(x = offsetX)
-            .graphicsLayer { this.alpha = alpha },
-        horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
-    ) {
-        // Show deleted message placeholder for messages deleted for everyone
-        if (isDeletedForEveryone) {
-            Surface(
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF2D2D44).copy(alpha = 0.5f)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Block,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Este mensaje fue eliminado",
-                        color = Color.Gray,
-                        fontSize = 13.sp,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                    )
-                }
-            }
-            return@Column
-        }
-        
-        Column {
-            // 3D PREMIUM MESSAGE BUBBLE
-            Surface(
-                shape = if (isOwnMessage) {
-                    RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
-                } else {
-                    RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
-                },
-                color = Color.Transparent,
-                modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .shadow(
-                        elevation = if (isOwnMessage) 8.dp else 6.dp,
-                        shape = if (isOwnMessage) {
-                            RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp)
-                        } else {
-                            RoundedCornerShape(topStart = 4.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 18.dp)
-                        },
-                        ambientColor = if (isOwnMessage) Color(0xFF7B5CFA).copy(0.4f) else Color.Black.copy(0.3f),
-                        spotColor = if (isOwnMessage) Color(0xFF7B5CFA).copy(0.6f) else Color.Black.copy(0.3f)
-                    )
-                    .safeClickable(
-                        onClick = { showReactionPicker = !showReactionPicker },
-                        onLongClick = { if (isOwnMessage) showMessageOptions = true }
-                    )
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            if (isOwnMessage) {
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF9B75FF), 
-                                        Color(0xFF7B5CFA), 
-                                        Color(0xFF5A3FC8)
-                                    ),
-                                    start = Offset(0f, 0f),
-                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                                )
-                            } else {
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF2A2A3E), Color(0xFF1E1E2E))
-                                )
-                            }
-                        )
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    // 3D shine overlay
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(if (isOwnMessage) 0.15f else 0.08f), 
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-                    
-                    Column {
-                        // Media content
-                        when (message.mediaType) {
-                            "IMAGE" -> {
-                                message.mediaUrl?.let { url ->
-                                    AsyncImage(
-                                        model = url,
-                                        contentDescription = "Image message",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 300.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .safeClickable {
-                                                onImageClick?.invoke(
-                                                    url,
-                                                    if (isOwnMessage) "Tú" else "Contacto",
-                                                    SimpleDateFormat("HH:mm", Locale.getDefault())
-                                                        .format(Date(message.timestamp))
-                                                )
-                                            },
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                    )
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "VIDEO" -> {
-                                message.mediaUrl?.let { url ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(200.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.Black.copy(alpha = 0.3f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.PlayCircle,
-                                            contentDescription = "Play video",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                    }
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "AUDIO" -> {
-                                message.mediaUrl?.let { url ->
-                                    AudioMessagePlayer(
-                                        audioUrl = url,
-                                        accentColor = if (isOwnMessage) themeColor else Color(0xFF7C3AED)
-                                    )
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "VIDEO" -> {
-                                message.mediaUrl?.let { url ->
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(200.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.Black)
-                                            .clickable {
-                                                // TODO: Abrir reproductor de video en pantalla completa
-                                            }
-                                    ) {
-                                        AsyncImage(
-                                            model = url,
-                                            contentDescription = "Video thumbnail",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                        )
-                                        
-                                        // Play button overlay
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.Black.copy(alpha = 0.3f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.PlayArrow,
-                                                contentDescription = "Play video",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(64.dp)
-                                            )
-                                        }
-                                    }
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "STICKER" -> {
-                                message.mediaUrl?.let { url ->
-                                    AsyncImage(
-                                        model = url,
-                                        contentDescription = "Sticker",
-                                        modifier = Modifier
-                                            .size(150.dp)
-                                            .clip(RoundedCornerShape(12.dp)),
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                                    )
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Text content (if any)
-                        if (message.content.isNotEmpty()) {
-                            // Detect emoji-only messages
-                            val isEmojiOnly = message.content.all { char ->
-                                char.code in 0x1F300..0x1F9FF || // Emoticons & Symbols
-                                char.code in 0x2600..0x26FF ||   // Miscellaneous Symbols
-                                char.code in 0x2700..0x27BF ||   // Dingbats
-                                char.isWhitespace()
-                            }
-                            val emojiCount = message.content.count { !it.isWhitespace() }
-                            
-                            // Message content with conditional styling
-                            if (isEmojiOnly && emojiCount <= 5 && message.mediaType == null) {
-                                // Large emoji display without bubble background
-                                Text(
-                                    text = message.content,
-                                    fontSize = 44.sp,
-                                    lineHeight = 48.sp
-                                )
-                            } else {
-                                // Normal text message with premium styling
-                                Text(
-                                    text = message.content,
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-                        
-                        // Time and status
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = formatTime(message.timestamp),
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 11.sp
-                            )
-                            
-                            // Show "(edited)" label if message was edited
-                            if (message.edited) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "(editado)",
-                                    color = Color.White.copy(alpha = 0.5f),
-                                    fontSize = 10.sp,
-                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                                )
-                            }
-                            
-                            if (isOwnMessage) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                ReadReceiptIndicator(status = message.status)
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Quick reaction picker
-            AnimatedVisibility(
-                visible = showReactionPicker,
-                enter = scaleIn(initialScale = 0.8f) + fadeIn(),
-                exit = scaleOut(targetScale = 0.8f) + fadeOut()
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF1A1A2E),
-                    shadowElevation = 8.dp,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        quickReactions.forEach { emoji ->
-                            val scale = remember { Animatable(0f) }
-                            
-                            LaunchedEffect(Unit) {
-                                scale.animateTo(
-                                    1f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy
-                                    )
-                                )
-                            }
-                            
-                            Surface(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .scale(scale.value)
-                                    .safeClickable {
-                                        onReactionClick(emoji)
-                                        showReactionPicker = false
-                                    },
-                                shape = CircleShape,
-                                color = Color(0xFF2D2D44)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = emoji,
-                                        fontSize = 20.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Reactions display
-        if (message.reactions.isNotEmpty()) {
-            Row(
-                modifier = Modifier.padding(top = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                message.reactions.forEach { (_, emoji) ->
-                    val scale = remember { Animatable(0f) }
-                    
-                    LaunchedEffect(Unit) {
-                        scale.animateTo(
-                            1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy
-                            )
-                        )
-                    }
-                    
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFF2D2D44).copy(alpha = 0.8f),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier
-                            .scale(scale.value)
-                            .safeClickable { onReactionClick(emoji) }
-                    ) {
-                        Box(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = emoji,
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        
-        // Message Options Dialog
-        if (showMessageOptions) {
-            AlertDialog(
-                onDismissRequest = { showMessageOptions = false },
-                containerColor = Color(0xFF1A1A2E),
-                title = {
-                    Text("Opciones del mensaje", color = Color.White)
-                },
-                text = {
-                    Column {
-                        // Edit option (only for text messages within 15 minutes)
-                        if (canEdit) {
-                            TextButton(
-                                onClick = {
-                                    showMessageOptions = false
-                                    onEditClick?.invoke()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Edit, null, tint = Color.White)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Editar", color = Color.White)
-                                }
-                            }
-                        }
-                        
-                        // Delete for me option
-                        TextButton(
-                            onClick = {
-                                showMessageOptions = false
-                                onDeleteClick?.invoke(false)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.DeleteOutline, null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("Eliminar para mí", color = Color.White)
-                            }
-                        }
-                        
-                        // Delete for everyone option (only within 48 hours)
-                        if (canDeleteForEveryone) {
-                            TextButton(
-                                onClick = {
-                                    showMessageOptions = false
-                                    showDeleteConfirmation = true
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFEF4444))
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Eliminar para todos", color = Color(0xFFEF4444))
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showMessageOptions = false }) {
-                        Text("Cancelar", color = themeColor)
-                    }
-                }
-            )
-        }
-        
-        // Delete Confirmation Dialog
-        if (showDeleteConfirmation) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirmation = false },
-                containerColor = Color(0xFF1A1A2E),
-                title = {
-                    Text("¿Eliminar para todos?", color = Color.White)
-                },
-                text = {
-                    Text(
-                        "Este mensaje será eliminado para todos en el chat. Esta acción no se puede deshacer.",
-                        color = Color.Gray
-                    )
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showDeleteConfirmation = false
-                            onDeleteClick?.invoke(true)
-                        }
-                    ) {
-                        Text("Eliminar", color = Color(0xFFEF4444))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirmation = false }) {
-                        Text("Cancelar", color = Color.White)
-                    }
-                }
             )
         }
     }
@@ -1165,7 +698,7 @@ fun ReplyPreviewBar(
                     text = message.content,
                     color = Color.Gray,
                     fontSize = 13.sp,
-                    maxLines = 1,
+                    maxLines = 5,
                     overflow = TextOverflow.Ellipsis
                 )
             }
@@ -1178,12 +711,85 @@ fun ReplyPreviewBar(
 }
 
 @Composable
+fun EphemeralDurationPicker(
+    currentDuration: Long,
+    onSelect: (Long) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        0L to "👁️ Ver una vez",
+        5L to "🕐 5 segundos",
+        30L to "🕐 30 segundos",
+        60L to "🕐 1 minuto",
+        300L to "🕐 5 minutos",
+        3600L to "🕐 1 hora",
+        86400L to "🕐 24 horas",
+        604800L to "🕐 7 días"
+    )
+    
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF1A1A2E),
+        shadowElevation = 8.dp
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            options.forEach { (duration, label) ->
+                val isSelected = duration == currentDuration
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp)
+                        .safeClickable {
+                            if (isSelected) onDismiss() else onSelect(duration)
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected) Color(0xFF7C3AED).copy(alpha = 0.2f) else Color.Transparent
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = label,
+                            color = if (isSelected) Color(0xFF9B75FF) else Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        )
+                        if (isSelected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color(0xFF9B75FF),
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ChatInputArea(
     messageText: String,
     onMessageChange: (String) -> Unit,
     onSendClick: () -> Unit,
     contactId: String,
-    viewModel: ChatViewModel
+    viewModel: ChatViewModel,
+    isEphemeralMode: Boolean = false,
+    ephemeralDuration: Long = 0L,
+    showEphemeralPicker: Boolean = false,
+    onToggleEphemeral: () -> Unit = {},
+    onSetEphemeralDuration: (Long) -> Unit = {},
+    onToggleEphemeralPicker: () -> Unit = {},
+    onDismissEphemeralPicker: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val themeColor = rememberThemeColor()
@@ -1213,8 +819,10 @@ fun ChatInputArea(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
-        if (success && cameraUri != null) {
-            viewModel.sendImageMessage(cameraUri!!, contactId)
+        if (success) {
+            cameraUri?.let { uri ->
+                viewModel.sendImageMessage(uri, contactId)
+            }
         }
     }
     
@@ -1514,6 +1122,86 @@ fun ChatInputArea(
                 }
             )
         }
+        // Ephemeral Duration Picker
+        AnimatedVisibility(
+            visible = showEphemeralPicker,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut()
+        ) {
+            EphemeralDurationPicker(
+                currentDuration = ephemeralDuration,
+                onSelect = onSetEphemeralDuration,
+                onDismiss = onDismissEphemeralPicker
+            )
+        }
+        
+        // Ephemeral mode indicator bar
+        AnimatedVisibility(
+            visible = isEphemeralMode,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut()
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF2D1B69).copy(alpha = 0.6f)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Timer,
+                            contentDescription = null,
+                            tint = Color(0xFF9B75FF),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (ephemeralDuration == 0L) "📷 Ver una vez"
+                                   else "🕐 Se autodestruye en ${
+                                       when (ephemeralDuration) {
+                                           5L -> "5s"
+                                           30L -> "30s"
+                                           60L -> "1m"
+                                           300L -> "5m"
+                                           3600L -> "1h"
+                                           86400L -> "24h"
+                                           604800L -> "7d"
+                                           else -> "${ephemeralDuration}s"
+                                       }
+                                   }",
+                            color = Color(0xFF9B75FF),
+                            fontSize = 13.sp
+                        )
+                    }
+                    
+                    Row {
+                        TextButton(onClick = onToggleEphemeralPicker) {
+                            Text(
+                                if (ephemeralDuration == 0L) "Cambiar tiempo" else "Cambiar",
+                                color = Color(0xFF9B75FF).copy(alpha = 0.7f),
+                                fontSize = 12.sp
+                            )
+                        }
+                        IconButton(
+                            onClick = onToggleEphemeral,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Desactivar",
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
         
         // ✨ BONITA ENTRY - Main Input Row con diseño mejorado
         AnimatedVisibility(visible = !isRecording) {
@@ -1536,6 +1224,58 @@ fun ChatInputArea(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Ephemeral toggle button (timer icon)
+                    val ephemeralScale by animateFloatAsState(
+                        targetValue = if (isEphemeralMode) 1.2f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                        label = "ephemeral_scale"
+                    )
+                    
+                    Surface(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .scale(ephemeralScale)
+                            .safeClickable {
+                                if (isEphemeralMode) {
+                                    onToggleEphemeralPicker()
+                                } else {
+                                    onToggleEphemeral()
+                                }
+                            },
+                        shape = CircleShape,
+                        color = if (isEphemeralMode) {
+                            Color(0xFF9B75FF).copy(alpha = 0.2f)
+                        } else {
+                            Color(0xFF2D2D44).copy(alpha = 0.6f)
+                        },
+                        shadowElevation = if (isEphemeralMode) 6.dp else 2.dp
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (isEphemeralMode) {
+                                        Modifier.background(
+                                            Brush.radialGradient(
+                                                listOf(
+                                                    Color(0xFF9B75FF).copy(alpha = 0.2f),
+                                                    Color.Transparent
+                                                )
+                                            )
+                                        )
+                                    } else Modifier
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.Timer,
+                                contentDescription = "Temporal",
+                                tint = if (isEphemeralMode) Color(0xFF9B75FF) else Color.Gray,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                    
                     // Emoji button con efecto glow
                     val emojiScale by animateFloatAsState(
                         targetValue = if (showEmojiPicker) 1.15f else 1f,
@@ -1641,7 +1381,7 @@ fun ChatInputArea(
                                 )
                         ) {
                             Icon(
-                                Icons.Default.StickyNote2,
+                                Icons.AutoMirrored.Filled.StickyNote2,
                                 contentDescription = "Sticker",
                                 tint = if (showStickerPicker) themeSecondaryColor else Color.Gray,
                                 modifier = Modifier.size(22.dp)
@@ -1714,8 +1454,8 @@ fun ChatInputArea(
                                         color = Color.White,
                                         fontSize = 15.sp
                                     ),
-                                    maxLines = 1, // SOLO 1 LÍNEA
-                                    singleLine = true,
+                                    maxLines = 5, // SOLO 1 LÍNEA
+                                    singleLine = false,
                                     decorationBox = { innerTextField ->
                                         if (messageText.isEmpty()) {
                                             Text(

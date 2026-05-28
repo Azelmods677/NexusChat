@@ -86,7 +86,7 @@ class StoryViewerViewModel @Inject constructor(
                                 userId = storyUserId,
                                 userName = userName,
                                 userPhotoUrl = userPhotoUrl,
-                                type = storyMap["type"] as? String ?: "IMAGE",
+                                type = storyMap["type"] as? String ?: storyMap["mediaType"] as? String ?: "IMAGE",
                                 mediaUrl = storyMap["mediaUrl"] as? String,
                                 text = storyMap["text"] as? String,
                                 caption = storyMap["caption"] as? String,

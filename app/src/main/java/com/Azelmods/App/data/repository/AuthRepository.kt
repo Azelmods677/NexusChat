@@ -100,7 +100,7 @@ class AuthRepositoryImpl @Inject constructor(
                     .await()
                 
                 val user = if (userSnapshot.exists()) {
-                    userSnapshot.getValue(User::class.java)!!
+                    userSnapshot.getValue(User::class.java) ?: return Resource.Error("User data not found")
                 } else {
                     // Create new user in database
                     val newUser = User(

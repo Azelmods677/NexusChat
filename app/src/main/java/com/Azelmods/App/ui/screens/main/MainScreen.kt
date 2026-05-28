@@ -1,5 +1,5 @@
 ﻿package com.Azelmods.App.ui.screens.main
-
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,25 +15,32 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.Azelmods.App.data.preferences.ThemePreferences
 import com.Azelmods.App.data.manager.AppBackgroundManager
+import com.Azelmods.App.data.model.BackgroundConfig
 import com.Azelmods.App.data.model.BackgroundType
+import com.Azelmods.App.service.NotificationHelper
+import com.Azelmods.App.ui.theme.linearGradientBrush
+import com.Azelmods.App.ui.theme.parseHexColor
+import com.Azelmods.App.ui.components.VideoBackgroundPlayer
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.screens.calls.CallsScreen
 import com.Azelmods.App.ui.screens.home.HomeScreenRedesigned
 import com.Azelmods.App.ui.screens.profile.ProfileScreen
 import com.Azelmods.App.ui.screens.stories.StoriesScreen
-import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.Purple
 import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil3.compose.AsyncImage
 
 data class TabItem(
     val route: String,
@@ -62,7 +69,9 @@ fun MainScreen(
     val themePrefs = remember { ThemePreferences(context) }
     
     // Get app-wide background configuration
-    val backgroundConfig by appBackgroundManager.backgroundConfig.collectAsState()
+    val backgroundConfig by appBackgroundManager.backgroundConfig.collectAsState(
+        initial = BackgroundConfig(type = BackgroundType.NONE)
+    )
     
     // Define all available tabs
     val allTabs = listOf(
@@ -92,6 +101,9 @@ fun MainScreen(
         )
     )
     
+    // Observar contador de llamadas perdidas
+    val missedCallCount by NotificationHelper.missedCallCount.collectAsStateWithLifecycle()
+
     // Get custom tab order from preferences
     val tabOrder = remember { themePrefs.getTabOrder() }
     val tabs = remember(tabOrder) {
@@ -102,6 +114,7 @@ fun MainScreen(
     
     val pagerState = rememberPagerState(
         initialPage = 0,
+        initialPageOffsetFraction = 0f,
         pageCount = { tabs.size }
     )
     val coroutineScope = rememberCoroutineScope()
@@ -114,26 +127,50 @@ fun MainScreen(
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = Color.Transparent,
                 tonalElevation = 0.dp,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
             ) {
                 tabs.forEachIndexed { index, tab ->
+                    val isCallsTab = tab.label == "Calls"
                     NavigationBarItem(
                         selected = currentPage == index,
                         onClick = {
+                            // Limpiar contador al abrir Calls
+                            if (isCallsTab) NotificationHelper.resetMissedCallCount()
                             coroutineScope.launch {
                                 pagerState.animateScrollToPage(index)
                             }
                         },
                         icon = {
-                            Icon(
-                                imageVector = if (currentPage == index)
-                                    tab.selectedIcon
-                                else
-                                    tab.unselectedIcon,
-                                contentDescription = tab.label
-                            )
+                            if (isCallsTab && missedCallCount > 0) {
+                                BadgedBox(badge = {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ) {
+                                        Text(
+                                            text = if (missedCallCount > 99) "99+"
+                                                    else missedCallCount.toString()
+                                        )
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = if (currentPage == index)
+                                            tab.selectedIcon
+                                        else
+                                            tab.unselectedIcon,
+                                        contentDescription = tab.label
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    imageVector = if (currentPage == index)
+                                        tab.selectedIcon
+                                    else
+                                        tab.unselectedIcon,
+                                    contentDescription = tab.label
+                                )
+                            }
                         },
                         label = { Text(tab.label) },
                         alwaysShowLabel = true,
@@ -149,12 +186,12 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
             // ═══ APP-WIDE BACKGROUND ═══
             when (backgroundConfig.type) {
                 BackgroundType.IMAGE -> {
                     backgroundConfig.imageUri?.let { uri ->
-                        coil3.compose.AsyncImage(
+                        AsyncImage(
                             model = uri,
                             contentDescription = "App Background",
                             modifier = Modifier.fillMaxSize(),
@@ -164,51 +201,56 @@ fun MainScreen(
                 }
                 BackgroundType.VIDEO -> {
                     backgroundConfig.videoUri?.let { uri ->
-                        androidx.compose.ui.viewinterop.AndroidView(
-                            factory = { ctx ->
-                                android.widget.VideoView(ctx).apply {
-                                    setVideoURI(android.net.Uri.parse(uri))
-                                    setOnPreparedListener { mp ->
-                                        mp.isLooping = true
-                                        mp.setVolume(0f, 0f)
-                                    }
-                                    start()
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
+                        VideoBackgroundPlayer(
+                            videoUri = uri,
+                            modifier = Modifier.fillMaxSize(),
+                            fallbackColor = Color(0xFF0D0D1A)
                         )
                     }
                 }
                 BackgroundType.SOLID_COLOR -> {
-                    androidx.compose.foundation.background(
-                        color = androidx.compose.ui.graphics.Color(
-                            android.graphics.Color.parseColor(backgroundConfig.colorHex ?: "#0D0D1A")
-                        ),
-                        modifier = Modifier.fillMaxSize()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(parseHexColor(backgroundConfig.colorHex ?: "#0D0D1A"))
                     )
                 }
                 BackgroundType.GRADIENT -> {
-                    androidx.compose.foundation.Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .androidx.compose.foundation.background(
-                                androidx.compose.ui.graphics.Brush.verticalGradient(
-                                    listOf(
-                                        androidx.compose.ui.graphics.Color(0xFF1A1A2E),
-                                        androidx.compose.ui.graphics.Color(0xFF0D0D1A)
-                                    )
-                                )
-                            )
+                    val brush = linearGradientBrush(
+                        gradientColors = backgroundConfig.gradientColors,
+                        gradientAngle = backgroundConfig.gradientAngle
                     )
+                    if (brush != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(brush)
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF0D0D1A))
+                        )
+                    }
                 }
                 else -> {
                     // Default dark background
-                    androidx.compose.foundation.Box(
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .androidx.compose.foundation.background(androidx.compose.ui.graphics.Color(0xFF0D0D1A))
+                            .background(Color(0xFF0D0D1A))
                     )
                 }
+            }
+            
+            // ═══ OVERLAY LAYER — mejora legibilidad sobre fondos claros ═══
+            if (backgroundConfig.type != BackgroundType.NONE) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = backgroundConfig.overlayAlpha))
+                )
             }
             
             // ═══ CONTENT ON TOP OF BACKGROUND ═══
@@ -234,3 +276,5 @@ fun MainScreen(
         }
     }
 }
+
+

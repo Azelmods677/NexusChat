@@ -124,9 +124,9 @@ fun LoginScreen(
             )
             
             // Error message
-            if (state.error != null) {
+            state.error?.let { errorMessage ->
                 Text(
-                    text = state.error!!,
+                    text = errorMessage,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier

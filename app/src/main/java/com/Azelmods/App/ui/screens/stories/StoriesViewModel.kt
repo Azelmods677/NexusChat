@@ -124,9 +124,10 @@ class StoriesViewModel @Inject constructor(
                                     userId = userId,
                                     userName = userName,
                                     userPhotoUrl = userPhotoUrl,
-                                    type = storyMap["type"] as? String ?: "IMAGE",
+                                    type = storyMap["type"] as? String ?: storyMap["mediaType"] as? String ?: "IMAGE",
                                     mediaUrl = storyMap["mediaUrl"] as? String,
                                     text = storyMap["text"] as? String,
+
                                     caption = storyMap["caption"] as? String,
                                     backgroundColor = storyMap["backgroundColor"] as? String,
                                     timestamp = timestamp,

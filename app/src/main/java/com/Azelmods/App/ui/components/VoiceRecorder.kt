@@ -173,12 +173,7 @@ class AudioRecorder(
     private var mediaRecorder: MediaRecorder? = null
     
     fun startRecording() {
-        mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
-        } else {
-            @Suppress("DEPRECATION")
-            MediaRecorder()
-        }.apply {
+        mediaRecorder = MediaRecorder(context).apply { // minSdk 31
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)

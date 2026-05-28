@@ -53,7 +53,7 @@ class AIPreferences @Inject constructor(
     // ═══════════════════════════════════════════════════════════════════
     
     val aiProvider: Flow<String> = context.aiDataStore.data.map { preferences ->
-        preferences[AI_PROVIDER] ?: AIManager.AIProvider.OPENCODE.name
+        preferences[AI_PROVIDER] ?: AIManager.AIProvider.OLLAMA_CLOUD.name
     }
     
     suspend fun setAIProvider(provider: AIManager.AIProvider) {
@@ -63,7 +63,7 @@ class AIPreferences @Inject constructor(
     }
     
     val aiModel: Flow<String> = context.aiDataStore.data.map { preferences ->
-        preferences[AI_MODEL] ?: "gpt-4-turbo-2024-04-09"
+        preferences[AI_MODEL] ?: com.Azelmods.App.data.api.AzelAIApiService.DEEPSEEK_R1_70B
     }
     
     suspend fun setAIModel(model: String) {
@@ -174,16 +174,6 @@ class AIPreferences @Inject constructor(
     // API KEYS PERSONALIZADAS
     // ═══════════════════════════════════════════════════════════════════
     
-    val customOpenCodeKey: Flow<String> = context.aiDataStore.data.map { preferences ->
-        preferences[CUSTOM_OPENCODE_KEY] ?: ""
-    }
-    
-    suspend fun setCustomOpenCodeKey(key: String) {
-        context.aiDataStore.edit { preferences ->
-            preferences[CUSTOM_OPENCODE_KEY] = key
-        }
-    }
-    
     val customOllamaUrl: Flow<String> = context.aiDataStore.data.map { preferences ->
         preferences[CUSTOM_OLLAMA_URL] ?: "http://localhost:11434"
     }
@@ -290,8 +280,8 @@ class AIPreferences @Inject constructor(
      */
     fun getAllSettings(): Flow<Map<String, Any>> = context.aiDataStore.data.map { preferences ->
         mapOf(
-            "ai_provider" to (preferences[AI_PROVIDER] ?: AIManager.AIProvider.OPENCODE.name),
-            "ai_model" to (preferences[AI_MODEL] ?: "gpt-4-turbo-2024-04-09"),
+            "ai_provider" to (preferences[AI_PROVIDER] ?: AIManager.AIProvider.OLLAMA_CLOUD.name),
+            "ai_model" to (preferences[AI_MODEL] ?: com.Azelmods.App.data.api.AzelAIApiService.DEEPSEEK_R1_70B),
             "temperature" to (preferences[TEMPERATURE] ?: 0.9),
             "max_tokens" to (preferences[MAX_TOKENS] ?: 8192),
             "top_p" to (preferences[TOP_P] ?: 0.95),
@@ -303,7 +293,7 @@ class AIPreferences @Inject constructor(
             "save_history" to (preferences[SAVE_HISTORY] ?: true),
             "total_messages" to (preferences[TOTAL_MESSAGES] ?: 0),
             "total_tokens" to (preferences[TOTAL_TOKENS] ?: 0),
-            "favorite_model" to (preferences[FAVORITE_MODEL] ?: "gpt-4-turbo-2024-04-09")
+            "favorite_model" to (preferences[FAVORITE_MODEL] ?: com.Azelmods.App.data.api.AzelAIApiService.DEEPSEEK_R1_70B)
         )
     }
 }

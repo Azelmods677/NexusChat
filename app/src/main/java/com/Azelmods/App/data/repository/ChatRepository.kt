@@ -7,6 +7,7 @@ import com.Azelmods.App.data.model.MessageStatus
 import com.Azelmods.App.util.Resource
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -64,7 +65,7 @@ class ChatRepositoryImpl @Inject constructor(
     override fun getMessages(chatId: String, currentUserId: String): Flow<Resource<List<Message>>> = callbackFlow {
         trySend(Resource.Loading())
         
-        val messagesRef = firebaseManager.database.getReference("messages/$chatId")
+        val messagesRef = firebaseManager.database.getReference("chats/$chatId/messages")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val messages = mutableListOf<Message>()
@@ -95,7 +96,7 @@ class ChatRepositoryImpl @Inject constructor(
     
     override suspend fun sendMessage(chatId: String, message: Message): Resource<Unit> {
         return try {
-            val messageRef = firebaseManager.database.getReference("messages/$chatId").push()
+            val messageRef = firebaseManager.database.getReference("chats/$chatId/messages").push()
             val messageWithId = message.copy(messageId = messageRef.key ?: "")
             
             messageRef.setValue(messageWithId).await()
@@ -119,7 +120,7 @@ class ChatRepositoryImpl @Inject constructor(
     ): Resource<Unit> {
         return try {
             firebaseManager.database
-                .getReference("messages/$chatId/$messageId/status")
+                .getReference("chats/$chatId/messages/$messageId/status")
                 .setValue(status.name)
                 .await()
             Resource.Success(Unit)
@@ -136,7 +137,7 @@ class ChatRepositoryImpl @Inject constructor(
     ): Resource<Unit> {
         return try {
             firebaseManager.database
-                .getReference("messages/$chatId/$messageId/reactions/$userId")
+                .getReference("chats/$chatId/messages/$messageId/reactions/$userId")
                 .setValue(emoji)
                 .await()
             Resource.Success(Unit)
@@ -150,13 +151,17 @@ class ChatRepositoryImpl @Inject constructor(
             val chatRef = firebaseManager.database.getReference("chats").push()
             val chatId = chatRef.key ?: return Resource.Error("Failed to create chat")
             
-            val chat = Chat(
-                chatId = chatId,
-                participants = participants,
-                createdAt = System.currentTimeMillis()
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "participants" to participants,
+                "members" to participants,
+                "createdAt" to System.currentTimeMillis(),
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
             )
             
-            chatRef.setValue(chat).await()
+            chatRef.setValue(chatData).await()
             Resource.Success(chatId)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to create chat")
@@ -207,7 +212,7 @@ class ChatRepositoryImpl @Inject constructor(
             if (deleteForEveryone) {
                 // Check if user is sender
                 val messageSnapshot = firebaseManager.database
-                    .getReference("messages/$chatId/$messageId")
+                    .getReference("chats/$chatId/messages/$messageId")
                     .get()
                     .await()
                 
@@ -235,7 +240,7 @@ class ChatRepositoryImpl @Inject constructor(
                     "mediaType" to null
                 )
                 firebaseManager.database
-                    .getReference("messages/$chatId/$messageId")
+                    .getReference("chats/$chatId/messages/$messageId")
                     .updateChildren(updates)
                     .await()
                 
@@ -249,7 +254,7 @@ class ChatRepositoryImpl @Inject constructor(
                 if (chat != null && chat.lastMessageTime == message.timestamp) {
                     // Get previous message
                     val messagesSnapshot = firebaseManager.database
-                        .getReference("messages/$chatId")
+                        .getReference("chats/$chatId/messages")
                         .orderByChild("timestamp")
                         .limitToLast(2)
                         .get()
@@ -288,7 +293,7 @@ class ChatRepositoryImpl @Inject constructor(
             } else {
                 // Mark as deleted only for this user
                 firebaseManager.database
-                    .getReference("messages/$chatId/$messageId/deletedFor/$userId")
+                    .getReference("chats/$chatId/messages/$messageId/deletedFor/$userId")
                     .setValue(true)
                     .await()
             }
@@ -307,7 +312,7 @@ class ChatRepositoryImpl @Inject constructor(
         return try {
             // Get message to validate
             val messageSnapshot = firebaseManager.database
-                .getReference("messages/$chatId/$messageId")
+                .getReference("chats/$chatId/messages/$messageId")
                 .get()
                 .await()
             
@@ -340,7 +345,7 @@ class ChatRepositoryImpl @Inject constructor(
                 "editedAt" to currentTime
             )
             firebaseManager.database
-                .getReference("messages/$chatId/$messageId")
+                .getReference("chats/$chatId/messages/$messageId")
                 .updateChildren(updates)
                 .await()
             

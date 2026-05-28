@@ -5,13 +5,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.Azelmods.App.data.security.tor.TorService
 import com.Azelmods.App.ui.screens.settings.AiFeaturesScreen
 import com.Azelmods.App.ui.screens.auth.LoginScreen
 import com.Azelmods.App.ui.screens.auth.RegisterScreen
@@ -30,19 +28,8 @@ import com.Azelmods.App.ui.screens.settings.*
 import com.Azelmods.App.ui.screens.splash.SplashScreen
 import com.Azelmods.App.ui.screens.stories.CreateStoryScreen
 import com.Azelmods.App.ui.screens.stories.StoryViewerScreen
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.components.SingletonComponent
+import com.Azelmods.App.ui.screens.security.OrbotWelcomeScreen
 import java.net.URLDecoder
-
-/**
- * Hilt EntryPoint for accessing TorService in Composables
- */
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-interface TorServiceEntryPoint {
-    fun torService(): TorService
-}
 
 @Composable
 fun NavGraph(
@@ -170,7 +157,7 @@ fun NavGraph(
             val callId = backStackEntry.arguments?.getString("callId") ?: ""
             val callType = backStackEntry.arguments?.getString("callType") ?: "audio"
             IncomingCallScreen(
-                contactId = callId,
+                callId = callId,
                 callType = callType,
                 navController = navController
             )
@@ -246,7 +233,10 @@ fun NavGraph(
         }
         
         composable("wallpaper") {
-            com.Azelmods.App.ui.screens.settings.WallpaperScreen(navController = navController)
+            com.Azelmods.App.ui.screens.background.BackgroundPickerScreen(
+                navController = navController,
+                chatId = null
+            )
         }
         
         composable("device_info") {
@@ -321,7 +311,6 @@ fun NavGraph(
             )
         }
         
-        // Security & Advanced Features
         composable(Screen.Security.route) {
             com.Azelmods.App.ui.screens.security.SecurityScreen(
                 navController = navController
@@ -334,32 +323,23 @@ fun NavGraph(
             )
         }
         
-        // Tor Browser - Anonymous browsing with .onion support (Embedded Tor)
+        // Tor Browser - Anonymous browsing with .onion support via Orbot
         composable(Screen.TorBrowser.route) {
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val torService = remember { 
-                // Get TorService from Hilt dependency injection
-                dagger.hilt.android.EntryPointAccessors.fromApplication(
-                    context.applicationContext,
-                    TorServiceEntryPoint::class.java
-                ).torService()
-            }
             com.Azelmods.App.ui.screens.security.TorBrowserScreenNew(
-                navController = navController,
-                torService = torService
+                navController = navController
+            )
+        }
+
+        // Orbot Welcome - Setup guide for Orbot installation and configuration
+        composable(Screen.OrbotWelcome.route) {
+            OrbotWelcomeScreen(
+                navController = navController
             )
         }
         
         // Terminal
         composable("terminal") {
             com.Azelmods.App.ui.screens.terminal.TerminalScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-        
-        // CyberSec Toolkit
-        composable("cybersec") {
-            com.Azelmods.App.ui.screens.cybersec.CyberSecScreen(
                 onBack = { navController.popBackStack() }
             )
         }
@@ -389,10 +369,5 @@ fun NavGraph(
             )
         }
         
-        composable("internal_bot") {
-            com.Azelmods.App.ui.screens.bot.InternalBotScreen(
-                navController = navController
-            )
-        }
     }
 }

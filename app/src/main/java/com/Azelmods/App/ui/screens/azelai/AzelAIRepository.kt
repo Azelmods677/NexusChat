@@ -13,7 +13,6 @@ import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -24,13 +23,49 @@ import javax.inject.Singleton
  * Gestiona la comunicación con la API y Firebase
  */
 @Singleton
-class AzelAIRepository @Inject constructor() {
+class AzelAIRepository @Inject constructor(
+    private val apiService: AzelAIApiService
+) {
     
     companion object {
         private const val TAG = "AzelAIRepository"
     }
     
-    private val apiService = AzelAIApiService()
+    private fun buildApiMessages(
+        conversationHistory: List<AIMessage>,
+        userMessage: String
+    ): List<Message> {
+        val maxHistory = 10 // Mantener solo los últimos 10 mensajes para optimizar tokens
+        
+        val filteredHistory = conversationHistory
+            .filter { !it.isLoading && !it.error && it.role != "system" }
+            
+        val recentHistory = if (filteredHistory.size > maxHistory) {
+            filteredHistory.takeLast(maxHistory)
+        } else {
+            filteredHistory
+        }
+
+        val messages = recentHistory
+            .map { msg -> 
+                // Optimizamos tokens truncando respuestas largas de la IA, pero respetando los prompts del usuario
+                val optimizedContent = if (msg.role == "assistant" && msg.content.length > 1500) {
+                    msg.content.take(1500) + "\n\n[...Texto truncado para ahorrar tokens...]"
+                } else {
+                    msg.content
+                }
+                Message(msg.role, optimizedContent)
+            }
+            .toMutableList()
+            
+        val lastIsDuplicateUser = messages.lastOrNull()?.let {
+            it.role == "user" && it.content == userMessage
+        } == true
+        if (!lastIsDuplicateUser) {
+            messages.add(Message("user", userMessage))
+        }
+        return messages
+    }
     private val database = FirebaseDatabase.getInstance()
     private val auth = FirebaseAuth.getInstance()
     
@@ -42,11 +77,7 @@ class AzelAIRepository @Inject constructor() {
         conversationHistory: List<AIMessage>,
         model: String = AzelAIApiService.DEEPSEEK_R1_70B
     ): Flow<String> {
-        val messages = conversationHistory
-            .filter { !it.isLoading && !it.error && it.role != "system" }
-            .map { Message(it.role, it.content) }
-            .toMutableList()
-            .apply { add(Message("user", userMessage)) }
+        val messages = buildApiMessages(conversationHistory, userMessage)
         
         return apiService.chatCompletionStream(
             model = model,
@@ -57,9 +88,6 @@ class AzelAIRepository @Inject constructor() {
                 is StreamResponse.Error -> throw Exception(response.message)
                 is StreamResponse.Done -> ""
             }
-        }.catch { e ->
-            Log.e(TAG, "Error in stream", e)
-            emit("❌ Error: ${e.message}")
         }
     }
     
@@ -71,11 +99,7 @@ class AzelAIRepository @Inject constructor() {
         conversationHistory: List<AIMessage>,
         model: String = AzelAIApiService.DEEPSEEK_R1_70B
     ): Result<Pair<String, Int>> = runCatching {
-        val messages = conversationHistory
-            .filter { !it.isLoading && !it.error && it.role != "system" }
-            .map { Message(it.role, it.content) }
-            .toMutableList()
-            .apply { add(Message("user", userMessage)) }
+        val messages = buildApiMessages(conversationHistory, userMessage)
         
         val response = apiService.chatCompletion(
             model = model,
@@ -138,6 +162,12 @@ class AzelAIRepository @Inject constructor() {
      */
     suspend fun saveMessage(chatPath: String, message: AIMessage) {
         try {
+            val userId = auth.currentUser?.uid
+            if (userId == null) {
+                Log.e(TAG, "❌ User not authenticated, cannot save message")
+                return
+            }
+            
             val ref = database.getReference("aiChats/$chatPath/messages").push()
             val msgWithId = message.copy(id = ref.key ?: "")
             ref.setValue(msgWithId).await()
@@ -337,10 +367,21 @@ class AzelAIRepository @Inject constructor() {
     suspend fun getChatStats(userId: String): Map<String, Any> {
         return try {
             val snapshot = database.getReference("aiChats/$userId").get().await()
+            var messageCount = 0
+            var totalTokens = 0
+            var lastActivity = 0L
+            snapshot.children.forEach { chatSnapshot ->
+                val chatId = chatSnapshot.key ?: return@forEach
+                if (!chatId.startsWith("chat_")) return@forEach
+                messageCount += chatSnapshot.child("messageCount").getValue(Int::class.java) ?: 0
+                totalTokens += chatSnapshot.child("totalTokens").getValue(Int::class.java) ?: 0
+                val activity = chatSnapshot.child("lastActivity").getValue(Long::class.java) ?: 0L
+                if (activity > lastActivity) lastActivity = activity
+            }
             mapOf(
-                "messageCount" to (snapshot.child("messageCount").getValue(Int::class.java) ?: 0),
-                "totalTokens" to (snapshot.child("totalTokens").getValue(Int::class.java) ?: 0),
-                "lastActivity" to (snapshot.child("lastActivity").getValue(Long::class.java) ?: 0L)
+                "messageCount" to messageCount,
+                "totalTokens" to totalTokens,
+                "lastActivity" to lastActivity
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error getting chat stats", e)

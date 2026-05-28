@@ -35,6 +35,9 @@ import com.Azelmods.App.data.tutorials.AppFeature
 import com.Azelmods.App.ui.components.AutoTutorial
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.tasks.await
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,6 +47,28 @@ fun SettingsScreen(
     val context = LocalContext.current
     val tutorialPreferences = remember { TutorialPreferences(context) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    
+    // Load actual user data from Realtime Database
+    var actualUserName by remember { mutableStateOf("") }
+    var actualUserPhoto by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(Unit) {
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            try {
+                val snapshot = com.google.firebase.database.FirebaseDatabase.getInstance().reference
+                    .child("users").child(uid)
+                    .get()
+                    .await()
+                val name = snapshot.child("displayName").getValue(String::class.java)
+                val photo = snapshot.child("photoUrl").getValue(String::class.java)
+                if (!name.isNullOrBlank()) actualUserName = name
+                if (!photo.isNullOrBlank()) actualUserPhoto = photo
+            } catch (e: Exception) {
+                android.util.Log.e("SettingsScreen", "Error loading user data", e)
+            }
+        }
+    }
     
     // Show tutorial on first visit
     AutoTutorial(
@@ -145,13 +170,24 @@ fun SettingsScreen(
                             color = Color(0xFF7B5CFA)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
-                                // TODO: Load actual user photo
-                                Text(
-                                    text = "U", // TODO: Get first letter of user name
-                                    color = Color.White,
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                // Load user photo if available
+                                if (actualUserPhoto != null) {
+                                    coil3.compose.AsyncImage(
+                                        model = actualUserPhoto,
+                                        contentDescription = "Profile",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                } else {
+                                    Text(
+                                        text = actualUserName.take(1).uppercase().ifEmpty { "?" },
+                                        color = Color.White,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
@@ -160,13 +196,13 @@ fun SettingsScreen(
                     
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Usuario", // TODO: Load actual user name
+                            text = actualUserName.ifBlank { "Usuario" },
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = Color.White
                         )
                         Text(
-                            text = "Usando Nexus Chat", // TODO: Load actual user bio
+                            text = if (actualUserName.isNotBlank()) actualUserName else "Usando Nexus Chat",
                             fontSize = 13.sp,
                             color = Color.White.copy(0.5f),
                             maxLines = 1

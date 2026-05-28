@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.call
+package com.Azelmods.App.ui.screens.call
 
 import android.Manifest
 import androidx.compose.animation.core.*
@@ -32,7 +32,7 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun IncomingCallScreen(
-    contactId: String,
+    callId: String,
     callType: String, // "audio" or "video"
     navController: NavController,
     viewModel: CallViewModel = hiltViewModel()
@@ -44,22 +44,27 @@ fun IncomingCallScreen(
             Manifest.permission.CAMERA
         )
     )
-    
+
     LaunchedEffect(Unit) {
         if (!permissions.allPermissionsGranted) {
             permissions.launchMultiplePermissionRequest()
         }
     }
-    
+
     val contactState by viewModel.contactProfile.collectAsState()
-    
-    LaunchedEffect(contactId) {
-        viewModel.loadContactProfile(contactId)
+
+    // Load call data from Firebase to extract caller info
+    // and start listening for status changes (missed call detection)
+    LaunchedEffect(callId) {
+        if (callId.isNotBlank()) {
+            viewModel.loadContactProfileFromCall(callId)
+            viewModel.observeIncomingCall(callId)
+        }
     }
-    
+
     val contact = contactState
     val view = LocalView.current
-    
+
     // Haptic feedback loop
     LaunchedEffect(Unit) {
         while (true) {
@@ -67,7 +72,7 @@ fun IncomingCallScreen(
             delay(2000)
         }
     }
-    
+
     // Animated gradient background
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
     val angle by infiniteTransition.animateFloat(
@@ -79,7 +84,7 @@ fun IncomingCallScreen(
         ),
         label = "angle"
     )
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -105,16 +110,16 @@ fun IncomingCallScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(60.dp))
-            
+
             // Call type text
             Text(
                 text = if (callType == "video") "Incoming Video Call" else "Incoming Audio Call",
                 color = Color.White.copy(alpha = 0.6f),
                 fontSize = 14.sp
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             // Contact name
             Text(
                 text = contact?.name ?: "Unknown",
@@ -122,9 +127,9 @@ fun IncomingCallScreen(
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold
             )
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             // Animated avatar with rings
             Box(
                 contentAlignment = Alignment.Center,
@@ -151,7 +156,7 @@ fun IncomingCallScreen(
                         ),
                         label = "alpha"
                     )
-                    
+
                     Box(
                         modifier = Modifier
                             .size(120.dp)
@@ -165,7 +170,7 @@ fun IncomingCallScreen(
                             )
                     )
                 }
-                
+
                 // Pulsing avatar
                 val pulseTransition = rememberInfiniteTransition(label = "pulse")
                 val pulseScale by pulseTransition.animateFloat(
@@ -177,7 +182,7 @@ fun IncomingCallScreen(
                     ),
                     label = "pulse"
                 )
-                
+
                 Surface(
                     modifier = Modifier
                         .size(120.dp)
@@ -205,9 +210,9 @@ fun IncomingCallScreen(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.weight(1f))
-            
+
             // Side actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -218,16 +223,16 @@ fun IncomingCallScreen(
                     label = "Message",
                     onClick = { }
                 )
-                
+
                 SideActionButton(
                     icon = Icons.Default.Alarm,
                     label = "Remind me",
                     onClick = { }
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
-            
+
             // Main action buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -242,13 +247,17 @@ fun IncomingCallScreen(
                     ),
                     label = "decline"
                 )
-                
+
                 Surface(
                     modifier = Modifier
                         .size(72.dp)
                         .scale(declineScale)
                         .safeClickable {
-                            viewModel.endCall()
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                            // Decline: update Firebase status and navigate back
+                            if (callId.isNotBlank()) {
+                                viewModel.declineCall(callId)
+                            }
                             navController.navigateUp()
                         },
                     shape = CircleShape,
@@ -263,7 +272,7 @@ fun IncomingCallScreen(
                         )
                     }
                 }
-                
+
                 // Accept button
                 val acceptScale by animateFloatAsState(
                     targetValue = 1f,
@@ -273,7 +282,7 @@ fun IncomingCallScreen(
                     ),
                     label = "accept"
                 )
-                
+
                 Surface(
                     modifier = Modifier
                         .size(72.dp)
@@ -281,13 +290,15 @@ fun IncomingCallScreen(
                         .safeClickable {
                             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                             try {
-                                // Accept call with WebRTC
-                                val callId = "call_${contactId}_${System.currentTimeMillis()}"
-                                val type = if (callType == "video") CallType.VIDEO else CallType.AUDIO
-                                viewModel.acceptCall(callId, type)
-                                
-                                navController.navigate("active_call/$contactId/$callType") {
-                                    popUpTo("incoming_call/$contactId/$callType") { inclusive = true }
+                                if (callId.isNotBlank() && callType.isNotBlank()) {
+                                    // Accept call with the REAL callId from Firebase
+                                    val type = if (callType == "video") CallType.VIDEO else CallType.AUDIO
+                                    viewModel.acceptCall(callId, type)
+
+                                    // Navigate to active_call with contactId and type
+                                    navController.navigate("active_call/$callId/$callType") {
+                                        popUpTo("incoming_call/$callId/$callType") { inclusive = true }
+                                    }
                                 }
                             } catch (e: Exception) { }
                         },
@@ -304,7 +315,7 @@ fun IncomingCallScreen(
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -334,9 +345,9 @@ fun SideActionButton(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = label,
             color = Color.White,

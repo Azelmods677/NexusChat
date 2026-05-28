@@ -1,10 +1,12 @@
 package com.Azelmods.App.di
 
 import android.content.Context
+import com.Azelmods.App.data.security.tor.FirebaseProxyConfigurator
+import com.Azelmods.App.data.security.tor.TorDnsResolver
 import com.Azelmods.App.data.security.tor.TorService
-import com.Azelmods.App.data.security.tor.TorServiceManager
-import com.Azelmods.App.data.security.tor.TorServiceManagerImpl
-import dagger.Binds
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,27 +16,39 @@ import javax.inject.Singleton
 
 /**
  * Hilt module for security-related dependencies
- * 
+ *
  * Provides:
- * - TorService for embedded Tor integration
- * - TorServiceManager for Tor integration
- * - TorPreferences for settings persistence (automatically provided via @Inject constructor)
+ * - TorService for Orbot detection and proxy status
+ * - TorDnsResolver for DNS-over-Tor (prevents DNS leaks)
+ * - FirebaseProxyConfigurator for Firebase-over-Tor
  */
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class SecurityModule {
-    
-    @Binds
+object SecurityModule {
+
+    @Provides
     @Singleton
-    abstract fun bindTorServiceManager(
-        torServiceManagerImpl: TorServiceManagerImpl
-    ): TorServiceManager
-    
-    companion object {
-        @Provides
-        @Singleton
-        fun provideTorService(@ApplicationContext context: Context): TorService {
-            return TorService(context)
-        }
+    fun provideTorService(
+        @ApplicationContext context: Context,
+        torDnsResolver: TorDnsResolver,
+        firebaseProxyConfigurator: FirebaseProxyConfigurator
+    ): TorService {
+        return TorService(context, torDnsResolver, firebaseProxyConfigurator)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTorDnsResolver(): TorDnsResolver {
+        return TorDnsResolver()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseProxyConfigurator(
+        database: FirebaseDatabase,
+        auth: FirebaseAuth,
+        storage: FirebaseStorage
+    ): FirebaseProxyConfigurator {
+        return FirebaseProxyConfigurator(database, auth, storage)
     }
 }

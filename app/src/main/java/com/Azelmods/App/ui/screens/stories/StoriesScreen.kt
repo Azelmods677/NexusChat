@@ -74,29 +74,30 @@ fun StoriesScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
+                    containerColor = Color.Transparent,
                     titleContentColor = Color.White
                 ),
-                modifier = Modifier.statusBarsPadding()
+                modifier = Modifier.statusBarsPadding() // Edge-to-Edge: respeta barra de estado
             )
         },
-        containerColor = DarkBackground,
-        contentWindowInsets = WindowInsets(0)
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0) // Edge-to-Edge: control manual de insets
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .consumeWindowInsets(paddingValues)
-                .navigationBarsPadding()
+                .consumeWindowInsets(paddingValues) // Edge-to-Edge: consume los insets del Scaffold
+                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegación
+                .padding(horizontal = 16.dp) // Padding general de 16dp
         ) {
             // ── Stories horizontal scroll ─────────────────────────────────────
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                    .padding(vertical = 20.dp), // Aumentado para que respire más
+                horizontalArrangement = Arrangement.spacedBy(16.dp), // Espaciado aumentado
+                contentPadding = PaddingValues(horizontal = 0.dp) // Ya tenemos padding general
             ) {
                 // Your story bubble — shows the logged-in user's own profile photo
                 item {
@@ -108,7 +109,7 @@ fun StoriesScreen(
                     )
                 }
 
-                // Real stories from Firebase (no demo data)
+                // Real stories from Firebase 
                 if (!state.isLoading) {
                     items(state.stories) { story ->
                         StoryItem(
@@ -206,7 +207,7 @@ fun YourStoryItem(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(DarkBackground)
+                    .background(Color.Transparent)
             )
 
             // Profile photo or placeholder
@@ -246,7 +247,7 @@ fun YourStoryItem(
                     .align(Alignment.BottomEnd)
                     .clip(CircleShape)
                     .background(Purple)
-                    .border(1.5.dp, DarkBackground, CircleShape),
+                    .border(1.5.dp, Color.Black, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -342,7 +343,7 @@ fun StoryItem(
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(DarkBackground)
+                    .background(Color.Transparent)
             )
 
             // Avatar: real photo or initial fallback

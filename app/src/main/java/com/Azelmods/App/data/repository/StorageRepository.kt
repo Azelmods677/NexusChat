@@ -197,6 +197,33 @@ class StorageRepository @Inject constructor(
     }
     
     /**
+     * Upload document to Firebase Storage
+     * Pattern: chats/{chatId}/documents/{timestamp}_{fileName}
+     */
+    suspend fun uploadChatDocument(documentUri: Uri, chatId: String, fileName: String): String = suspendCoroutine { continuation ->
+        try {
+            val timestamp = System.currentTimeMillis()
+            val safeFileName = fileName.replace("[", "_").replace("]", "_").replace(" ", "_")
+            val storageRef = storage.reference
+            val fileRef = storageRef.child("chats/$chatId/documents/${timestamp}_$safeFileName")
+            
+            fileRef.putFile(documentUri)
+                .addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { uri ->
+                        continuation.resume(uri.toString())
+                    }.addOnFailureListener { exception ->
+                        continuation.resumeWithException(exception)
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    continuation.resumeWithException(exception)
+                }
+        } catch (e: Exception) {
+            continuation.resumeWithException(e)
+        }
+    }
+    
+    /**
      * Upload story video to Firebase Storage
      * Pattern: stories/{userId}/{timestamp}.mp4
      */

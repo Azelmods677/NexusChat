@@ -3,6 +3,7 @@ package com.Azelmods.App.ui.screens.azelai
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Azelmods.App.util.CrashlyticsLogger
 import com.Azelmods.App.data.api.AzelAIApiService
 import com.Azelmods.App.data.model.AIMessage
 import com.google.firebase.auth.FirebaseAuth
@@ -25,7 +26,8 @@ data class AzelAIState(
     val currentChatId: String = "",
     val currentChatTitle: String = "",
     val selectedModel: String = AzelAIApiService.DEEPSEEK_R1_70B,
-    val availableModels: List<com.Azelmods.App.data.api.AIModel> = emptyList()
+    val availableModels: List<com.Azelmods.App.data.api.AIModel> = emptyList(),
+    val thinkingElapsedMs: Long = 0L
 )
 
 @HiltViewModel
@@ -41,6 +43,7 @@ class AzelAIViewModel @Inject constructor(
         FirebaseAuth.getInstance().currentUser?.uid ?: ""
     
     private var messagesCollectJob: Job? = null
+    private var thinkingTimerJob: Job? = null
     
     private val _state = MutableStateFlow(AzelAIState())
     val state: StateFlow<AzelAIState> = _state.asStateFlow()
@@ -85,8 +88,8 @@ class AzelAIViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val isHealthy = repository.checkApiHealth()
-                Log.d(TAG, if (isHealthy) "✅ API is healthy" else "⚠️ API health check failed")
-            } catch (e: Exception) {
+                Log.d(TAG, if (isHealthy) "✅ API is healthy" else "⚠️ API health check failed")                } catch (e: Exception) {
+                CrashlyticsLogger.recordException(e, "ai", "loadModels")
                 Log.e(TAG, "❌ API health check error", e)
             }
         }
@@ -104,6 +107,7 @@ class AzelAIViewModel @Inject constructor(
         messagesCollectJob = viewModelScope.launch {
             repository.getMessageHistory("$userId/$currentChatId")
                 .catch { e ->
+                    CrashlyticsLogger.recordRecoverableError(e, "ai", "loadMessages", "Error al cargar mensajes")
                     Log.e(TAG, "❌ Error loading messages", e)
                     _state.update { it.copy(error = "Error al cargar mensajes: ${e.message}") }
                 }
@@ -126,6 +130,7 @@ class AzelAIViewModel @Inject constructor(
                 _chatHistory.update { chats }
                 Log.d(TAG, "✅ Chat history loaded: ${chats.size}")
             } catch (e: Exception) {
+                CrashlyticsLogger.recordRecoverableError(e, "ai", "loadChatHistory", "Error al cargar historial")
                 Log.e(TAG, "❌ Error loading chat history", e)
             }
         }
@@ -143,6 +148,7 @@ class AzelAIViewModel @Inject constructor(
                 _state.update { it.copy(stats = stats) }
                 Log.d(TAG, "✅ Stats loaded: $stats")
             } catch (e: Exception) {
+                CrashlyticsLogger.recordRecoverableError(e, "ai", "loadStats")
                 Log.e(TAG, "❌ Error loading stats", e)
             }
         }
@@ -234,7 +240,16 @@ class AzelAIViewModel @Inject constructor(
                 // IMPORTANTE: Activar isThinking DESPUÉS de agregar el mensaje del usuario
                 // para que el scroll automático funcione y el usuario vea el indicador
                 kotlinx.coroutines.delay(100) // Pequeño delay para que la UI se actualice
-                _state.update { it.copy(isThinking = true, isStreaming = useStreaming, streamingContent = "", error = null) }
+                _state.update { it.copy(isThinking = true, isStreaming = useStreaming, streamingContent = "", error = null, thinkingElapsedMs = 0L) }
+                
+                // 🕐 Iniciar timer que cuenta el tiempo de espera (para indicador visual de timeout)
+                thinkingTimerJob?.cancel()
+                thinkingTimerJob = viewModelScope.launch {
+                    while (_state.value.isThinking) {
+                        kotlinx.coroutines.delay(250)
+                        _state.update { it.copy(thinkingElapsedMs = it.thinkingElapsedMs + 250) }
+                    }
+                }
                 Log.d(TAG, "💬 Sending message (streaming: $useStreaming): ${content.take(50)}...")
                 
                 // Intentar guardar en Firebase (opcional)
@@ -253,14 +268,17 @@ class AzelAIViewModel @Inject constructor(
                 
                 if (useStreaming) {
                     var fullResponse = ""
-                    repository.sendMessageStream(content, history, selectedModel)
-                        .collect { chunk ->
-                            if (chunk.isNotEmpty()) {
-                                fullResponse += chunk
-                                _state.update { it.copy(streamingContent = fullResponse) }
-                                Log.d(TAG, "📥 Streaming chunk received: ${chunk.take(50)}...")
+                    // 🔧 Add 60-second timeout to prevent infinite loading
+                    kotlinx.coroutines.withTimeout(60_000L) {
+                        repository.sendMessageStream(content, history, selectedModel)
+                            .collect { chunk ->
+                                if (chunk.isNotEmpty()) {
+                                    fullResponse += chunk
+                                    _state.update { it.copy(streamingContent = fullResponse) }
+                                    Log.d(TAG, "📥 Streaming chunk received: ${chunk.take(50)}...")
+                                }
                             }
-                        }
+                    }
                     
                     Log.d(TAG, "✅ Streaming complete. Total length: ${fullResponse.length}")
                     
@@ -294,7 +312,9 @@ class AzelAIViewModel @Inject constructor(
                 } else {
                     // MODO NO-STREAMING
                     Log.d(TAG, "📡 Calling non-streaming API...")
-                    val (aiResponse, tokens) = repository.sendMessage(content, history, selectedModel).getOrThrow()
+                    val (aiResponse, tokens) = kotlinx.coroutines.withTimeout(60_000L) {
+                        repository.sendMessage(content, history, selectedModel).getOrThrow()
+                    }
                     Log.d(TAG, "✅ API response received: ${aiResponse.take(100)}... (tokens: $tokens)")
                     
                     val aiMsg = AIMessage(
@@ -330,6 +350,7 @@ class AzelAIViewModel @Inject constructor(
                 }
                 
             } catch (e: Exception) {
+                    CrashlyticsLogger.recordException(e, "ai", "sendMessage", "Error sending message")
                 Log.e(TAG, "❌ Error sending message", e)
                 val errorMessage = when {
                     e.message?.contains("no autenticado", ignoreCase = true) == true -> 
@@ -360,7 +381,8 @@ class AzelAIViewModel @Inject constructor(
                 updatedMessages.add(errorMsg)
                 _state.update { it.copy(messages = updatedMessages) }
             } finally {
-                _state.update { it.copy(isThinking = false, isStreaming = false, streamingContent = "") }
+                thinkingTimerJob?.cancel()
+                _state.update { it.copy(isThinking = false, isStreaming = false, streamingContent = "", thinkingElapsedMs = 0L) }
                 Log.d(TAG, "🏁 Message sending complete")
             }
         }
@@ -382,6 +404,7 @@ class AzelAIViewModel @Inject constructor(
                 startNewChat()
                 Log.d(TAG, "✅ All history cleared")
             } catch (e: Exception) {
+                CrashlyticsLogger.recordRecoverableError(e, "ai", "clearHistory", "Error clearing history")
                 Log.e(TAG, "❌ Error clearing history", e)
                 _state.update { it.copy(error = "Error al limpiar historial: ${e.message}") }
             }

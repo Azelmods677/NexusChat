@@ -2,7 +2,6 @@ package com.Azelmods.App.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -50,9 +49,9 @@ fun StickerPicker(
     var selectedCategory by remember { mutableStateOf(StickerCategory.PACK1) }
     var recentStickers by remember { mutableStateOf(listOf<String>()) }
     var favoriteStickers by remember { mutableStateOf(listOf<String>()) }
-    var showPreview by remember { mutableStateOf<String?>(null) }
+    var previewSticker by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    
+
     // Demo stickers (en producción, cargar desde Firebase Storage)
     val stickerPacks = remember {
         mapOf(
@@ -72,9 +71,9 @@ fun StickerPicker(
             )
         )
     }
-    
+
     val currentStickers = stickerPacks[selectedCategory] ?: emptyList()
-    
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -99,12 +98,12 @@ fun StickerPicker(
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                
+
                 IconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
                 }
             }
-            
+
             // Category tabs
             ScrollableTabRow(
                 selectedTabIndex = StickerCategory.values().indexOf(selectedCategory),
@@ -126,9 +125,9 @@ fun StickerPicker(
                     )
                 }
             }
-            
+
             HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-            
+
             // Sticker grid
             if (currentStickers.isEmpty()) {
                 Box(
@@ -177,7 +176,7 @@ fun StickerPicker(
                                         onStickerSelected(sticker)
                                     },
                                     onLongClick = {
-                                        showPreview = sticker
+                                        previewSticker = sticker
                                     }
                                 )
                                 .padding(8.dp)
@@ -187,10 +186,10 @@ fun StickerPicker(
             }
         }
     }
-    
+
     // Preview dialog
-    if (showPreview != null) {
-        Dialog(onDismissRequest = { showPreview = null }) {
+    previewSticker?.let { sticker ->
+        Dialog(onDismissRequest = { previewSticker = null }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF1A1A2E)
@@ -200,21 +199,21 @@ fun StickerPicker(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = showPreview!!,
+                        text = sticker,
                         fontSize = 120.sp
                     )
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Button(
                             onClick = {
-                                favoriteStickers = if (favoriteStickers.contains(showPreview)) {
-                                    favoriteStickers - showPreview!!
+                                favoriteStickers = if (favoriteStickers.contains(sticker)) {
+                                    favoriteStickers - sticker
                                 } else {
-                                    favoriteStickers + showPreview!!
+                                    favoriteStickers + sticker
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(
@@ -222,15 +221,15 @@ fun StickerPicker(
                             )
                         ) {
                             Icon(
-                                if (favoriteStickers.contains(showPreview)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                if (favoriteStickers.contains(sticker)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = "Favorite"
                             )
                         }
-                        
+
                         Button(
                             onClick = {
-                                onStickerSelected(showPreview!!)
-                                showPreview = null
+                                onStickerSelected(sticker)
+                                previewSticker = null
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF7C3AED)

@@ -24,12 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -195,14 +195,17 @@ fun QRScannerScreen(
                 Column {
                     Text("¿Deseas agregar a este usuario?")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Nombre: ${scannedData!!.name}", fontWeight = FontWeight.Bold)
-                    Text("Usuario: ${scannedData!!.username}")
+                    scannedData?.let { data ->
+                        Text("Nombre: ${data.name}", fontWeight = FontWeight.Bold)
+                        Text("Usuario: ${data.username}")
+                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        onQRScanned(scannedData!!.uid, scannedData!!.username, scannedData!!.name)
+                        val data = scannedData ?: return@Button
+                        onQRScanned(data.uid, data.username, data.name)
                         navController.popBackStack()
                     }
                 ) {

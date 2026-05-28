@@ -298,22 +298,63 @@ class BackupStorage @Inject constructor(
     // ── Additional methods for BackupManager compatibility ────────────────────
 
     /**
-     * Lists all backups for a user (combines local and Firebase)
+     * Lists all backups for a user (combines local and Firebase backups)
      */
     suspend fun listBackups(userId: String): List<BackupMetadata> {
-        // For now, return empty list - TODO: implement proper metadata storage
-        return emptyList()
+        val backups = mutableListOf<BackupMetadata>()
+
+        // ── Local backups ──
+        val localFiles = getLocalBackupsDir()
+            .listFiles { file -> file.isFile && file.name.endsWith(".azelback") }
+            ?.map { file ->
+                BackupMetadata(
+                    backupId = file.name.removeSuffix(".azelback"),
+                    userId = userId,
+                    timestamp = file.lastModified(),
+                    sizeBytes = file.length()
+                )
+            } ?: emptyList()
+        backups.addAll(localFiles)
+
+        // ── Firebase backups ──
+        try {
+            val firebaseBackups = listFirebaseBackups()
+            backups.addAll(firebaseBackups.map { info ->
+                BackupMetadata(
+                    backupId = info.id,
+                    userId = userId,
+                    timestamp = info.createdAt,
+                    sizeBytes = info.sizeBytes
+                )
+            })
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error listing Firebase backups", e)
+        }
+
+        return backups.sortedByDescending { it.timestamp }
     }
 
     /**
-     * Deletes a backup by ID
+     * Deletes a backup by ID (searches local first, then Firebase)
      */
     suspend fun deleteBackup(backupId: String): Boolean {
-        // Try to delete from local storage
+        // Try local first
         val localFile = File(getLocalBackupsDir(), "$backupId.azelback")
-        return if (localFile.exists()) {
-            localFile.delete()
-        } else {
+        if (localFile.exists()) {
+            return localFile.delete()
+        }
+
+        // Try Firebase
+        return try {
+            val firebaseBackups = listFirebaseBackups()
+            val target = firebaseBackups.find { it.id == backupId }
+            if (target != null) {
+                deleteFirebaseBackup(target.url)
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error deleting backup $backupId", e)
             false
         }
     }

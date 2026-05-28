@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.settings
+package com.Azelmods.App.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -125,7 +125,7 @@ fun HelpSupportScreen(
             SettingsItem(
                 title = "💬 Mensajería",
                 subtitle = "Enviar mensajes y multimedia",
-                icon = Icons.Default.Message,
+                icon = Icons.AutoMirrored.Filled.Message,
                 onClick = { navController.navigate("tutorial/messaging") }
             )
             

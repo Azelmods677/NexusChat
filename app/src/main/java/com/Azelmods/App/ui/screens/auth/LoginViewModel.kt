@@ -70,8 +70,11 @@ class LoginViewModel @Inject constructor(
                 )
                 
                 val credential = result.credential
-                if (credential is GoogleIdTokenCredential) {
-                    val idToken = credential.idToken
+                if (credential is androidx.credentials.CustomCredential &&
+                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    
+                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                    val idToken = googleIdTokenCredential.idToken
                     // Call GoogleLoginUseCase to authenticate with Firebase
                     when (val loginResult = googleLoginUseCase(idToken)) {
                         is Resource.Success -> {

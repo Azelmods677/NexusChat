@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.tutorial
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -7,13 +9,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.Azelmods.App.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,51 +23,18 @@ fun TutorialScreen(
     tutorialId: String
 ) {
     val tutorial = TutorialContent.getTutorialById(tutorialId)
-    
-    if (tutorial == null) {
-        // Tutorial not found
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = { Text("Tutorial no encontrado") },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = DarkSurface,
-                        titleContentColor = Color.White,
-                        navigationIconContentColor = Color.White
-                    )
-                )
-            },
-            containerColor = DarkBackground
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = androidx.compose.ui.Alignment.Center
-            ) {
-                Text(
-                    "Tutorial no encontrado",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        }
-        return
-    }
-    
+    val scrollState = rememberScrollState()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Text(tutorial.icon, fontSize = 24.sp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(tutorial.title)
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (tutorial != null) {
+                            Text(tutorial.icon, fontSize = 24.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(tutorial?.title ?: "Tutorial")
                     }
                 },
                 navigationIcon = {
@@ -75,28 +43,49 @@ fun TutorialScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
         ) {
-            tutorial.sections.forEach { section ->
-                TutorialSectionCard(section)
+            if (tutorial == null) {
+                Text(
+                    "Tutorial no encontrado",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollState)
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    tutorial.sections.forEachIndexed { index, section ->
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(tween(300 + index * 100)) +
+                                    slideInVertically(
+                                        initialOffsetY = { it / 4 },
+                                        animationSpec = tween(300 + index * 100)
+                                    )
+                        ) {
+                            TutorialSectionCard(section)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
-            
-            // Bottom spacing
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -106,9 +95,10 @@ fun TutorialSectionCard(section: TutorialSection) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = DarkSurface
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = MaterialTheme.shapes.medium
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -116,14 +106,14 @@ fun TutorialSectionCard(section: TutorialSection) {
         ) {
             Text(
                 text = section.title,
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
-            
+
             Text(
                 text = section.content,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 lineHeight = 22.sp
             )

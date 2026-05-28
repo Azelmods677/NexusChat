@@ -1,6 +1,11 @@
 package com.Azelmods.App
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.media.AudioAttributes
+import android.media.RingtoneManager
+import android.os.Build
 import android.util.Log
 import coil3.ImageLoader
 import coil3.PlatformContext
@@ -44,6 +49,9 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
         // initialisation via the App Startup library, register
         // com.Azelmods.App.startup.FirebaseInitializer in AndroidManifest.xml
         // and remove the Firebase ContentProvider (tools:node="remove").
+
+        // Crear canales de notificación al inicio (Android 8+)
+        createNotificationChannels()
 
         initializeDemoAccount()
     }
@@ -97,7 +105,7 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
             }
         }
 
-        FirebaseAuth.getInstance().addAuthStateListener(authListener!!)
+        FirebaseAuth.getInstance().addAuthStateListener(requireNotNull(authListener) { "authListener no debería ser null" })
     }
 
     // ── Coil image loader ─────────────────────────────────────────────────────
@@ -130,6 +138,82 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
                 }
             }
             .build()
+    }
+
+    // ── Notification Channels (creados en App.onCreate para estar siempre disponibles) ──
+
+    /**
+     * Crea todos los canales de notificación que usa la app.
+     * Se llama desde [onCreate] y es seguro llamarlo múltiples veces (es idempotente).
+     */
+    private fun createNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val manager = getSystemService(NotificationManager::class.java)
+
+        val messageChannel = NotificationChannel(
+            "nexus_messages", "Messages",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "New messages from your chats"
+            enableVibration(true)
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+            )
+        }
+
+        val callChannel = NotificationChannel(
+            "nexus_calls", "Incoming Calls",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Incoming call notifications"
+            enableVibration(true)
+            enableLights(true)
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE),
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED)
+                    .build()
+            )
+            setShowBadge(true)
+        }
+
+        val missedCallChannel = NotificationChannel(
+            "nexus_missed_calls", "Missed Calls",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Missed call alerts"
+            setShowBadge(true)
+        }
+
+        val storyChannel = NotificationChannel(
+            "nexus_stories", "Stories",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "New stories from your contacts"
+        }
+
+        val aiChannel = NotificationChannel(
+            "nexus_ai", "Azel AI",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Azel AI responses"
+        }
+
+        listOf(messageChannel, callChannel, missedCallChannel, storyChannel, aiChannel)
+            .forEach { channel ->
+                if (manager.getNotificationChannel(channel.id) == null) {
+                    manager.createNotificationChannel(channel)
+                }
+            }
+
+        Log.d(TAG, "✅ Notification channels created")
     }
 
     // ── Companion ─────────────────────────────────────────────────────────────

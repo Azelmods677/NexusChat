@@ -1,49 +1,40 @@
 package com.Azelmods.App.data.repository
 
-import com.Azelmods.App.data.security.tor.TorCircuitInfo
-import com.Azelmods.App.data.security.tor.TorServiceManager
+import android.content.Context
+import com.Azelmods.App.data.security.tor.OrbotDetector
+import com.Azelmods.App.data.security.tor.TorService
 import com.Azelmods.App.data.security.tor.TorState
 import com.Azelmods.App.domain.repository.SecurityRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Implementation of SecurityRepository that delegates operations
- * to TorServiceManager
- * 
- * This class follows Clean Architecture by implementing the domain layer
- * interface and delegating to data layer components.
- * 
- * @param torServiceManager Manager for Tor service operations
+ * Implementación de SecurityRepository que delega operaciones
+ * a TorService (detección de Orbot) en lugar de un TorServiceManager embebido.
  */
 @Singleton
 class SecurityRepositoryImpl @Inject constructor(
-    private val torServiceManager: TorServiceManager
+    private val torService: TorService,
+    @ApplicationContext private val context: Context
 ) : SecurityRepository {
-    
-    override fun startTorService(): Flow<TorState> {
-        return torServiceManager.startTor()
+
+    override fun startTor(): Flow<TorState> {
+        torService.startTor()
+        return torService.torState
     }
-    
-    override suspend fun stopTorService() {
-        torServiceManager.stopTor()
+
+    override suspend fun stopTor() {
+        torService.stopTor()
     }
-    
+
     override fun getTorState(): StateFlow<TorState> {
-        return torServiceManager.getTorState()
+        return torService.torState
     }
-    
-    override suspend fun enableObfs4Bridges(bridges: List<String>) {
-        torServiceManager.enableObfs4Bridges(bridges)
-    }
-    
-    override suspend fun getCircuitInfo(): TorCircuitInfo? {
-        return torServiceManager.getCircuitInfo()
-    }
-    
-    override suspend fun newIdentity() {
-        torServiceManager.newIdentity()
+
+    override fun getTorStatus(): String {
+        return OrbotDetector.getStatus(context)
     }
 }

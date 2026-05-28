@@ -269,37 +269,100 @@ class BackupManager @Inject constructor(
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
-    private suspend fun collectUserData(userId: String, includeMedia: Boolean): UserData {
-        // TODO: Implement actual data collection from Firebase
-        return UserData(
+    private suspend fun collectUserData(userId: String, includeMedia: Boolean): UserData = withContext(Dispatchers.IO) {
+        val chatsSnap = database.reference.child("chats").get().await()
+        val chatsJson = org.json.JSONArray()
+        val messagesJson = org.json.JSONArray()
+        chatsSnap.children.forEach { chatNode ->
+            val chatId = chatNode.key ?: return@forEach
+            val chatMap = chatNode.value as? Map<*, *> ?: return@forEach
+            val members = when (val m = chatMap["members"] ?: chatMap["participants"]) {
+                is List<*> -> m.filterIsInstance<String>()
+                else -> emptyList()
+            }
+            if (!members.contains(userId)) return@forEach
+            val chatObj = org.json.JSONObject()
+            chatObj.put("chatId", chatId)
+            chatMap.forEach { (k, v) -> if (k != "messages") chatObj.put(k.toString(), v) }
+            chatsJson.put(chatObj)
+            chatNode.child("messages").children.forEach { msgNode ->
+                val msg = msgNode.value as? Map<*, *> ?: return@forEach
+                val obj = org.json.JSONObject()
+                obj.put("chatId", chatId)
+                obj.put("messageId", msgNode.key)
+                msg.forEach { (k, v) -> obj.put(k.toString(), v) }
+                messagesJson.put(obj)
+            }
+        }
+        val userSnap = database.reference.child("users").child(userId).get().await()
+        val profileObj = org.json.JSONObject()
+        (userSnap.value as? Map<*, *>)?.forEach { (k, v) ->
+            if (v != null) profileObj.put(k.toString(), v)
+        }
+        UserData(
             userId = userId,
-            messages = emptyList(),
-            contacts = emptyList(),
-            settings = emptyMap(),
-            signalKeys = null,
-            mediaFiles = if (includeMedia) emptyList() else null
+            chatsJson = chatsJson.toString(),
+            messagesJson = messagesJson.toString(),
+            profileJson = profileObj.toString(),
+            includeMedia = includeMedia
         )
     }
 
     private fun serializeUserData(userData: UserData): String {
-        // TODO: Implement proper JSON serialization
-        return "{}"
+        return org.json.JSONObject().apply {
+            put("version", BACKUP_VERSION)
+            put("userId", userData.userId)
+            put("chats", userData.chatsJson)
+            put("messages", userData.messagesJson)
+            put("profile", userData.profileJson)
+            put("timestamp", System.currentTimeMillis())
+        }.toString()
     }
 
     private fun deserializeUserData(json: String): UserData {
-        // TODO: Implement proper JSON deserialization
+        val root = org.json.JSONObject(json)
         return UserData(
-            userId = "",
-            messages = emptyList(),
-            contacts = emptyList(),
-            settings = emptyMap(),
-            signalKeys = null,
-            mediaFiles = null
+            userId = root.optString("userId"),
+            chatsJson = root.optString("chats", "[]"),
+            messagesJson = root.optString("messages", "[]"),
+            profileJson = root.optString("profile", "{}"),
+            includeMedia = false
         )
     }
 
-    private suspend fun restoreUserData(userId: String, userData: UserData) {
-        // TODO: Implement actual data restoration to Firebase
+    private suspend fun restoreUserData(userId: String, userData: UserData) = withContext(Dispatchers.IO) {
+        val profile = org.json.JSONObject(userData.profileJson)
+        val updates = mutableMapOf<String, Any>()
+        profile.keys().forEach { key ->
+            updates["users/$userId/$key"] = profile.get(key)
+        }
+        if (updates.isNotEmpty()) database.reference.updateChildren(updates).await()
+        val chats = org.json.JSONArray(userData.chatsJson)
+        for (i in 0 until chats.length()) {
+            val chat = chats.getJSONObject(i)
+            val chatId = chat.optString("chatId", "restored_${System.currentTimeMillis()}_$i")
+            database.reference.child("chats").child(chatId).setValue(chat.toMap()).await()
+        }
+        val messages = org.json.JSONArray(userData.messagesJson)
+        for (i in 0 until messages.length()) {
+            val msg = messages.getJSONObject(i)
+            val chatId = msg.getString("chatId")
+            val messageId = msg.optString("messageId", "msg_$i")
+            database.reference.child("chats").child(chatId).child("messages").child(messageId)
+                .setValue(msg.toMap()).await()
+        }
+    }
+
+    private fun org.json.JSONObject.toMap(): Map<String, Any?> {
+        val map = mutableMapOf<String, Any?>()
+        keys().forEach { key ->
+            map[key] = when (val v = get(key)) {
+                org.json.JSONObject.NULL -> null
+                is org.json.JSONObject -> v.toMap()
+                else -> v
+            }
+        }
+        return map
     }
 
     private fun compressData(data: ByteArray): ByteArray {
@@ -332,9 +395,8 @@ class BackupManager @Inject constructor(
  */
 data class UserData(
     val userId: String,
-    val messages: List<Any>, // TODO: Define proper message type
-    val contacts: List<Any>, // TODO: Define proper contact type
-    val settings: Map<String, Any>,
-    val signalKeys: Any?, // TODO: Define proper key type
-    val mediaFiles: List<Any>?
+    val chatsJson: String = "[]",
+    val messagesJson: String = "[]",
+    val profileJson: String = "{}",
+    val includeMedia: Boolean = false
 )

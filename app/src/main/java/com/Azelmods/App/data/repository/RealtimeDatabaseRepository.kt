@@ -1,7 +1,14 @@
 package com.Azelmods.App.data.repository
 
+import android.net.Uri
+import android.util.Log
+import com.Azelmods.App.BuildConfig
+import com.Azelmods.App.data.local.CacheManager
+import com.Azelmods.App.data.security.encryption.E2EECryptoService
+import com.Azelmods.App.util.CrashlyticsLogger
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -9,83 +16,24 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// ╔══════════════════════════════════════════════════════╗
-// ║  MANUAL STEP — Firebase Console → Realtime Database  ║
-// ║  → Rules → Paste these rules:                        ║
-// ╚══════════════════════════════════════════════════════╝
-//
-// {
-//   "rules": {
-//     "users": {
-//       ".read": "auth != null",
-//       "$uid": {
-//         ".write": "auth != null && auth.uid == $uid"
-//       }
-//     },
-//     "conversations": {
-//       "$convId": {
-//         ".read": "auth != null &&
-//           (data.child('participants').child(auth.uid).exists()
-//           || !data.exists())",
-//         ".write": "auth != null"
-//       }
-//     },
-//     "messages": {
-//       "$convId": {
-//         ".read": "auth != null &&
-//           root.child('conversations').child($convId)
-//             .child('participants').child(auth.uid).exists()",
-//         ".write": "auth != null &&
-//           root.child('conversations').child($convId)
-//             .child('participants').child(auth.uid).exists()"
-//       }
-//     },
-//     "chats": {
-//       "$chatId": {
-//         ".read": "auth != null",
-//         ".write": "auth != null"
-//       }
-//     },
-//     "stories": {
-//       ".read": "auth != null",
-//       "$storyId": {
-//         ".write": "auth != null"
-//       }
-//     },
-//     "calls": {
-//       "$callId": {
-//         ".read": "auth != null",
-//         ".write": "auth != null"
-//       }
-//     },
-//     "friendRequests": {
-//       ".read": "auth != null",
-//       ".write": "auth != null"
-//     }
-//   }
-// }
-
 @Singleton
-class RealtimeDatabaseRepository @Inject constructor() {
+class RealtimeDatabaseRepository @Inject constructor(
+    private val e2eeCryptoService: E2EECryptoService
+) {
+    private val database = FirebaseDatabase.getInstance().reference
+    private val auth = FirebaseAuth.getInstance()
 
-    private val database: DatabaseReference by lazy { FirebaseDatabase.getInstance().reference }
-    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
-
-    /**
-     * Get messages for a chat in real-time
-     */
-    @Suppress("UNCHECKED_CAST")
     fun getChatMessages(chatId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        val messagesRef = database.child("chats").child(chatId).child("messages")
+            .orderByChild("timestamp")
+
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val messages = mutableListOf<Map<String, Any>>()
-                snapshot.children.forEach { messageSnapshot ->
-                    val messageData = messageSnapshot.value as? Map<String, Any>
-                    if (messageData != null) {
-                        messages.add(messageData.plus("messageId" to messageSnapshot.key!!))
-                    }
+                val messages = snapshot.children.mapNotNull { child ->
+                    val map = child.value as? Map<String, Any> ?: return@mapNotNull null
+                    map.toMutableMap().apply { put("messageId", child.key ?: "") }
                 }
-                trySend(messages.sortedBy { it["timestamp"] as? Long ?: 0L })
+                trySend(messages)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -93,28 +41,99 @@ class RealtimeDatabaseRepository @Inject constructor() {
             }
         }
 
-        database.child("chats").child(chatId).child("messages")
-            .addValueEventListener(listener)
+        messagesRef.addValueEventListener(listener)
+        awaitClose { messagesRef.removeEventListener(listener) }
+    }
 
-        awaitClose {
-            database.child("chats").child(chatId).child("messages")
-                .removeEventListener(listener)
+    fun getChatMessagesPaginated(chatId: String, limit: Int): Flow<List<Map<String, Any>>> = callbackFlow {
+        val messagesRef = database.child("chats").child(chatId).child("messages")
+            .orderByChild("timestamp")
+            .limitToLast(limit)
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val messages = snapshot.children.mapNotNull { child ->
+                    val map = child.value as? Map<String, Any> ?: return@mapNotNull null
+                    map.toMutableMap().apply { put("messageId", child.key ?: "") }
+                }
+                trySend(messages)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+
+        messagesRef.addValueEventListener(listener)
+        awaitClose { messagesRef.removeEventListener(listener) }
+    }
+
+    suspend fun loadMoreMessages(chatId: String, beforeTimestamp: Long, limit: Int): List<Map<String, Any>> {
+        return try {
+            val snapshot = database.child("chats").child(chatId).child("messages")
+                .orderByChild("timestamp")
+                .endBefore(beforeTimestamp.toDouble())
+                .limitToLast(limit)
+                .get().await()
+
+            snapshot.children.mapNotNull { child ->
+                val map = child.value as? Map<String, Any> ?: return@mapNotNull null
+                map.toMutableMap().apply { put("messageId", child.key ?: "") }
+            }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 
-    /**
-     * Send a text message
-     * ✅ FIXED: Now creates chat if it doesn't exist
-     */
+    suspend fun hasMoreMessages(chatId: String, beforeTimestamp: Long): Boolean {
+        return try {
+            val snapshot = database.child("chats").child(chatId).child("messages")
+                .orderByChild("timestamp")
+                .endBefore(beforeTimestamp.toDouble())
+                .limitToLast(1)
+                .get().await()
+            snapshot.hasChildren()
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     suspend fun sendMessage(chatId: String, content: String, replyTo: String? = null) {
+        sendMessageInternal(chatId, content, replyTo)
+    }
+
+    suspend fun sendEphemeralMessage(
+        chatId: String,
+        content: String,
+        replyTo: String? = null,
+        isViewOnce: Boolean = false,
+        selfDestructDuration: Long = 0
+    ) {
+        sendMessageInternal(
+            chatId = chatId,
+            content = content,
+            replyTo = replyTo,
+            isEphemeral = true,
+            isViewOnce = isViewOnce,
+            selfDestructDuration = selfDestructDuration
+        )
+    }
+
+    private suspend fun sendMessageInternal(
+        chatId: String,
+        content: String,
+        replyTo: String? = null,
+        isEphemeral: Boolean = false,
+        isViewOnce: Boolean = false,
+        selfDestructDuration: Long = 0
+    ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
         val chatSnapshot = chatRef.get().await()
         
         if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
+            val members = chatId.split("_").filter { it.isNotBlank() }
             val chatData = mapOf(
                 "chatId" to chatId,
                 "members" to members,
@@ -124,78 +143,119 @@ class RealtimeDatabaseRepository @Inject constructor() {
                 "lastMessageSenderId" to ""
             )
             chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
         }
 
-        // Generate message ID
         val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
-        // Create message data
-        val messageData = hashMapOf(
+        var displayContent = content
+        var isEncrypted = false
+        var encryptedPayload: String? = null
+        val members = chatId.split("_").filter { it.isNotBlank() }
+        
+        if (members.size == 2) {
+            val recipientId = members.firstOrNull { it != currentUserId }
+            if (recipientId != null) {
+                e2eeCryptoService.ensureLocalKeys()
+                when (val enc = e2eeCryptoService.encryptFor(recipientId, content)) {
+                    is com.Azelmods.App.data.security.encryption.EncryptionResult.Success -> {
+                        isEncrypted = true
+                        encryptedPayload = android.util.Base64.encodeToString(
+                            enc.ciphertext, android.util.Base64.NO_WRAP
+                        )
+                        displayContent = "🔒 Mensaje cifrado de extremo a extremo"
+                    }
+                    else -> {}
+                }
+            }
+        }
+
+        val messageData = hashMapOf<String, Any>(
             "messageId" to messageId,
             "senderId" to currentUserId,
-            "content" to content,
+            "content" to displayContent,
             "timestamp" to ServerValue.TIMESTAMP,
             "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "reactions" to emptyMap<String, String>(),
+            "isEncrypted" to isEncrypted
         )
+        if (encryptedPayload != null) {
+            messageData["encryptedPayload"] = encryptedPayload
+        }
+        if (isEncrypted) {
+            chatRef.child("isE2EE").setValue(true).await()
+        }
 
         if (replyTo != null) {
             messageData["replyTo"] = replyTo
         }
 
-        // Save message
-        chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Message sent: $messageId")
+        if (isEphemeral) {
+            val destructAt = if (isViewOnce) 0L else if (selfDestructDuration > 0) System.currentTimeMillis() + (selfDestructDuration * 1000) else 0L
+            messageData["isEphemeral"] = true
+            messageData["isViewOnce"] = isViewOnce
+            messageData["selfDestructDuration"] = selfDestructDuration
+            messageData["selfDestructAt"] = destructAt
+            messageData["viewedBy"] = emptyList<String>()
+            if (!isEncrypted) {
+                messageData["content"] = content
+            }
+        }
 
-        // Update last message
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+
+        val lastMessageText = if (isEphemeral) {
+            when {
+                isViewOnce -> "📷 Foto única"
+                selfDestructDuration > 0 -> "🕐 Mensaje temporal"
+                else -> content
+            }
+        } else {
+            content
+        }
+
         val lastMessageData = mapOf(
-            "lastMessage" to content,
+            "lastMessage" to lastMessageText,
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
         )
-
         chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+
+        sendFcmForMessage(
+            chatId = chatId,
+            senderId = currentUserId,
+            content = if (isEphemeral) {
+                if (isViewOnce) "📷 Foto única"
+                else if (selfDestructDuration > 0) "🕐 Mensaje temporal"
+                else content
+            } else content
+        )
     }
 
-    /**
-     * Get user chats in real-time
-     */
-    @Suppress("UNCHECKED_CAST")
     fun getUserChats(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        val chatsRef = database.child("chats")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val chats = mutableListOf<Map<String, Any>>()
-                snapshot.children.forEach { chatSnapshot ->
-                    val chatData = chatSnapshot.value as? Map<String, Any>
-                    if (chatData != null) {
-                        val members = when {
-                            chatData["members"] is List<*> ->
-                                (chatData["members"] as List<*>).filterIsInstance<String>()
-                            chatData["participants"] is List<*> ->
-                                (chatData["participants"] as List<*>).filterIsInstance<String>()
-                            else -> emptyList()
-                        }
-                        if (members.contains(userId)) {
-                            chats.add(chatData.plus("chatId" to chatSnapshot.key!!))
-                        }
+                val userChats = snapshot.children.mapNotNull { child ->
+                    val members = child.child("members")
+                    val isMember = when (val value = members.value) {
+                        is List<*> -> value.contains(userId)
+                        is Map<*, *> -> value.containsKey(userId)
+                        else -> false
                     }
+                    if (isMember) {
+                        val map = child.value as? Map<String, Any> ?: return@mapNotNull null
+                        map.toMutableMap().apply { put("chatId", child.key ?: "") }
+                    } else null
                 }
-                trySend(chats.sortedByDescending { it["lastMessageTime"] as? Long ?: 0L })
+                trySend(userChats)
             }
-
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
             }
         }
-
-        database.child("chats").addValueEventListener(listener)
-
-        awaitClose {
-            database.child("chats").removeEventListener(listener)
-        }
+        chatsRef.addValueEventListener(listener)
+        awaitClose { chatsRef.removeEventListener(listener) }
     }
 
     suspend fun setChatBooleanField(chatId: String, field: String, value: Boolean) {
@@ -206,247 +266,115 @@ class RealtimeDatabaseRepository @Inject constructor() {
         database.child("chats").child(chatId).removeValue().await()
     }
 
-    @Suppress("UNCHECKED_CAST")
     fun getUserCallHistory(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        val callsRef = database.child("calls").orderByChild("callerId").equalTo(userId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val calls = mutableListOf<Map<String, Any>>()
-                snapshot.children.forEach { callSnapshot ->
-                    val callData = callSnapshot.value as? Map<String, Any> ?: return@forEach
-                    val callerId = callData["callerId"] as? String ?: ""
-                    val receiverId = callData["receiverId"] as? String ?: ""
-                    if (callerId == userId || receiverId == userId) {
-                        calls.add(callData.plus("callId" to (callSnapshot.key ?: "")))
-                    }
-                }
-                trySend(calls.sortedByDescending { it["startTime"] as? Long ?: 0L })
+                val calls = snapshot.children.mapNotNull { it.value as? Map<String, Any> }
+                trySend(calls)
             }
-
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
             }
         }
-        database.child("calls").addValueEventListener(listener)
-        awaitClose { database.child("calls").removeEventListener(listener) }
+        callsRef.addValueEventListener(listener)
+        awaitClose { callsRef.removeEventListener(listener) }
     }
 
-    /**
-     * Get all stories in real-time
-     */
-    @Suppress("UNCHECKED_CAST")
     fun getAllStories(): Flow<List<Map<String, Any>>> = callbackFlow {
+        val storiesRef = database.child("stories")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val stories = mutableListOf<Map<String, Any>>()
                 val now = System.currentTimeMillis()
-
-                android.util.Log.d("StoriesDebug", "Total stories in Firebase: ${snapshot.childrenCount}")
-
-                snapshot.children.forEach { storySnapshot ->
-                    try {
-                        val storyData = storySnapshot.value as? Map<*, *>
-
-                        android.util.Log.d("StoriesDebug", "Story key: ${storySnapshot.key}")
-                        android.util.Log.d("StoriesDebug", "Story data: $storyData")
-
-                        if (storyData != null) {
-                            // Convert Map<*, *> to Map<String, Any>
-                            val convertedData = storyData.entries.associate {
-                                it.key.toString() to (it.value ?: "")
-                            }.toMutableMap()
-
-                            // Add storyId
-                            convertedData["storyId"] = storySnapshot.key ?: ""
-
-                            // Check expiration
-                            val expiresAt = when (val exp = convertedData["expiresAt"]) {
-                                is Long -> exp
-                                is Double -> exp.toLong()
-                                is String -> exp.toLongOrNull() ?: 0L
-                                else -> 0L
-                            }
-
-                            android.util.Log.d(
-                                "StoriesDebug",
-                                "ExpiresAt: $expiresAt, Now: $now, Valid: ${expiresAt > now}"
-                            )
-
-                            if (expiresAt > now) {
-                                stories.add(convertedData)
-                            } else {
-                                android.util.Log.d("StoriesDebug", "Story expired, skipping")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("StoriesDebug", "Error parsing story: ${e.message}", e)
+                val stories = snapshot.children.flatMap { userStories ->
+                    userStories.children.mapNotNull { story ->
+                        val map = story.value as? Map<String, Any> ?: return@mapNotNull null
+                        val timestamp = map["timestamp"] as? Long ?: 0L
+                        if (now - timestamp < 24 * 60 * 60 * 1000) {
+                            map.toMutableMap().apply { put("storyId", story.key ?: "") }
+                        } else null
                     }
                 }
-
-                android.util.Log.d("StoriesDebug", "Valid stories count: ${stories.size}")
-                trySend(stories.sortedByDescending {
-                    when (val ts = it["timestamp"]) {
-                        is Long -> ts
-                        is Double -> ts.toLong()
-                        is String -> ts.toLongOrNull() ?: 0L
-                        else -> 0L
-                    }
-                })
+                trySend(stories)
             }
-
             override fun onCancelled(error: DatabaseError) {
-                android.util.Log.e("StoriesDebug", "Database error: ${error.message}")
                 close(error.toException())
             }
         }
-
-        database.child("stories").addValueEventListener(listener)
-
-        awaitClose {
-            database.child("stories").removeEventListener(listener)
-        }
+        storiesRef.addValueEventListener(listener)
+        awaitClose { storiesRef.removeEventListener(listener) }
     }
 
-    /**
-     * Add reaction to message
-     */
-    suspend fun addReaction(chatId: String, messageId: String, emoji: String) {
-        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
+    suspend fun addReaction(chatId: String, messageId: String, reaction: String) {
+        val userId = auth.currentUser?.uid ?: return
         database.child("chats").child(chatId).child("messages").child(messageId)
-            .child("reactions").child(currentUserId).setValue(emoji).await()
+            .child("reactions").child(userId).setValue(reaction).await()
     }
 
-    /**
-     * Create a new group in Realtime Database
-     */
-    suspend fun createGroup(groupName: String, memberIds: List<String>): String {
-        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        val groupId = database.child("chats").push().key ?: throw Exception("Failed to generate group ID")
-
-        val groupData = hashMapOf(
-            "name" to groupName,
-            "members" to (memberIds + currentUserId),
-            "createdBy" to currentUserId,
+    suspend fun createGroup(groupName: String, members: List<String>): String {
+        val groupId = "group_${System.currentTimeMillis()}"
+        val groupData = mapOf(
+            "chatId" to groupId,
+            "groupName" to groupName,
+            "members" to members + (auth.currentUser?.uid ?: ""),
             "createdAt" to ServerValue.TIMESTAMP,
-            "lastMessage" to "",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "type" to "group"
+            "isGroup" to true
         )
-
         database.child("chats").child(groupId).setValue(groupData).await()
         return groupId
     }
 
-    /**
-     * Search for a user by username
-     */
-    @Suppress("UNCHECKED_CAST")
     suspend fun searchUserByUsername(username: String): Map<String, Any>? {
-        val snapshot = database.child("users")
-            .orderByChild("username")
-            .equalTo(username)
-            .limitToFirst(1)
-            .get()
-            .await()
-
-        return if (snapshot.exists()) {
-            val userId = snapshot.children.first().key ?: return null
-            val userData = snapshot.children.first().value as? Map<String, Any> ?: return null
-            userData.plus("uid" to userId)
-        } else {
-            null
-        }
+        val snapshot = database.child("users").orderByChild("username").equalTo(username).get().await()
+        return snapshot.children.firstOrNull()?.value as? Map<String, Any>
     }
 
-    /**
-     * Send a friend request
-     */
-    suspend fun sendFriendRequest(toUserId: String): String {
-        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        val requestId = database.child("friendRequests").push().key
-            ?: throw Exception("Failed to generate request ID")
-
-        val requestData = hashMapOf(
-            "fromUserId" to currentUserId,
-            "toUserId" to toUserId,
-            "status" to "pending",
-            "timestamp" to ServerValue.TIMESTAMP
-        )
-
-        database.child("friendRequests").child(requestId).setValue(requestData).await()
+    suspend fun sendFriendRequest(targetUserId: String): String {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("Not logged in")
+        val requestId = database.child("friendRequests").child(targetUserId).push().key ?: ""
+        database.child("friendRequests").child(targetUserId).child(requestId).setValue(
+            mapOf("from" to currentUserId, "timestamp" to ServerValue.TIMESTAMP, "status" to "pending")
+        ).await()
         return requestId
     }
 
-    /**
-     * Update user profile photo URL
-     */
     suspend fun updateProfilePhoto(userId: String, photoUrl: String) {
-        database.child("users").child(userId).child("photoUrl").setValue(photoUrl).await()
+        database.child("users").child(userId).child("profilePhotoUrl").setValue(photoUrl).await()
     }
 
-    /**
-     * Create a story in Realtime Database
-     */
-    suspend fun createStory(mediaUrl: String, caption: String, isVideo: Boolean): String {
-        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        val storyId = database.child("stories").push().key
-            ?: throw Exception("Failed to generate story ID")
-
-        val storyData = hashMapOf(
-            "userId" to currentUserId,
+    suspend fun createStory(mediaUrl: String, mediaType: String, isVideo: Boolean): String {
+        val userId = auth.currentUser?.uid ?: throw Exception("Not logged in")
+        val storyId = database.child("stories").child(userId).push().key ?: ""
+        
+        // Usar el mediaType que se pasa como parámetro directamente
+        // Esto permite TEXT, IMAGE, VIDEO correctamente
+        val storyData = mapOf(
+            "storyId" to storyId,
+            "userId" to userId,
             "mediaUrl" to mediaUrl,
-            "caption" to caption,
-            "isVideo" to isVideo,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "expiresAt" to (System.currentTimeMillis() + (24 * 60 * 60 * 1000)),
-            "views" to emptyList<String>()
+            "mediaType" to mediaType.uppercase(), // Asegurar que esté en mayúsculas
+            "type" to mediaType.uppercase(),
+            "timestamp" to ServerValue.TIMESTAMP
         )
-
-        database.child("stories").child(storyId).setValue(storyData).await()
+        database.child("stories").child(userId).child(storyId).setValue(storyData).await()
         return storyId
     }
 
-    /**
-     * Create a story with custom data
-     */
-    fun createStory(storyData: Map<String, Any>): Flow<Result<String>> = callbackFlow {
-        val storyId = database.child("stories").push().key
-            ?: throw Exception("Failed to generate story ID")
-
-        database.child("stories").child(storyId).setValue(storyData)
-            .addOnSuccessListener {
-                trySend(Result.success(storyId))
-                close()
-            }
-            .addOnFailureListener { exception ->
-                trySend(Result.failure(exception))
-                close()
-            }
-
-        awaitClose { }
-    }
-
-    /**
-     * Send a message with media attachment
-     * ✅ FIXED: Now creates chat if it doesn't exist
-     */
-    suspend fun sendMediaMessage(
+    suspend fun sendEphemeralMediaMessage(
         chatId: String,
         mediaUrl: String,
         mediaType: String,
-        caption: String = ""
+        caption: String = "",
+        isViewOnce: Boolean = false,
+        selfDestructDuration: Long = 0
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
         val chatSnapshot = chatRef.get().await()
         
         if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
+            val members = chatId.split("_").filter { it.isNotBlank() }
             val chatData = mapOf(
                 "chatId" to chatId,
                 "members" to members,
@@ -456,14 +384,119 @@ class RealtimeDatabaseRepository @Inject constructor() {
                 "lastMessageSenderId" to ""
             )
             chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
         }
 
-        // Generate message ID
         val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
-        // Create message data
+        val destructAt = if (isViewOnce) 0L else if (selfDestructDuration > 0) System.currentTimeMillis() + (selfDestructDuration * 1000) else 0L
+
+        val messageData = hashMapOf(
+            "messageId" to messageId,
+            "senderId" to currentUserId,
+            "content" to caption,
+            "mediaUrl" to mediaUrl,
+            "mediaType" to mediaType,
+            "timestamp" to ServerValue.TIMESTAMP,
+            "status" to "sent",
+            "reactions" to emptyMap<String, String>(),
+            "isEphemeral" to true,
+            "isViewOnce" to isViewOnce,
+            "selfDestructDuration" to selfDestructDuration,
+            "selfDestructAt" to destructAt,
+            "viewedBy" to emptyList<String>()
+        )
+
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+
+        val lastMessageText = when {
+            isViewOnce -> "📷 Foto única"
+            selfDestructDuration > 0 -> "🕐 Multimedia temporal"
+            else -> when (mediaType) {
+                "IMAGE" -> "📷 Foto"
+                "VIDEO" -> "🎥 Video"
+                "AUDIO" -> "🎤 Audio"
+                else -> if (caption.isNotEmpty()) caption else "[$mediaType]"
+            }
+        }
+        
+        val lastMessageData = mapOf(
+            "lastMessage" to lastMessageText,
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId
+        )
+        chatRef.updateChildren(lastMessageData).await()
+
+        sendFcmForMessage(
+            chatId = chatId,
+            senderId = currentUserId,
+            content = if (isViewOnce) "📷 Foto única" 
+                      else if (selfDestructDuration > 0) "🕐 Multimedia temporal"
+                      else caption.ifEmpty { when (mediaType) {
+                          "IMAGE" -> "📷 Foto"
+                          "VIDEO" -> "🎥 Video"
+                          "AUDIO" -> "🎤 Audio"
+                          else -> mediaType
+                      } },
+            mediaType = mediaType
+        )
+    }
+
+    suspend fun markEphemeralMessageViewed(chatId: String, messageId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        val msgRef = database.child("chats").child(chatId).child("messages").child(messageId)
+        val snapshot = msgRef.get().await()
+        val isViewOnce = snapshot.child("isViewOnce").getValue(Boolean::class.java) ?: false
+        
+        if (isViewOnce) {
+            msgRef.removeValue().await()
+        } else {
+            msgRef.child("viewedBy").push().setValue(userId).await()
+        }
+    }
+
+    suspend fun cleanupExpiredEphemeralMessages() {
+        val now = System.currentTimeMillis()
+        val chatsSnapshot = database.child("chats").get().await()
+        chatsSnapshot.children.forEach { chat ->
+            val messagesSnapshot = chat.child("messages")
+            messagesSnapshot.children.forEach { msg ->
+                val isEphemeral = msg.child("isEphemeral").getValue(Boolean::class.java) ?: false
+                val destructAt = msg.child("selfDestructAt").getValue(Long::class.java) ?: 0L
+                if (isEphemeral && destructAt > 0 && now > destructAt) {
+                    msg.ref.removeValue()
+                }
+            }
+        }
+    }
+
+    suspend fun sendMediaMessage(
+        chatId: String,
+        mediaUrl: String,
+        mediaType: String,
+        caption: String = ""
+    ) {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
+
+        val chatRef = database.child("chats").child(chatId)
+        val chatSnapshot = chatRef.get().await()
+        
+        if (!chatSnapshot.exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            val chatData = mapOf(
+                "chatId" to chatId,
+                "members" to members,
+                "createdAt" to ServerValue.TIMESTAMP,
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+            chatRef.setValue(chatData).await()
+        }
+
+        val messageId = chatRef.child("messages").push().key
+            ?: throw Exception("Failed to generate message ID")
+
         val messageData = hashMapOf(
             "messageId" to messageId,
             "senderId" to currentUserId,
@@ -475,11 +508,8 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "reactions" to emptyMap<String, String>()
         )
 
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Media message sent: $messageId")
 
-        // Update last message
         val lastMessageText = when (mediaType) {
             "IMAGE" -> "📷 Foto"
             "VIDEO" -> "🎥 Video"
@@ -492,778 +522,369 @@ class RealtimeDatabaseRepository @Inject constructor() {
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
         )
-
         chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+
+        sendFcmForMessage(
+            chatId = chatId,
+            senderId = currentUserId,
+            content = caption.ifEmpty { when (mediaType) {
+                "IMAGE" -> "📷 Foto"
+                "VIDEO" -> "🎥 Video"
+                "AUDIO" -> "🎤 Audio"
+                "DOCUMENT" -> "📄 Documento"
+                "LOCATION" -> "📍 Ubicación"
+                "STICKER" -> "Sticker"
+                else -> mediaType
+            } },
+            mediaType = mediaType
+        )
     }
 
-    /**
-     * Get user data by ID
-     */
-    @Suppress("UNCHECKED_CAST")
     suspend fun getUserById(userId: String): Map<String, Any>? {
-        return try {
-            val snapshot = database.child("users").child(userId).get().await()
-
-            if (snapshot.exists()) {
-                val userData = snapshot.value as? Map<String, Any> ?: return null
-                userData.plus("uid" to userId)
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+        return database.child("users").child(userId).get().await().value as? Map<String, Any>
     }
 
-    /**
-     * Get user profile as Flow
-     */
-    @Suppress("UNCHECKED_CAST")
     fun getUserProfile(userId: String): Flow<Result<Map<String, Any>>> = callbackFlow {
+        val userRef = database.child("users").child(userId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val userData = snapshot.value as? Map<String, Any>
-                    if (userData != null) {
-                        trySend(Result.success(userData.plus("uid" to userId)))
-                    } else {
-                        trySend(Result.failure(Exception("Invalid user data")))
-                    }
-                } else {
-                    trySend(Result.failure(Exception("User not found")))
-                }
+                val data = snapshot.value as? Map<String, Any>
+                if (data != null) trySend(Result.success(data))
             }
-
             override fun onCancelled(error: DatabaseError) {
                 trySend(Result.failure(error.toException()))
             }
         }
-
-        database.child("users").child(userId).addValueEventListener(listener)
-
-        awaitClose {
-            database.child("users").child(userId).removeEventListener(listener)
-        }
+        userRef.addValueEventListener(listener)
+        awaitClose { userRef.removeEventListener(listener) }
     }
 
-    /**
-     * Get all users from Firebase in real-time (excluding current user)
-     * Returns Flow that emits list of users whenever data changes
-     */
-    @Suppress("UNCHECKED_CAST")
     fun getAllUsers(): Flow<Result<List<Map<String, Any>>>> = callbackFlow {
-        val currentUserId = auth.currentUser?.uid
-
+        val usersRef = database.child("users")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val users = mutableListOf<Map<String, Any>>()
-
-                snapshot.children.forEach { userSnapshot ->
-                    val userId = userSnapshot.key
-                    val userData = userSnapshot.value as? Map<String, Any>
-
-                    // Exclude current user from the list
-                    if (userId != null && userData != null && userId != currentUserId) {
-                        users.add(userData.plus("uid" to userId))
-                    }
-                }
-
+                val users = snapshot.children.mapNotNull { it.value as? Map<String, Any> }
                 trySend(Result.success(users))
             }
-
             override fun onCancelled(error: DatabaseError) {
                 trySend(Result.failure(error.toException()))
             }
         }
-
-        database.child("users").addValueEventListener(listener)
-
-        awaitClose {
-            database.child("users").removeEventListener(listener)
-        }
+        usersRef.addValueEventListener(listener)
+        awaitClose { usersRef.removeEventListener(listener) }
     }
 
-    /**
-     * Update user profile
-     */
-    fun updateUserProfile(userId: String, profileData: Map<String, Any>): Flow<Result<Unit>> = callbackFlow {
-        database.child("users").child(userId).updateChildren(profileData)
-            .addOnSuccessListener {
-                trySend(Result.success(Unit))
-                close()
-            }
-            .addOnFailureListener { exception ->
-                trySend(Result.failure(exception))
-                close()
-            }
-
-        awaitClose { }
+    suspend fun updateUserProfile(userId: String, data: Map<String, Any>): Flow<Result<Unit>> = callbackFlow {
+        database.child("users").child(userId).updateChildren(data)
+            .addOnSuccessListener { trySend(Result.success(Unit)) }
+            .addOnFailureListener { trySend(Result.failure(it)) }
+        awaitClose()
     }
 
-    // ==================== CALL FUNCTIONS ====================
-
-    /**
-     * Create a new call in Firebase
-     */
     suspend fun createCall(callData: Map<String, Any>): String {
-        val callId = database.child("calls").push().key
-            ?: throw Exception("Failed to generate call ID")
-
+        val callId = database.child("calls").push().key ?: throw Exception("Failed to generate call ID")
         database.child("calls").child(callId).setValue(callData).await()
         return callId
     }
 
-    /**
-     * Listen to call updates in real-time
-     */
-    @Suppress("UNCHECKED_CAST")
+    suspend fun getCallData(callId: String): Map<String, Any>? {
+        return database.child("calls").child(callId).get().await().value as? Map<String, Any>
+    }
+
     fun listenToCall(callId: String): Flow<Map<String, Any>?> = callbackFlow {
+        val callRef = database.child("calls").child(callId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val callData = snapshot.value as? Map<String, Any>
-                trySend(callData)
+                trySend(snapshot.value as? Map<String, Any>)
             }
-
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
             }
         }
-
-        database.child("calls").child(callId).addValueEventListener(listener)
-
-        awaitClose {
-            database.child("calls").child(callId).removeEventListener(listener)
-        }
+        callRef.addValueEventListener(listener)
+        awaitClose { callRef.removeEventListener(listener) }
     }
 
-    /**
-     * Update call status
-     */
     suspend fun updateCallStatus(callId: String, status: String) {
         database.child("calls").child(callId).child("status").setValue(status).await()
     }
 
-    /**
-     * Set call offer (SDP)
-     */
     suspend fun setCallOffer(callId: String, offer: String) {
         database.child("calls").child(callId).child("offer").setValue(offer).await()
     }
 
-    /**
-     * Set call answer (SDP)
-     */
     suspend fun setCallAnswer(callId: String, answer: String) {
         database.child("calls").child(callId).child("answer").setValue(answer).await()
     }
 
-    /**
-     * Add ICE candidate to call
-     */
     suspend fun addIceCandidate(callId: String, candidate: Map<String, Any>) {
-        val candidateId = database.child("calls").child(callId).child("iceCandidates").push().key
-            ?: throw Exception("Failed to generate candidate ID")
-
-        database.child("calls").child(callId).child("iceCandidates").child(candidateId)
-            .setValue(candidate).await()
+        database.child("calls").child(callId).child("iceCandidates").push().setValue(candidate).await()
     }
 
-    /**
-     * Listen to ICE candidates
-     */
-    @Suppress("UNCHECKED_CAST")
     fun listenToIceCandidates(callId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        val ref = database.child("calls").child(callId).child("iceCandidates")
         val listener = object : ChildEventListener {
-            private val candidates = mutableListOf<Map<String, Any>>()
-
+            val candidates = mutableListOf<Map<String, Any>>()
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val candidate = snapshot.value as? Map<String, Any>
-                if (candidate != null) {
-                    candidates.add(candidate)
+                (snapshot.value as? Map<String, Any>)?.let {
+                    candidates.add(it)
                     trySend(candidates.toList())
                 }
             }
-
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {
-                close(error.toException())
-            }
+            override fun onCancelled(error: DatabaseError) {}
         }
-
-        database.child("calls").child(callId).child("iceCandidates")
-            .addChildEventListener(listener)
-
-        awaitClose {
-            database.child("calls").child(callId).child("iceCandidates")
-                .removeEventListener(listener)
-        }
+        ref.addChildEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
     }
 
-    /**
-     * End call
-     */
     suspend fun endCall(callId: String) {
-        val endData = mapOf(
-            "status" to "ENDED",
-            "endTime" to ServerValue.TIMESTAMP
-        )
-        database.child("calls").child(callId).updateChildren(endData).await()
+        database.child("calls").child(callId).child("status").setValue("ended").await()
+        database.child("calls").child(callId).child("endedAt").setValue(ServerValue.TIMESTAMP).await()
     }
 
-    // ==================== FIREBASE STORAGE FUNCTIONS ====================
-
-    /**
-     * Upload file to Firebase Storage
-     */
-    suspend fun uploadFile(
-        uri: android.net.Uri,
-        folder: String,
-        fileName: String
-    ): String {
+    suspend fun uploadFile(uri: Uri, folder: String, fileName: String): String {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().reference
+        val storageRef = FirebaseStorage.getInstance().reference
         val fileRef = storageRef.child("$folder/$currentUserId/$fileName")
-
         fileRef.putFile(uri).await()
         return fileRef.downloadUrl.await().toString()
     }
 
-    /**
-     * Send image message
-     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
-     */
-    suspend fun sendImageMessage(
-        chatId: String,
-        imageUri: android.net.Uri,
-        caption: String = ""
-    ) {
+    suspend fun sendImageMessage(chatId: String, imageUri: Uri, caption: String = "") {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
-        if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
-            val chatData = mapOf(
-                "chatId" to chatId,
-                "members" to members,
-                "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
-                "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
-            )
-            chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        if (!chatRef.get().await().exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
         }
-
-        // Upload image to Storage
         val fileName = "IMG_${System.currentTimeMillis()}.jpg"
         val imageUrl = uploadFile(imageUri, "images", fileName)
-
-        // Generate message ID
-        val messageId = chatRef.child("messages").push().key
-            ?: throw Exception("Failed to generate message ID")
-
-        // Create message data with mediaType (not type)
+        val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId,
-            "senderId" to currentUserId,
-            "content" to caption,
-            "mediaType" to "IMAGE",
-            "mediaUrl" to imageUrl,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "messageId" to messageId, "senderId" to currentUserId, "content" to caption,
+            "mediaType" to "IMAGE", "mediaUrl" to imageUrl, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
-
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Image message sent: $messageId")
-
-        // Update last message
-        val lastMessageData = mapOf(
-            "lastMessage" to if (caption.isNotEmpty()) caption else "📷 Foto",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+        chatRef.updateChildren(mapOf("lastMessage" to (if (caption.isNotEmpty()) caption else "📷 Foto"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        sendFcmForMessage(chatId, currentUserId, if (caption.isNotEmpty()) caption else "📷 Foto", "IMAGE")
     }
 
-    /**
-     * Send video message
-     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
-     */
-    suspend fun sendVideoMessage(
-        chatId: String,
-        videoUri: android.net.Uri,
-        caption: String = "",
-        duration: Long = 0
-    ) {
+    suspend fun sendVideoMessage(chatId: String, videoUri: Uri, caption: String = "", duration: Long = 0) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
-        if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
-            val chatData = mapOf(
-                "chatId" to chatId,
-                "members" to members,
-                "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
-                "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
-            )
-            chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        if (!chatRef.get().await().exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
         }
-
-        // Upload video to Storage
         val fileName = "VID_${System.currentTimeMillis()}.mp4"
         val videoUrl = uploadFile(videoUri, "videos", fileName)
-
-        // Generate message ID
-        val messageId = chatRef.child("messages").push().key
-            ?: throw Exception("Failed to generate message ID")
-
-        // Create message data with mediaType (not type)
+        val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId,
-            "senderId" to currentUserId,
-            "content" to caption,
-            "mediaType" to "VIDEO",
-            "mediaUrl" to videoUrl,
-            "duration" to duration,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "messageId" to messageId, "senderId" to currentUserId, "content" to caption,
+            "mediaType" to "VIDEO", "mediaUrl" to videoUrl, "duration" to duration, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
-
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Video message sent: $messageId")
-
-        // Update last message
-        val lastMessageData = mapOf(
-            "lastMessage" to if (caption.isNotEmpty()) caption else "🎥 Video",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+        chatRef.updateChildren(mapOf("lastMessage" to (if (caption.isNotEmpty()) caption else "🎥 Video"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        sendFcmForMessage(chatId, currentUserId, if (caption.isNotEmpty()) caption else "🎥 Video", "VIDEO")
     }
 
-    /**
-     * Send document message
-     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
-     */
-    suspend fun sendDocumentMessage(
-        chatId: String,
-        documentUri: android.net.Uri,
-        fileName: String,
-        fileSize: Long,
-        mimeType: String
-    ) {
+    suspend fun sendDocumentMessage(chatId: String, documentUri: Uri, fileName: String, fileSize: Long, mimeType: String) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
-        if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
-            val chatData = mapOf(
-                "chatId" to chatId,
-                "members" to members,
-                "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
-                "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
-            )
-            chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        if (!chatRef.get().await().exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
         }
-
-        // Upload document to Storage
         val documentUrl = uploadFile(documentUri, "documents", fileName)
-
-        // Generate message ID
-        val messageId = chatRef.child("messages").push().key
-            ?: throw Exception("Failed to generate message ID")
-
-        // Create message data with mediaType (not type)
+        val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId,
-            "senderId" to currentUserId,
-            "content" to fileName,
-            "mediaType" to "DOCUMENT",
-            "mediaUrl" to documentUrl,
-            "fileName" to fileName,
-            "fileSize" to fileSize,
-            "mimeType" to mimeType,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "messageId" to messageId, "senderId" to currentUserId, "content" to fileName,
+            "mediaType" to "DOCUMENT", "mediaUrl" to documentUrl, "fileName" to fileName, "fileSize" to fileSize, "mimeType" to mimeType,
+            "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
-
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Document message sent: $messageId")
-
-        // Update last message
-        val lastMessageData = mapOf(
-            "lastMessage" to "📄 $fileName",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+        chatRef.updateChildren(mapOf("lastMessage" to "📄 $fileName", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        sendFcmForMessage(chatId, currentUserId, "📄 $fileName", "DOCUMENT")
     }
 
-    /**
-     * Send audio message
-     * ✅ FIXED: Now creates chat if it doesn't exist and uses mediaType instead of type
-     */
-    suspend fun sendAudioMessage(
-        chatId: String,
-        audioUri: android.net.Uri,
-        duration: Long
-    ) {
+    suspend fun sendAudioMessage(chatId: String, audioUri: Uri, duration: Long) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
-        if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
-            val chatData = mapOf(
-                "chatId" to chatId,
-                "members" to members,
-                "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
-                "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
-            )
-            chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        if (!chatRef.get().await().exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
         }
-
-        // Upload audio to Storage
         val fileName = "AUD_${System.currentTimeMillis()}.m4a"
         val audioUrl = uploadFile(audioUri, "audio", fileName)
-
-        // Generate message ID
-        val messageId = chatRef.child("messages").push().key
-            ?: throw Exception("Failed to generate message ID")
-
-        // Create message data with mediaType (not type)
+        val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId,
-            "senderId" to currentUserId,
-            "content" to "",
-            "mediaType" to "AUDIO",
-            "mediaUrl" to audioUrl,
-            "duration" to duration,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "messageId" to messageId, "senderId" to currentUserId, "content" to "",
+            "mediaType" to "AUDIO", "mediaUrl" to audioUrl, "duration" to duration, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
-
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Audio message sent: $messageId")
-
-        // Update last message
-        val lastMessageData = mapOf(
-            "lastMessage" to "🎤 Audio",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+        chatRef.updateChildren(mapOf("lastMessage" to "🎤 Audio", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        sendFcmForMessage(chatId, currentUserId, "🎤 Audio", "AUDIO")
     }
 
-    /**
-     * Send location message
-     * ✅ FIXED: Now creates chat if it doesn't exist
-     */
-    suspend fun sendLocationMessage(
-        chatId: String,
-        latitude: Double,
-        longitude: Double,
-        address: String = ""
-    ) {
+    suspend fun sendLocationMessage(chatId: String, latitude: Double, longitude: Double, address: String = "") {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
-        if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
-            val chatData = mapOf(
-                "chatId" to chatId,
-                "members" to members,
-                "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
-                "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
-            )
-            chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        if (!chatRef.get().await().exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
         }
-
-        // Generate message ID
-        val messageId = chatRef.child("messages").push().key
-            ?: throw Exception("Failed to generate message ID")
-
-        // Create message data
+        val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId,
-            "senderId" to currentUserId,
-            "content" to address,
-            "mediaType" to "LOCATION",
-            "latitude" to latitude,
-            "longitude" to longitude,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "messageId" to messageId, "senderId" to currentUserId, "content" to address,
+            "mediaType" to "LOCATION", "latitude" to latitude, "longitude" to longitude, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
-
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Location message sent: $messageId")
-
-        // Update last message
-        val lastMessageData = mapOf(
-            "lastMessage" to "📍 Ubicación",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+        chatRef.updateChildren(mapOf("lastMessage" to "📍 Ubicación", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        sendFcmForMessage(chatId, currentUserId, "📍 Ubicación", "LOCATION")
     }
 
-    /**
-     * Send sticker message
-     * ✅ FIXED: Now creates chat if it doesn't exist
-     */
-    suspend fun sendStickerMessage(
-        chatId: String,
-        stickerUrl: String,
-        stickerPack: String = ""
-    ) {
+    suspend fun sendStickerMessage(chatId: String, stickerUrl: String, stickerPack: String = "") {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
-
-        // ✅ Ensure chat exists
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
-        if (!chatSnapshot.exists()) {
-            val members = chatId.split("_")
-            val chatData = mapOf(
-                "chatId" to chatId,
-                "members" to members,
-                "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
-                "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
-            )
-            chatRef.setValue(chatData).await()
-            android.util.Log.d("RealtimeDB", "Chat created: $chatId")
+        if (!chatRef.get().await().exists()) {
+            val members = chatId.split("_").filter { it.isNotBlank() }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
         }
-
-        // Generate message ID
-        val messageId = chatRef.child("messages").push().key
-            ?: throw Exception("Failed to generate message ID")
-
-        // Create message data
+        val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId,
-            "senderId" to currentUserId,
-            "content" to stickerUrl,
-            "mediaType" to "STICKER",
-            "stickerUrl" to stickerUrl,
-            "stickerPack" to stickerPack,
-            "timestamp" to ServerValue.TIMESTAMP,
-            "status" to "sent",
-            "reactions" to emptyMap<String, String>()
+            "messageId" to messageId, "senderId" to currentUserId, "content" to stickerUrl,
+            "mediaType" to "STICKER", "stickerUrl" to stickerUrl, "stickerPack" to stickerPack, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
-
-        // Save message
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        android.util.Log.d("RealtimeDB", "Sticker message sent: $messageId")
-
-        // Update last message
-        val lastMessageData = mapOf(
-            "lastMessage" to "Sticker",
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
-        android.util.Log.d("RealtimeDB", "Last message updated for chat: $chatId")
+        chatRef.updateChildren(mapOf("lastMessage" to "Sticker", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        sendFcmForMessage(chatId, currentUserId, "Sticker", "STICKER")
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Stories
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Mark a story as viewed by the current user.
-     * Path: stories/{storyId}/views/{userId} = true
-     */
     suspend fun markStoryAsViewed(storyId: String) {
-        val currentUserId = auth.currentUser?.uid ?: return
-        database.child("stories").child(storyId).child("views").child(currentUserId)
-            .setValue(true).await()
+        val userId = auth.currentUser?.uid ?: return
+        database.child("stories_views").child(storyId).child(userId).setValue(ServerValue.TIMESTAMP).await()
     }
 
-    /**
-     * Send a reply to a story (stored as a message in a special chat).
-     * Path: storyReplies/{storyOwnerId}/{storyId}/{messageId}
-     */
-    suspend fun sendStoryReply(storyOwnerId: String, storyId: String, replyText: String) {
-        val currentUserId = auth.currentUser?.uid ?: throw Exception("Not authenticated")
-        val msgRef = database.child("storyReplies").child(storyOwnerId).child(storyId).push()
-        val msgId = msgRef.key ?: throw Exception("Failed to generate ID")
-        val data = mapOf(
-            "messageId" to msgId,
-            "senderId" to currentUserId,
-            "content" to replyText,
-            "timestamp" to ServerValue.TIMESTAMP
-        )
-        msgRef.setValue(data).await()
+    suspend fun sendStoryReply(storyId: String, recipientId: String, content: String) {
+        val chatId = if (auth.currentUser!!.uid < recipientId) "${auth.currentUser!!.uid}_$recipientId" else "${recipientId}_${auth.currentUser!!.uid}"
+        sendMessage(chatId, "Reaccionó a tu historia: $content")
     }
 
-    /**
-     * Get story viewers list.
-     * Path: stories/{storyId}/views (map of userId → true)
-     */
     suspend fun getStoryViewers(storyId: String): List<Map<String, Any>> {
-        val snapshot = database.child("stories").child(storyId).child("views").get().await()
-        val viewerIds = snapshot.children.mapNotNull { it.key }
-        return viewerIds.mapNotNull { uid ->
-            getUserById(uid)?.plus("uid" to uid)
-        }
+        val snapshot = database.child("stories_views").child(storyId).get().await()
+        return snapshot.children.mapNotNull { it.value as? Map<String, Any> }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Media Gallery
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Get all IMAGE and VIDEO messages for a chat (media gallery).
-     * Path: chats/{chatId}/messages filtered by mediaType == IMAGE or VIDEO
-     */
     suspend fun getChatMediaGallery(chatId: String): List<Map<String, Any>> {
         val snapshot = database.child("chats").child(chatId).child("messages").get().await()
-        val media = mutableListOf<Map<String, Any>>()
-        snapshot.children.forEach { child ->
-            @Suppress("UNCHECKED_CAST")
-            val data = child.value as? Map<String, Any> ?: return@forEach
-            val mediaType = data["mediaType"] as? String
-            if (mediaType == "IMAGE" || mediaType == "VIDEO") {
-                media.add(data.plus("messageId" to (child.key ?: "")))
-            }
+        return snapshot.children.mapNotNull {
+            val map = it.value as? Map<String, Any>
+            if (map?.containsKey("mediaUrl") == true) map else null
         }
-        return media.sortedByDescending { it["timestamp"] as? Long ?: 0L }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Presence
-    // ──────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Update online presence for the current user.
-     * Call from MainActivity onResume / onPause via ViewModel.
-     * When going online also registers onDisconnect handlers so Firebase
-     * automatically marks the user offline if the connection drops.
-     */
     suspend fun updatePresence(isOnline: Boolean) {
-        val uid = auth.currentUser?.uid ?: return
-        val ref = database.child("users").child(uid)
-        if (isOnline) {
-            ref.child("isOnline").setValue(true).await()
-            // Auto-set offline on disconnect
-            ref.child("isOnline").onDisconnect().setValue(false)
-            ref.child("lastSeen").onDisconnect().setValue(ServerValue.TIMESTAMP)
-        } else {
-            ref.child("isOnline").setValue(false).await()
-            ref.child("lastSeen").setValue(ServerValue.TIMESTAMP).await()
-        }
+        val userId = auth.currentUser?.uid ?: return
+        val userPresenceRef = database.child("users").child(userId)
+        val presenceMap = mapOf("online" to isOnline, "lastSeen" to ServerValue.TIMESTAMP)
+        userPresenceRef.updateChildren(presenceMap).await()
+        if (isOnline) userPresenceRef.child("online").onDisconnect().setValue(false)
+        userPresenceRef.child("lastSeen").onDisconnect().setValue(ServerValue.TIMESTAMP)
     }
 
-    /**
-     * Observe another user's online status in real-time.
-     * Emits Pair(isOnline, lastSeenTimestamp).
-     */
     fun observeUserPresence(userId: String): Flow<Pair<Boolean, Long>> = callbackFlow {
         val ref = database.child("users").child(userId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val isOnline = snapshot.child("isOnline").getValue(Boolean::class.java) ?: false
+                val online = snapshot.child("online").getValue(Boolean::class.java) ?: false
                 val lastSeen = snapshot.child("lastSeen").getValue(Long::class.java) ?: 0L
-                trySend(Pair(isOnline, lastSeen))
+                trySend(Pair(online, lastSeen))
             }
-
             override fun onCancelled(error: DatabaseError) {
-                trySend(Pair(false, 0L))
+                close(error.toException())
             }
         }
         ref.addValueEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Typing indicators
-    // ──────────────────────────────────────────────────────────────────────────
+    private suspend fun sendFcmForMessage(
+        chatId: String,
+        senderId: String,
+        content: String,
+        mediaType: String? = null,
+        senderPhotoUrl: String? = null
+    ) {
+        if (!BuildConfig.FCM_ENABLED || BuildConfig.FCM_SERVER_KEY.isBlank()) {
+            Log.d("RealtimeDB", "FCM disabled")
+            return
+        }
 
-    /**
-     * Observe typing indicators for a chat.
-     * Emits a map of userId → isTyping for every change under typing/{chatId}.
-     */
+        try {
+            val chatSnapshot = database.child("chats").child(chatId).child("members").get().await()
+            val members = when (val value = chatSnapshot.value) {
+                is List<*> -> value.filterIsInstance<String>()
+                is Map<*, *> -> value.keys.filterIsInstance<String>()
+                else -> emptyList()
+            }
+            val recipientId = members.firstOrNull { it != senderId } ?: return
+
+            val userSnapshot = database.child("users").child(senderId).child("displayName").get().await()
+            val senderName = userSnapshot.getValue(String::class.java) ?: "Usuario"
+
+            val tokensSnapshot = database.child("users").child(recipientId).child("fcmTokens").get().await()
+            val fcmTokens = tokensSnapshot.children.mapNotNull { it.getValue(String::class.java) }
+            if (fcmTokens.isEmpty()) return
+
+            val displayText = when (mediaType) {
+                "IMAGE" -> "📷 Foto"
+                "VIDEO" -> "🎥 Video"
+                "AUDIO" -> "🎤 Mensaje de voz"
+                "DOCUMENT" -> "📄 Documento"
+                "LOCATION" -> "📍 Ubicación"
+                "STICKER" -> "Sticker"
+                else -> content
+            }
+
+            val dataPayload = com.Azelmods.App.service.FcmNotificationSender.buildMessagePayload(
+                chatId = chatId, senderId = senderId, senderName = senderName,
+                senderPhotoUrl = senderPhotoUrl, mediaType = mediaType, body = displayText
+            )
+
+            com.Azelmods.App.service.FcmNotificationSender.sendToMultipleTokens(
+                fcmTokens, BuildConfig.FCM_SERVER_KEY, senderName, displayText, dataPayload
+            )
+        } catch (e: Exception) {
+            Log.e("RealtimeDB", "FCM error: ${e.message}")
+        }
+    }
+
     fun observeTyping(chatId: String): Flow<Map<String, Boolean>> = callbackFlow {
-        val ref = database.child("typing").child(chatId)
+        val typingRef = database.child("chats").child(chatId).child("typing")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val typingMap = mutableMapOf<String, Boolean>()
-                snapshot.children.forEach { child ->
-                    val uid = child.key ?: return@forEach
-                    val isTyping = child.getValue(Boolean::class.java) ?: false
-                    typingMap[uid] = isTyping
-                }
+                val typingMap = snapshot.children.associate { it.key!! to (it.value as? Boolean ?: false) }
                 trySend(typingMap)
             }
-
             override fun onCancelled(error: DatabaseError) {
-                trySend(emptyMap())
+                close(error.toException())
             }
         }
-        ref.addValueEventListener(listener)
-        awaitClose { ref.removeEventListener(listener) }
+        typingRef.addValueEventListener(listener)
+        awaitClose { typingRef.removeEventListener(listener) }
     }
 
-    /**
-     * Set the current user's typing status in a chat.
-     * Path: typing/{chatId}/{uid} = isTyping
-     * Also registers an onDisconnect handler to clear the flag if the connection drops.
-     */
     suspend fun setTypingStatus(chatId: String, isTyping: Boolean) {
-        val uid = auth.currentUser?.uid ?: return
-        database.child("typing").child(chatId).child(uid).setValue(isTyping).await()
+        val userId = auth.currentUser?.uid ?: return
+        val typingRef = database.child("chats").child(chatId).child("typing").child(userId)
         if (isTyping) {
-            // Auto-clear typing flag if the client disconnects unexpectedly
-            database.child("typing").child(chatId).child(uid).onDisconnect().setValue(false)
+            typingRef.setValue(true).await()
+            typingRef.onDisconnect().removeValue()
+        } else {
+            typingRef.removeValue().await()
         }
     }
-
 }

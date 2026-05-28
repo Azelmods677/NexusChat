@@ -9,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,9 +19,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import android.Manifest
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import com.Azelmods.App.ui.components.FullScreenImageViewer
+import java.util.Calendar
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,27 +52,29 @@ fun ProfileScreen(
     var showFullscreenImage by remember { mutableStateOf(false) }
     var fullscreenImageUrl by remember { mutableStateOf("") }
     var fullscreenImageType by remember { mutableStateOf("avatar") } // "avatar" or "cover"
+    var showAvatarMenu by remember { mutableStateOf(false) }
+    var showCoverMenu by remember { mutableStateOf(false) }
     
     // Request permissions
-    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         // Permissions granted, do nothing
     }
     
     LaunchedEffect(Unit) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             permissionLauncher.launch(
                 arrayOf(
-                    android.Manifest.permission.READ_MEDIA_IMAGES,
-                    android.Manifest.permission.CAMERA
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.CAMERA
                 )
             )
         } else {
             permissionLauncher.launch(
                 arrayOf(
-                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                    android.Manifest.permission.CAMERA
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.CAMERA
                 )
             )
         }
@@ -75,20 +86,20 @@ fun ProfileScreen(
     }
     
     // Photo picker launchers - navigate to crop screen
-    val avatarPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri: android.net.Uri? ->
+    val avatarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
         uri?.let {
-            val encoded = android.net.Uri.encode(it.toString())
+            val encoded = Uri.encode(it.toString())
             navController.navigate("image_crop?uri=$encoded&type=profile")
         }
     }
     
-    val coverPicker = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri: android.net.Uri? ->
+    val coverPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
         uri?.let {
-            val encoded = android.net.Uri.encode(it.toString())
+            val encoded = Uri.encode(it.toString())
             navController.navigate("image_crop?uri=$encoded&type=cover")
         }
     }
@@ -102,7 +113,7 @@ fun ProfileScreen(
     
     LaunchedEffect(cropUri) {
         cropUri?.let { uriString ->
-            val uri = android.net.Uri.parse(uriString)
+            val uri = Uri.parse(uriString)
             when (cropType) {
                 "profile" -> viewModel.uploadProfilePhoto(uri, cropScale, cropOffsetX, cropOffsetY)
                 "cover" -> viewModel.uploadCoverPhoto(uri, cropScale, cropOffsetX, cropOffsetY)
@@ -138,7 +149,7 @@ fun ProfileScreen(
                 title = { Text("Profile") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -149,14 +160,14 @@ fun ProfileScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
+                    containerColor = Color.Transparent,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 )
             )
         },
-        containerColor = DarkBackground
+        containerColor = Color.Transparent
     ) { paddingValues ->
         if (state.isLoading) {
             Box(
@@ -175,7 +186,7 @@ fun ProfileScreen(
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Cover gradient with click to change
+                // Cover gradient with click to view/change
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -183,12 +194,17 @@ fun ProfileScreen(
                         .clickable {
                             val currentUser = state.user
                             if (state.isOwnProfile) {
-                                // Own profile: open picker
-                                coverPicker.launch(
-                                    androidx.activity.result.PickVisualMediaRequest(
-                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                // Own profile: show menu with options
+                                if (currentUser?.coverUrl != null) {
+                                    showCoverMenu = true
+                                } else {
+                                    // No cover yet, open picker directly
+                                    coverPicker.launch(
+                                        PickVisualMediaRequest(
+                                            ActivityResultContracts.PickVisualMedia.ImageOnly
+                                        )
                                     )
-                                )
+                                }
                             } else if (currentUser?.coverUrl != null) {
                                 // Other user: view fullscreen
                                 fullscreenImageUrl = currentUser.coverUrl
@@ -200,11 +216,11 @@ fun ProfileScreen(
                     // Show cover photo if available, otherwise gradient
                     val currentUser = state.user
                     if (currentUser?.coverUrl != null) {
-                        coil3.compose.AsyncImage(
+                        AsyncImage(
                             model = currentUser.coverUrl,
                             contentDescription = "Cover Photo",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            contentScale = ContentScale.Crop
                         )
                     } else {
                         // Beautiful gradient fallback
@@ -228,28 +244,63 @@ fun ProfileScreen(
                     if (state.isOwnProfile) {
                         IconButton(
                             onClick = {
+                            coverPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.Black.copy(0.6f)
+                        ) {
+                            Icon(
+                                Icons.Default.CameraAlt,
+                                contentDescription = "Change Cover",
+                                tint = Color.White,
+                                modifier = Modifier.padding(6.dp).size(18.dp)
+                            )
+                        }
+                        }
+                    }
+                    
+                    // Cover photo options dropdown menu
+                    DropdownMenu(
+                        expanded = showCoverMenu,
+                        onDismissRequest = { showCoverMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Ver portada") },
+                            onClick = {
+                                showCoverMenu = false
+                                state.user?.coverUrl?.let { url ->
+                                    fullscreenImageUrl = url
+                                    fullscreenImageType = "cover"
+                                    showFullscreenImage = true
+                                }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Fullscreen, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Cambiar portada") },
+                            onClick = {
+                                showCoverMenu = false
                                 coverPicker.launch(
-                                    androidx.activity.result.PickVisualMediaRequest(
-                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
                                     )
                                 )
                             },
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(8.dp)
-                        ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Color.Black.copy(0.6f)
-                            ) {
-                                Icon(
-                                    Icons.Default.CameraAlt,
-                                    contentDescription = "Change Cover",
-                                    tint = Color.White,
-                                    modifier = Modifier.padding(6.dp).size(18.dp)
-                                )
+                            leadingIcon = {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null)
                             }
-                        }
+                        )
                     }
                 }
                 
@@ -278,9 +329,9 @@ fun ProfileScreen(
                             startAngle = 0f,
                             sweepAngle = 360f,
                             useCenter = false,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                            style = Stroke(
                                 width = 3.dp.toPx(),
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                cap = StrokeCap.Round
                             )
                         )
                     }
@@ -290,28 +341,39 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(112.dp)
                             .clip(CircleShape)
-                            .background(DarkBackground)
+                            .background(Color.Black.copy(alpha = 0.5f))
                     )
                     
-                    // Avatar container - CLICKABLE for fullscreen (ONLY if has photo)
+                    // Avatar container - CLICKABLE for fullscreen or menu
+                    val photoUrl = state.user?.photoUrl
                     Box(
                         modifier = Modifier
                             .size(104.dp)
                             .clip(CircleShape)
                             .background(Purple)
-                            .clickable(
-                                enabled = !state.user?.photoUrl.isNullOrBlank(),
-                                onClick = {
-                                    if (!state.user?.photoUrl.isNullOrBlank()) {
-                                        fullscreenImageUrl = state.user?.photoUrl ?: ""
+                            .clickable {
+                                if (state.isOwnProfile) {
+                                    // Own profile: show menu if has photo, else open picker
+                                    if (!photoUrl.isNullOrBlank()) {
+                                        showAvatarMenu = true
+                                    } else {
+                                        avatarPicker.launch(
+                                            PickVisualMediaRequest(
+                                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    // Other user: view fullscreen directly
+                                    if (!photoUrl.isNullOrBlank()) {
+                                        fullscreenImageUrl = photoUrl
                                         fullscreenImageType = "avatar"
                                         showFullscreenImage = true
                                     }
                                 }
-                            ),
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        val photoUrl = state.user?.photoUrl
                         if (photoUrl != null && photoUrl.isNotBlank()) {
                             AsyncImage(
                                 model = photoUrl,
@@ -319,14 +381,50 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .clip(CircleShape),
-                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                contentScale = ContentScale.Crop
                             )
                         } else {
                             Text(
                                 text = state.user?.displayName?.take(1)?.uppercase() ?: state.user?.name?.take(1)?.uppercase() ?: "?",
+
                                 color = Color.White,
                                 fontSize = 42.sp,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                        
+                        // Avatar options dropdown menu
+                        DropdownMenu(
+                            expanded = showAvatarMenu,
+                            onDismissRequest = { showAvatarMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Ver foto") },
+                                onClick = {
+                                    showAvatarMenu = false
+                                    photoUrl?.let {
+                                        fullscreenImageUrl = it
+                                        fullscreenImageType = "avatar"
+                                        showFullscreenImage = true
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Fullscreen, contentDescription = null)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Cambiar foto") },
+                                onClick = {
+                                    showAvatarMenu = false
+                                avatarPicker.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null)
+                            }
                             )
                         }
                     }
@@ -339,13 +437,12 @@ fun ProfileScreen(
                                 .size(36.dp)
                                 .clip(CircleShape)
                                 .background(Purple)
-                                .clickable {
-                                    avatarPicker.launch(
-                                        androidx.activity.result.PickVisualMediaRequest(
-                                            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
-                                        )
-                                    )
-                                },
+                                .clickable {                            avatarPicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -396,9 +493,38 @@ fun ProfileScreen(
                         .padding(horizontal = 24.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    StatItem("Member Since", "2024")
-                    StatItem("Messages", "1.2K")
-                    StatItem("Files", "234")
+                    // Member Since - calcular año desde createdAt
+                    val memberSinceYear = remember(state.user?.createdAt) {
+                        state.user?.createdAt?.let { timestamp ->
+                            val calendar = Calendar.getInstance()
+                            calendar.timeInMillis = timestamp
+                            calendar.get(Calendar.YEAR).toString()
+                        } ?: "2024"
+                    }
+                    
+                    // Messages - formatear número
+                    val messagesCount = remember(state.user?.messageCount) {
+                        val count = state.user?.messageCount ?: 0
+                        when {
+                            count >= 1000000 -> "${count / 1000000}M"
+                            count >= 1000 -> "${count / 1000}K"
+                            else -> count.toString()
+                        }
+                    }
+                    
+                    // Files - formatear número
+                    val filesCount = remember(state.user?.filesShared) {
+                        val count = state.user?.filesShared ?: 0
+                        when {
+                            count >= 1000000 -> "${count / 1000000}M"
+                            count >= 1000 -> "${count / 1000}K"
+                            else -> count.toString()
+                        }
+                    }
+                    
+                    StatItem("Member Since", memberSinceYear)
+                    StatItem("Messages", messagesCount)
+                    StatItem("Files", filesCount)
                 }
                 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -429,7 +555,7 @@ fun ProfileScreen(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = Purple)
                         ) {
-                            Icon(Icons.Default.Message, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Message")
                         }
@@ -450,9 +576,9 @@ fun ProfileScreen(
         }
     }
     
-    // Fullscreen image viewer
+    // Fullscreen image viewer (now uses Dialog - renders on top of everything)
     if (showFullscreenImage && fullscreenImageUrl.isNotBlank()) {
-        com.Azelmods.App.ui.components.FullScreenImageViewer(
+        FullScreenImageViewer(
             imageUrl = fullscreenImageUrl,
             senderName = state.user?.displayName ?: state.user?.name ?: "Usuario",
             timestamp = "",

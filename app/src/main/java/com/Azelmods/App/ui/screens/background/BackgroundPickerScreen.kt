@@ -3,15 +3,19 @@ package com.Azelmods.App.ui.screens.background
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -23,27 +27,32 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.Azelmods.App.data.model.BackgroundPresets
+import com.Azelmods.App.data.model.BackgroundConfig
 import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.ui.components.AppBackground
 import com.Azelmods.App.ui.components.ColorPickerDialog
 import com.Azelmods.App.ui.components.VideoBackgroundPlayer
+import com.Azelmods.App.ui.theme.linearGradientBrush
+import com.Azelmods.App.ui.theme.parseHexColor
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 
 /**
- * Background picker screen
+ * Background picker screen - Enhanced Chat Wallpaper
  * 
  * Features:
  * - Top tabs for App/Chat scope
- * - Live preview (40% of screen)
- * - Type selector
- * - Content per type
+ * - Live preview with chat bubble mockup (40% of screen)
+ * - Type selector (None, Color, Image, Video, Gradient)
+ * - Beautiful gradient presets organized by category
  * - Overlay opacity slider
  * - Apply/Cancel buttons
  */
@@ -88,7 +97,7 @@ fun BackgroundPickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Fondo") },
+                title = { Text("Chat Wallpaper") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -128,32 +137,97 @@ fun BackgroundPickerScreen(
                 }
             }
             
-            // Preview section (40%)
+            // Preview section (35%) - with chat bubble mockup
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.4f)
+                    .weight(0.35f)
                     .background(Color.Black)
+                    .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
             ) {
                 BackgroundPreview(config)
                 
-                // Overlay indicator
-                Text(
-                    text = "Vista Previa",
+                // Chat bubble mockup overlay
+                Column(
                     modifier = Modifier
-                        .align(Alignment.TopCenter)
+                        .fillMaxSize()
                         .padding(16.dp),
-                    color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 12.sp
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Preview label
+                    Text(
+                        text = "Vista Previa",
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 11.sp
+                    )
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Received message bubble
+                    Surface(
+                        shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
+                        color = Color(0xFF1A1A2E).copy(alpha = 0.85f),
+                        modifier = Modifier.widthIn(max = 220.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp, 8.dp)) {
+                            Text(
+                                text = "¡Hola! ¿Cómo estás? 😊",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = "10:30 AM",
+                                color = Color.White.copy(alpha = 0.5f),
+                                fontSize = 10.sp,
+                                modifier = Modifier.align(Alignment.End)
+                            )
+                        }
+                    }
+                    
+                    // Sent message bubble
+                    Surface(
+                        shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
+                        color = themeColor.copy(alpha = 0.85f),
+                        modifier = Modifier
+                            .widthIn(max = 220.dp)
+                            .align(Alignment.End)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp, 8.dp)) {
+                            Text(
+                                text = "¡Genial! Me encanta este fondo ✨",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                            Row(
+                                modifier = Modifier.align(Alignment.End),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "10:31 AM",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 10.sp
+                                )
+                                Icon(
+                                    Icons.Default.DoneAll,
+                                    contentDescription = null,
+                                    tint = Color(0xFF4FC3F7),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
+                        }
+                    }
+                }
             }
             
-            // Content section (60%)
+            // Content section (65%) - scrollable
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.6f)
+                    .weight(0.65f)
                     .background(Color(0xFF0F0F0F))
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -188,13 +262,15 @@ fun BackgroundPickerScreen(
                     
                     BackgroundType.IMAGE -> {
                         ImageContent(
-                            onPickImage = { imagePickerLauncher.launch("image/*") }
+                            onPickImage = { imagePickerLauncher.launch("image/*") },
+                            themeColor = themeColor
                         )
                     }
                     
                     BackgroundType.VIDEO -> {
                         VideoContent(
-                            onPickVideo = { videoPickerLauncher.launch("video/*") }
+                            onPickVideo = { videoPickerLauncher.launch("video/*") },
+                            themeColor = themeColor
                         )
                     }
                     
@@ -207,27 +283,33 @@ fun BackgroundPickerScreen(
                             onColor2Click = { showGradientPicker2 = true },
                             onAngleChange = { angle ->
                                 viewModel.setGradient(listOf(gradientColor1, gradientColor2), angle)
-                            }
+                            },
+                            onPresetSelected = { colors ->
+                                viewModel.setGradient(colors, config.gradientAngle)
+                            },
+                            themeColor = themeColor
                         )
                     }
                     
                     BackgroundType.BLUR -> {
                         BlurContent(
                             blurRadius = config.blurRadius,
-                            onBlurChange = { viewModel.setBlurRadius(it) }
+                            onBlurChange = { viewModel.setBlurRadius(it) },
+                            themeColor = themeColor
                         )
                     }
                 }
                 
-                // Overlay opacity slider (always visible)
+                // Overlay opacity slider (always visible for non-default types)
                 if (config.type != BackgroundType.NONE && config.type != BackgroundType.DEFAULT) {
                     OverlaySlider(
                         alpha = config.overlayAlpha,
-                        onAlphaChange = { viewModel.setOverlayAlpha(it) }
+                        onAlphaChange = { viewModel.setOverlayAlpha(it) },
+                        themeColor = themeColor
                     )
                 }
                 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(8.dp))
                 
                 // Buttons
                 Row(
@@ -278,6 +360,8 @@ fun BackgroundPickerScreen(
                         }
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -318,7 +402,13 @@ fun BackgroundPickerScreen(
 }
 
 @Composable
-private fun BackgroundPreview(config: com.Azelmods.App.data.model.BackgroundConfig) {
+private fun BackgroundPreview(config: BackgroundConfig) {
+    val previewBrush = remember(config) {
+        linearGradientBrush(
+            gradientColors = config.gradientColors,
+            gradientAngle = config.gradientAngle
+        )
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         when (config.type) {
             BackgroundType.SOLID_COLOR -> {
@@ -326,7 +416,7 @@ private fun BackgroundPreview(config: com.Azelmods.App.data.model.BackgroundConf
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(parseColor(hex))
+                            .background(parseHexColor(hex))
                     )
                 }
             }
@@ -339,14 +429,12 @@ private fun BackgroundPreview(config: com.Azelmods.App.data.model.BackgroundConf
                 }
             }
             BackgroundType.GRADIENT -> {
-                if (config.gradientColors.size >= 2) {
-                    val colors = config.gradientColors.map { parseColor(it) }
+                val brush = previewBrush
+                if (brush != null) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(colors)
-                            )
+                            .background(brush)
                     )
                 }
             }
@@ -423,22 +511,23 @@ private fun RowScope.TypeChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val themeColor = rememberThemeColor()
     Surface(
         modifier = Modifier
             .weight(1f)
             .height(40.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) Color(0xFFCC0000).copy(alpha = 0.2f) else Color(0xFF1A1A1A),
-        border = androidx.compose.foundation.BorderStroke(
+        color = if (selected) themeColor.copy(alpha = 0.2f) else Color(0xFF1A1A1A),
+        border = BorderStroke(
             width = 1.dp,
-            color = if (selected) Color(0xFFCC0000) else Color.Transparent
+            color = if (selected) themeColor else Color.Transparent
         )
     ) {
         Box(contentAlignment = Alignment.Center) {
             Text(
                 text = text,
-                color = if (selected) Color(0xFFCC0000) else Color.Gray,
+                color = if (selected) themeColor else Color.Gray,
                 fontSize = 12.sp,
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
             )
@@ -470,7 +559,7 @@ private fun ColorContent(
                     modifier = Modifier
                         .aspectRatio(1f)
                         .clip(CircleShape)
-                        .background(parseColor(colorHex))
+                        .background(parseHexColor(colorHex))
                         .border(
                             width = if (selectedColor.equals(colorHex, ignoreCase = true)) 3.dp else 1.dp,
                             color = if (selectedColor.equals(colorHex, ignoreCase = true)) 
@@ -505,32 +594,92 @@ private fun ColorContent(
 }
 
 @Composable
-private fun ImageContent(onPickImage: () -> Unit) {
-    Button(
-        onClick = onPickImage,
-        modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF1A1A1A)
-        )
-    ) {
-        Icon(Icons.Default.Image, contentDescription = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Seleccionar Imagen")
+private fun ImageContent(
+    onPickImage: () -> Unit,
+    themeColor: Color = Color(0xFFCC0000)
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Button(
+            onClick = onPickImage,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Icon(Icons.Default.Image, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Seleccionar Imagen de Galería")
+        }
+        
+        // Info text
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = themeColor.copy(alpha = 0.1f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = themeColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "La imagen se aplicará como fondo en toda la aplicación",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun VideoContent(onPickVideo: () -> Unit) {
-    Button(
-        onClick = onPickVideo,
-        modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF1A1A1A)
-        )
-    ) {
-        Icon(Icons.Default.VideoLibrary, contentDescription = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Seleccionar Video")
+private fun VideoContent(
+    onPickVideo: () -> Unit,
+    themeColor: Color = Color(0xFFCC0000)
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Button(
+            onClick = onPickVideo,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF1A1A1A)
+            )
+        ) {
+            Icon(Icons.Default.VideoLibrary, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Seleccionar Video")
+        }
+        
+        // Info text
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = themeColor.copy(alpha = 0.1f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = themeColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = "El video se reproducirá en loop como fondo animado",
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
+        }
     }
 }
 
@@ -541,9 +690,68 @@ private fun GradientContent(
     angle: Int,
     onColor1Click: () -> Unit,
     onColor2Click: () -> Unit,
-    onAngleChange: (Int) -> Unit
+    onAngleChange: (Int) -> Unit,
+    onPresetSelected: (List<String>) -> Unit,
+    themeColor: Color = Color(0xFFCC0000)
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Preset gradients section
+        Text(
+            text = "Fondos Predefinidos",
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        
+        // Gradient presets grid - scrollable horizontal rows by category
+        val presets = BackgroundPresets.NAMED_GRADIENT_PRESETS
+        
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(4),
+            modifier = Modifier.height(200.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(presets) { preset ->
+                val colors = preset.colors.map { parseHexColor(it) }
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.clickable { onPresetSelected(preset.colors) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Brush.linearGradient(colors))
+                            .border(
+                                width = if (preset.colors == listOf(color1, color2) || 
+                                           preset.colors.containsAll(listOf(color1, color2))) 2.dp else 0.dp,
+                                color = Color.White,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                    )
+                    Text(
+                        text = preset.name,
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontSize = 10.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+        }
+        
+        // Divider
+        HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+        
+        // Custom gradient colors
+        Text(
+            text = "Personalizar Degradado",
+            fontSize = 14.sp,
+            color = Color.Gray
+        )
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -563,8 +771,8 @@ private fun GradientContent(
                 onValueChange = { onAngleChange(it.toInt()) },
                 valueRange = 0f..360f,
                 colors = SliderDefaults.colors(
-                    thumbColor = Color(0xFFCC0000),
-                    activeTrackColor = Color(0xFFCC0000)
+                    thumbColor = themeColor,
+                    activeTrackColor = themeColor
                 )
             )
         }
@@ -594,7 +802,7 @@ private fun ColorButton(
                 modifier = Modifier
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(parseColor(colorHex))
+                    .background(parseHexColor(colorHex))
                     .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
             )
             Text(
@@ -609,7 +817,8 @@ private fun ColorButton(
 @Composable
 private fun BlurContent(
     blurRadius: Float,
-    onBlurChange: (Float) -> Unit
+    onBlurChange: (Float) -> Unit,
+    themeColor: Color = Color(0xFFCC0000)
 ) {
     Column {
         Text(
@@ -622,8 +831,8 @@ private fun BlurContent(
             onValueChange = onBlurChange,
             valueRange = 0f..25f,
             colors = SliderDefaults.colors(
-                thumbColor = Color(0xFFCC0000),
-                activeTrackColor = Color(0xFFCC0000)
+                thumbColor = themeColor,
+                activeTrackColor = themeColor
             )
         )
     }
@@ -632,7 +841,8 @@ private fun BlurContent(
 @Composable
 private fun OverlaySlider(
     alpha: Float,
-    onAlphaChange: (Float) -> Unit
+    onAlphaChange: (Float) -> Unit,
+    themeColor: Color = Color(0xFFCC0000)
 ) {
     Column {
         Text(
@@ -645,19 +855,11 @@ private fun OverlaySlider(
             onValueChange = onAlphaChange,
             valueRange = 0f..0.8f,
             colors = SliderDefaults.colors(
-                thumbColor = Color(0xFFCC0000),
-                activeTrackColor = Color(0xFFCC0000)
+                thumbColor = themeColor,
+                activeTrackColor = themeColor
             )
         )
     }
 }
 
-private fun parseColor(hex: String): Color {
-    return try {
-        val cleanHex = hex.removePrefix("#")
-        val colorInt = cleanHex.toLong(16)
-        Color(colorInt or 0xFF000000)
-    } catch (e: Exception) {
-        Color(0xFF0A0A0A)
-    }
-}
+

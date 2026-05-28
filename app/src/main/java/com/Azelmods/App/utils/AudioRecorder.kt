@@ -20,12 +20,7 @@ class AudioRecorder(private val context: Context) {
             outputFile = File(context.cacheDir, fileName)
             
             // Initialize MediaRecorder
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }
+            mediaRecorder = MediaRecorder(context) // minSdk 31 = API 31 = Android 12, siempre disponible
             
             mediaRecorder?.apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)

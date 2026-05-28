@@ -23,7 +23,8 @@ data class TerminalEntry(
 class TerminalRepository {
     
     private val db = FirebaseDatabase.getInstance()
-    private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    private val uid: String
+        get() = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     
     // Execute command with root (libsu)
     suspend fun executeRoot(command: String): String =

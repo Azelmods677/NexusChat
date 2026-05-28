@@ -1,5 +1,5 @@
 ﻿package com.Azelmods.App.ui.screens.conversation
-
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -389,10 +389,10 @@ fun AddContactSheet(
             isError = errorMessage != null
         )
         
-        if (errorMessage != null) {
+        errorMessage?.let { error ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = errorMessage!!,
+                text = error,
                 color = Color(0xFFEF4444),
                 fontSize = 12.sp
             )
@@ -409,10 +409,12 @@ fun AddContactSheet(
                     navController.navigate("qr_scanner")
                 },
                 modifier = Modifier.weight(1f),
+                enabled = true,
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = Color.White
                 ),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
+                border = BorderStroke(
+                    width = 1.dp,
                     brush = Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary))
                 )
             ) {
@@ -432,7 +434,7 @@ fun AddContactSheet(
                     isSearching = false
                     
                     if (user != null) {
-                        val userId = user["uid"] as String
+                        val userId = user["uid"] as? String ?: return@launch
                         viewModel.startConversation(userId, navController)
                         onSuccess()
                     } else {

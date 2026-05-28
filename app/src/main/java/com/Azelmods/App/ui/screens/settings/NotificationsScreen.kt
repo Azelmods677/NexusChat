@@ -1,5 +1,9 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import android.media.RingtoneManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +32,22 @@ fun NotificationsScreen(
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsState()
     val messagePreview by viewModel.messagePreview.collectAsState()
     val groupNotifications by viewModel.groupNotifications.collectAsState()
+    val notificationSoundName by viewModel.notificationSoundName.collectAsState()
+    
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
+    val soundPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            if (uri != null) {
+                val ringtone = RingtoneManager.getRingtone(context, uri)
+                val name = ringtone.getTitle(context) ?: "Unknown"
+                viewModel.setNotificationSound(uri.toString(), name)
+            }
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -71,9 +91,17 @@ fun NotificationsScreen(
             
             SettingsItem(
                 title = "Notification Sound",
-                subtitle = "Default",
+                subtitle = notificationSoundName,
                 icon = Icons.Default.MusicNote,
-                onClick = { /* TODO: Sound picker */ }
+                onClick = {
+                    val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Notification Sound")
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
+                    }
+                    soundPickerLauncher.launch(intent)
+                }
             )
             
             SettingsSwitchItem(

@@ -7,6 +7,8 @@ data class Message(
     val senderName: String = "",
     val receiverId: String = "", // Added for compatibility
     val content: String = "",
+    val isEncrypted: Boolean = false,
+    val encryptedPayload: String? = null,
     val timestamp: Long = 0,
     val status: MessageStatus = MessageStatus.SENT,
     val isEdited: Boolean = false,
@@ -19,7 +21,13 @@ data class Message(
     val deletedForEveryone: Boolean = false, // NEW: true if deleted for everyone
     val edited: Boolean = false,
     val editedAt: Long = 0,
-    val forwardedFrom: String? = null // Name of original sender if forwarded
+    val forwardedFrom: String? = null, // Name of original sender if forwarded
+    // ── Ephemeral / Self-Destructing Messages ──
+    val isEphemeral: Boolean = false,      // true if this message is temporary
+    val isViewOnce: Boolean = false,       // true for "view once" media messages
+    val selfDestructDuration: Long = 0,    // seconds until self-destruct after being viewed (0 = view once)
+    val selfDestructAt: Long = 0,          // absolute timestamp when message should be deleted from DB
+    val viewedBy: List<String> = emptyList() // users who have viewed this message (for view-once)
 )
 
 enum class MessageStatus {

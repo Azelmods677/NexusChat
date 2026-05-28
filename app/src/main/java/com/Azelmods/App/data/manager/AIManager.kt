@@ -1,35 +1,39 @@
 package com.Azelmods.App.data.manager
 
 import android.util.Log
-import com.Azelmods.App.data.api.OpenCodeApiService
+import com.Azelmods.App.data.api.AzelAIApiService
+import com.Azelmods.App.data.api.Message
 import com.Azelmods.App.data.api.OllamaApiService
-import com.Azelmods.App.data.api.ChatMessage
+import com.Azelmods.App.data.api.OpenCodeApiService
+import com.Azelmods.App.data.api.StreamResponse
 import com.Azelmods.App.data.model.AIMessage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 🧠 AI MANAGER SUPREMO - Coordinador de múltiples APIs de IA
- * Gestiona OpenCode, Ollama y otros proveedores de IA
+ * 🧠 AI MANAGER SUPREMO - Coordinador de APIs de IA
+ * Gestiona Ollama Cloud y Ollama Local
  */
 @Singleton
-class AIManager @Inject constructor() {
+class AIManager @Inject constructor(
+    private val azelAIApiService: AzelAIApiService,
+    private val ollamaService: OllamaApiService,
+    private val openCodeService: OpenCodeApiService
+) {
     
     companion object {
         private const val TAG = "AIManager"
     }
     
-    private val openCodeService = OpenCodeApiService()
-    private val ollamaService = OllamaApiService()
-    
     /**
      * 🎯 PROVEEDORES DE IA DISPONIBLES
      */
     enum class AIProvider(val displayName: String, val isLocal: Boolean) {
-        OPENCODE("OpenCode (GPT-4 Turbo)", false),
         OLLAMA_CLOUD("Ollama Cloud", false),
+        OPENCODE_CLOUD("OpenCode Cloud", false),
         OLLAMA_LOCAL("Ollama Local", true)
     }
     
@@ -49,42 +53,48 @@ class AIManager @Inject constructor() {
         
         try {
             when (provider) {
-                AIProvider.OPENCODE -> {
-                    // Usar OpenCode API (más potente)
-                    val messages = buildMessageHistory(conversationHistory, userMessage, true)
-                    val selectedModel = model ?: OpenCodeApiService.GPT_4_TURBO
+                AIProvider.OLLAMA_CLOUD -> {
+                    val messages = buildAzelApiMessages(conversationHistory, userMessage)
+                    val selectedModel = model ?: AzelAIApiService.DEEPSEEK_R1_70B
                     
-                    openCodeService.chatCompletion(
+                    azelAIApiService.chatCompletionStream(
                         model = selectedModel,
                         messages = messages,
-                        temperature = temperature,
-                        maxTokens = maxTokens,
-                        topP = 0.95,
-                        frequencyPenalty = 0.1,
-                        presencePenalty = 0.1,
-                        stream = false
-                    ).collect { response ->
-                        emit(response)
+                        temperature = temperature.toFloat()
+                    ).map { response ->
+                        when (response) {
+                            is StreamResponse.Content -> response.text
+                            is StreamResponse.Error -> throw Exception(response.message)
+                            is StreamResponse.Done -> ""
+                        }
+                    }.collect { chunk ->
+                        if (chunk.isNotEmpty()) emit(chunk)
                     }
                 }
                 
-                AIProvider.OLLAMA_CLOUD -> {
-                    // Usar Ollama Cloud (fallback)
-                    val messages = buildOllamaMessageHistory(conversationHistory, userMessage)
-                    val selectedModel = model ?: "llama3.3:70b"
+                AIProvider.OPENCODE_CLOUD -> {
+                    if (!openCodeService.isConfigured()) {
+                        throw Exception("OpenCode no configurado (falta API key)")
+                    }
+                    val messages = buildGenericMessages(conversationHistory, userMessage)
+                    val selectedModel = model ?: OpenCodeApiService.GPT_4_TURBO
                     
-                    ollamaService.chat(
+                    openCodeService.chatCompletionStream(
                         model = selectedModel,
                         messages = messages,
-                        temperature = temperature,
-                        stream = false
-                    ).collect { response ->
-                        emit(response)
+                        temperature = temperature.toFloat()
+                    ).map { response ->
+                        when (response) {
+                            is StreamResponse.Content -> response.text
+                            is StreamResponse.Error -> throw Exception(response.message)
+                            is StreamResponse.Done -> ""
+                        }
+                    }.collect { chunk ->
+                        if (chunk.isNotEmpty()) emit(chunk)
                     }
                 }
                 
                 AIProvider.OLLAMA_LOCAL -> {
-                    // Usar Ollama Local
                     val selectedModel = model ?: "llama2"
                     val systemPrompt = getAggressiveSystemPrompt()
                     
@@ -101,8 +111,42 @@ class AIManager @Inject constructor() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error generating response with ${provider.displayName}", e)
-            emit("❌ Error con ${provider.displayName}: ${e.message}")
+            throw e
         }
+    }
+    
+    private fun buildGenericMessages(
+        conversationHistory: List<AIMessage>,
+        userMessage: String
+    ): List<Message> {
+        val messages = conversationHistory
+            .filter { !it.isLoading && !it.error }
+            .map { Message(it.role, it.content) }
+            .toMutableList()
+        val lastIsDuplicate = messages.lastOrNull()?.let {
+            it.role == "user" && it.content == userMessage
+        } == true
+        if (!lastIsDuplicate) {
+            messages.add(Message("user", userMessage))
+        }
+        return messages
+    }
+
+    private fun buildAzelApiMessages(
+        conversationHistory: List<AIMessage>,
+        userMessage: String
+    ): List<Message> {
+        val messages = conversationHistory
+            .filter { !it.isLoading && !it.error && it.role != "system" }
+            .map { Message(it.role, it.content) }
+            .toMutableList()
+        val lastIsDuplicate = messages.lastOrNull()?.let {
+            it.role == "user" && it.content == userMessage
+        } == true
+        if (!lastIsDuplicate) {
+            messages.add(Message("user", userMessage))
+        }
+        return messages
     }
     
     /**
@@ -111,13 +155,13 @@ class AIManager @Inject constructor() {
     suspend fun generateResponseWithFallback(
         userMessage: String,
         conversationHistory: List<AIMessage>,
-        preferredProvider: AIProvider = AIProvider.OPENCODE
+        preferredProvider: AIProvider = AIProvider.OLLAMA_CLOUD
     ): Flow<String> = flow {
         
         val providers = when (preferredProvider) {
-            AIProvider.OPENCODE -> listOf(AIProvider.OPENCODE, AIProvider.OLLAMA_CLOUD, AIProvider.OLLAMA_LOCAL)
-            AIProvider.OLLAMA_CLOUD -> listOf(AIProvider.OLLAMA_CLOUD, AIProvider.OPENCODE, AIProvider.OLLAMA_LOCAL)
-            AIProvider.OLLAMA_LOCAL -> listOf(AIProvider.OLLAMA_LOCAL, AIProvider.OLLAMA_CLOUD, AIProvider.OPENCODE)
+            AIProvider.OLLAMA_CLOUD -> listOf(AIProvider.OLLAMA_CLOUD, AIProvider.OPENCODE_CLOUD, AIProvider.OLLAMA_LOCAL)
+            AIProvider.OPENCODE_CLOUD -> listOf(AIProvider.OPENCODE_CLOUD, AIProvider.OLLAMA_CLOUD, AIProvider.OLLAMA_LOCAL)
+            AIProvider.OLLAMA_LOCAL -> listOf(AIProvider.OLLAMA_LOCAL, AIProvider.OLLAMA_CLOUD, AIProvider.OPENCODE_CLOUD)
         }
         
         var lastError: Exception? = null
@@ -132,7 +176,7 @@ class AIManager @Inject constructor() {
                     userMessage = userMessage,
                     conversationHistory = conversationHistory
                 ).collect { response ->
-                    if (!response.startsWith("❌ Error")) {
+                    if (response.isNotBlank()) {
                         emit("🤖 [${provider.displayName}] $response")
                         hasValidResponse = true
                     }
@@ -148,58 +192,7 @@ class AIManager @Inject constructor() {
             }
         }
         
-        // Si todos los proveedores fallan
         emit("❌ Todos los proveedores de IA fallaron. Último error: ${lastError?.message}")
-    }
-    
-    /**
-     * 🧠 CONSTRUIR HISTORIAL DE MENSAJES PARA OPENCODE
-     */
-    private fun buildMessageHistory(
-        conversationHistory: List<AIMessage>,
-        userMessage: String,
-        includeSystemPrompt: Boolean = true
-    ): List<ChatMessage> {
-        val messages = mutableListOf<ChatMessage>()
-        
-        // Agregar system prompt ultra agresivo
-        if (includeSystemPrompt) {
-            messages.add(ChatMessage("system", openCodeService.getUncensoredSystemPrompt()))
-        }
-        
-        // Agregar historial (últimos 15 mensajes para contexto)
-        conversationHistory.takeLast(15).forEach { msg ->
-            if (!msg.isLoading && !msg.error && msg.role != "system") {
-                messages.add(ChatMessage(msg.role, msg.content))
-            }
-        }
-        
-        // Agregar mensaje actual
-        messages.add(ChatMessage("user", userMessage))
-        
-        return messages
-    }
-    
-    /**
-     * 🔥 CONSTRUIR HISTORIAL PARA OLLAMA
-     */
-    private fun buildOllamaMessageHistory(
-        conversationHistory: List<AIMessage>,
-        userMessage: String
-    ): List<com.Azelmods.App.data.api.ChatMessage> {
-        val messages = mutableListOf<com.Azelmods.App.data.api.ChatMessage>()
-        
-        // Agregar historial
-        conversationHistory.takeLast(10).forEach { msg ->
-            if (!msg.isLoading && !msg.error && msg.role != "system") {
-                messages.add(com.Azelmods.App.data.api.ChatMessage(msg.role, msg.content))
-            }
-        }
-        
-        // Agregar mensaje actual
-        messages.add(com.Azelmods.App.data.api.ChatMessage("user", userMessage))
-        
-        return messages
     }
     
     /**
@@ -232,15 +225,6 @@ class AIManager @Inject constructor() {
     suspend fun checkProviderAvailability(): Map<AIProvider, Boolean> {
         val results = mutableMapOf<AIProvider, Boolean>()
         
-        // Verificar OpenCode
-        results[AIProvider.OPENCODE] = try {
-            openCodeService.checkApiHealth()
-        } catch (e: Exception) {
-            Log.w(TAG, "OpenCode health check failed", e)
-            false
-        }
-        
-        // Verificar Ollama Local
         results[AIProvider.OLLAMA_LOCAL] = try {
             ollamaService.isServerAvailable()
         } catch (e: Exception) {
@@ -248,8 +232,19 @@ class AIManager @Inject constructor() {
             false
         }
         
-        // Ollama Cloud siempre disponible (asumimos)
-        results[AIProvider.OLLAMA_CLOUD] = true
+        results[AIProvider.OLLAMA_CLOUD] = try {
+            azelAIApiService.checkHealth()
+        } catch (e: Exception) {
+            Log.w(TAG, "Ollama Cloud health check failed", e)
+            false
+        }
+
+        results[AIProvider.OPENCODE_CLOUD] = try {
+            openCodeService.checkHealth()
+        } catch (e: Exception) {
+            Log.w(TAG, "OpenCode Cloud health check failed", e)
+            false
+        }
         
         return results
     }
@@ -260,8 +255,8 @@ class AIManager @Inject constructor() {
     suspend fun getAvailableModels(provider: AIProvider): List<String> {
         return try {
             when (provider) {
-                AIProvider.OPENCODE -> openCodeService.getAvailableModels()
-                AIProvider.OLLAMA_CLOUD -> listOf("llama3.3:70b", "llama3.1:8b", "mistral:7b", "codellama:13b")
+                AIProvider.OLLAMA_CLOUD -> azelAIApiService.getAvailableModels().map { it.id }
+                AIProvider.OPENCODE_CLOUD -> openCodeService.getAvailableModels().map { it.id }
                 AIProvider.OLLAMA_LOCAL -> ollamaService.listModels()
             }
         } catch (e: Exception) {

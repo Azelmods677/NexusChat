@@ -231,136 +231,138 @@ fun ChatListScreen(
     }
     
     // Bottom sheet for long press actions
-    if (showBottomSheet && selectedChat != null) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            containerColor = Color(0xFF0F0F0F),
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .background(themeColor, RoundedCornerShape(2.dp))
-                )
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+    selectedChat?.let { chat ->
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showBottomSheet = false },
+                containerColor = Color(0xFF0F0F0F),
+                dragHandle = {
+                    Box(
+                        modifier = Modifier
+                            .padding(vertical = 12.dp)
+                            .width(40.dp)
+                            .height(4.dp)
+                            .background(themeColor, RoundedCornerShape(2.dp))
+                    )
+                }
             ) {
-                Text(
-                    text = selectedChat?.contactName ?: "",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                
-                // Grid 2x4
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ActionButton(
-                            icon = Icons.Default.PushPin,
-                            label = "Fijar",
-                            onClick = {
-                                viewModel.pinChat(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
-                        ActionButton(
-                            icon = Icons.Default.VolumeOff,
-                            label = "Silenciar",
-                            onClick = {
-                                viewModel.muteChat(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
-                    }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = chat.contactName,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
                     
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ActionButton(
-                            icon = Icons.Default.Archive,
-                            label = "Archivar",
-                            onClick = {
-                                viewModel.archiveChat(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
-                        ActionButton(
-                            icon = Icons.Default.Delete,
-                            label = "Eliminar",
-                            onClick = {
-                                viewModel.deleteChat(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = Color(0xFFEF4444)
-                        )
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ActionButton(
-                            icon = Icons.Default.DoneAll,
-                            label = "Marcar leído",
-                            onClick = {
-                                viewModel.markAsRead(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
-                        ActionButton(
-                            icon = Icons.Default.ContentCopy,
-                            label = "Copiar",
-                            onClick = {
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
-                    }
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        ActionButton(
-                            icon = Icons.Default.Block,
-                            label = "Bloquear",
-                            onClick = {
-                                viewModel.blockChat(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
-                        ActionButton(
-                            icon = Icons.Default.CleaningServices,
-                            label = "Limpiar",
-                            onClick = {
-                                viewModel.clearChat(selectedChat!!.chatId)
-                                showBottomSheet = false
-                            },
-                            modifier = Modifier.weight(1f),
-                            themeColor = themeColor
-                        )
+                    // Grid 2x4
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ActionButton(
+                                icon = Icons.Default.PushPin,
+                                label = "Fijar",
+                                onClick = {
+                                    viewModel.pinChat(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                            ActionButton(
+                                icon = Icons.Default.NotificationsOff,
+                                label = "Silenciar",
+                                onClick = {
+                                    viewModel.muteChat(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ActionButton(
+                                icon = Icons.Default.Archive,
+                                label = "Archivar",
+                                onClick = {
+                                    viewModel.archiveChat(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                            ActionButton(
+                                icon = Icons.Default.Delete,
+                                label = "Eliminar",
+                                onClick = {
+                                    viewModel.deleteChat(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = Color(0xFFEF4444)
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ActionButton(
+                                icon = Icons.Default.DoneAll,
+                                label = "Marcar leído",
+                                onClick = {
+                                    viewModel.markAsRead(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                            ActionButton(
+                                icon = Icons.Default.ContentCopy,
+                                label = "Copiar",
+                                onClick = {
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            ActionButton(
+                                icon = Icons.Default.Block,
+                                label = "Bloquear",
+                                onClick = {
+                                    viewModel.blockChat(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                            ActionButton(
+                                icon = Icons.Default.CleaningServices,
+                                label = "Limpiar",
+                                onClick = {
+                                    viewModel.clearChat(chat.chatId)
+                                    showBottomSheet = false
+                                },
+                                modifier = Modifier.weight(1f),
+                                themeColor = themeColor
+                            )
+                        }
                     }
                 }
             }
@@ -476,7 +478,7 @@ private fun ChatListItem(
                             if (chat.isMuted) {
                                 Spacer(Modifier.width(4.dp))
                                 Icon(
-                                    Icons.Default.VolumeOff,
+                                    Icons.Default.NotificationsOff,
                                     tint = Color.White.copy(0.4f),
                                     modifier = Modifier.size(12.dp),
                                     contentDescription = null
@@ -651,42 +653,55 @@ class ChatListViewModel @Inject constructor(
     private val _state = MutableStateFlow(ChatListState())
     val state: StateFlow<ChatListState> = _state.asStateFlow()
     
-    private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+    private val currentUserId: String?
+        get() = FirebaseAuth.getInstance().currentUser?.uid
+    
+    private var chatListListener: com.google.firebase.database.ValueEventListener? = null
     
     init {
         loadChats()
     }
     
     fun loadChats() {
-        if (currentUserId == null) return
+        val uid = currentUserId ?: return
         
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             
             try {
+                // Remove previous listener if exists (prevents duplicate listeners)
+                chatListListener?.let { oldListener ->
+                    database.reference
+                        .child("userChats")
+                        .child(uid)
+                        .removeEventListener(oldListener)
+                }
+                
+                val listener = object : com.google.firebase.database.ValueEventListener {
+                    override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                        val chats = snapshot.children.mapNotNull { child ->
+                            child.getValue(Chat::class.java)?.copy(chatId = child.key ?: "")
+                        }.sortedByDescending { it.lastMessageTimestamp }
+                        
+                        _state.value = _state.value.copy(
+                            chats = chats,
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                    
+                    override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            error = error.message
+                        )
+                    }
+                }
+                chatListListener = listener
                 database.reference
                     .child("userChats")
-                    .child(currentUserId)
-                    .addValueEventListener(object : com.google.firebase.database.ValueEventListener {
-                        override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
-                            val chats = snapshot.children.mapNotNull { child ->
-                                child.getValue(Chat::class.java)?.copy(chatId = child.key ?: "")
-                            }.sortedByDescending { it.lastMessageTimestamp }
-                            
-                            _state.value = _state.value.copy(
-                                chats = chats,
-                                isLoading = false,
-                                error = null
-                            )
-                        }
-                        
-                        override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
-                            _state.value = _state.value.copy(
-                                isLoading = false,
-                                error = error.message
-                            )
-                        }
-                    })
+                    .child(uid)
+                    .addValueEventListener(listener)
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     isLoading = false,
@@ -769,9 +784,8 @@ class ChatListViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 database.reference
-                    .child("users")
-                    .child(currentUserId!!)
-                    .child("blocked")
+                    .child("users")                        .child(currentUserId ?: return@launch)
+                        .child("blocked")
                     .child(chatId)
                     .setValue(true)
             } catch (e: Exception) {
@@ -794,7 +808,17 @@ class ChatListViewModel @Inject constructor(
     }
     
     override fun onCleared() {
+        // Remove Firebase listener FIRST to prevent memory leaks
+        chatListListener?.let { listener ->
+            val uid = currentUserId
+            if (uid != null) {
+                database.reference
+                    .child("userChats")
+                    .child(uid)
+                    .removeEventListener(listener)
+            }
+            chatListListener = null
+        }
         super.onCleared()
-        // Remove Firebase listeners if any
     }
 }

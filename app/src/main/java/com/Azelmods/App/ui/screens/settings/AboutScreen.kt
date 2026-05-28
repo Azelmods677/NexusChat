@@ -1,6 +1,9 @@
-﻿package com.Azelmods.App.ui.screens.settings
+package com.Azelmods.App.ui.screens.settings
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import androidx.compose.animation.*
@@ -10,14 +13,15 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +30,8 @@ import androidx.compose.ui.unit.*
 import androidx.navigation.NavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.cos
+import kotlin.math.sin
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,77 +39,88 @@ fun AboutScreen(navController: NavController) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     
-    // Entrance animation
+    // Get real battery info
+    val batteryStatus = remember {
+        context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+    }
+    val batteryLevel = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: 0
+    val batteryScale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: 100
+    val batteryPct = (batteryLevel * 100 / batteryScale.toFloat()).toInt()
+    val isCharging = batteryStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING
+    
+    // Get storage info
+    val statFs = android.os.StatFs(Environment.getDataDirectory().path)
+    val totalGB = (statFs.totalBytes / (1024 * 1024 * 1024))
+    val availableGB = (statFs.availableBytes / (1024 * 1024 * 1024))
+    val usedGB = totalGB - availableGB
+    
+    // Get RAM info
+    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+    val memInfo = android.app.ActivityManager.MemoryInfo()
+    activityManager?.getMemoryInfo(memInfo)
+    val totalRAM = (memInfo.totalMem / (1024 * 1024))
+    val availableRAM = (memInfo.availMem / (1024 * 1024))
+    val usedRAM = totalRAM - availableRAM
+    
+    // Animations
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(100)
         visible = true
     }
     
-    // Infinite pulse animation for logo
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
+    val infiniteTransition = rememberInfiniteTransition(label = "main")
     
-    // Glow animation
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_alpha"
-    )
-    
-    // Floating particles animation
-    val particleAnim by infiniteTransition.animateFloat(
+    // Floating particles
+    val particleOffset by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(8000, easing = LinearEasing),
+            animation = tween(15000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "particles"
     )
     
-    // Rotating gradient for header
-    val gradientRotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
+    // Logo pulse
+    val logoPulse by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
         ),
-        label = "gradient_rotation"
+        label = "logo_pulse"
     )
     
-    // Typewriter effect for version
-    var displayedVersion by remember { mutableStateOf("") }
-    val fullVersion = "Versión 1.0.0 • Build 100"
-    LaunchedEffect(visible) {
-        if (visible) {
-            fullVersion.forEachIndexed { i, _ ->
-                delay(50)
-                displayedVersion = fullVersion.substring(0, i + 1)
-            }
-        }
-    }
+    // Glow effect
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Acerca de", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = { 
+                    Text(
+                        "Acerca de", 
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás", tint = Color.White)
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Atrás",
+                            tint = Color.White
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -114,18 +131,17 @@ fun AboutScreen(navController: NavController) {
         containerColor = Color(0xFF0D0D1A)
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // ✨ FLOATING PARTICLES BACKGROUND
-            androidx.compose.foundation.Canvas(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                for (i in 0..30) {
-                    val x = (i * 137.5f % size.width)
-                    val y = (size.height * ((particleAnim + i * 0.03f) % 1f))
-                    val alpha = ((particleAnim + i * 0.05f) % 1f)
+            // Animated background particles
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                for (i in 0..40) {
+                    val progress = (particleOffset + i * 0.025f) % 1f
+                    val x = (i * 137.5f) % size.width
+                    val y = size.height * progress
+                    val alpha = (1f - progress) * 0.4f
                     
                     drawCircle(
-                        color = Color(0xFF7B5CFA).copy(alpha = alpha * 0.3f),
-                        radius = (3 + (i % 3)).dp.toPx(),
+                        color = Color(0xFF7B5CFA).copy(alpha = alpha),
+                        radius = (2 + (i % 4)).dp.toPx(),
                         center = androidx.compose.ui.geometry.Offset(x, y)
                     )
                 }
@@ -136,59 +152,32 @@ fun AboutScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(20.dp))
                 
-                // ── ANIMATED HEADER SIMPLE ──────────────────────────────
+                // ═══════════════════════════════════════════════════
+                // LOGO SECTION WITH GLOW
+                // ═══════════════════════════════════════════════════
                 AnimatedVisibility(
                     visible = visible,
-                    enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { -40 }
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        Color(0xFF7B5CFA).copy(alpha = 0.3f),
-                                        Color(0xFF0D0D1A).copy(alpha = 0.9f)
-                                    )
-                                )
-                            )
-                            .border(
-                                1.dp,
-                                Color(0xFF7B5CFA).copy(glowAlpha * 0.5f),
-                                RoundedCornerShape(20.dp)
-                            )
-                    )
-                }
-                
-                Spacer(Modifier.height(24.dp))
-                
-                // ── APP LOGO SIMPLE Y PROFESIONAL ──────────────────────────────────
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(700, delayMillis = 200)) + scaleIn(tween(700, delayMillis = 200))
+                    enter = fadeIn(tween(800)) + scaleIn(tween(800))
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        // Logo simple con glow effect
                         Box(
-                            modifier = Modifier.size(80.dp),
+                            modifier = Modifier.size(120.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            // Glow effect
+                            // Outer glow
                             Box(
                                 modifier = Modifier
-                                    .size(85.dp)
-                                    .scale(pulseScale)
+                                    .size(130.dp)
+                                    .scale(logoPulse)
                                     .background(
                                         Brush.radialGradient(
                                             listOf(
-                                                Color(0xFF7B5CFA).copy(alpha = glowAlpha * 0.6f),
+                                                Color(0xFF7B5CFA).copy(alpha = glowAlpha),
                                                 Color.Transparent
                                             )
                                         ),
@@ -199,75 +188,71 @@ fun AboutScreen(navController: NavController) {
                             // Logo circle
                             Box(
                                 modifier = Modifier
-                                    .size(70.dp)
-                                    .scale(pulseScale)
+                                    .size(100.dp)
+                                    .scale(logoPulse)
                                     .background(
                                         Brush.linearGradient(
-                                            listOf(Color(0xFF7B5CFA), Color(0xFF5A3FC8))
+                                            listOf(
+                                                Color(0xFF7B5CFA),
+                                                Color(0xFF5A3FC8)
+                                            )
                                         ),
                                         CircleShape
-                                    ),
+                                    )
+                                    .border(3.dp, Color(0xFF9D7FFF).copy(alpha = 0.5f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     "NC",
-                                    color = Color.White,
-                                    fontSize = 22.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontSize = 36.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color.White
                                 )
                             }
                         }
                         
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(20.dp))
                         
                         Text(
                             "Nexus Chat",
-                            fontSize = 28.sp,
+                            fontSize = 32.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White
                         )
                         
                         Text(
-                            "Mensajero Seguro",
+                            "Mensajero Seguro y Privado",
                             fontSize = 14.sp,
                             color = Color(0xFF7B5CFA),
                             fontWeight = FontWeight.Medium
                         )
                         
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(12.dp))
                         
-                        // Version badge with typewriter effect
                         Surface(
                             shape = RoundedCornerShape(20.dp),
                             color = Color(0xFF1A1A2E),
-                            border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(alpha = glowAlpha * 0.5f))
+                            border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(alpha = 0.5f))
                         ) {
                             Text(
-                                displayedVersion,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                                fontSize = 12.sp,
-                                color = Color(0xFF7B5CFA)
+                                "Versión 1.0.0 • Build 100",
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                                fontSize = 13.sp,
+                                color = Color(0xFF7B5CFA),
+                                fontWeight = FontWeight.Medium
                             )
                         }
-                        
-                        Spacer(Modifier.height(12.dp))
-                        
-                        Text(
-                            "Mensajería segura con IA sin censura,\nnavegador Tor, terminal y herramientas avanzadas.\nComunicación privada y anónima.",
-                            textAlign = TextAlign.Center,
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.6f),
-                            lineHeight = 20.sp
-                        )
                     }
                 }
                 
-                Spacer(Modifier.height(28.dp))
+                Spacer(Modifier.height(32.dp))
                 
-                // ── ANIMATED STATS ROW (REAL DEVICE INFO) ────────────────────────────────
+                // ═══════════════════════════════════════════════════
+                // DEVICE STATUS WITH REAL ICONS
+                // ═══════════════════════════════════════════════════
                 AnimatedVisibility(
                     visible = visible,
-                    enter = fadeIn(tween(700, delayMillis = 350)) + slideInVertically(tween(700, delayMillis = 350)) { 40 }
+                    enter = fadeIn(tween(800, delayMillis = 200)) + slideInVertically(tween(800, delayMillis = 200)) { 50 }
                 ) {
                     Column {
                         Text(
@@ -276,176 +261,252 @@ fun AboutScreen(navController: NavController) {
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF7B5CFA),
                             letterSpacing = 1.5.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        // Battery Card
+                        DeviceStatusCard(
+                            icon = if (isCharging) Icons.Default.BatteryChargingFull else when {
+                                batteryPct >= 90 -> Icons.Default.BatteryFull
+                                batteryPct >= 60 -> Icons.Default.Battery6Bar
+                                batteryPct >= 30 -> Icons.Default.Battery3Bar
+                                else -> Icons.Default.Battery1Bar
+                            },
+                            iconColor = when {
+                                batteryPct >= 60 -> Color(0xFF00E676)
+                                batteryPct >= 30 -> Color(0xFFFFC107)
+                                else -> Color(0xFFFF5252)
+                            },
+                            title = "Batería",
+                            value = "$batteryPct%",
+                            subtitle = if (isCharging) "Cargando" else "Disponible",
+                            progress = batteryPct / 100f
+                        )
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // Storage Card
+                        DeviceStatusCard(
+                            icon = Icons.Default.Storage,
+                            iconColor = Color(0xFF00D4FF),
+                            title = "Almacenamiento",
+                            value = "${availableGB}GB",
+                            subtitle = "Libre de ${totalGB}GB",
+                            progress = usedGB.toFloat() / totalGB.toFloat()
+                        )
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        // RAM Card
+                        DeviceStatusCard(
+                            icon = Icons.Default.Memory,
+                            iconColor = Color(0xFFFC5C7D),
+                            title = "Memoria RAM",
+                            value = "${availableRAM}MB",
+                            subtitle = "Libre de ${totalRAM}MB",
+                            progress = usedRAM.toFloat() / totalRAM.toFloat()
+                        )
+                    }
+                }
+                
+                Spacer(Modifier.height(32.dp))
+                
+                // ═══════════════════════════════════════════════════
+                // APP INFO GRID
+                // ═══════════════════════════════════════════════════
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(800, delayMillis = 400)) + slideInVertically(tween(800, delayMillis = 400)) { 50 }
+                ) {
+                    Column {
+                        Text(
+                            "INFORMACIÓN DE LA APP",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF7B5CFA),
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Battery status
-                            val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
-                            val batteryLevel = batteryManager?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: 0
-                            
-                            AnimatedStatCard("$batteryLevel%", "Batería", Color(0xFF00E676))
-                            
-                            // Storage
-                            val statFs = android.os.StatFs(Environment.getDataDirectory().path)
-                            val availableGB = (statFs.availableBytes / (1024 * 1024 * 1024))
-                            AnimatedStatCard("${availableGB}GB", "Libre", Color(0xFF00D4FF))
-                            
-                            // RAM
-                            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
-                            val memInfo = android.app.ActivityManager.MemoryInfo()
-                            activityManager?.getMemoryInfo(memInfo)
-                            val availableRAM = (memInfo.availMem / (1024 * 1024))
-                            AnimatedStatCard("${availableRAM}MB", "RAM", Color(0xFFFC5C7D))
+                            InfoCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Code,
+                                value = "MIT",
+                                label = "Licencia"
+                            )
+                            InfoCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Tag,
+                                value = "1.0.0",
+                                label = "Versión"
+                            )
+                        }
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            InfoCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.Person,
+                                value = "Azelmods",
+                                label = "Desarrollador"
+                            )
+                            InfoCard(
+                                modifier = Modifier.weight(1f),
+                                icon = Icons.Default.CalendarToday,
+                                value = "2026",
+                                label = "Año"
+                            )
                         }
                     }
                 }
                 
-                Spacer(Modifier.height(28.dp))
-            
-            // ── INFO GRID (MIT, Version, Developer, Date) ────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(700, delayMillis = 400)) + slideInVertically(tween(700, delayMillis = 400)) { 40 }
-            ) {
-                Column {
-                    Text(
-                        "INFORMACIÓN",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF7B5CFA),
-                        letterSpacing = 1.5.sp,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        InfoCard(Modifier.weight(1f), "MIT", "Licencia")
-                        InfoCard(Modifier.weight(1f), "1.0.0", "Versión")
-                    }
-                    
-                    Spacer(Modifier.height(12.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        InfoCard(Modifier.weight(1f), "Azelmods", "Desarrollador")
-                        InfoCard(Modifier.weight(1f), "2026", "Año")
-                    }
-                }
-            }
-            
-            Spacer(Modifier.height(28.dp))
-            
-            // ── DEVICE INFORMATION ────────────────────────────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(700, delayMillis = 500)) + slideInVertically(tween(700, delayMillis = 500)) { 40 }
-            ) {
-                Column {
-                    Text(
-                        "INFORMACIÓN DEL DISPOSITIVO",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF7B5CFA),
-                        letterSpacing = 1.5.sp,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF1A1A2E),
-                        border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(alpha = 0.2f))
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                Spacer(Modifier.height(32.dp))
+                
+                // ═══════════════════════════════════════════════════
+                // DEVICE INFO
+                // ═══════════════════════════════════════════════════
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(800, delayMillis = 600)) + slideInVertically(tween(800, delayMillis = 600)) { 50 }
+                ) {
+                    Column {
+                        Text(
+                            "INFORMACIÓN DEL DISPOSITIVO",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF7B5CFA),
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color(0xFF1A1A2E),
+                            border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(alpha = 0.3f))
                         ) {
-                            DeviceInfoRow("Modelo", Build.MODEL)
-                            DeviceInfoRow("Fabricante", Build.MANUFACTURER.replaceFirstChar { it.uppercase() })
-                            DeviceInfoRow("Android", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
-                            DeviceInfoRow("Dispositivo", Build.DEVICE)
-                            DeviceInfoRow("Producto", Build.PRODUCT)
+                            Column(
+                                modifier = Modifier.padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                DeviceInfoRow(Icons.Default.PhoneAndroid, "Modelo", Build.MODEL)
+                                DeviceInfoRow(Icons.Default.Business, "Fabricante", Build.MANUFACTURER.replaceFirstChar { it.uppercase() })
+                                DeviceInfoRow(Icons.Default.Android, "Android", "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})")
+                                DeviceInfoRow(Icons.Default.Devices, "Dispositivo", Build.DEVICE)
+                            }
                         }
                     }
                 }
-            }
-            
-            Spacer(Modifier.height(28.dp))
-            
-            // ── SOCIAL LINKS ──────────────────────────────────────
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(700, delayMillis = 600)) + slideInVertically(tween(700, delayMillis = 600)) { 40 }
-            ) {
-                Column {
-                    Text(
-                        "SÍGUEME EN",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF7B5CFA),
-                        letterSpacing = 1.5.sp,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    SocialLinkItem(
-                        icon = "▶",
-                        iconColor = Color.Red,
-                        name = "YouTube",
-                        handle = "@AzelModsx677",
-                        url = "https://youtube.com/@AzelModsx677",
-                        uriHandler = uriHandler
-                    )
-                    
-                    SocialLinkItem(
-                        icon = "♪",
-                        iconColor = Color(0xFF00F2EA),
-                        name = "TikTok",
-                        handle = "@azelmods677",
-                        url = "https://tiktok.com/@azelmods677",
-                        uriHandler = uriHandler
-                    )
-                    
-                    SocialLinkItem(
-                        icon = "✈",
-                        iconColor = Color(0xFF0088CC),
-                        name = "Telegram",
-                        handle = "t.me/AzelModsx7779",
-                        url = "https://t.me/AzelModsx7779",
-                        uriHandler = uriHandler
-                    )
+                
+                Spacer(Modifier.height(32.dp))
+                
+                // ═══════════════════════════════════════════════════
+                // SOCIAL LINKS
+                // ═══════════════════════════════════════════════════
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(800, delayMillis = 800)) + slideInVertically(tween(800, delayMillis = 800)) { 50 }
+                ) {
+                    Column {
+                        Text(
+                            "SÍGUEME EN",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF7B5CFA),
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        SocialLinkCard(
+                            icon = "▶",
+                            iconColor = Color(0xFFFF0000),
+                            name = "YouTube",
+                            handle = "@AzelModsx677",
+                            onClick = { uriHandler.openUri("https://youtube.com/@AzelModsx677") }
+                        )
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        SocialLinkCard(
+                            icon = "♪",
+                            iconColor = Color(0xFF00F2EA),
+                            name = "TikTok",
+                            handle = "@azelmods677",
+                            onClick = { uriHandler.openUri("https://tiktok.com/@azelmods677") }
+                        )
+                        
+                        Spacer(Modifier.height(12.dp))
+                        
+                        SocialLinkCard(
+                            icon = "✈",
+                            iconColor = Color(0xFF0088CC),
+                            name = "Telegram",
+                            handle = "t.me/AzelModsx7779",
+                            onClick = { uriHandler.openUri("https://t.me/AzelModsx7779") }
+                        )
+                    }
                 }
-            }
-            
-            Spacer(Modifier.height(40.dp))
-            
-            Text(
-                "© Nexus Chat 2026 • Hecho con ❤ por Azelmods",
-                fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.3f),
-                textAlign = TextAlign.Center
-            )
-            
-            Spacer(Modifier.height(24.dp))
+                
+                Spacer(Modifier.height(40.dp))
+                
+                Text(
+                    "© 2026 Nexus Chat • Hecho con ❤️ por Azelmods",
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.4f),
+                    textAlign = TextAlign.Center
+                )
+                
+                Spacer(Modifier.height(24.dp))
             }
         }
     }
 }
 
 @Composable
-private fun AnimatedStatCard(value: String, label: String, color: Color) {
-    val scale = remember { Animatable(0f) }
+private fun DeviceStatusCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color,
+    title: String,
+    value: String,
+    subtitle: String,
+    progress: Float
+) {
+    val animatedProgress = remember { Animatable(0f) }
+    val infiniteTransition = rememberInfiniteTransition(label = "card_glow")
     
-    LaunchedEffect(Unit) {
-        scale.animateTo(
-            1f,
+    // Animated border glow
+    val borderGlow by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = EaseInOutSine),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "border_glow"
+    )
+    
+    // Rotating gradient angle
+    val gradientAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "gradient_angle"
+    )
+    
+    LaunchedEffect(progress) {
+        animatedProgress.animateTo(
+            progress,
             animationSpec = spring(
                 dampingRatio = Spring.DampingRatioMediumBouncy,
                 stiffness = Spring.StiffnessLow
@@ -453,44 +514,124 @@ private fun AnimatedStatCard(value: String, label: String, color: Color) {
         )
     }
     
-    Surface(
-        modifier = Modifier
-            .scale(scale.value)
-            .width(100.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1A1A2E),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.3f)),
-        shadowElevation = 8.dp
+    Box(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        // Outer glow effect
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
         ) {
-            Text(
-                value,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = color
+            val angleRad = Math.toRadians(gradientAngle.toDouble())
+            val centerX = size.width / 2
+            val centerY = size.height / 2
+            
+            drawRoundRect(
+                brush = Brush.sweepGradient(
+                    listOf(
+                        iconColor.copy(alpha = borderGlow * 0.5f),
+                        iconColor.copy(alpha = 0.1f),
+                        iconColor.copy(alpha = borderGlow * 0.5f)
+                    ),
+                    center = androidx.compose.ui.geometry.Offset(centerX, centerY)
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                style = Stroke(width = 2.dp.toPx())
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                label,
-                fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.6f)
-            )
+        }
+        
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF1A1A2E),
+            shadowElevation = 8.dp
+        ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = iconColor.copy(alpha = 0.15f),
+                modifier = Modifier.size(56.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            
+            Spacer(Modifier.width(16.dp))
+            
+            // Info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    title,
+                    fontSize = 13.sp,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    value,
+                    fontSize = 24.sp,
+                    color = iconColor,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    subtitle,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.5f)
+                )
+                
+                Spacer(Modifier.height(8.dp))
+                
+                // Progress bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color.White.copy(alpha = 0.1f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(animatedProgress.value)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(iconColor, iconColor.copy(alpha = 0.7f))
+                                )
+                            )
+                    )
+                }
+            }
         }
     }
 }
+}
 
 @Composable
-private fun InfoCard(modifier: Modifier, value: String, label: String) {
+private fun InfoCard(
+    modifier: Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    value: String,
+    label: String
+) {
     val scale = remember { Animatable(0f) }
-    val infiniteTransition = rememberInfiniteTransition(label = "card_glow")
-    val borderAlpha by infiniteTransition.animateFloat(
+    val infiniteTransition = rememberInfiniteTransition(label = "info_card")
+    
+    // Animated 3D border effect
+    val borderGlow by infiniteTransition.animateFloat(
         initialValue = 0.2f,
-        targetValue = 0.5f,
+        targetValue = 0.8f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000),
+            animation = tween(2500, easing = EaseInOutSine),
             repeatMode = RepeatMode.Reverse
         ),
         label = "border"
@@ -506,144 +647,154 @@ private fun InfoCard(modifier: Modifier, value: String, label: String) {
         )
     }
     
-    Surface(
-        modifier = modifier.scale(scale.value),
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1A1A2E),
-        border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(alpha = borderAlpha))
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    Box(modifier = modifier.scale(scale.value)) {
+        // Animated glow border
+        Canvas(modifier = Modifier.matchParentSize()) {
+            drawRoundRect(
+                brush = Brush.linearGradient(
+                    listOf(
+                        Color(0xFF7B5CFA).copy(alpha = borderGlow),
+                        Color(0xFF00D4FF).copy(alpha = borderGlow * 0.5f),
+                        Color(0xFF7B5CFA).copy(alpha = borderGlow)
+                    )
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                style = Stroke(width = 2.dp.toPx())
+            )
+        }
+        
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Color(0xFF1A1A2E),
+            shadowElevation = 6.dp
         ) {
-            Text(
-                value,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = Color(0xFF7B5CFA)
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                label,
-                fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.5f)
-            )
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = Color(0xFF7B5CFA),
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    value,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color.White
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    label,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun DeviceInfoRow(label: String, value: String) {
+private fun DeviceInfoRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = Color(0xFF7B5CFA),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(12.dp))
         Text(
             label,
-            fontSize = 13.sp,
-            color = Color.White.copy(alpha = 0.6f),
-            fontWeight = FontWeight.Medium
+            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.7f),
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.weight(1f)
         )
         Text(
             value,
-            fontSize = 13.sp,
-            color = Color(0xFF7B5CFA),
+            fontSize = 14.sp,
+            color = Color.White,
             fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f, fill = false)
+            textAlign = TextAlign.End
         )
     }
 }
 
 @Composable
-private fun SocialLinkItem(
+private fun SocialLinkCard(
     icon: String,
     iconColor: Color,
     name: String,
     handle: String,
-    url: String,
-    uriHandler: androidx.compose.ui.platform.UriHandler
+    onClick: () -> Unit
 ) {
     val scale = remember { Animatable(1f) }
-    val coroutineScope = rememberCoroutineScope()
-    val infiniteTransition = rememberInfiniteTransition(label = "social_pulse")
-    val iconScale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "icon_scale"
-    )
+    val scope = rememberCoroutineScope()
     
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .scale(scale.value)
             .clickable {
-                coroutineScope.launch {
+                scope.launch {
                     scale.animateTo(0.95f, tween(100))
                     scale.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
                 }
-                uriHandler.openUri(url)
+                onClick()
             },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color(0xFF1A1A2E),
-        border = BorderStroke(1.dp, iconColor.copy(alpha = 0.2f)),
-        shadowElevation = 4.dp
+        border = BorderStroke(1.dp, iconColor.copy(alpha = 0.3f))
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = iconColor.copy(alpha = 0.15f),
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(48.dp)
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.scale(iconScale)
-                ) {
-                    Text(icon, fontSize = 18.sp, color = iconColor)
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        icon,
+                        fontSize = 22.sp,
+                        color = iconColor
+                    )
                 }
             }
             
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(16.dp))
             
-            Column(Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     name,
                     fontWeight = FontWeight.SemiBold,
                     color = Color.White,
-                    fontSize = 14.sp
+                    fontSize = 16.sp
                 )
                 Text(
                     handle,
-                    color = Color.White.copy(alpha = 0.5f),
-                    fontSize = 12.sp
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 13.sp
                 )
             }
             
-            // Animated arrow
-            val arrowRotation by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 15f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1000),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "arrow"
-            )
-            
-            Text(
-                "↗",
-                color = Color(0xFF7B5CFA),
-                fontSize = 16.sp,
-                modifier = Modifier.rotate(arrowRotation)
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = Color(0xFF7B5CFA),
+                modifier = Modifier.size(20.dp)
             )
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -69,14 +70,24 @@ fun StoryViewerScreen(
 
     val currentStory = state.stories.getOrNull(state.currentIndex)
 
-    // ── Auto-advance progress timer (images only) ────────────────────────────
+    // ── Auto-advance progress timer (images and fallback) ────────────────────
     LaunchedEffect(state.currentIndex, isPaused, currentStory) {
-        if (currentStory?.type == "VIDEO") return@LaunchedEffect
-        progress = 0f
-        while (progress < 1f && !isPaused) {
-            delay(50)
-            progress = (progress + 0.01f).coerceAtMost(1f)
+        if (currentStory?.type?.uppercase() == "VIDEO") {
+            // Video progress is handled by ExoPlayer sync, not this timer
+            progress = 0f
+            return@LaunchedEffect
         }
+        
+        progress = 0f
+        val duration = 5000L // 5 seconds for images
+        val step = 50L
+        val totalSteps = duration / step
+        
+        while (progress < 1f && !isPaused) {
+            delay(step)
+            progress += 1f / totalSteps
+        }
+
         if (progress >= 1f) {
             if (state.currentIndex < state.stories.size - 1) viewModel.nextStory()
             else navController.popBackStack()
@@ -239,14 +250,6 @@ fun StoryViewerScreen(
                 var videoError by remember { mutableStateOf<String?>(null) }
                 var videoEnded by remember(videoUrl) { mutableStateOf(false) }
 
-                // Advance when video finishes — reads live state, not stale closure
-                LaunchedEffect(videoEnded) {
-                    if (videoEnded) {
-                        if (state.currentIndex < state.stories.size - 1) viewModel.nextStory()
-                        else navController.popBackStack()
-                    }
-                }
-
                 val exoPlayer = remember(videoUrl) {
                     ExoPlayer.Builder(context)
                         .setLoadControl(
@@ -266,7 +269,11 @@ fun StoryViewerScreen(
                                 override fun onPlaybackStateChanged(playbackState: Int) {
                                     when (playbackState) {
                                         Player.STATE_BUFFERING -> isBuffering = true
-                                        Player.STATE_READY -> isBuffering = false
+                                        Player.STATE_READY -> {
+                                            isBuffering = false
+                                            // Ensure it plays when ready
+                                            if (!isPaused) play()
+                                        }
                                         Player.STATE_ENDED -> videoEnded = true
                                         else -> Unit
                                     }
@@ -282,9 +289,28 @@ fun StoryViewerScreen(
                         }
                 }
 
+                // Synchronize progress bar with video playback
+                LaunchedEffect(exoPlayer, isPaused) {
+                    while (true) {
+                        if (exoPlayer.duration > 0) {
+                            progress = exoPlayer.currentPosition.toFloat() / exoPlayer.duration.toFloat()
+                        }
+                        delay(33) // ~30fps update
+                    }
+                }
+
+                // Advance when video finishes
+                LaunchedEffect(videoEnded) {
+                    if (videoEnded) {
+                        if (state.currentIndex < state.stories.size - 1) viewModel.nextStory()
+                        else navController.popBackStack()
+                    }
+                }
+
                 // Pause / resume in sync with the global isPaused flag
                 LaunchedEffect(isPaused) {
                     exoPlayer.playWhenReady = !isPaused
+                    if (!isPaused) exoPlayer.play() else exoPlayer.pause()
                 }
 
                 DisposableEffect(videoUrl) {
@@ -605,7 +631,7 @@ fun StoryViewerScreen(
 
                     IconButton(onClick = { showReplySheet = true }) {
                         Icon(
-                            imageVector = Icons.Default.Send,
+                            imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = "Send reply",
                             tint = Color.White
                         )
@@ -710,7 +736,7 @@ fun StoryViewerScreen(
                     enabled = replyText.isNotBlank()
                 ) {
                     Icon(
-                        Icons.Default.Send,
+                        Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp)
                     )

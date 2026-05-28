@@ -25,6 +25,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
+import com.Azelmods.App.service.NotificationHelper
 import com.Azelmods.App.ui.components.AutoTutorial
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
@@ -40,6 +41,11 @@ fun CallsScreen(
     val state by viewModel.state.collectAsState()
     var selectedFilter by remember { mutableStateOf("All") }
     
+    // Limpiar contador de llamadas perdidas al abrir la pantalla
+    LaunchedEffect(Unit) {
+        NotificationHelper.resetMissedCallCount()
+    }
+
     // Show tutorial on first visit
     AutoTutorial(
         feature = AppFeature.CALLS,
@@ -79,7 +85,7 @@ fun CallsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
+                    containerColor = Color.Transparent,
                     titleContentColor = Color.White,
                     actionIconContentColor = Color.White
                 )
@@ -93,7 +99,7 @@ fun CallsScreen(
                 Icon(Icons.Default.Add, contentDescription = "New Call", tint = Color.White)
             }
         },
-        containerColor = DarkBackground
+        containerColor = Color.Transparent
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -198,7 +204,6 @@ fun CallItemRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onInfoClick)
-            .background(DarkBackground)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

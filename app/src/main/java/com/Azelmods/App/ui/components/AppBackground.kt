@@ -17,9 +17,10 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.Azelmods.App.data.manager.AppBackgroundManager
+import com.Azelmods.App.data.model.BackgroundConfig
 import com.Azelmods.App.data.model.BackgroundType
-import kotlin.math.cos
-import kotlin.math.sin
+import com.Azelmods.App.ui.theme.linearGradientBrush
+import com.Azelmods.App.ui.theme.parseHexColor
 
 /**
  * App-wide background component
@@ -40,7 +41,7 @@ fun AppBackground(
 ) {
     val context = LocalContext.current
     val backgroundConfig by backgroundManager.backgroundConfig.collectAsState(
-        initial = com.Azelmods.App.data.model.BackgroundConfig()
+        initial = BackgroundConfig()
     )
     
     Box(modifier = modifier.fillMaxSize()) {
@@ -65,7 +66,7 @@ fun AppBackground(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(parseColor(hex))
+                                .background(parseHexColor(hex))
                         )
                     }
                 }
@@ -109,26 +110,15 @@ fun AppBackground(
                 }
                 
                 BackgroundType.GRADIENT -> {
-                    if (config.gradientColors.size >= 2) {
-                        val colors = config.gradientColors.map { parseColor(it) }
-                        val angleRad = Math.toRadians(config.gradientAngle.toDouble())
-                        
+                    val brush = linearGradientBrush(
+                        gradientColors = config.gradientColors,
+                        gradientAngle = config.gradientAngle
+                    )
+                    if (brush != null) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = colors,
-                                        start = androidx.compose.ui.geometry.Offset(
-                                            x = (0.5f - cos(angleRad).toFloat() * 0.5f) * 1000f,
-                                            y = (0.5f - sin(angleRad).toFloat() * 0.5f) * 1000f
-                                        ),
-                                        end = androidx.compose.ui.geometry.Offset(
-                                            x = (0.5f + cos(angleRad).toFloat() * 0.5f) * 1000f,
-                                            y = (0.5f + sin(angleRad).toFloat() * 0.5f) * 1000f
-                                        )
-                                    )
-                                )
+                                .background(brush)
                         )
                     }
                 }
@@ -158,15 +148,4 @@ fun AppBackground(
     }
 }
 
-/**
- * Parse hex color string to Color
- */
-private fun parseColor(hex: String): Color {
-    return try {
-        val cleanHex = hex.removePrefix("#")
-        val colorInt = cleanHex.toLong(16)
-        Color(colorInt or 0xFF000000)
-    } catch (e: Exception) {
-        Color(0xFF0A0A0A) // Fallback
-    }
-}
+

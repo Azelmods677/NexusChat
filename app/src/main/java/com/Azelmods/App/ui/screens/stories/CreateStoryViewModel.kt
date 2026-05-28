@@ -52,40 +52,17 @@ class CreateStoryViewModel @Inject constructor(
                 // Step 1: Upload to Storage FIRST and AWAIT completion
                 val imageUrl = storageRepository.uploadStory(imageUri, userId)
                 
-                // Step 1.5: Get user name
-                val userResult = userRepository.getUserById(userId)
-                val userName = if (userResult is com.Azelmods.App.util.Resource.Success) {
-                    userResult.data?.name ?: "Unknown"
-                } else {
-                    "Unknown"
-                }
-                
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
-                val storyData = mapOf(
-                    "userId" to userId,
-                    "userName" to userName,
-                    "type" to "IMAGE",
-                    "mediaUrl" to imageUrl,
-                    "caption" to caption,
-                    "timestamp" to System.currentTimeMillis(),
-                    "expiresAt" to (System.currentTimeMillis() + (24 * 60 * 60 * 1000)),
-                    "views" to emptyList<String>()
+                databaseRepository.createStory(
+                    mediaUrl = imageUrl,
+                    mediaType = "IMAGE",
+                    isVideo = false
                 )
-                
-                // Step 3: Await database write completion
-                databaseRepository.createStory(storyData).collect { result ->
-                    result.onSuccess {
-                        _state.value = _state.value.copy(
-                            isUploading = false,
-                            uploadSuccess = true
-                        )
-                    }.onFailure { exception ->
-                        _state.value = _state.value.copy(
-                            isUploading = false,
-                            error = "Error al guardar la historia: ${exception.message}"
-                        )
-                    }
-                }
+
+                _state.value = _state.value.copy(
+                    isUploading = false,
+                    uploadSuccess = true
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
                 _state.value = _state.value.copy(
@@ -117,40 +94,17 @@ class CreateStoryViewModel @Inject constructor(
                 // Step 1: Upload video to Storage FIRST and AWAIT completion
                 val videoUrl = storageRepository.uploadStoryVideo(videoUri, userId)
                 
-                // Step 1.5: Get user name
-                val userResult = userRepository.getUserById(userId)
-                val userName = if (userResult is com.Azelmods.App.util.Resource.Success) {
-                    userResult.data?.name ?: "Unknown"
-                } else {
-                    "Unknown"
-                }
-                
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
-                val storyData = mapOf(
-                    "userId" to userId,
-                    "userName" to userName,
-                    "type" to "VIDEO",
-                    "mediaUrl" to videoUrl,
-                    "caption" to caption,
-                    "timestamp" to System.currentTimeMillis(),
-                    "expiresAt" to (System.currentTimeMillis() + (24 * 60 * 60 * 1000)),
-                    "views" to emptyList<String>()
+                databaseRepository.createStory(
+                    mediaUrl = videoUrl,
+                    mediaType = "VIDEO",
+                    isVideo = true
                 )
-                
-                // Step 3: Await database write completion
-                databaseRepository.createStory(storyData).collect { result ->
-                    result.onSuccess {
-                        _state.value = _state.value.copy(
-                            isUploading = false,
-                            uploadSuccess = true
-                        )
-                    }.onFailure { exception ->
-                        _state.value = _state.value.copy(
-                            isUploading = false,
-                            error = "Error al guardar la historia: ${exception.message}"
-                        )
-                    }
-                }
+
+                _state.value = _state.value.copy(
+                    isUploading = false,
+                    uploadSuccess = true
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
                 _state.value = _state.value.copy(
@@ -179,38 +133,16 @@ class CreateStoryViewModel @Inject constructor(
                 }
                 
                 // TEXT stories skip Storage entirely
-                // Get user name
-                val userResult = userRepository.getUserById(userId)
-                val userName = if (userResult is com.Azelmods.App.util.Resource.Success) {
-                    userResult.data?.name ?: "Unknown"
-                } else {
-                    "Unknown"
-                }
-                
-                val storyData = mapOf(
-                    "userId" to userId,
-                    "userName" to userName,
-                    "type" to "TEXT",
-                    "text" to text,
-                    "backgroundColor" to backgroundColor,
-                    "timestamp" to System.currentTimeMillis(),
-                    "expiresAt" to (System.currentTimeMillis() + (24 * 60 * 60 * 1000)),
-                    "views" to emptyList<String>()
+                databaseRepository.createStory(
+                    mediaUrl = text, // Reusing mediaUrl field for text content for now as a workaround
+                    mediaType = "TEXT",
+                    isVideo = false
                 )
-                
-                databaseRepository.createStory(storyData).collect { result ->
-                    result.onSuccess {
-                        _state.value = _state.value.copy(
-                            isUploading = false,
-                            uploadSuccess = true
-                        )
-                    }.onFailure { exception ->
-                        _state.value = _state.value.copy(
-                            isUploading = false,
-                            error = "Error al crear la historia: ${exception.message}"
-                        )
-                    }
-                }
+
+                _state.value = _state.value.copy(
+                    isUploading = false,
+                    uploadSuccess = true
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
                 _state.value = _state.value.copy(

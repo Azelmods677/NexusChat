@@ -60,9 +60,20 @@ La aplicación combina funcionalidades completas de mensajería en tiempo real m
 ### 🤖 AzelAI - Asistente de IA Integrado
 - **Múltiples proveedores de IA**: OpenAI, Anthropic, Google Gemini, Groq, Ollama local
 - **Modelos avanzados**: GPT-4, Claude 3.5 Sonnet, Gemini 2.0 Flash, Llama 3.3, y más
+- **🔓 Sistema de Evasión de Filtros**: 
+  - 7 técnicas avanzadas para bypass de filtros de seguridad
+  - Contexto académico, defensivo, forense y roleplay
+  - Terminología neutral y autorización explícita
+  - Optimizado especialmente para Gemini Free
+- **⚡ Optimización de Tokens**:
+  - Compresión inteligente de prompts
+  - Uso de abreviaciones técnicas
+  - Estimación de tokens en tiempo real
+  - Truncado automático para límites de API
+  - Perfecto para versión gratuita de Google AI Studio
 - **Modos de conversación**:
   - Modo Normal: Conversaciones generales
-  - Modo Sin Censura: Sin restricciones de contenido usando modelos locales
+  - Modo Sin Censura: Sin restricciones de contenido usando técnicas de evasión
   - Modo Agente: Ejecución de herramientas y comandos locales
 - **Herramientas de agente**:
   - Ejecución de comandos shell
@@ -71,10 +82,13 @@ La aplicación combina funcionalidades completas de mensajería en tiempo real m
   - Gestión del sistema
 - **Personalización completa**:
   - Configuración de temperatura, top_p, max_tokens
-  - System prompts personalizados
+  - System prompts personalizados (3 variantes optimizadas)
   - Historial de conversaciones
   - Exportación de chats
+  - Selección de técnica de evasión
+  - Toggle de optimización de tokens
 - **Streaming en tiempo real**: Respuestas progresivas para mejor experiencia
+- **Prompts predefinidos**: 200+ prompts en 9 categorías (Hacking, Mobile, Web, Crypto, etc.)
 
 ### 🔒 Seguridad y Privacidad
 
@@ -698,11 +712,22 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 
 #### 🤖 AzelAI - Asistente de IA
 - Integración de múltiples proveedores de IA (OpenAI, Anthropic, Google, Groq, Ollama)
+- **🔓 Sistema Avanzado de Evasión de Filtros**:
+  - 7 técnicas de bypass: Académico, Defensivo, Forense, Roleplay, Autorización, Neutral
+  - System prompts optimizados para cada técnica
+  - Especialmente efectivo con Gemini Free
+- **⚡ Optimización de Tokens para API Gratuitas**:
+  - Compresión inteligente de prompts (reduce hasta 40% de tokens)
+  - Estimación de tokens en tiempo real
+  - Truncado automático para límites de API
+  - Uso de abreviaciones técnicas
+  - Perfecto para Google AI Studio Free (límite de 15 RPM)
 - Modo Agente con herramientas locales (shell, archivos, búsqueda web)
 - Modo Sin Censura para conversaciones sin restricciones
 - Streaming en tiempo real de respuestas
 - Configuración avanzada de parámetros de IA
 - Historial de conversaciones y exportación
+- 200+ prompts predefinidos en 9 categorías
 
 #### 🔒 Seguridad y Privacidad
 - Navegador Tor integrado con soporte para Orbot
@@ -717,6 +742,7 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 - Mejorada detección y configuración del proxy Tor
 - Eliminada race condition en inicialización del navegador
 - Manejo completo de errores HTTP (404, 500, etc.)
+- Detección mejorada de filtros de seguridad con sugerencias automáticas
 
 ### v1.0.0 - Lanzamiento Inicial (2024)
 

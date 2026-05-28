@@ -122,7 +122,7 @@ fun StorageDataScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     LinearProgressIndicator(
-                        progress = if (totalStorage > 0) usedStorage.toFloat() / totalStorage.toFloat() else 0f,
+                        progress = { if (totalStorage > 0) usedStorage.toFloat() / totalStorage.toFloat() else 0f },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp),

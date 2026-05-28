@@ -39,6 +39,7 @@ fun AppearanceScreen(
     
     val wallpaperSubtitle = when (wallpaperType) {
         "image" -> "Custom image"
+        "video" -> "Animated video"
         "color" -> "Solid color"
         else -> "Default"
     }

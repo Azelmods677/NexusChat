@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -179,7 +180,7 @@ fun ModernMessageInputBar(
                         exit = scaleOut() + fadeOut()
                     ) {
                         ModernIconButton(
-                            icon = Icons.Default.StickyNote2,
+                            icon = Icons.AutoMirrored.Filled.StickyNote2,
                             contentDescription = "Stickers",
                             onClick = onStickerClick,
                             tint = Color(0xFF10B981)
@@ -312,7 +313,7 @@ private fun SendButton(
                 modifier = Modifier.fillMaxSize()
             ) {
                 Icon(
-                    imageVector = Icons.Default.Send,
+                    imageVector = Icons.AutoMirrored.Filled.Send,
                     contentDescription = "Send",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)

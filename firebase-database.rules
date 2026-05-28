@@ -9,8 +9,8 @@
         // Only the user can write their own profile
         ".write": "auth != null && auth.uid === $userId",
         
-        // Validate user data structure
-        ".validate": "newData.hasChildren(['username', 'email'])"
+        // Validate user data structure (only on create, flexible for updates)
+        ".validate": "!data.exists() ? newData.hasChildren(['username', 'email']) : true"
       }
     },
     
@@ -23,64 +23,19 @@
         // Only authenticated users can create stories
         ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid)",
         
-        // Validate story data structure
-        ".validate": "newData.hasChildren(['userId', 'type', 'timestamp', 'expiresAt', 'views'])",
-        
-        // Validate story type
-        "type": {
-          ".validate": "newData.isString() && (newData.val() === 'TEXT' || newData.val() === 'IMAGE' || newData.val() === 'VIDEO')"
-        },
-        
-        // Validate userId
-        "userId": {
-          ".validate": "newData.isString() && newData.val() === auth.uid"
-        },
-        
-        // Validate mediaUrl (required for IMAGE and VIDEO, optional for TEXT)
-        "mediaUrl": {
-          ".validate": "newData.isString() || !newData.exists()"
-        },
-        
-        // Validate text (optional, for TEXT stories)
-        "text": {
-          ".validate": "newData.isString() || !newData.exists()"
-        },
-        
-        // Validate caption (optional)
-        "caption": {
-          ".validate": "newData.isString() || !newData.exists()"
-        },
-        
-        // Validate backgroundColor (optional, for TEXT stories)
-        "backgroundColor": {
-          ".validate": "newData.isString() || !newData.exists()"
-        },
-        
-        // Validate timestamp
-        "timestamp": {
-          ".validate": "newData.isNumber()"
-        },
-        
-        // Validate expiresAt
-        "expiresAt": {
-          ".validate": "newData.isNumber()"
-        },
-        
-        // Validate views array
-        "views": {
-          ".validate": "newData.hasChildren() || !newData.exists()"
-        }
+        // Validate story data structure — only on create
+        ".validate": "!data.exists() ? newData.hasChildren(['userId', 'timestamp', 'expiresAt']) : true"
       }
     },
     
-    // Chats node
+    // Chats node — members can be stored as array or map
     "chats": {
       "$chatId": {
-        // Members can read their chats
-        ".read": "auth != null && (data.child('members').hasChild(auth.uid) || data.child('members').val().contains(auth.uid))",
+        // Members can read/write their chats
+        // Uses hasChild (for map storage: {uid: true}) OR contains (for array storage: [uid1, uid2])
+        ".read": "auth != null && (!data.exists() || data.child('members').hasChild(auth.uid) || data.child('members').val().toString().contains(auth.uid))",
         
-        // Members can write to their chats
-        ".write": "auth != null && (data.child('members').hasChild(auth.uid) || data.child('members').val().contains(auth.uid) || !data.exists())",
+        ".write": "auth != null && (!data.exists() || data.child('members').hasChild(auth.uid) || data.child('members').val().toString().contains(auth.uid))",
         
         // Messages in chat
         "messages": {
@@ -92,13 +47,39 @@
       }
     },
     
+    // Typing indicators
+    "typing": {
+      "$chatId": {
+        ".read": "auth != null",
+        "$userId": {
+          ".write": "auth != null && auth.uid === $userId"
+        }
+      }
+    },
+    
+    // AI Chats
+    "aiChats": {
+      "$userId": {
+        ".read": "auth != null && auth.uid === $userId",
+        ".write": "auth != null && auth.uid === $userId"
+      }
+    },
+    
+    // Story replies
+    "storyReplies": {
+      "$storyOwnerId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    
     // Friend requests node
     "friendRequests": {
       "$requestId": {
         // Users can read requests sent to them or by them
-        ".read": "auth != null && (data.child('fromUserId').val() === auth.uid || data.child('toUserId').val() === auth.uid)",
+        ".read": "auth != null && (!data.exists() || data.child('fromUserId').val() === auth.uid || data.child('toUserId').val() === auth.uid)",
         
-        // Users can create friend requests
+        // Users can create/update friend requests
         ".write": "auth != null && (!data.exists() || data.child('fromUserId').val() === auth.uid || data.child('toUserId').val() === auth.uid)"
       }
     },
@@ -107,10 +88,10 @@
     "calls": {
       "$callId": {
         // Participants can read call data
-        ".read": "auth != null && (data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
+        ".read": "auth != null && (!data.exists() || data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
         
         // Participants can write call data
-        ".write": "auth != null && (data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid || !data.exists())"
+        ".write": "auth != null && (!data.exists() || data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)"
       }
     }
   }

@@ -104,7 +104,7 @@ fun MediaGalleryScreen(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(mediaMessages) { message ->
+                items(mediaMessages, key = { it.messageId ?: "media_${it.timestamp}_${it.senderId}" }) { message ->
                     MediaGridItem(
                         message = message,
                         onClick = {

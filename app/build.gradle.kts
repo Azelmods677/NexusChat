@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,7 +9,20 @@ plugins {
     id("com.google.devtools.ksp")
     id("com.google.gms.google-services")
     id("com.google.dagger.hilt.android")
+    id("com.google.firebase.crashlytics")
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+val ollamaApiKey: String = localProperties.getProperty("OLLAMA_API_KEY")
+    ?: "85ec26b870f043a985328c211858509f.kSYZLHiVMXF3X4uSZba1vVSe"
+val ollamaBaseUrl: String = (localProperties.getProperty("OLLAMA_BASE_URL")
+    ?: "https://ollama.com/v1").trimEnd('/')
+val openCodeApiKey: String = localProperties.getProperty("OPENCODE_API_KEY") ?: ""
+val fcmServerKey: String = localProperties.getProperty("FCM_SERVER_KEY") ?: ""
 
 android {
     namespace = "com.Azelmods.App"
@@ -16,8 +32,14 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 200
+        versionName = "2.0.0"
+        
+        buildConfigField("String", "OLLAMA_API_KEY", "\"$ollamaApiKey\"")
+        buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
+        buildConfigField("String", "OPENCODE_API_KEY", "\"$openCodeApiKey\"")
+        buildConfigField("String", "FCM_SERVER_KEY", "\"$fcmServerKey\"")
+        buildConfigField("Boolean", "FCM_ENABLED", "${fcmServerKey.isNotEmpty()}")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -71,6 +93,8 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/LICENSE-notice.md"
         }
         jniLibs {
             useLegacyPackaging = true
@@ -109,12 +133,14 @@ dependencies {
     implementation("androidx.startup:startup-runtime:1.2.0")
 
     // ── Security (TamperDetection / EncryptedSharedPrefs) ──
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.security:security-crypto:1.1.0-alpha07")
 
     // ── Core Android 2026 ──────────────────────────────────
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.1")
+    // ── Compose Stability / Performance ────────────────────
+    implementation("androidx.compose.runtime:runtime-tracing:1.7.6")
 
     // ── Compose BOM 2026 ───────────────────────────────────
     implementation(platform("androidx.compose:compose-bom:2025.04.01"))
@@ -127,6 +153,7 @@ dependencies {
     implementation("androidx.compose.animation:animation-graphics")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.runtime:runtime-livedata")
+    implementation("androidx.compose.runtime:runtime-tracing")
     implementation("androidx.compose.ui:ui-util")
     implementation("androidx.compose.material3:material3-window-size-class")
 
@@ -150,6 +177,7 @@ dependencies {
     implementation("com.google.firebase:firebase-database-ktx")
     implementation("com.google.firebase:firebase-storage-ktx")
     implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-crashlytics-ktx")
 
     // ── Google Auth 2025 (Credential Manager) ──────────────
     implementation("com.google.android.gms:play-services-auth:21.3.0")
@@ -161,6 +189,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("app.cash.turbine:turbine:1.2.0")
 
     // ── Coil 3.x (2026) ────────────────────────────────────
     implementation("io.coil-kt.coil3:coil-compose:3.1.0")
@@ -174,8 +203,14 @@ dependencies {
     implementation("androidx.media3:media3-common:1.5.1")
     implementation("androidx.media3:media3-datasource-okhttp:1.5.1")
 
+    // ── Room Database (Offline Cache) ──────────────────────
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    ksp("androidx.room:room-compiler:2.6.1")
+
     // ── DataStore 2025 ─────────────────────────────────────
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // ── WorkManager 2025 ───────────────────────────────────
     implementation("androidx.work:work-runtime-ktx:2.10.0")
@@ -195,6 +230,9 @@ dependencies {
 
     // ── Accompanist (SOLO permissions, NO systemuicontroller) ─
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
+
+    // ── WebKit (ProxyController for WebView proxy) ──────────
+    implementation("androidx.webkit:webkit:1.16.0")
 
     // ── WebRTC ─────────────────────────────────────────────
     implementation("io.getstream:stream-webrtc-android:1.1.3")
@@ -223,17 +261,17 @@ dependencies {
     implementation("androidx.camera:camera-view:1.3.1")
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
-    // ── libsu 6.0.0 (ROOT) ─────────────────────────────────
-    implementation("com.github.topjohnwu.libsu:core:6.0.0")
-    implementation("com.github.topjohnwu.libsu:service:6.0.0")
-    implementation("com.github.topjohnwu.libsu:nio:6.0.0")
+    // ── libsu 5.2.2 (ROOT) ─────────────────────────────────
+    implementation("com.github.topjohnwu.libsu:core:5.2.2")
+    implementation("com.github.topjohnwu.libsu:service:5.2.2")
+    implementation("com.github.topjohnwu.libsu:nio:5.2.2")
     
     // ── Terminal Emulator Libraries ────────────────────────
     // Android Terminal Emulator (Real PTY support)
-    implementation("com.github.termux:termux-app:v0.118.1")
+    // implementation("com.github.termux:termux-app:v0.118.1") // Causaba NoClassDefFoundError por colisión de DEX
     
     // Alternative lightweight terminal
-    implementation("com.github.jackpal:Android-Terminal-Emulator:v1.0.70")
+    // implementation("com.github.jackpal:Android-Terminal-Emulator:v1.0.70") // Causaba NoClassDefFoundError por colisión de DEX
 
     // ── Sora Editor 0.23.5 ─────────────────────────────────
     val soraVersion = "0.23.5"
@@ -251,6 +289,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("io.mockk:mockk-android:1.13.9")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 

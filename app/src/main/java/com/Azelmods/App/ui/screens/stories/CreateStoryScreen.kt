@@ -178,11 +178,11 @@ fun CreateStoryScreen(
                                         }
                                         isVideoSelected -> {
                                             // Video story (detected by picker)
-                                            viewModel.uploadVideoStory(selectedImageUri!!, caption)
+                                            viewModel.uploadVideoStory(selectedImageUri ?: return@Surface, caption)
                                         }
                                         else -> {
                                             // Image story
-                                            viewModel.uploadImageStory(selectedImageUri!!, caption)
+                                            viewModel.uploadImageStory(selectedImageUri ?: return@Surface, caption)
                                         }
                                     }
                                 }
@@ -411,7 +411,7 @@ fun CreateStoryScreen(
                             // Video preview using ExoPlayer
                             val previewPlayer = remember(selectedImageUri) {
                                 androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
-                                    setMediaItem(androidx.media3.common.MediaItem.fromUri(selectedImageUri!!))
+                                    setMediaItem(androidx.media3.common.MediaItem.fromUri(selectedImageUri ?: return@apply))
                                     prepare()
                                     playWhenReady = false // paused preview
                                     repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE

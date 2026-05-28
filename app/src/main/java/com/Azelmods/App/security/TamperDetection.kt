@@ -126,7 +126,6 @@ class TamperDetection @Inject constructor(
     fun detectEmulator(): Boolean {
         if (BuildConfig.DEBUG) return false
 
-        @Suppress("DEPRECATION")
         val checks = listOf(
             Build.FINGERPRINT.startsWith("generic")                              to "FINGERPRINT starts with 'generic'",
             Build.FINGERPRINT.startsWith("unknown")                              to "FINGERPRINT starts with 'unknown'",
@@ -170,21 +169,18 @@ class TamperDetection @Inject constructor(
      * Uses the modern [PackageManager.GET_SIGNING_CERTIFICATES] API on API 28+,
      * and the legacy [PackageManager.GET_SIGNATURES] on older platforms.
      */
-    @Suppress("DEPRECATION")
     private fun getSignatureBytes(): Array<out ByteArray>? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        // minSdk 31 = Android 12, GET_SIGNING_CERTIFICATES disponible en todas las versiones soportadas
+        return try {
             val info = context.packageManager.getPackageInfo(
                 context.packageName,
                 PackageManager.GET_SIGNING_CERTIFICATES
             )
             // apkContentsSigners reflects the actual signers of the APK (not the history).
             info.signingInfo?.apkContentsSigners?.map { it.toByteArray() }?.toTypedArray()
-        } else {
-            val info = context.packageManager.getPackageInfo(
-                context.packageName,
-                PackageManager.GET_SIGNATURES
-            )
-            info.signatures?.map { it.toByteArray() }?.toTypedArray()
+        } catch (e: Exception) {
+            Log.e(TAG, "getSignatureBytes failed", e)
+            null
         }
     }
 

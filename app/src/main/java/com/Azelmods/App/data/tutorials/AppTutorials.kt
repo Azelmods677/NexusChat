@@ -1,1035 +1,484 @@
 package com.Azelmods.App.data.tutorials
 
 /**
- * App Tutorials - Complete guide for all features
- * 
- * Comprehensive tutorials explaining the structure and usage of every major feature
+ * App Tutorials - Complete guide for all features (2026 Edition)
+ *
+ * Comprehensive tutorials explaining every major feature of Azelgram Messenger
  */
 object AppTutorials {
-    
+
     // ═══════════════════════════════════════════════════════════════
     // MESSAGING FEATURES
     // ═══════════════════════════════════════════════════════════════
-    
+
     val MESSAGING_TUTORIAL = """
 # 💬 Sistema de Mensajería
 
-## Estructura del Chat
+## Arquitectura en Tiempo Real
 
-La app utiliza Firebase Realtime Database para mensajería en tiempo real.
+Azelgram utiliza Firebase Realtime Database con cifrado Signal Protocol (E2EE).
 
-### Arquitectura
 ```
-ChatRepository → Firebase Realtime Database
+ChatRepository → Firebase Realtime Database + Signal Protocol
     ↓
-ChatViewModel → Maneja estado y lógica
+ChatViewModel → Maneja estado con StateFlow
     ↓
-ChatScreen → UI con LazyColumn
+ChatScreen → UI con LazyColumn optimizada + backgrounds dinámicos
 ```
 
-### Tipos de Mensajes
+## Tipos de Mensajes
 
-**Texto:**
-- Mensajes simples con texto
-- Soporte para emojis
-- Timestamps automáticos
+**Texto:** Mensajes con emojis, timestamps automáticos y confirmaciones de lectura
 
-**Multimedia:**
-- Imágenes (comprimidas automáticamente)
-- Videos (con thumbnail preview)
-- Archivos adjuntos
+**Multimedia:** Imágenes comprimidas, videos con thumbnail, archivos adjuntos
 
-**Mensajes de Voz:**
-- Grabación con AudioRecorder
-- Reproducción inline
-- Duración mostrada
+**Voz:** Grabación inline con AudioRecorder, reproducción con seekbar
 
-### Funcionalidades Clave
+**Cifrados (E2EE):** Todo el contenido se cifra con Signal Protocol antes de enviarse
 
-**Envío de Mensajes:**
-```kotlin
-// En ChatViewModel
-fun sendMessage(text: String) {
-    val message = Message(
-        senderId = currentUserId,
-        receiverId = contactId,
-        content = text,
-        timestamp = System.currentTimeMillis()
-    )
-    chatRepository.sendMessage(message)
-}
-```
+## Funcionalidades Clave
 
-**Recepción en Tiempo Real:**
-- Firebase listeners actualizan automáticamente
-- LazyColumn con scroll automático a nuevos mensajes
-- Indicadores de "escribiendo..."
+**Estados del mensaje:**
+• ✓ Enviado → ✓✓ Entregado → ✓✓ (azul) Leído
 
-⚠️ **Importante:** Los mensajes se almacenan en `/chats/{chatId}/messages/`
+**Notificaciones push:** Firebase Cloud Messaging con canales personalizados
 
-ℹ️ **Tip:** Usa el buscador (🔍) para encontrar mensajes antiguos
+**Wallpaper personalizado:** Fondos sólidos, degradados, imágenes o video por chat
 
-## Estados del Chat
+**Respuesta rápida:** Swipe left en mensaje para responder
 
-**Online/Offline:**
-- Verde: Usuario conectado
-- Gris: Última vez visto
+---
 
-**Mensajes:**
-- ✓ Enviado
-- ✓✓ Entregado
-- ✓✓ (azul) Leído
+⚠️ Los mensajes se almacenan en `/chats/{chatId}/messages/` con cifrado extremo a extremo.
 
-## Notificaciones
-
-Firebase Cloud Messaging (FCM) envía notificaciones push cuando:
-- Recibes un mensaje nuevo
-- Alguien te menciona
-- Llamada entrante
+ℹ️ El cifrado E2EE requiere que ambos usuarios tengan la versión 2.0+ de Azelgram.
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
     // STORIES FEATURES
     // ═══════════════════════════════════════════════════════════════
-    
+
     val STORIES_TUTORIAL = """
 # 📸 Sistema de Stories
 
-## Estructura de Stories
+## Contenido Temporal de 24h
 
-Las stories son contenido temporal (24 horas) similar a Instagram/WhatsApp.
+Similar a Instagram/WhatsApp, las stories expiran automáticamente.
 
-### Arquitectura
-```
-CreateStoryScreen → Captura/Edición
-    ↓
-StorageRepository → Sube a Firebase Storage
-    ↓
-RealtimeDatabaseRepository → Guarda metadata
-    ↓
-StoryViewerScreen → Visualización fullscreen
-```
+## Tipos de Stories
 
-### Tipos de Stories
+**Foto:** Captura con cámara o galería + ajuste bidimensional (drag X+Y) + texto/emojis draggables
 
-**Foto:**
-- Captura con cámara o galería
-- Ajuste bidimensional (X+Y) con drag gestures
-- Texto y emojis draggables
+**Video:** Máximo 30 segundos con reproducción automática y controles
 
-**Video:**
-- Máximo 30 segundos
-- Reproducción automática
-- Controles de pausa/play
-- Texto y emojis draggables
+**Texto:** Fondo oscuro con texto y emojis de posicionamiento libre
 
-**Texto:**
-- Fondo negro sólido
-- Texto draggable con posicionamiento libre
-- Emojis draggables
+## Cómo Crear
 
-### Crear una Story
+1. Abre la pestaña Stories → ícono cámara
+2. Captura o selecciona contenido
+3. Añade texto (tap en "Text") o emojis (tap en "Sticker")
+4. Ajusta posición con drag & drop
+5. Long press para eliminar elementos
+6. Tap en "Share" para publicar
 
-**Paso 1: Seleccionar Tipo**
-```
-Cámara → Foto/Video
-Galería → Seleccionar existente
-Texto → Story de texto puro (fondo negro)
-```
+## Selector de Emojis
 
-**Paso 2: Editar**
-- Añadir texto (tap en "Text") → Draggable
-- Añadir emojis (tap en "Sticker") → Selector completo
-- Ajustar foto (tap en "Ajustar") → Drag X+Y
-- Mover elementos (drag & drop)
-- Eliminar (long press)
+4 categorías completas en ModalBottomSheet:
+• 😀 Caritas • 🐶 Animales • 🍎 Comida • ⚽ Deportes
 
-**Paso 3: Publicar**
-- Tap en "Share"
-- Se sube a Firebase Storage
-- Visible para tus contactos por 24h
+Grid de 8 columnas con scrollable tabs.
 
-### Selector de Emojis NUEVO
+## Ver Stories
 
-**4 Categorías Completas:**
-- 😀 **Caritas**: Emojis faciales y expresiones
-- 🐶 **Animales**: Fauna y naturaleza
-- 🍎 **Comida**: Alimentos y bebidas
-- ⚽ **Deportes**: Actividades físicas
+• Tap en círculo de perfil → Ver story
+• Swipe izquierda/derecha → Siguiente/Anterior usuario
+• Tap izquierda/derecha → Siguiente/Anterior story
+• Long press → Pausar
+• Swipe down → Cerrar
 
-**Funcionalidades:**
-- Grid de 8 columnas para mejor organización
-- ScrollableTabRow para navegar entre categorías
-- ModalBottomSheet con diseño moderno
-- Tap para agregar emoji draggable
-- Posicionamiento inicial en centro (150f, 300f)
+---
 
-### Ajuste de Fotos NUEVO
+⚠️ Las stories se eliminan automáticamente después de 24 horas.
 
-**Drag Bidimensional:**
-- Arrastra horizontalmente (eje X)
-- Arrastra verticalmente (eje Y)
-- Display en tiempo real: "X: [valor] Y: [valor]"
-- Posicionamiento libre en cualquier dirección
-
-### Ver Stories
-
-**Navegación:**
-- Tap en círculo de perfil → Ver story
-- Swipe izquierda/derecha → Siguiente/Anterior usuario
-- Tap izquierda/derecha → Siguiente/Anterior story del mismo usuario
-
-**Controles:**
-- Pausa: Long press en pantalla
-- Salir: Swipe down o tap X
-
-⚠️ **Expiración:** Las stories se eliminan automáticamente después de 24 horas
-
-ℹ️ **Privacidad:** Solo tus contactos pueden ver tus stories
-
-## Funcionalidades Avanzadas
-
-**Emojis Draggables MEJORADO:**
-- Tap en emoji picker → ModalBottomSheet completo
-- 4 categorías organizadas
-- Drag para posicionar en cualquier lugar
-- Long press para eliminar
-- Tamaño fijo de 64sp para consistencia
-
-**Texto Draggable:**
-- Posicionamiento libre en toda la pantalla
-- Fondo transparente en stories de texto
-- Contraste automático sobre fondo negro
-
-**Música (Coming Soon):**
-- Añadir música de fondo
-- Seleccionar fragmento de canción
+ℹ️ Solo tus contactos pueden ver tus stories (configurable en privacidad).
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
     // PROFILE FEATURES
     // ═══════════════════════════════════════════════════════════════
-    
+
     val PROFILE_TUTORIAL = """
 # 👤 Sistema de Perfiles
 
-## Estructura del Perfil
+## Información Personal
 
-Cada usuario tiene un perfil con información personal y configuración.
+Cada usuario tiene un perfil con foto, nombre, bio y estadísticas.
 
-### Arquitectura
-```
-ProfileScreen → Vista de perfil
-    ↓
-UserRepository → Firebase Realtime Database
-    ↓
-StorageRepository → Firebase Storage (fotos)
-```
+**Componentes:**
+• Foto de perfil (zoomable, fullscreen viewer)
+• Nombre de usuario
+• Bio (máx. 150 caracteres)
+• Estadísticas: chats activos, stories, contactos
+• Colores dinámicos extraídos de tu foto
 
-### Componentes del Perfil
+## Editar Perfil
 
-**Información Básica:**
-- Foto de perfil
-- Nombre de usuario
-- Bio/Estado
-- Número de teléfono
+1. Tap en tu foto o nombre
+2. Cambia foto desde galería (compresión + subida automática)
+3. Actualiza nombre y bio
+4. Los cambios se guardan en Firebase Realtime Database
 
-**Estadísticas:**
-- Chats activos
-- Stories publicadas
-- Contactos
+## Colores Dinámicos (2026)
 
-**Configuración:**
-- Privacidad
-- Notificaciones
-- Tema (claro/oscuro)
+La app extrae colores dominantes de tu foto de perfil:
 
-### Editar Perfil
+• `rememberThemeColor()` → Color primario
+• `rememberThemeSecondaryColor()` → Color secundario
 
-**Cambiar Foto:**
-```
-Tap en foto → Seleccionar de galería
-    ↓
-Compresión automática
-    ↓
-Subida a Firebase Storage
-    ↓
-URL guardada en Realtime Database
-```
+Estos colores se aplican a toda la interfaz automáticamente.
 
-**Actualizar Info:**
-- Nombre: Tap en campo → Editar
-- Bio: Máximo 150 caracteres
-- Estado: Online/Offline automático
+---
 
-### Perfil Público vs Privado
+⚠️ Nunca compartas información sensible en tu bio.
 
-**Público:**
-- Cualquiera puede ver tu foto y nombre
-- Stories visibles para todos
-
-**Privado:**
-- Solo contactos ven tu información
-- Stories solo para contactos aprobados
-
-⚠️ **Seguridad:** Nunca compartas información sensible en tu bio
-
-ℹ️ **Tip:** Usa una foto de perfil clara para que te reconozcan fácilmente
-
-## Visualización Fullscreen
-
-**ProfileViewerScreen:**
-- Swipe up desde foto de perfil
-- Vista fullscreen estilo Instagram
-- Zoom con pinch gesture
-- Swipe down para cerrar
-
-### Colores Dinámicos
-
-La app extrae colores dominantes de tu foto de perfil para personalizar la UI:
-```kotlin
-rememberThemeColor() // Color primario
-rememberThemeSecondaryColor() // Color secundario
-```
+ℹ️ Usa una foto clara para mejor reconocimiento.
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
-    // AGENT FEATURES
+    // AI AGENT FEATURES 2026
     // ═══════════════════════════════════════════════════════════════
-    
+
     val AI_AGENT_TUTORIAL = """
-# 🤖 Sistema de Asistente Inteligente
+# 🤖 Sistema de IA — Azel IA
 
-## Arquitectura del Sistema
+## Arquitectura 2026
 
-La app integra un sistema de asistente inteligente local.
+Dos motores de IA disponibles:
 
-### Ollama (Local)
+**Ollama Cloud (recomendado):**
 ```
-Android App → OllamaApiService → Ollama Server (localhost:11434)
-```
-
-**Características:**
-- Modelos locales (llama2, mistral, codellama)
-- Respuestas rápidas
-- Sin censura
-- Funciona offline
-- No requiere backend adicional
-
-## Configuración Inicial
-
-### Ollama Setup
-
-**1. Instalar Ollama:**
-```bash
-# Windows/Mac/Linux
-curl https://ollama.ai/install.sh | sh
+App → AzelAIApiService → Ollama Cloud API (servidores remotos)
 ```
 
-**2. Descargar Modelos:**
-```bash
-ollama pull llama2
-ollama pull mistral
-ollama pull codellama
+Sin necesidad de hardware local. Modelos disponibles:
+• deepseek-r1:70b — Razonamiento profundo
+• gpt-oss:120b-cloud — Modelo insignia
+• llama3:70b — Propósito general
+• dolphin-mixtral — Sin censura
+• codellama:70b — Programación
+
+**Ollama Local (alternativa):**
+```
+App → OllamaApiService → Ollama Server (localhost:11434)
 ```
 
-**3. Iniciar Servidor:**
-```bash
-ollama serve
-```
+Para usuarios con hardware potente que prefieren privacidad total.
 
-**4. Configurar App:**
-- Emulador: Ya configurado (10.0.2.2:11434)
-- Dispositivo real: Editar AppModule.kt con tu IP local
+## Cómo Usar Azel IA
 
-## Uso de Ollama
+1. Ve a la pestaña "IA" desde el menú principal
+2. Selecciona modo Cloud (automático) o Local (requiere Ollama instalado)
+3. Elige un prompt predefinido o escribe tu consulta
+4. Recibe respuestas en tiempo real con streaming
 
-### Ejemplos de Prompts
+## Categorías de Prompts
 
-**Chat General:**
-```
-"Explica cómo funciona SQL injection"
-"Escribe un script Python para escanear puertos"
-"¿Cómo bypassear autenticación básica?"
-```
+• 🔓 Exploits • 💻 Hacking • 🐍 Python • ⚡ JavaScript
+• 🔐 Criptografía • 🌐 Redes • 🛡️ Seguridad • 📱 Android
+• 🐧 Linux • 🎯 OSINT • 🕵️ Privacidad • 🤖 Prompts de IA
 
-### Indicadores Visuales
+## Configuración Local (Opcional)
 
-- Respuestas directas
-- Chat en tiempo real
-- Sin limitaciones
+Solo si quieres usar Ollama local en lugar de la nube:
 
-ℹ️ **Conexión:** Verifica que el servidor Ollama esté corriendo antes de usar
+1. Instala Ollama: `curl https://ollama.ai/install.sh | sh`
+2. Descarga modelos: `ollama pull llama3`
+3. Inicia servidor: `ollama serve`
+4. La app se conecta automáticamente a localhost:11434
 
-## Troubleshooting
+---
 
-**"Ollama server not available":**
-- Verifica: `ollama serve` está corriendo
-- Verifica: Puerto 11434 accesible
-- Verifica: IP correcta en AppModule.kt
+⚠️ Las respuestas de IA no tienen censura — úsalas con responsabilidad.
 
-**Respuestas lentas:**
-- Modelo muy grande para tu hardware
-- Considera usar un modelo más pequeño
+ℹ️ El modo Cloud está configurado por defecto y no requiere instalación adicional.
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
-    // SECURITY FEATURES
+    // SECURITY & PRIVACY 2026
     // ═══════════════════════════════════════════════════════════════
-    
+
     val SECURITY_TUTORIAL = """
-# 🔒 Framework de Seguridad
+# 🔒 Seguridad y Privacidad — 2026 Edition
 
-## Módulos de Seguridad
+## Cifrado Extremo a Extremo (E2EE)
 
-La app incluye herramientas avanzadas de ciberseguridad.
-
-### 1. Terminal (ROOT)
-
-**Características:**
-- Emulador de terminal completo
-- Soporte ROOT con libsu
-- Historial de comandos
-- Autocompletado
-
-**Uso:**
-```bash
-# Comandos básicos
-ls -la
-cd /sdcard
-cat archivo.txt
-
-# Comandos ROOT (requiere permisos)
-su
-pm list packages
-dumpsys
-```
-
-**Atajos de Teclado:**
-- Tab: Autocompletar
-- ↑/↓: Historial
-- Ctrl+C: Cancelar comando
-- Ctrl+L: Limpiar pantalla
-
-### 2. CyberSec Toolkit
-
-**Port Scanner:**
-- Escanea puertos TCP
-- Rango personalizable
-- Detección de servicios
-
-**DNS Lookup:**
-- Resuelve dominios a IPs
-- Información de registros DNS
-
-**HTTP Headers:**
-- Analiza headers de respuesta
-- Detecta tecnologías del servidor
-
-**Hash Generator:**
-- MD5, SHA-256
-- Útil para verificar integridad
-
-**Encoders/Decoders:**
-- Base64
-- Hexadecimal
-- URL encoding
-
-**Network Info:**
-- IP local
-- Gateway
-- DNS servers
-- Información WiFi
-
-### 3. Payload Generator
-
-**Tipos de Payloads:**
-- Reverse Shell (Bash, Python, PowerShell)
-- Bind Shell
-- Web Shells (PHP, ASP)
-- SQL Injection
-- XSS Payloads
-
-**Configuración:**
-```
-LHOST: Tu IP (para reverse shells)
-LPORT: Puerto de escucha
-Encoder: Ofuscación opcional
-```
-
-**Uso:**
-1. Selecciona tipo de payload
-2. Configura LHOST/LPORT
-3. Genera payload
-4. Copia o comparte
-
-⚠️ **Legal:** Solo usa en entornos autorizados. Uso ilegal puede resultar en consecuencias legales.
-
-### 4. Tor Browser
-
-**Características:**
-- Navegación anónima
-- Soporte .onion
-- Sin tracking
-- Proxy integrado
-
-**Uso:**
-- Ingresa URL (incluyendo .onion)
-- Navegación automática por Tor
-- JavaScript deshabilitado por defecto
-
-### 5. Tor Control
-
-**Gestión de Tor:**
-- Iniciar/Detener servicio
-- Ver logs en tiempo real
-- Cambiar identidad
-- Configurar bridges
-
-## Arquitectura de Seguridad
+Todos los mensajes se cifran con **Signal Protocol** antes de salir del dispositivo.
 
 ```
-SecurityScreen (Hub)
-    ↓
-├─→ Terminal → TerminalRepository → libsu
-├─→ CyberSec → CyberSecViewModel → Network APIs
-├─→ Payload → PayloadViewModel → Templates
-├─→ Tor Browser → WebView + Proxy
-└─→ Tor Control → Tor Service Manager
+Mensaje original → Cifrado Signal → Firebase → Descifrado Signal → Mensaje original
 ```
 
-⚠️ **ROOT:** Algunas funciones requieren acceso ROOT
+• Claves efímeras por sesión (Perfect Forward Secrecy)
+• Intercambio de claves mediante el protocolo X3DH
+• Cifrado doble ratchet para mensajes continuos
+• Solo el emisor y receptor pueden leer el contenido
 
-ℹ️ **Educación:** Estas herramientas son para aprendizaje y pentesting ético
+## Bloqueo Biométrico
+
+Protege la app con huella digital o reconocimiento facial:
+
+1. Ve a Ajustes → Privacidad → Bloqueo de App
+2. Activa "Bloqueo biométrico"
+3. Configura tiempo de bloqueo (inmediato / 1 min / 5 min)
+
+## Tor / Orbot
+
+Navegación anónima integrada:
+
+• **Orbot Setup:** Guía para instalar y configurar Tor en tu dispositivo
+• **Navegación .onion:** Acceso a sitios onion desde la app
+• **Proxy automático:** Redirección de tráfico a través de Tor
+
+## Backup Cifrado
+
+Realiza copias de seguridad cifradas con AES-256:
+
+1. Ajustes → Almacenamiento → Crear Backup
+2. Establece una contraseña de respaldo
+3. El backup se almacena cifrado en Firebase Storage
+4. Restaura en cualquier dispositivo con la misma contraseña
+
+## Bloqueo de Contactos
+
+1. Abre el perfil del contacto
+2. Tap en "Más opciones" → Bloquear
+3. El contacto no podrá enviarte mensajes ni ver tu perfil
+
+## Detección de Root / Tampering
+
+La app detecta automáticamente:
+• Dispositivos rooteados
+• Modificaciones en el APK
+• Entornos de depuración no autorizados
+
+⚠️ El cifrado E2EE está activo por defecto en todos los mensajes.
+
+ℹ️ El bloqueo biométrico usa el hardware de tu dispositivo (no almacena huellas).
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
-    // CALLS FEATURES
+    // CALLS FEATURES 2026
     // ═══════════════════════════════════════════════════════════════
-    
+
     val CALLS_TUTORIAL = """
-# 📞 Sistema de Llamadas
+# 📞 Llamadas WebRTC
 
-## Arquitectura WebRTC
+## Arquitectura
 
-La app usa WebRTC para llamadas de voz y video en tiempo real.
-
-### Componentes
 ```
-CallScreen → WebRTCManager → Firebase Signaling
+CallScreen → WebRTCManager → Firebase Signaling → STUN/TURN Servers
     ↓
-PeerConnection → STUN/TURN Servers
-    ↓
-Audio/Video Streams
+PeerConnection → Audio/Video streams cifrados
 ```
 
-### Tipos de Llamadas
+## Tipos de Llamadas
 
-**Audio:**
-- Codec: Opus
-- Bitrate adaptativo
-- Cancelación de eco
+**Audio:** Codec Opus, bitrate adaptativo, cancelación de eco
 
-**Video:**
-- Codec: VP8/VP9
-- Resoluciones: 480p, 720p, 1080p
-- Cámara frontal/trasera
+**Video:** Codec VP8/VP9, resoluciones 480p/720p/1080p, cámara frontal/trasera
 
-### Permisos ACTUALIZADOS
+## Cómo Llamar
 
-**Nuevos permisos requeridos:**
-- `FOREGROUND_SERVICE_PHONE_CALL`: Para llamadas en primer plano
-- `MANAGE_OWN_CALLS`: Para gestionar llamadas propias
-- `RECORD_AUDIO`: Para capturar audio
-- `CAMERA`: Para videollamadas
+1. Abre un chat o la pestaña Llamadas
+2. Tap en ícono de teléfono (audio) o cámara (video)
+3. La app verifica permisos automáticamente
+4. Espera a que el contacto acepte
 
-**Verificación automática:**
-- Comprobación en tiempo real antes de iniciar llamada
-- Solicitud automática si faltan permisos
-- Manejo de errores si se deniegan
+**Permisos requeridos:**
+• `RECORD_AUDIO` — Para capturar audio
+• `CAMERA` — Para videollamadas
+• `FOREGROUND_SERVICE_PHONE_CALL` — Llamadas en primer plano
+• `MANAGE_OWN_CALLS` — Gestión de llamadas
 
-### Realizar una Llamada
+## Controles Durante Llamada
 
-**Paso 1: Verificación de Permisos**
-```kotlin
-// Verificación automática en IncomingCallScreen
-if (ContextCompat.checkSelfPermission(context, RECORD_AUDIO) != GRANTED ||
-    ContextCompat.checkSelfPermission(context, CAMERA) != GRANTED) {
-    // Solicitar permisos
-}
-```
+• 🔇 Mute/Unmute • 🔊 Altavoz • 📹 Cámara on/off
+• 🔄 Cambiar cámara • ❌ Colgar
 
-**Paso 2: Iniciar**
-```kotlin
-// Desde ChatScreen
-onCallClick(contactId, "audio") // o "video"
-```
+## Estados
 
-**Paso 3: Signaling**
-- Crear oferta SDP
-- Enviar via Firebase
-- Esperar respuesta
+• **Connecting:** Estableciendo conexión
+• **Connected:** Llamada activa con duración
+• **Disconnected:** Llamada terminada
 
-**Paso 4: Conexión**
-- Establecer PeerConnection
-- Intercambiar ICE candidates
-- Iniciar streams
+---
 
-### Controles Durante Llamada
+⚠️ Requiere conexión a internet activa de ambos usuarios.
 
-**Audio:**
-- 🔇 Mute/Unmute
-- 🔊 Altavoz
-- ❌ Colgar
-
-**Video:**
-- 🔇 Mute/Unmute
-- 📹 Cámara on/off
-- 🔄 Cambiar cámara
-- ❌ Colgar
-
-### Estados de Llamada
-
-**Connecting:**
-- Estableciendo conexión
-- Mostrando "Llamando..."
-
-**Connected:**
-- Llamada activa
-- Mostrando duración
-
-**Disconnected:**
-- Llamada terminada
-- Mostrando razón
-
-⚠️ **Permisos:** Requiere permisos de cámara y micrófono actualizados
-
-ℹ️ **Calidad:** Depende de la conexión a internet de ambos usuarios
-
-## Troubleshooting
-
-**"Permission denied" al iniciar llamada:**
-- Verifica permisos en Configuración → Apps → NexusChat → Permisos
-- Otorga permisos de Micrófono y Cámara
-- Reinicia la app si es necesario
-
-**No se escucha audio:**
-- Verifica permisos de micrófono
-- Verifica que no esté en mute
-- Reinicia la llamada
-
-**Video no se ve:**
-- Verifica permisos de cámara
-- Verifica que la cámara esté activada
-- Cambia entre cámara frontal/trasera
-
-**Llamada se corta:**
-- Conexión inestable
-- Usa WiFi en lugar de datos móviles
-- Acércate al router
-
-**Crash al iniciar llamada (SOLUCIONADO):**
-- Problema resuelto con permisos actualizados
-- Verificación previa antes de iniciar llamada
-- Manejo de errores mejorado
+ℹ️ La calidad depende del ancho de banda disponible.
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
-    // SETTINGS & CUSTOMIZATION
+    // SETTINGS & CUSTOMIZATION 2026
     // ═══════════════════════════════════════════════════════════════
-    
+
     val SETTINGS_TUTORIAL = """
 # ⚙️ Configuración y Personalización
 
-## Estructura de Settings
+## Categorías
 
-La app ofrece configuración completa de todos los aspectos.
-
-### Categorías
-
-**Cuenta:**
-- Información personal
-- Número de teléfono
-- Email
-- Eliminar cuenta
+**Cuenta:** Información personal, email, eliminar cuenta
 
 **Privacidad y Seguridad:**
-- Última vez visto
-- Foto de perfil
-- Stories
-- Bloquear usuarios
-- Verificación en dos pasos
+• Última vez visto (Todos / Contactos / Nadie)
+• Foto de perfil (Todos / Contactos / Nadie)
+• Stories (Todos / Contactos / Seleccionados)
+• Bloqueo biométrico
+• Cifrado E2EE
+• Bloqueo de contactos
 
 **Notificaciones:**
-- Mensajes
-- Llamadas
-- Stories
-- Sonidos personalizados
-- Vibración
+• Mensajes, llamadas, stories
+• Sonidos personalizados por chat
+• Vibración
+• Canales FCM configurados
 
 **Apariencia:**
-- Tema (Claro/Oscuro/Auto)
-- **NUEVO:** 15 colores de acento (Verde, Rojo, Azul, Morado, Teal, Rosa, Naranja, Amarillo, Cian, Índigo, Lima, Ámbar, Marrón, Gris, Azul Gris)
-- **ACTUALIZADO:** Tamaño de fuente simplificado (Pequeño, Mediano, Grande)
-- Wallpaper de chat (Predeterminado, Galería, Colores sólidos)
+• Tema: Claro / Oscuro / Automático
+• **15 colores de acento:** Verde, Rojo, Azul, Morado, Teal, Rosa, Naranja, Amarillo, Cian, Índigo, Lima, Ámbar, Marrón, Gris, Azul Gris
+• Tamaño de fuente: Pequeño / Mediano / Grande
+• Wallpaper de chat: Predeterminado / Galería / Colores sólidos / Degradados / Video
 
 **Almacenamiento:**
-- Uso de datos
-- Descarga automática
-- Limpiar caché
-- Gestionar archivos
+• Uso de datos
+• Descarga automática
+• Limpiar caché
+• Backup cifrado
+• Restaurar backup
 
-**Ayuda y Soporte:**
-- Tutoriales integrados (8 guías completas)
-- FAQ
-- Reportar problema
-- Términos y condiciones
+## Temas
 
-**Acerca de:**
-- Versión de la app (v1.0.0)
-- Licencias
-- Créditos
+• **Claro:** Fondo blanco, texto oscuro. Ideal para exteriores
+• **Oscuro:** Fondo negro, texto claro. Ahorra batería OLED
+• **Automático:** Sigue la configuración del sistema
 
-## Configuración Avanzada
+## Wallpaper de Chat
 
-### Colores de Acento Dinámicos AMPLIADO
+1. Abre un chat → Tap en ⋮ → Fondo de chat
+2. Elige entre: Predeterminado / Galería / Colores sólidos / Degradados / Video
+3. El cambio se aplica al instante
 
-La app permite seleccionar entre 15 colores de acento que se aplican a TODA la interfaz:
-```kotlin
-// Colores disponibles (grid 5x3):
-Fila 1: Verde, Rojo, Azul, Morado, Teal
-Fila 2: Rosa, Naranja, Amarillo, Cian, Índigo  
-Fila 3: Lima, Ámbar, Marrón, Gris, Azul Gris
+---
 
-// Automático en toda la app
-MaterialTheme.colorScheme.primary
-MaterialTheme.colorScheme.secondary
-```
+⚠️ Revisa tu configuración de privacidad regularmente.
 
-**Elementos que cambian de color:**
-- Botones y FABs
-- Iconos seleccionados
-- Indicadores de navegación
-- Barras de progreso
-- Switches y checkboxes
-- Gradientes de stories
-- Burbujas de mensajes
-- Todos los elementos interactivos
-
-### Tamaño de Fuente SIMPLIFICADO
-
-Sistema simplificado con SharedPreferences:
-- **Pequeño**: Ideal para pantallas grandes
-- **Mediano**: Tamaño estándar (recomendado)
-- **Grande**: Mejor legibilidad
-
-**Cambios técnicos:**
-- Eliminado SegmentedButton problemático
-- Implementación directa con SharedPreferences
-- Sin crashes ni errores de compilación
-
-### Wallpaper de Chat
-
-Personaliza el fondo de tus conversaciones:
-- **Predeterminado**: Fondo oscuro sólido
-- **Galería**: Selecciona una imagen de tu galería
-- **Colores Sólidos**: Morado, Teal, Rosa, Gris Oscuro
-
-### Temas
-
-**Claro:**
-- Fondo blanco
-- Texto oscuro
-- Ideal para exteriores
-
-**Oscuro:**
-- Fondo negro/gris oscuro
-- Texto claro
-- Ahorra batería en OLED
-- Reduce fatiga visual
-
-**Automático:**
-- Sigue configuración del sistema
-- Cambia según hora del día
-
-### Privacidad
-
-**Última vez visto:**
-- Todos
-- Mis contactos
-- Nadie
-
-**Foto de perfil:**
-- Todos
-- Mis contactos
-- Nadie
-
-**Stories:**
-- Todos
-- Mis contactos
-- Contactos seleccionados
-
-### Notificaciones
-
-**Personalización por Chat:**
-- Sonido único
-- Vibración personalizada
-- Notificaciones emergentes
-
-**No Molestar:**
-- Horario programado
-- Excepciones para contactos importantes
-
-⚠️ **Privacidad:** Revisa tu configuración de privacidad regularmente
-
-ℹ️ **Backup:** La app hace backup automático en Firebase Realtime Database
+ℹ️ Los wallpapers de video y degradados tienen efecto en todos los chats.
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
     // TOUCH GESTURES & NAVIGATION
     // ═══════════════════════════════════════════════════════════════
-    
+
     val TOUCH_GESTURES_TUTORIAL = """
 # 👆 Gestos Táctiles y Navegación
 
-## Navegación por Swipe (Como WhatsApp)
+## Swipe Horizontal entre Tabs
 
-La app incluye navegación táctil intuitiva entre las pantallas principales.
-
-### Swipe Horizontal entre Tabs
-
-**Funcionalidad:**
-Desliza horizontalmente para moverte entre las 4 pantallas principales:
+Desliza para moverte entre las 4 pantallas principales:
 
 ```
-Chats ←→ Stories ←→ Calls ←→ Profile
+Chats ←→ Stories ←→ Llamadas ←→ Perfil
 ```
 
-**Cómo usar:**
-- **Swipe RIGHT** (deslizar hacia la derecha): Ir a la pantalla anterior
-  - Stories → Chats
-  - Calls → Stories
-  - Profile → Calls
+• **Swipe LEFT:** Siguiente pantalla
+• **Swipe RIGHT:** Pantalla anterior
+• **Tap en ícono:** También funciona
 
-- **Swipe LEFT** (deslizar hacia la izquierda): Ir a la siguiente pantalla
-  - Chats → Stories
-  - Stories → Calls
-  - Calls → Profile
+## Gestos en Stories
 
-**Características:**
-- ✅ Animación suave sin lag
-- ✅ Sincronización perfecta con la barra de navegación
-- ✅ Iconos cambian entre filled/outlined según selección
-- ✅ Precarga de páginas adyacentes para transición instantánea
-- ✅ También funciona con tap en los iconos de navegación
+• Tap izquierda/derecha → Story anterior/siguiente del mismo usuario
+• Swipe izquierda/derecha → Usuario anterior/siguiente
+• Long press → Pausar
+• Swipe down → Cerrar viewer
+• Drag & drop → Mover texto/emojis
 
-### Gestos en Stories
+## Gestos en Fotos (Fullscreen)
 
-**Ver Stories:**
-- **Tap izquierda**: Story anterior del mismo usuario
-- **Tap derecha**: Siguiente story del mismo usuario
-- **Swipe izquierda**: Siguiente usuario
-- **Swipe derecha**: Usuario anterior
-- **Long press**: Pausar story
-- **Swipe down**: Cerrar viewer
+• Pinch to zoom: 1x a 4x
+• Drag: Mover imagen en zoom
+• Double tap: Zoom rápido 2x
+• Swipe down: Cerrar
 
-**Crear Stories:**
-- **Drag & Drop**: Mover texto y emojis
-- **Pinch to zoom**: Ajustar tamaño de elementos
-- **Long press**: Eliminar elemento
+## Gestos en Chat
 
-### Gestos en Fotos
-
-**Photo Viewer (Fullscreen):**
-- **Pinch to zoom**: Zoom 1x a 4x
-- **Drag**: Mover imagen cuando está en zoom
-- **Double tap**: Zoom rápido 2x
-- **Swipe down**: Cerrar viewer
-
-**Image Crop (Perfil/Cover):**
-- **Pinch to zoom**: Ajustar tamaño 0.5x a 3x
-- **Drag**: Posicionar imagen
-- **Tap "Reset"**: Restaurar posición original
-- **Tap "Confirm"**: Guardar con ajustes
-
-### Gestos en Chat
-
-**Mensajes:**
-- **Long press**: Menú contextual (Copiar, Eliminar, Reenviar)
-- **Swipe left**: Responder rápido
-- **Swipe right**: Archivar conversación
-- **Pull to refresh**: Actualizar mensajes
-
-**Multimedia:**
-- **Tap en imagen**: Abrir en fullscreen
-- **Tap en video**: Reproducir inline
-- **Long press en audio**: Velocidad de reproducción
-
-### Gestos en Llamadas
-
-**Durante llamada:**
-- **Swipe up**: Minimizar llamada
-- **Swipe down**: Colgar
-- **Double tap**: Cambiar cámara (video)
-
-### Gestos Generales
-
-**Navegación:**
-- **Swipe from edge**: Gesto de retroceso del sistema (Android)
-- **Pull down**: Actualizar contenido (en listas)
-- **Swipe to dismiss**: Cerrar diálogos y sheets
-
-**Listas:**
-- **Scroll**: Desplazamiento suave
-- **Fast scroll**: Barra lateral para saltar rápido
-- **Overscroll**: Efecto de rebote al llegar al final
-
-## Atajos de Teclado (Opcional)
-
-**En Chat:**
-- Enter: Enviar mensaje
-- Shift+Enter: Nueva línea
-- Ctrl+V: Pegar imagen del portapapeles
-
-**En Terminal:**
-- Tab: Autocompletar
-- ↑/↓: Historial de comandos
-- Ctrl+C: Cancelar comando
-- Ctrl+L: Limpiar pantalla
+• Long press en mensaje → Menú contextual (Copiar, Eliminar, Reenviar)
+• Swipe left → Responder rápido
+• Pull to refresh → Actualizar mensajes
 
 ## Accesibilidad
 
-**TalkBack:**
-- Todos los elementos tienen contentDescription
-- Navegación por gestos compatible
+• TalkBack: Todos los elementos tienen contentDescription
+• Tamaño de fuente respeta configuración del sistema
+• Contraste optimizado para tema oscuro
 
-**Tamaño de Fuente:**
-- Respeta configuración del sistema
-- Ajuste manual en Settings → Apariencia
+---
 
-**Contraste:**
-- Tema oscuro para mejor legibilidad
-- Colores de acento personalizables
+⚠️ Practica los gestos de swipe para navegar más rápido.
 
-⚠️ **Tip:** Practica los gestos de swipe para navegar más rápido
-
-ℹ️ **Personalización:** Todos los colores y tamaños son ajustables en Settings
+ℹ️ Todos los colores y tamaños son ajustables en Settings.
     """.trimIndent()
-    
+
     // ═══════════════════════════════════════════════════════════════
     // FIRST TIME USER GUIDE
     // ═══════════════════════════════════════════════════════════════
-    
+
     val FIRST_TIME_GUIDE = """
-# 🎉 Bienvenido a Nexus Chat
+# 🎉 Bienvenido a Azelgram Messenger
 
 ## Guía de Inicio Rápido
 
-Esta app combina mensajería segura con herramientas avanzadas de ciberseguridad.
-
-### Paso 1: Configurar Perfil
-
-1. Tap en tu foto de perfil (esquina superior)
-2. Añade una foto
-3. Escribe tu nombre y bio
-4. Guarda cambios
+### Paso 1: Crear tu Cuenta
+1. Abre la aplicación
+2. Inicia sesión con Google
+3. Completa tu perfil (foto, nombre, bio)
 
 ### Paso 2: Añadir Contactos
-
-1. Tap en 🔍 (búsqueda)
-2. Busca por nombre o número
-3. Tap en "Añadir contacto"
-4. Inicia conversación
+1. Tap en 🔍 (búsqueda) o ➕ (nuevo chat)
+2. Busca por nombre o escanea QR
+3. Inicia conversación
 
 ### Paso 3: Enviar Primer Mensaje
-
 1. Selecciona un contacto
 2. Escribe tu mensaje
 3. Tap en enviar (✈️)
-4. ¡Listo!
+4. ¡Los mensajes se cifran automáticamente!
 
 ### Paso 4: Explorar Funciones
 
-**Mensajería:**
-- Texto, fotos, videos, voz
-- Emojis y stickers
-- Mensajes temporales
+**💬 Mensajería:** Texto, fotos, videos, voz, E2EE
+**📸 Stories:** Contenido temporal de 24h con emojis draggables
+**📞 Llamadas:** Audio y video HD con WebRTC
+**🤖 Azel IA:** Asistente inteligente sin censura
+**🔒 Seguridad:** Cifrado Signal, bloqueo biométrico, Tor/Orbot
+**🎨 Personalización:** 15 colores de acento, wallpapers, temas
 
-**Stories:**
-- Comparte momentos de 24h
-- Fotos, videos, texto
-- Emojis draggables
+## Tecnologías Clave
 
-**Llamadas:**
-- Audio y video HD
-- Encriptación end-to-end
+• **UI:** Jetpack Compose + Material 3
+• **Backend:** Firebase (Auth, Realtime Database, Storage, FCM)
+• **DI:** Hilt
+• **Async:** Coroutines + Flow
+• **Llamadas:** WebRTC
+• **Cifrado:** Signal Protocol
+• **IA:** Ollama Cloud API
+• **Anonimato:** Tor / Orbot
 
-**Ollama:**
-- Chat local sin censura
-- 90 prompts especializados
+⚠️ Activa el bloqueo biométrico en Ajustes → Privacidad para proteger tu app.
 
-**Seguridad:**
-- Terminal ROOT
-- CyberSec Toolkit
-- Payload Generator
-- Tor Browser
-
-### Paso 5: Personalizar
-
-1. Ve a Configuración ⚙️
-2. Elige tu tema favorito
-3. Configura notificaciones
-4. Ajusta privacidad
-
-## Funciones Destacadas
-
-**🎨 Colores Dinámicos:**
-La app extrae colores de tu foto de perfil para personalizar la interfaz.
-
-**🔒 Privacidad:**
-Control total sobre quién ve tu información.
-
-**🤖 Asistente Inteligente:**
-Sistema de asistente local para diferentes necesidades.
-
-**🛡️ Herramientas de Seguridad:**
-Framework completo para pentesting y análisis.
-
-## Tips para Desarrolladores
-
-**Estructura del Proyecto:**
-```
-app/
-├── data/           # Repositorios, APIs, modelos
-├── domain/         # Casos de uso, lógica de negocio
-├── ui/             # Pantallas, componentes, navegación
-│   ├── screens/    # Pantallas principales
-│   ├── components/ # Componentes reutilizables
-│   └── theme/      # Temas y estilos
-├── di/             # Inyección de dependencias (Hilt)
-└── utils/          # Utilidades y helpers
-```
-
-**Tecnologías Usadas:**
-- Jetpack Compose (UI)
-- Firebase (Backend)
-- Hilt (DI)
-- Coroutines (Async)
-- WebRTC (Llamadas)
-- libsu (ROOT)
-- OkHttp (Networking)
-
-**Patrones:**
-- MVVM (Model-View-ViewModel)
-- Repository Pattern
-- Clean Architecture
-- Reactive Programming (Flow)
-
-⚠️ **Importante:** Lee los tutoriales de cada sección antes de usar funciones avanzadas
-
-ℹ️ **Soporte:** Tap en ⚙️ → Ayuda para más información
+ℹ️ Para ayuda, ve a Ajustes → Ayuda o consulta los tutoriales individuales.
     """.trimIndent()
-    
+
     // Helper function to get tutorial by feature
     fun getTutorial(feature: AppFeature): String {
         return when (feature) {
@@ -1044,13 +493,13 @@ app/
             AppFeature.FIRST_TIME -> FIRST_TIME_GUIDE
         }
     }
-    
+
     fun getTutorialTitle(feature: AppFeature): String {
         return when (feature) {
             AppFeature.MESSAGING -> "Tutorial: Mensajería"
             AppFeature.STORIES -> "Tutorial: Stories"
             AppFeature.PROFILE -> "Tutorial: Perfiles"
-            AppFeature.AI_AGENT -> "Tutorial: AI Agent"
+            AppFeature.AI_AGENT -> "Tutorial: Azel IA"
             AppFeature.SECURITY -> "Tutorial: Seguridad"
             AppFeature.CALLS -> "Tutorial: Llamadas"
             AppFeature.SETTINGS -> "Tutorial: Configuración"

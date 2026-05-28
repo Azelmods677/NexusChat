@@ -3,6 +3,7 @@ package com.Azelmods.App.webrtc
 import android.content.Context
 import android.util.Log
 import com.Azelmods.App.data.model.IceCandidate
+import com.Azelmods.App.util.CrashlyticsLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +29,11 @@ class WebRTCManager @Inject constructor(
     private var localVideoTrack: VideoTrack? = null
     private var localAudioTrack: AudioTrack? = null
     private var videoCapturer: CameraVideoCapturer? = null
+    
+    // EGL contexts — MUST keep references to prevent native crash from GC
+    private var encoderEglBase: EglBase? = null
+    private var decoderEglBase: EglBase? = null
+    private var capturerEglBase: EglBase? = null
     
     // State flows
     private val _localVideoTrackFlow = MutableStateFlow<VideoTrack?>(null)
@@ -56,13 +62,18 @@ class WebRTCManager @Inject constructor(
         
         PeerConnectionFactory.initialize(options)
         
+        val encEgl = EglBase.create()
+        encoderEglBase = encEgl
+        val decEgl = EglBase.create()
+        decoderEglBase = decEgl
+        
         val encoderFactory = DefaultVideoEncoderFactory(
-            EglBase.create().eglBaseContext,
+            encEgl.eglBaseContext,
             true,
             true
         )
         
-        val decoderFactory = DefaultVideoDecoderFactory(EglBase.create().eglBaseContext)
+        val decoderFactory = DefaultVideoDecoderFactory(decEgl.eglBaseContext)
         
         peerConnectionFactory = PeerConnectionFactory.builder()
             .setVideoEncoderFactory(encoderFactory)
@@ -188,8 +199,10 @@ class WebRTCManager @Inject constructor(
             
             cameraName?.let {
                 videoCapturer = enumerator.createCapturer(it, null) as? CameraVideoCapturer
+                val capEgl = EglBase.create()
+                capturerEglBase = capEgl
                 videoCapturer?.initialize(
-                    SurfaceTextureHelper.create("CaptureThread", EglBase.create().eglBaseContext),
+                    SurfaceTextureHelper.create("CaptureThread", capEgl.eglBaseContext),
                     context,
                     videoSource?.capturerObserver
                 )
@@ -226,9 +239,11 @@ class WebRTCManager @Inject constructor(
                                 onOfferCreatedListener?.invoke(it.description)
                             }
                             override fun onCreateFailure(error: String?) {
+                                CrashlyticsLogger.warn("webrtc", "createOffer", "Failed to create local description: $error")
                                 Log.e(TAG, "Failed to create local description: $error")
                             }
                             override fun onSetFailure(error: String?) {
+                                CrashlyticsLogger.warn("webrtc", "setLocalDesc", "Failed: $error")
                                 Log.e(TAG, "Failed to set local description: $error")
                             }
                         }, it)
@@ -237,9 +252,12 @@ class WebRTCManager @Inject constructor(
                 
                 override fun onSetSuccess() {}
                 override fun onCreateFailure(error: String?) {
+                    CrashlyticsLogger.warn("webrtc", "createOffer", "Failed: $error")
                     Log.e(TAG, "Failed to create offer: $error")
                 }
-                override fun onSetFailure(error: String?) {}
+                override fun onSetFailure(error: String?) {
+                    CrashlyticsLogger.warn("webrtc", "setOffer", "Failed: $error")
+                }
             }, constraints)
         }
     }
@@ -261,9 +279,11 @@ class WebRTCManager @Inject constructor(
                                 onAnswerCreatedListener?.invoke(it.description)
                             }
                             override fun onCreateFailure(error: String?) {
+                                CrashlyticsLogger.warn("webrtc", "createAnswer", "Failed local desc: $error")
                                 Log.e(TAG, "Failed to create local description: $error")
                             }
                             override fun onSetFailure(error: String?) {
+                                CrashlyticsLogger.warn("webrtc", "setAnswer", "Failed: $error")
                                 Log.e(TAG, "Failed to set local description: $error")
                             }
                         }, it)
@@ -272,9 +292,12 @@ class WebRTCManager @Inject constructor(
                 
                 override fun onSetSuccess() {}
                 override fun onCreateFailure(error: String?) {
+                    CrashlyticsLogger.warn("webrtc", "createAnswer", "Failed: $error")
                     Log.e(TAG, "Failed to create answer: $error")
                 }
-                override fun onSetFailure(error: String?) {}
+                override fun onSetFailure(error: String?) {
+                    CrashlyticsLogger.warn("webrtc", "setAnswer", "Failed: $error")
+                }
             }, constraints)
         }
     }
@@ -320,14 +343,29 @@ class WebRTCManager @Inject constructor(
     }
     
     fun cleanup() {
-        videoCapturer?.stopCapture()
-        videoCapturer?.dispose()
+        try {
+            videoCapturer?.stopCapture()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error stopping video capture: ${e.message}")
+        }
+        try {
+            videoCapturer?.dispose()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disposing video capturer: ${e.message}")
+        }
         
         localVideoTrack?.dispose()
         localAudioTrack?.dispose()
         
         peerConnection?.close()
         peerConnection?.dispose()
+        
+        encoderEglBase?.release()
+        encoderEglBase = null
+        decoderEglBase?.release()
+        decoderEglBase = null
+        capturerEglBase?.release()
+        capturerEglBase = null
         
         _localVideoTrackFlow.value = null
         _remoteVideoTrackFlow.value = null

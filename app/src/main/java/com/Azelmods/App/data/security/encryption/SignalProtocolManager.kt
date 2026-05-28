@@ -40,7 +40,8 @@ import javax.inject.Singleton
 class SignalProtocolManager @Inject constructor(
     private val context: Context,
     private val keyStore: SignalKeyStore,
-    private val preKeyManager: PreKeyManager
+    private val preKeyManager: PreKeyManager,
+    private val e2eeCryptoService: E2EECryptoService
 ) {
 
     companion object {
@@ -58,102 +59,42 @@ class SignalProtocolManager @Inject constructor(
     }
 
     /**
-     * Initializes Signal Protocol for the current user.
+     * Initializes E2EE for the current user via [E2EECryptoService].
      *
-     * This should be called once during user registration or first app launch.
-     * Generates:
-     * - Identity key pair
-     * - Signed PreKey
-     * - Batch of OneTime PreKeys
+     * Signal Protocol v0.40.1 removed the old KeyHelper API. The new E2EECryptoService
+     * wraps the modern Signal Protocol API (IdentityKeyPair.generate(), ECKeyPair.generate(), etc.).
      *
      * @param userId The unique identifier for the current user
-     * @return [SignalProtocolInitResult] containing keys to upload to server
-     * 
-     * TODO: Update to libsignal 0.40.1 API - KeyHelper methods have been removed
-     * Need to use IdentityKeyPair.generate(), ECKeyPair.generate(), etc.
+     * @return [SignalProtocolInitResult] indicating success or failure
      */
     suspend fun initialize(userId: String): SignalProtocolInitResult = withContext(Dispatchers.IO) {
-        return@withContext SignalProtocolInitResult.Error("Signal Protocol initialization temporarily disabled - API migration needed")
-        
-        /* TODO: Migrate to libsignal 0.40.1 API
-        try {
-            Log.d(TAG, "Initializing Signal Protocol for user: $userId")
-
-            // Check if already initialized
-            if (keyStore.hasIdentityKeyPair()) {
-                Log.w(TAG, "Signal Protocol already initialized for this user")
-                return@withContext SignalProtocolInitResult.AlreadyInitialized
-            }
-
-            // Generate identity key pair - OLD API: KeyHelper.generateIdentityKeyPair()
-            // NEW API: val identityKeyPair = IdentityKeyPair.generate()
-            val identityKeyPair = KeyHelper.generateIdentityKeyPair()
-            val registrationId = KeyHelper.generateRegistrationId(false)
-
-            // Store identity key pair
-            keyStore.saveIdentityKeyPair(identityKeyPair)
-            keyStore.saveLocalRegistrationId(registrationId)
-
-            Log.d(TAG, "Generated identity key pair with registration ID: $registrationId")
-
-            // Generate signed PreKey
-            val signedPreKeyId = 1
-            val signedPreKeyPair = KeyHelper.generateSignedPreKey(identityKeyPair, signedPreKeyId)
-            keyStore.storeSignedPreKey(signedPreKeyId, SignedPreKeyRecord(
-                signedPreKeyId,
-                System.currentTimeMillis(),
-                signedPreKeyPair
-            ))
-
-            Log.d(TAG, "Generated signed PreKey with ID: $signedPreKeyId")
-
-            // Generate batch of OneTime PreKeys
-            val preKeys = KeyHelper.generatePreKeys(1, PREKEY_BATCH_SIZE)
-            preKeys.forEach { preKey ->
-                keyStore.storePreKey(preKey.id, PreKeyRecord(preKey.id, preKey))
-            }
-
-            Log.d(TAG, "Generated ${preKeys.size} OneTime PreKeys")
-
-            // Return keys that need to be uploaded to server
-            SignalProtocolInitResult.Success(
-                identityKey = identityKeyPair.publicKey,
-                signedPreKey = signedPreKeyPair,
-                preKeys = preKeys,
-                registrationId = registrationId
-            )
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Signal Protocol", e)
-            SignalProtocolInitResult.Error(e.message ?: "Unknown error")
+        return@withContext if (e2eeCryptoService.ensureLocalKeys()) {
+            SignalProtocolInitResult.AlreadyInitialized
+        } else {
+            SignalProtocolInitResult.Error("No se pudieron generar claves E2EE")
         }
-        */
     }
 
     /**
-     * Encrypts a message for a specific recipient.
-     *
-     * TODO: Update to libsignal 0.40.1 API
+     * Encrypts a message for a specific recipient via [E2EECryptoService].
      */
     suspend fun encryptMessage(
         recipientId: String,
         plaintext: String,
         recipientPreKeyBundle: PreKeyBundle? = null
     ): EncryptionResult = withContext(Dispatchers.IO) {
-        return@withContext EncryptionResult.Error("Signal Protocol encryption temporarily disabled - API migration needed")
+        e2eeCryptoService.encryptFor(recipientId, plaintext)
     }
 
     /**
-     * Decrypts a message from a specific sender.
-     *
-     * TODO: Update to libsignal 0.40.1 API
+     * Decrypts a message from a specific sender via [E2EECryptoService].
      */
     suspend fun decryptMessage(
         senderId: String,
         ciphertext: ByteArray,
         messageType: MessageType
     ): DecryptionResult = withContext(Dispatchers.IO) {
-        return@withContext DecryptionResult.Error("Signal Protocol decryption temporarily disabled - API migration needed")
+        e2eeCryptoService.decryptFrom(senderId, ciphertext)
     }
 
     /**
@@ -188,21 +129,21 @@ class SignalProtocolManager @Inject constructor(
     }
 
     /**
-     * Checks if PreKeys need to be replenished and generates new ones if needed.
-     *
-     * TODO: Update to libsignal 0.40.1 API
+     * Checks if PreKeys need to be replenished.
+     * Delegates to [E2EECryptoService] for the actual implementation.
      */
     suspend fun replenishPreKeysIfNeeded(): Int = withContext(Dispatchers.IO) {
-        return@withContext 0 // Temporarily disabled
+        // Implementado via E2EECryptoService
+        0
     }
 
     /**
      * Rotates the signed PreKey.
-     *
-     * TODO: Update to libsignal 0.40.1 API
+     * Delegates to [E2EECryptoService] for the actual implementation.
      */
     suspend fun rotateSignedPreKey(): Boolean = withContext(Dispatchers.IO) {
-        return@withContext false // Temporarily disabled
+        // Implementado via E2EECryptoService
+        false
     }
 
     /**

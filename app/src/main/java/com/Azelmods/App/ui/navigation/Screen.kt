@@ -56,6 +56,7 @@ sealed class Screen(val route: String) {
     object Security : Screen(NavRoutes.SECURITY)
     object TorControl : Screen(NavRoutes.TOR_CONTROL)
     object TorBrowser : Screen(NavRoutes.TOR_BROWSER)
+    object OrbotWelcome : Screen(NavRoutes.ORBOT_WELCOME)
     
     // Background Picker
     object BackgroundPicker : Screen("background_picker?chatId={chatId}") {
@@ -68,5 +69,5 @@ sealed class Screen(val route: String) {
     
     // Mod Screens
     object ModHome : Screen("mod_home")
-    object InternalBot : Screen("internal_bot")
 }
+

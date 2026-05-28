@@ -20,6 +20,7 @@ data class Chat(
     val isPinned: Boolean = false,
     val isMuted: Boolean = false,
     val isArchived: Boolean = false,
+    val isE2EE: Boolean = true,
     val lastMessageTimestamp: Long = lastMessageTime
 ) : Comparable<Chat> {
     override fun compareTo(other: Chat): Int {

@@ -94,7 +94,8 @@ fun HomeScreen(
                     containerColor = DarkSurface,
                     titleContentColor = Color.White,
                     actionIconContentColor = Color.White
-                )
+                ),
+                modifier = Modifier.statusBarsPadding() // Edge-to-Edge: respeta barra de estado
             )
         },
         floatingActionButton = {
@@ -106,12 +107,16 @@ fun HomeScreen(
                 Icon(Icons.Default.Add, contentDescription = "New Chat")
             }
         },
-        containerColor = DarkBackground
+        containerColor = DarkBackground,
+        contentWindowInsets = WindowInsets(0) // Edge-to-Edge: control manual de insets
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .consumeWindowInsets(paddingValues) // Edge-to-Edge: consume los insets del Scaffold
+                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegación
+                .padding(horizontal = 16.dp) // Padding general de 16dp
         ) {
 
             // ── Animated inline search bar ─────────────────────────────────
@@ -274,29 +279,41 @@ fun HomeScreen(
 
                 // Populated chat list
                 else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp), // Espaciado entre cards
+                        contentPadding = PaddingValues(vertical = 16.dp) // Padding vertical
+                    ) {
                         items(
                             items = state.filteredChats,
                             key = { chat -> chat.chatId }
                         ) { chat ->
-                            ChatItem(
-                                chat = chat,
-                                currentUserId = currentUserId,
-                                onChatClick = {
-                                    navController.navigate(
-                                        Screen.Chat.createRoute(chat.chatId)
-                                    )
-                                },
-                                onTogglePin = { viewModel.togglePin(chat.chatId) },
-                                onToggleMute = { viewModel.toggleMute(chat.chatId) },
-                                onArchiveChat = { viewModel.archiveChat(chat.chatId) },
-                                onDeleteChat = { viewModel.deleteChat(chat.chatId) }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(start = 84.dp),
-                                color = DarkSurfaceVariant,
-                                thickness = 0.5.dp
-                            )
+                            // Envolver cada chat en una Card moderna
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = DarkSurface // Color de fondo que contrasta
+                                ),
+                                elevation = CardDefaults.cardElevation(
+                                    defaultElevation = 2.dp,
+                                    pressedElevation = 4.dp
+                                )
+                            ) {
+                                ChatItem(
+                                    chat = chat,
+                                    currentUserId = currentUserId,
+                                    onChatClick = {
+                                        navController.navigate(
+                                            Screen.Chat.createRoute(chat.chatId)
+                                        )
+                                    },
+                                    onTogglePin = { viewModel.togglePin(chat.chatId) },
+                                    onToggleMute = { viewModel.toggleMute(chat.chatId) },
+                                    onArchiveChat = { viewModel.archiveChat(chat.chatId) },
+                                    onDeleteChat = { viewModel.deleteChat(chat.chatId) }
+                                )
+                            }
                         }
                     }
                 }
@@ -321,7 +338,7 @@ fun ChatItem(
     var showMenu by remember { mutableStateOf(false) }
 
     val otherUserName = chat.participantNames.values.firstOrNull() ?: "Unknown"
-    val otherPhotoUrl = chat.participantPhotos.values.firstOrNull()
+    val otherPhotoUrl = chat.participantPhotos.values.firstOrNull() // Puede ser null
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
 
     // Wrap in Box so the DropdownMenu is anchored to the item
@@ -334,8 +351,8 @@ fun ChatItem(
                     onClick = onChatClick,
                     onLongClick = { showMenu = true }
                 )
-                .background(DarkBackground)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .background(Color.Transparent) // Fondo transparente para que se vea la Card
+                .padding(horizontal = 16.dp, vertical = 16.dp), // Padding interno aumentado
             verticalAlignment = Alignment.CenterVertically
         ) {
 
@@ -359,37 +376,41 @@ fun ChatItem(
                     }
                 } else {
                     // Private chats: real avatar via UserAvatar (Coil + initials fallback)
+                    // MANEJO DE FOTO NULL: UserAvatar ya maneja esto con fallback a iniciales
                     UserAvatar(
                         name = otherUserName,
-                        photoUrl = otherPhotoUrl,
+                        photoUrl = otherPhotoUrl, // Puede ser null, UserAvatar lo maneja
                         size = 56.dp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(16.dp)) // Espaciado aumentado
 
             // ── Name + last message ────────────────────────────────────────
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp) // Espaciado entre textos
+            ) {
                 Text(
                     text = otherUserName,
                     color = Color.White,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold, // Negrita para nombres
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = chat.lastMessage.ifBlank { "No messages yet" },
                     color = Color.Gray,
                     fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal, // Regular para mensajes
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp)) // Espaciado aumentado
 
             // ── Timestamp + unread badge ───────────────────────────────────
             Column(

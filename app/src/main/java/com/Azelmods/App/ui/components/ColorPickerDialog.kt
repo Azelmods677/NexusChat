@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.Azelmods.App.data.model.BackgroundPresets
+import com.Azelmods.App.ui.theme.parseHexColor
 
 /**
  * Color picker dialog with hex input and preset swatches
@@ -69,8 +70,8 @@ fun ColorPickerDialog(
                         .size(80.dp)
                         .align(Alignment.CenterHorizontally)
                         .clip(CircleShape)
-                        .background(parseColorSafe(selectedColor))
-                        .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                                .background(parseHexColor(selectedColor))
+                                .border(2.dp, Color.White.copy(alpha = 0.3f), CircleShape)
                 )
                 
                 // Hex input
@@ -136,7 +137,7 @@ fun ColorPickerDialog(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(parseColorSafe(colorHex))
+                                .background(parseHexColor(colorHex))
                                 .border(
                                     width = if (selectedColor.equals(colorHex, ignoreCase = true)) 3.dp else 1.dp,
                                     color = if (selectedColor.equals(colorHex, ignoreCase = true)) 
@@ -188,15 +189,5 @@ fun ColorPickerDialog(
                 }
             }
         }
-    }
-}
-
-private fun parseColorSafe(hex: String): Color {
-    return try {
-        val cleanHex = hex.removePrefix("#")
-        val colorInt = cleanHex.toLong(16)
-        Color(colorInt or 0xFF000000)
-    } catch (e: Exception) {
-        Color(0xFFCC0000)
     }
 }

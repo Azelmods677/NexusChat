@@ -185,7 +185,7 @@ class SignalKeyStore @Inject constructor(
             .mapNotNull { (_, value) ->
                 try {
                     SignedPreKeyRecord(
-                        android.util.Base64.decode(value as String, android.util.Base64.DEFAULT)
+                        android.util.Base64.decode((value as? String) ?: return@mapNotNull null, android.util.Base64.DEFAULT)
                     )
                 } catch (e: Exception) {
                     Log.e(TAG, "Error loading signed PreKey", e)
@@ -391,7 +391,8 @@ class SignalKeyStore @Inject constructor(
      * Encrypts data using the master key from Android Keystore
      */
     private fun encrypt(data: ByteArray): ByteArray {
-        val secretKey = androidKeyStore.getKey(KEYSTORE_ALIAS, null) as SecretKey
+        val secretKey = (androidKeyStore.getKey(KEYSTORE_ALIAS, null) as? SecretKey)
+            ?: throw IllegalStateException("Master encryption key not found in Android Keystore")
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, secretKey)
 
@@ -406,7 +407,8 @@ class SignalKeyStore @Inject constructor(
      * Decrypts data using the master key from Android Keystore
      */
     private fun decrypt(data: ByteArray): ByteArray {
-        val secretKey = androidKeyStore.getKey(KEYSTORE_ALIAS, null) as SecretKey
+        val secretKey = (androidKeyStore.getKey(KEYSTORE_ALIAS, null) as? SecretKey)
+            ?: throw IllegalStateException("Master encryption key not found in Android Keystore")
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
 
         // Extract IV from beginning of data

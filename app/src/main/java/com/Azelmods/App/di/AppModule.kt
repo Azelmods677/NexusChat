@@ -2,8 +2,9 @@ package com.Azelmods.App.di
 
 import android.content.Context
 import androidx.credentials.CredentialManager
-import com.Azelmods.App.data.api.OllamaApiService
 import com.Azelmods.App.data.demo.DemoAccountManager
+import com.Azelmods.App.data.local.AppDatabase
+import com.Azelmods.App.data.local.CacheManager
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.preferences.UserPreferences
 import com.google.firebase.database.FirebaseDatabase
@@ -46,32 +47,8 @@ object AppModule {
     
     @Provides
     @Singleton
-    fun provideOllamaApiService(): OllamaApiService {
-        // Default to localhost, user can configure in settings
-        return OllamaApiService(baseUrl = "http://10.0.2.2:11434") // Android emulator localhost
-    }
-    
-    @Provides
-    @Singleton
     fun provideTutorialPreferences(@ApplicationContext context: Context): TutorialPreferences {
         return TutorialPreferences(context)
-    }
-    
-    @Provides
-    @Singleton
-    fun provideDemoAccountManager(
-        @ApplicationContext context: Context,
-        database: FirebaseDatabase
-    ): DemoAccountManager {
-        return DemoAccountManager(context, database)
-    }
-    
-    @Provides
-    @Singleton
-    fun provideChatBackgroundRepository(
-        database: FirebaseDatabase
-    ): com.Azelmods.App.data.repository.ChatBackgroundRepository {
-        return com.Azelmods.App.data.repository.ChatBackgroundRepository(database)
     }
     
     @Provides
@@ -96,5 +73,23 @@ object AppModule {
         botPreferences: com.Azelmods.App.data.preferences.BotPreferences
     ): com.Azelmods.App.data.repository.InternalBotRepository {
         return com.Azelmods.App.data.repository.InternalBotRepository(botPreferences)
+    }
+
+    // ── Room Database (offline cache) ───────────────────────
+
+    @Provides
+    @Singleton
+    fun provideAppDatabase(
+        @ApplicationContext context: Context
+    ): AppDatabase {
+        return AppDatabase.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCacheManager(
+        db: AppDatabase
+    ): CacheManager {
+        return CacheManager(db)
     }
 }

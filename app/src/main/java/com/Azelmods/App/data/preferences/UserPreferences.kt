@@ -65,6 +65,12 @@ class UserPreferences @Inject constructor(
     private val _groupNotifications = MutableStateFlow(prefs.getBoolean(KEY_GROUP_NOTIFICATIONS, true))
     val groupNotifications: StateFlow<Boolean> = _groupNotifications.asStateFlow()
     
+    private val _notificationSound = MutableStateFlow(prefs.getString(KEY_NOTIFICATION_SOUND, "") ?: "")
+    val notificationSound: StateFlow<String> = _notificationSound.asStateFlow()
+    
+    private val _notificationSoundName = MutableStateFlow(prefs.getString(KEY_NOTIFICATION_SOUND_NAME, "Default") ?: "Default")
+    val notificationSoundName: StateFlow<String> = _notificationSoundName.asStateFlow()
+    
     // Appearance Settings
     private val _darkModeEnabled = MutableStateFlow(prefs.getBoolean(KEY_DARK_MODE, true))
     val darkModeEnabled: StateFlow<Boolean> = _darkModeEnabled.asStateFlow()
@@ -164,6 +170,15 @@ class UserPreferences @Inject constructor(
         _groupNotifications.value = enabled
     }
     
+    fun setNotificationSound(uri: String, name: String) {
+        prefs.edit {
+            putString(KEY_NOTIFICATION_SOUND, uri)
+            putString(KEY_NOTIFICATION_SOUND_NAME, name)
+        }
+        _notificationSound.value = uri
+        _notificationSoundName.value = name
+    }
+    
     // Appearance Settings Update Functions
     fun setDarkModeEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_DARK_MODE, enabled) }
@@ -240,6 +255,8 @@ class UserPreferences @Inject constructor(
         private const val KEY_VIBRATION = "vibration_enabled"
         private const val KEY_MESSAGE_PREVIEW = "message_preview"
         private const val KEY_GROUP_NOTIFICATIONS = "group_notifications"
+        private const val KEY_NOTIFICATION_SOUND = "notification_sound"
+        private const val KEY_NOTIFICATION_SOUND_NAME = "notification_sound_name"
         
         // Appearance Keys
         private const val KEY_DARK_MODE = "dark_mode_enabled"

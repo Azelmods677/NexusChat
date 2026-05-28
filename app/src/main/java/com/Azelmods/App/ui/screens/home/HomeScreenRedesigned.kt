@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.home
 
+import com.Azelmods.App.data.manager.AppBackgroundManager
+import com.Azelmods.App.data.model.BackgroundType
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -38,6 +40,11 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.Azelmods.App.ui.components.VideoBackgroundPlayer
+import com.Azelmods.App.ui.theme.parseHexColor
+import com.Azelmods.App.ui.theme.linearGradientBrush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +53,7 @@ fun HomeScreenRedesigned(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val backgroundConfig by viewModel.backgroundConfig.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     val themeColor = rememberThemeColor()
@@ -72,7 +80,7 @@ fun HomeScreenRedesigned(
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = Color.Transparent // Transparent to see background
                 )
             )
         },
@@ -92,13 +100,14 @@ fun HomeScreenRedesigned(
                 Text("New Chat")
             }
         },
-        containerColor = Color(0xFF0F0F1A)
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+        containerColor = Color.Transparent // Transparent to see background
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                // Filter chips - IMPROVED VERSION
             // Filter chips - IMPROVED VERSION
             Row(
                 modifier = Modifier
@@ -114,7 +123,7 @@ fun HomeScreenRedesigned(
                             .height(42.dp)
                             .safeClickable { viewModel.onFilterChange(filter) },
                         shape = RoundedCornerShape(21.dp),
-                        color = if (isSelected) Color.Transparent else Color(0xFF1A1A2E)
+                        color = if (isSelected) Color.Transparent else Color.Black.copy(alpha = 0.3f)
                     ) {
                         Box(
                             modifier = if (isSelected) {
@@ -141,6 +150,7 @@ fun HomeScreenRedesigned(
                                     ChatFilter.ALL -> Icons.AutoMirrored.Filled.Chat
                                     ChatFilter.UNREAD -> Icons.Default.MarkChatUnread
                                     ChatFilter.GROUPS -> Icons.Default.Group
+                                    ChatFilter.ARCHIVED -> Icons.Default.Archive
                                 }
                                 
                                 AnimatedVisibility(
@@ -237,15 +247,11 @@ fun HomeScreenRedesigned(
                         ) { chat ->
                             ChatRow(
                                 chat = chat,
-                                onClick = {
-                                    try {
-                                        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                                        val contactId = chat.participantIds.find { 
-                                            it != currentUserId 
-                                        } ?: return@ChatRow
-                                        navController.navigate("chat/$contactId")
-                                    } catch (e: Exception) { }
-                                },
+                        onClick = {
+                            try {
+                                navController.navigate("chat/${chat.chatId}")
+                            } catch (e: Exception) { }
+                        },
                                 onLongPress = {
                                     selectedChat = chat
                                     showBottomSheet = true
@@ -270,49 +276,51 @@ fun HomeScreenRedesigned(
     }
     
     // Bottom sheet for long press actions
-    if (showBottomSheet && selectedChat != null) {
-        ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
-            containerColor = Color(0xFF1A1A2E)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+    selectedChat?.let { chat ->
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showBottomSheet = false },
+                containerColor = Color(0xFF1A1A2E).copy(alpha = 0.95f)
             ) {
-                ChatActionItem(
-                    icon = Icons.Default.PushPin,
-                    text = if (selectedChat!!.isPinned) "Unpin Chat" else "Pin Chat",
-                    onClick = {
-                        viewModel.togglePin(selectedChat!!.chatId)
-                        showBottomSheet = false
-                    }
-                )
-                ChatActionItem(
-                    icon = Icons.AutoMirrored.Filled.VolumeOff,
-                    text = if (selectedChat!!.isMuted) "Unmute" else "Mute",
-                    onClick = {
-                        viewModel.toggleMute(selectedChat!!.chatId)
-                        showBottomSheet = false
-                    }
-                )
-                ChatActionItem(
-                    icon = Icons.Default.Archive,
-                    text = "Archive",
-                    onClick = {
-                        viewModel.archiveChat(selectedChat!!.chatId)
-                        showBottomSheet = false
-                    }
-                )
-                ChatActionItem(
-                    icon = Icons.Default.Delete,
-                    text = "Delete",
-                    textColor = Color(0xFFEF4444),
-                    onClick = {
-                        viewModel.deleteChat(selectedChat!!.chatId)
-                        showBottomSheet = false
-                    }
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    ChatActionItem(
+                        icon = Icons.Default.PushPin,
+                        text = if (chat.isPinned) "Unpin Chat" else "Pin Chat",
+                        onClick = {
+                            viewModel.togglePin(chat.chatId)
+                            showBottomSheet = false
+                        }
+                    )
+                    ChatActionItem(
+                        icon = Icons.Default.NotificationsOff,
+                        text = if (chat.isMuted) "Unmute" else "Mute",
+                        onClick = {
+                            viewModel.toggleMute(chat.chatId)
+                            showBottomSheet = false
+                        }
+                    )
+                    ChatActionItem(
+                        icon = Icons.Default.Archive,
+                        text = "Archive",
+                        onClick = {
+                            viewModel.archiveChat(chat.chatId)
+                            showBottomSheet = false
+                        }
+                    )
+                    ChatActionItem(
+                        icon = Icons.Default.Delete,
+                        text = "Delete",
+                        textColor = Color(0xFFEF4444),
+                        onClick = {
+                            viewModel.deleteChat(chat.chatId)
+                            showBottomSheet = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -347,7 +355,7 @@ fun ChatRow(
                 .fillMaxWidth()
                 .height(80.dp)
                 .safeClickable(onClick = onClick),
-            color = Color(0xFF0F0F1A)
+            color = Color.Transparent
         ) {
             Row(
                 modifier = Modifier
@@ -355,20 +363,8 @@ fun ChatRow(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar with animated gradient ring
+                // Avatar with static gradient ring (no per-item animation)
                 Box {
-                    // Animated gradient ring
-                    val infiniteTransition = rememberInfiniteTransition(label = "ring")
-                    val rotation by infiniteTransition.animateFloat(
-                        initialValue = 0f,
-                        targetValue = 360f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(8000, easing = LinearEasing),
-                            repeatMode = RepeatMode.Restart
-                        ),
-                        label = "rotation"
-                    )
-                    
                     if (unreadCount > 0) {
                         Box(
                             modifier = Modifier
@@ -392,7 +388,7 @@ fun ChatRow(
                         modifier = Modifier
                             .size(58.dp)
                             .align(Alignment.Center)
-                            .background(Color(0xFF0F0F1A), CircleShape)
+                            .background(Color.Black.copy(alpha = 0.2f), CircleShape)
                     )
                     
                     // Avatar with photo support
@@ -413,7 +409,8 @@ fun ChatRow(
                     
                     // Online indicator with pulse animation
                     if (isOnline) {
-                        val scale by infiniteTransition.animateFloat(
+                        val onlineTransition = rememberInfiniteTransition(label = "online_${chat.chatId}")
+                        val scale by onlineTransition.animateFloat(
                             initialValue = 1.0f,
                             targetValue = 1.2f,
                             animationSpec = infiniteRepeatable(
@@ -449,7 +446,7 @@ fun ChatRow(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color(0xFF0F0F1A), CircleShape)
+                                        .background(Color.Black, CircleShape)
                                 )
                             }
                         }
@@ -467,15 +464,32 @@ fun ChatRow(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = contactName,
-                            color = Color.White,
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
-                        )
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (chat.isE2EE) {
+                                Text("🔒", fontSize = 14.sp)
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            if (chat.isMuted) {
+                                Icon(
+                                    Icons.Default.NotificationsOff,
+                                    contentDescription = "Silenciado",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                            }
+                            Text(
+                                text = contactName,
+                                color = Color.White,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         
@@ -719,10 +733,8 @@ fun DemoChatCard(
     onClick: () -> Unit,
     themeColor: Color = MaterialTheme.colorScheme.primary
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "demo_card")
-    
-    // Animated border glow
-    val borderGlow by infiniteTransition.animateFloat(
+    val animatedTransition = rememberInfiniteTransition(label = "demo_card")
+    val borderGlow by animatedTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -732,37 +744,24 @@ fun DemoChatCard(
         label = "border_glow"
     )
     
-    // Rotating gradient
-    val gradientAngle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "gradient_angle"
-    )
-    
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Animated glow border
+        // Static gradient border (no rotation animation to avoid recomposition)
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(80.dp)
         ) {
-            val angleRad = Math.toRadians(gradientAngle.toDouble())
-            
             drawRoundRect(
                 brush = Brush.sweepGradient(
                     listOf(
-                        Color(0xFF7B5CFA).copy(alpha = borderGlow),
-                        Color(0xFF00D4FF).copy(alpha = borderGlow * 0.6f),
-                        Color(0xFFFC5C7D).copy(alpha = borderGlow),
-                        Color(0xFF7B5CFA).copy(alpha = borderGlow)
+                        Color(0xFF7B5CFA).copy(alpha = borderGlow * 0.7f),
+                        Color(0xFF00D4FF).copy(alpha = borderGlow * 0.4f),
+                        Color(0xFFFC5C7D).copy(alpha = borderGlow * 0.7f),
+                        Color(0xFF7B5CFA).copy(alpha = borderGlow * 0.7f)
                     ),
                     center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
                 ),
@@ -777,7 +776,7 @@ fun DemoChatCard(
                 .height(80.dp)
                 .safeClickable(onClick = onClick),
             shape = RoundedCornerShape(16.dp),
-            color = Color(0xFF1A1A2E),
+            color = Color.Black.copy(alpha = 0.3f),
             shadowElevation = 8.dp
         ) {
             Row(

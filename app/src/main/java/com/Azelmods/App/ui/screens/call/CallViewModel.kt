@@ -9,6 +9,7 @@ import com.Azelmods.App.data.model.CallStatus
 import com.Azelmods.App.data.model.CallType
 import com.Azelmods.App.data.model.User
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
+import com.Azelmods.App.service.NotificationHelper
 import com.Azelmods.App.services.CallService
 import com.Azelmods.App.webrtc.WebRTCManager
 import com.google.firebase.auth.FirebaseAuth
@@ -51,6 +52,19 @@ class CallViewModel @Inject constructor(
     val connectionState = webRTCManager.connectionState
     
     private var currentCallId: String? = null
+    /**
+     * Indica si la llamada fue aceptada en algún momento.
+     * Si el estado cambia a ENDED sin que esto sea true, es una llamada perdida.
+     */
+    private var wasAccepted = false
+    /** Nombre de quien llama (guardado para notificación de llamada perdida) */
+    private var callStartCallerName = ""
+    /** Foto de quien llama (guardada para notificación de llamada perdida) */
+    private var callStartCallerPhotoUrl: String? = null
+    /** ID del contacto para devolver la llamada */
+    private var callStartOtherUserId: String? = null
+    /** Si este ViewModel está actuando como receptor (para detectar llamadas perdidas) */
+    private var isReceiverSide = false
     
     init {
         setupWebRTCCallbacks()
@@ -100,15 +114,68 @@ class CallViewModel @Inject constructor(
         }
     }
     
-    fun loadContactProfile(contactId: String) {
+    /**
+     * Load contact profile from a call ID.
+     * First fetches the call data from Firebase to extract the other participant's ID,
+     * then loads their full profile.
+     * Almacena [callStartCallerName] y [callStartCallerPhotoUrl] para usarlos
+     * en la notificación de llamada perdida.
+     */
+    fun loadContactProfileFromCall(callId: String) {
         viewModelScope.launch {
             try {
+                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+                // Step 1: Get call data to find who the caller/receiver is
+                val callData = databaseRepository.getCallData(callId)
+                if (callData == null) {
+                    _contactProfile.value = User(
+                        uid = callId,
+                        name = "Unknown",
+                        username = "",
+                        email = ""
+                    )
+                    return@launch
+                }
+
+                val callerId     = callData["callerId"] as? String ?: ""
+                val receiverId   = callData["receiverId"] as? String ?: ""
+                val callerName   = callData["callerName"] as? String ?: ""
+                val callerPhoto  = callData["callerPhotoUrl"] as? String
+
+                // Store the other user's ID for "Call back" action
+                callStartOtherUserId = if (currentUserId == callerId && receiverId.isNotBlank()) {
+                    receiverId
+                } else if (currentUserId == receiverId && callerId.isNotBlank()) {
+                    callerId
+                } else null
+
+                // Store caller info for missed call notification
+                callStartCallerName = callerName.ifBlank { "Unknown" }
+                callStartCallerPhotoUrl = callerPhoto
+
+                // Step 2: Determine the "other" participant ID
+                val contactId = when {
+                    currentUserId == callerId && receiverId.isNotBlank() -> receiverId
+                    currentUserId == receiverId && callerId.isNotBlank() -> callerId
+                    else -> {
+                        // Can't determine, use callerName as fallback
+                        _contactProfile.value = User(
+                            uid = callId,
+                            name = callStartCallerName,
+                            username = "",
+                            email = ""
+                        )
+                        return@launch
+                    }
+                }
+
+                // Step 3: Fetch full user profile
                 val userData = databaseRepository.getUserById(contactId)
-                
                 if (userData != null) {
-                    val user = User(
+                    _contactProfile.value = User(
                         uid = userData["uid"] as? String ?: contactId,
-                        name = userData["displayName"] as? String ?: userData["name"] as? String ?: "Unknown",
+                        name = userData["displayName"] as? String ?: userData["name"] as? String ?: callStartCallerName,
                         username = userData["username"] as? String ?: "",
                         email = userData["email"] as? String ?: "",
                         photoUrl = userData["photoUrl"] as? String,
@@ -116,14 +183,19 @@ class CallViewModel @Inject constructor(
                         isOnline = userData["isOnline"] as? Boolean ?: false,
                         lastSeen = userData["lastSeen"] as? Long ?: 0L
                     )
-                    
-                    _contactProfile.value = user
+                } else {
+                    _contactProfile.value = User(
+                        uid = contactId,
+                        name = callStartCallerName,
+                        username = "",
+                        email = ""
+                    )
                 }
+
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Set default user on error
                 _contactProfile.value = User(
-                    uid = contactId,
+                    uid = callId,
                     name = "Unknown",
                     username = "",
                     email = ""
@@ -183,29 +255,50 @@ class CallViewModel @Inject constructor(
      * Accept incoming call (receiver side)
      */
     fun acceptCall(callId: String, callType: CallType) {
+        wasAccepted = true
         viewModelScope.launch {
             try {
                 currentCallId = callId
-                
+
                 // Update call status
                 databaseRepository.updateCallStatus(callId, CallStatus.ACCEPTED.name)
-                
+
                 // Initialize WebRTC
                 webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
-                
+
                 // Start foreground service
                 val contactName = _contactProfile.value?.name ?: "Unknown"
                 startCallService(callId, callType, contactName)
-                
-                // Listen to call updates
-                listenToCallUpdates(callId)
-                
+
+                // Only start listener if observeIncomingCall() didn't already start it
+                if (!isReceiverSide) {
+                    listenToCallUpdates(callId)
+                }
+
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
-    
+
+    /**
+     * Start listening to an incoming call BEFORE accepting it.
+     * Esto permite detectar si quien llama cuelga antes de que respondamos
+     * y mostrar la notificación de llamada perdida.
+     *
+     * Debe llamarse desde IncomingCallScreen al cargar el perfil.
+     */
+    fun observeIncomingCall(callId: String) {
+        isReceiverSide = true
+        listenToCallUpdates(callId)
+    }
+
+    /**
+     * Escucha los cambios en la llamada.
+     *
+     * @param isReceiverSide Si es true, detecta llamadas perdidas
+     *                       (cuando status cambia a ENDED sin haber sido ACCEPTED).
+     */
     private fun listenToCallUpdates(callId: String) {
         viewModelScope.launch {
             databaseRepository.listenToCall(callId).collect { callData ->
@@ -216,22 +309,42 @@ class CallViewModel @Inject constructor(
                         webRTCManager.setRemoteDescription(offer, "offer")
                         webRTCManager.createAnswer()
                     }
-                    
+
                     // Handle answer
                     val answer = data["answer"] as? String
                     if (answer != null) {
                         webRTCManager.setRemoteDescription(answer, "answer")
                     }
-                    
+
                     // Handle status changes
                     val status = data["status"] as? String
-                    if (status == CallStatus.ENDED.name || status == CallStatus.DECLINED.name) {
-                        endCall()
+                    when (status) {
+                        CallStatus.ACCEPTED.name -> {
+                            wasAccepted = true
+                        }
+                        CallStatus.ENDED.name -> {
+                            // ── Detectar llamada perdida ──
+                            if (isReceiverSide && !wasAccepted) {
+                                NotificationHelper.showMissedCallNotification(
+                                    context = context,
+                                    callId = callId,
+                                    callerName = callStartCallerName.ifBlank { "Unknown" },
+                                    callerPhotoUrl = callStartCallerPhotoUrl,
+                                    callerId = callStartOtherUserId
+                                )
+                            }
+                            endCall()
+                        }
+                        CallStatus.DECLINED.name -> {
+                            // Si el receptor rechazó activamente, no es "perdida"
+                            // pero aún así limpiamos
+                            endCall()
+                        }
                     }
                 }
             }
         }
-        
+
         // Listen to ICE candidates
         viewModelScope.launch {
             databaseRepository.listenToIceCandidates(callId).collect { candidates ->
@@ -256,6 +369,24 @@ class CallViewModel @Inject constructor(
     /**
      * End call
      */
+    /**
+     * Decline incoming call (receiver side)
+     */
+    fun declineCall(callId: String) {
+        viewModelScope.launch {
+            try {
+                databaseRepository.updateCallStatus(callId, CallStatus.DECLINED.name)
+                val endData = mapOf(
+                    "endTime" to com.google.firebase.database.ServerValue.TIMESTAMP
+                )
+                databaseRepository.updateCallStatus(callId, "DECLINED")
+                currentCallId = null
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+    
     fun endCall() {
         viewModelScope.launch {
             try {

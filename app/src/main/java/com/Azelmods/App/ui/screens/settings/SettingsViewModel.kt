@@ -1,5 +1,8 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.data.manager.AppBackgroundManager
+import com.Azelmods.App.data.model.BackgroundConfig
+import com.Azelmods.App.data.model.BackgroundType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Azelmods.App.data.preferences.UserPreferences
@@ -14,7 +17,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    val appBackgroundManager: AppBackgroundManager
 ) : ViewModel() {
     
     // Account Settings
@@ -36,6 +40,8 @@ class SettingsViewModel @Inject constructor(
     val vibrationEnabled: StateFlow<Boolean> = userPreferences.vibrationEnabled
     val messagePreview: StateFlow<Boolean> = userPreferences.messagePreview
     val groupNotifications: StateFlow<Boolean> = userPreferences.groupNotifications
+    val notificationSound: StateFlow<String> = userPreferences.notificationSound
+    val notificationSoundName: StateFlow<String> = userPreferences.notificationSoundName
     
     // Appearance Settings
     val darkModeEnabled: StateFlow<Boolean> = userPreferences.darkModeEnabled
@@ -136,6 +142,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
     
+    fun setNotificationSound(uri: String, name: String) {
+        viewModelScope.launch {
+            userPreferences.setNotificationSound(uri, name)
+        }
+    }
+    
     // Appearance Update Functions
     fun setDarkModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -158,6 +170,23 @@ class SettingsViewModel @Inject constructor(
     fun setWallpaper(type: String, value: String) {
         viewModelScope.launch {
             userPreferences.setWallpaper(type, value)
+            
+            // Sincronizar con el AppBackgroundManager para que se vea en toda la app
+            when (type) {
+                "image" -> appBackgroundManager.setImageBackground(value)
+                "video" -> appBackgroundManager.setVideoBackground(value)
+                "color" -> appBackgroundManager.setSolidColor(value)
+                "default" -> appBackgroundManager.clearBackground()
+                else -> appBackgroundManager.clearBackground()
+            }
+        }
+    }
+
+    fun setGradientWallpaper(colors: List<String>) {
+        viewModelScope.launch {
+            val colorsString = colors.joinToString(",")
+            userPreferences.setWallpaper("gradient", colorsString)
+            appBackgroundManager.setGradientBackground(colors)
         }
     }
     

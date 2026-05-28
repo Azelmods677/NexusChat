@@ -20,6 +20,7 @@ import com.Azelmods.App.ui.theme.*
 import com.Azelmods.App.utils.CallPermissionHelper
 import com.Azelmods.App.utils.rememberAudioCallPermissionState
 import com.Azelmods.App.utils.rememberVideoCallPermissionState
+import kotlinx.coroutines.delay
 
 /**
  * Call Screen for Audio/Video Calls
@@ -38,6 +39,7 @@ fun CallScreen(
     var isSpeakerOn by remember { mutableStateOf(false) }
     var isVideoEnabled by remember { mutableStateOf(isVideoCall) }
     var showPermissionError by remember { mutableStateOf(false) }
+    var callDuration by remember { mutableStateOf(0) }
     
     // Audio call permission handler
     val audioCallPermissionState = rememberAudioCallPermissionState(
@@ -69,6 +71,15 @@ fun CallScreen(
             videoCallPermissionState.launchPermissionRequest()
         } else {
             audioCallPermissionState.launchPermissionRequest()
+        }
+    }
+    
+    // Call duration timer (only runs when call is active)
+    LaunchedEffect(isCallActive) {
+        if (!isCallActive) return@LaunchedEffect
+        while (true) {
+            delay(1000)
+            callDuration++
         }
     }
     
@@ -126,7 +137,7 @@ fun CallScreen(
                 
                 Text(
                     text = if (isCallActive) {
-                        if (isVideoCall) "Video Call" else "Audio Call"
+                        formatCallTimer(callDuration)
                     } else {
                         "Connecting..."
                     },
@@ -228,6 +239,20 @@ fun CallScreen(
                 containerColor = DarkSurface
             )
         }
+    }
+}
+
+/**
+ * Formats elapsed seconds into a human-readable call timer (MM:SS or HH:MM:SS).
+ */
+private fun formatCallTimer(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, secs)
+    } else {
+        String.format("%02d:%02d", minutes, secs)
     }
 }
 

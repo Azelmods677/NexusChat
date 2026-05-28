@@ -2,12 +2,14 @@ package com.Azelmods.App.ui.components
 
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -22,9 +24,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
@@ -33,11 +38,12 @@ import com.Azelmods.App.ui.theme.rememberThemeColor
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.abs
 
 /**
- * ??? FULL SCREEN IMAGE VIEWER
- * Visor de im�genes a pantalla completa con zoom, pan y descarga
- * Similar a WhatsApp/Telegram
+ * 🖼️ FULL SCREEN IMAGE VIEWER
+ * Visor de imágenes a pantalla completa con zoom, pan, descarga y swipe-to-dismiss
+ * Similar a WhatsApp/Telegram - Usa Dialog fullscreen para cubrir barras del sistema
  */
 @Composable
 fun FullScreenImageViewer(
@@ -47,34 +53,93 @@ fun FullScreenImageViewer(
     onDismiss: () -> Unit,
     onDownload: (() -> Unit)? = null
 ) {
+    // Dialog fullscreen que cubre toda la pantalla incluyendo barras del sistema
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        FullScreenImageContent(
+            imageUrl = imageUrl,
+            senderName = senderName,
+            timestamp = timestamp,
+            onDismiss = onDismiss,
+            onDownload = onDownload
+        )
+    }
+}
+
+@Composable
+private fun FullScreenImageContent(
+    imageUrl: String,
+    senderName: String,
+    timestamp: String,
+    onDismiss: () -> Unit,
+    onDownload: (() -> Unit)?
+) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var showControls by remember { mutableStateOf(true) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val themeColor = rememberThemeColor()
-    
+
+    // Swipe-to-dismiss state
+    var swipeOffsetY by remember { mutableFloatStateOf(0f) }
+    var isDismissing by remember { mutableStateOf(false) }
+    val dismissThreshold = 300f // pixels to trigger dismiss
+
+    // Entrance animation
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { isVisible = true }
+
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isVisible && !isDismissing) 1f else 0f,
+        animationSpec = tween(300),
+        label = "alpha"
+    )
+
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isVisible && !isDismissing) 1f else 0.85f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "scale"
+    )
+
     // Image painter with loading state
     val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(context)
             .data(imageUrl)
             .build()
     )
-    
+
     val imageState = painter.state
-    
-    // Auto-hide controls after 3 seconds
+
+    // Auto-hide controls after 4 seconds
     LaunchedEffect(showControls) {
         if (showControls) {
-            kotlinx.coroutines.delay(3000)
+            kotlinx.coroutines.delay(4000)
             showControls = false
         }
     }
-    
+
+    // Calculate background alpha based on swipe
+    val bgAlpha = if (scale <= 1f) {
+        (1f - (abs(swipeOffsetY) / (dismissThreshold * 2f))).coerceIn(0.3f, 1f)
+    } else 1f
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Color.Black.copy(alpha = bgAlpha * animatedAlpha))
+            .graphicsLayer {
+                this.alpha = animatedAlpha
+                this.scaleX = animatedScale
+                this.scaleY = animatedScale
+            }
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
@@ -87,7 +152,6 @@ fun FullScreenImageViewer(
                             offset = Offset.Zero
                         } else {
                             scale = 2.5f
-                            // Center zoom on tap position
                             val centerX = size.width / 2f
                             val centerY = size.height / 2f
                             offset = Offset(
@@ -98,82 +162,109 @@ fun FullScreenImageViewer(
                     }
                 )
             }
-            .pointerInput(Unit) {
+            .pointerInput(scale) {
                 detectTransformGestures { _, pan, zoom, _ ->
                     scale = (scale * zoom).coerceIn(1f, 5f)
-                    
+
                     if (scale > 1f) {
                         val maxX = (size.width * (scale - 1f)) / 2f
                         val maxY = (size.height * (scale - 1f)) / 2f
-                        
+
                         offset = Offset(
                             x = (offset.x + pan.x).coerceIn(-maxX, maxX),
                             y = (offset.y + pan.y).coerceIn(-maxY, maxY)
                         )
                     } else {
                         offset = Offset.Zero
+                        // Swipe-to-dismiss when not zoomed
+                        swipeOffsetY += pan.y
+                    }
+                }
+            }
+            .pointerInput(scale) {
+                // Detect drag end for swipe-to-dismiss
+                detectDragGestures(
+                    onDragEnd = {
+                        if (scale <= 1f && abs(swipeOffsetY) > dismissThreshold) {
+                            isDismissing = true
+                            onDismiss()
+                        } else {
+                            swipeOffsetY = 0f
+                        }
+                    },
+                    onDragCancel = {
+                        swipeOffsetY = 0f
+                    }
+                ) { _, dragAmount ->
+                    if (scale <= 1f) {
+                        swipeOffsetY += dragAmount.y
                     }
                 }
             }
     ) {
         // Image
-        when (imageState) {
-            is AsyncImagePainter.State.Loading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = themeColor,
-                        modifier = Modifier.size(48.dp)
-                    )
-                }
-            }
-            is AsyncImagePainter.State.Error -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y + (if (scale <= 1f) swipeOffsetY else 0f)
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            when (imageState) {
+                is AsyncImagePainter.State.Loading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.BrokenImage,
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Error al cargar imagen",
-                            color = Color.Gray,
-                            fontSize = 16.sp
+                        CircularProgressIndicator(
+                            color = themeColor,
+                            modifier = Modifier.size(48.dp)
                         )
                     }
                 }
-            }
-            else -> {
-                Image(
-                    painter = painter,
-                    contentDescription = "Full screen image",
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            scaleX = scale
-                            scaleY = scale
-                            translationX = offset.x
-                            translationY = offset.y
-                        },
-                    contentScale = ContentScale.Fit
-                )
+                is AsyncImagePainter.State.Error -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.BrokenImage,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Error al cargar imagen",
+                                color = Color.Gray,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    Image(
+                        painter = painter,
+                        contentDescription = "Full screen image",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
         }
-        
+
         // Top controls
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = showControls,
-            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically(),
-            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically(),
+            enter = fadeIn(tween(200)) + slideInVertically(tween(200)),
+            exit = fadeOut(tween(200)) + slideOutVertically(tween(200)),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
             Surface(
@@ -183,7 +274,7 @@ fun FullScreenImageViewer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -191,21 +282,24 @@ fun FullScreenImageViewer(
                     IconButton(
                         onClick = onDismiss,
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f))
+                            .background(Color.White.copy(alpha = 0.15f))
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = Color.White
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-                    
+
                     // Sender info
                     if (senderName.isNotEmpty()) {
                         Column(
-                            modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 16.dp)
                         ) {
                             Text(
                                 text = senderName,
@@ -224,30 +318,31 @@ fun FullScreenImageViewer(
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
-                    
+
                     // More options
                     IconButton(
                         onClick = { /* TODO: Show options menu */ },
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f))
+                            .background(Color.White.copy(alpha = 0.15f))
                     ) {
                         Icon(
                             Icons.Default.MoreVert,
                             contentDescription = "More",
-                            tint = Color.White
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
             }
         }
-        
+
         // Bottom controls
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = showControls,
-            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it },
-            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it },
+            enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { it },
+            exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { it },
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
             Surface(
@@ -257,7 +352,7 @@ fun FullScreenImageViewer(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -269,7 +364,7 @@ fun FullScreenImageViewer(
                             // TODO: Share image
                         }
                     )
-                    
+
                     // Download button
                     ImageViewerAction(
                         icon = Icons.Default.Download,
@@ -282,24 +377,24 @@ fun FullScreenImageViewer(
                                         ?.result?.image?.asDrawable(context.resources)?.let { drawable ->
                                             (drawable as? BitmapDrawable)?.bitmap
                                         }
-                                    
+
                                     bitmap?.let {
                                         val fileName = "Nexus_Chat_${System.currentTimeMillis()}.jpg"
                                         val file = File(
                                             context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES),
                                             fileName
                                         )
-                                        
+
                                         FileOutputStream(file).use { out ->
                                             it.compress(Bitmap.CompressFormat.JPEG, 95, out)
                                         }
-                                        
+
                                         android.widget.Toast.makeText(
                                             context,
                                             "Imagen guardada en Galería",
                                             android.widget.Toast.LENGTH_SHORT
                                         ).show()
-                                        
+
                                         onDownload?.invoke()
                                     }
                                 } catch (e: Exception) {
@@ -312,7 +407,7 @@ fun FullScreenImageViewer(
                             }
                         }
                     )
-                    
+
                     // Forward button
                     ImageViewerAction(
                         icon = Icons.AutoMirrored.Filled.Forward,
@@ -321,7 +416,7 @@ fun FullScreenImageViewer(
                             // TODO: Forward image
                         }
                     )
-                    
+
                     // Delete button
                     ImageViewerAction(
                         icon = Icons.Default.Delete,
@@ -334,14 +429,43 @@ fun FullScreenImageViewer(
                 }
             }
         }
-        
+
+        // Swipe indicator
+        if (scale <= 1f && abs(swipeOffsetY) > 50f) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 60.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = Color.Black.copy(alpha = 0.6f)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        if (swipeOffsetY > 0) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = "Desliza para cerrar",
+                        color = Color.White,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+
         // Zoom indicator
         if (scale > 1f) {
             Surface(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(16.dp),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 100.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = Color.Black.copy(alpha = 0.6f)
             ) {
                 Text(
@@ -370,7 +494,7 @@ fun ImageViewerAction(
         Surface(
             modifier = Modifier.size(48.dp),
             shape = CircleShape,
-            color = Color.White.copy(alpha = 0.2f)
+            color = Color.White.copy(alpha = 0.15f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(

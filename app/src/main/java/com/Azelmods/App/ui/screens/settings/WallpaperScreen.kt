@@ -35,8 +35,9 @@ fun WallpaperScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val wallpaperType by viewModel.wallpaperType.collectAsState()
-    val wallpaperValue by viewModel.wallpaperValue.collectAsState()
+    val backgroundConfig by viewModel.appBackgroundManager.backgroundConfig.collectAsState(
+        initial = com.Azelmods.App.data.model.BackgroundConfig()
+    )
     
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -46,13 +47,21 @@ fun WallpaperScreen(
         }
     }
     
+    val videoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            viewModel.setWallpaper("video", it.toString())
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat Wallpaper", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text("Fondo de Chat", color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -72,7 +81,7 @@ fun WallpaperScreen(
             // Preview
             item {
                 Text(
-                    text = "Preview",
+                    text = "Previsualización",
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -83,39 +92,17 @@ fun WallpaperScreen(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(220.dp),
+                    color = Color(0xFF1A1A2E)
                 ) {
                     Box {
-                        // Wallpaper background
-                        when (wallpaperType) {
-                            "image" -> {
-                                wallpaperValue.takeIf { it.isNotEmpty() }?.let { uri ->
-                                    AsyncImage(
-                                        model = uri,
-                                        contentDescription = null,
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentScale = ContentScale.Crop,
-                                        alpha = 0.35f
-                                    )
-                                }
-                            }
-                            "color" -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color(wallpaperValue.toLongOrNull() ?: 0xFF1A1A2E))
-                                )
-                            }
-                            else -> {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color(0xFF0F0F1A))
-                                )
-                            }
-                        }
+                        // Real AppBackground preview
+                        com.Azelmods.App.ui.components.AppBackground(
+                            backgroundManager = viewModel.appBackgroundManager,
+                            modifier = Modifier.fillMaxSize()
+                        ) {}
                         
-                        // Mock chat bubbles
+                        // Mock chat bubbles for context
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -125,28 +112,30 @@ fun WallpaperScreen(
                             // Received message
                             Surface(
                                 shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
-                                color = Color(0xFF1A1A2E),
+                                color = Color(0xFF1A1A2E).copy(alpha = 0.8f),
                                 modifier = Modifier.widthIn(max = 250.dp)
                             ) {
                                 Text(
-                                    text = "Hey! How are you?",
+                                    text = "¡Hola! ¿Cómo se ve el nuevo fondo?",
                                     modifier = Modifier.padding(12.dp),
-                                    color = Color.White
+                                    color = Color.White,
+                                    fontSize = 14.sp
                                 )
                             }
                             
                             // Sent message
                             Surface(
                                 shape = RoundedCornerShape(16.dp, 16.dp, 4.dp, 16.dp),
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
                                 modifier = Modifier
                                     .widthIn(max = 250.dp)
                                     .align(Alignment.End)
                             ) {
                                 Text(
-                                    text = "I'm great! Thanks for asking",
+                                    text = "¡Se ve increíble y muy fluido!",
                                     modifier = Modifier.padding(12.dp),
-                                    color = Color.White
+                                    color = Color.White,
+                                    fontSize = 14.sp
                                 )
                             }
                         }
@@ -157,7 +146,7 @@ fun WallpaperScreen(
             // Options
             item {
                 Text(
-                    text = "Wallpaper Options",
+                    text = "Opciones de Fondo",
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -168,63 +157,119 @@ fun WallpaperScreen(
             // Default
             item {
                 WallpaperOption(
-                    title = "Default",
-                    subtitle = "Dark background",
+                    title = "Predeterminado",
+                    subtitle = "Fondo oscuro estándar",
                     icon = Icons.Default.Block,
-                    selected = wallpaperType == "default" || wallpaperType.isEmpty(),
+                    selected = backgroundConfig.type == com.Azelmods.App.data.model.BackgroundType.NONE,
                     onClick = { 
                         viewModel.setWallpaper("default", "")
                     }
                 )
             }
             
-            // Gallery
+            // Gallery — Image
             item {
                 WallpaperOption(
-                    title = "Choose from Gallery",
-                    subtitle = "Select a custom image",
+                    title = "Elegir de Galería",
+                    subtitle = "Selecciona una imagen personalizada",
                     icon = Icons.Default.Image,
-                    selected = wallpaperType == "image",
+                    selected = backgroundConfig.type == com.Azelmods.App.data.model.BackgroundType.IMAGE,
                     onClick = { galleryLauncher.launch("image/*") }
+                )
+            }
+            
+            // Gallery — Video
+            item {
+                WallpaperOption(
+                    title = "Fondo de Video",
+                    subtitle = "Selecciona un video animado",
+                    icon = Icons.Default.Videocam,
+                    selected = backgroundConfig.type == com.Azelmods.App.data.model.BackgroundType.VIDEO,
+                    onClick = { videoLauncher.launch("video/*") }
                 )
             }
             
             // Solid colors
             item {
                 Text(
-                    text = "Solid Colors",
-                    color = Color.Gray,
+                    text = "Colores Sólidos",
+                    color = MaterialTheme.colorScheme.primary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
                 )
                 
-                Row(
+                androidx.compose.foundation.lazy.LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val colors = listOf(
-                        0xFF1A1A2E, 0xFF2D2D44, 0xFF1E3A5F, 0xFF2C5F2D,
-                        0xFF5F2C2C, 0xFF5F4C2C, 0xFF4C2C5F, 0xFF2C4C5F
-                    )
-                    
-                    colors.forEach { colorValue ->
-                        val colorHex = colorValue.toString()
-                        val isSelected = wallpaperType == "color" && wallpaperValue == colorHex
+                    items(com.Azelmods.App.data.model.BackgroundPresets.PRESET_COLORS.size) { index ->
+                        val colorHex = com.Azelmods.App.data.model.BackgroundPresets.PRESET_COLORS[index]
+                        val isSelected = backgroundConfig.type == com.Azelmods.App.data.model.BackgroundType.SOLID_COLOR && 
+                                       backgroundConfig.colorHex == colorHex
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(56.dp)
                                 .clip(CircleShape)
-                                .background(Color(colorValue))
+                                .background(com.Azelmods.App.ui.theme.parseHexColor(colorHex))
                                 .border(
-                                    width = if (isSelected) 3.dp else 0.dp,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    width = if (isSelected) 3.dp else 1.dp,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.2f),
                                     shape = CircleShape
                                 )
                                 .clickable {
                                     viewModel.setWallpaper("color", colorHex)
                                 }
                         )
+                    }
+                }
+            }
+
+            // Gradients
+            item {
+                Text(
+                    text = "Degradados Premium",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                )
+                
+                androidx.compose.foundation.lazy.LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(com.Azelmods.App.data.model.BackgroundPresets.NAMED_GRADIENT_PRESETS.size) { index ->
+                        val preset = com.Azelmods.App.data.model.BackgroundPresets.NAMED_GRADIENT_PRESETS[index]
+                        val isSelected = backgroundConfig.type == com.Azelmods.App.data.model.BackgroundType.GRADIENT && 
+                                       backgroundConfig.gradientColors == preset.colors
+                        
+                        val brush = com.Azelmods.App.ui.theme.linearGradientBrush(preset.colors)
+                        
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable {
+                                viewModel.setGradientWallpaper(preset.colors)
+                            }
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .then(if (brush != null) Modifier.background(brush) else Modifier.background(Color.Gray))
+                                    .border(
+                                        width = if (isSelected) 3.dp else 1.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.2f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                            )
+                            Text(
+                                text = preset.name,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 }
             }

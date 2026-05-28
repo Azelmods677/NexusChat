@@ -126,7 +126,7 @@ fun ActiveCallScreen(
     
     LaunchedEffect(contactId) {
         try {
-            viewModel.loadContactProfile(contactId)
+            viewModel.loadContactProfileFromCall(contactId)
             viewModel.startCall(contactId, if (callType == "video") com.Azelmods.App.data.model.CallType.VIDEO else com.Azelmods.App.data.model.CallType.AUDIO)
         } catch (e: Exception) {
             android.util.Log.e("ActiveCallScreen", "Error initializing call: ${e.message}", e)

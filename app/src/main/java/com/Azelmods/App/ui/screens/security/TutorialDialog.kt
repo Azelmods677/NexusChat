@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -18,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import kotlinx.coroutines.launch
 
 /**
  * Tutorial Dialog
@@ -104,6 +106,7 @@ private fun TutorialSection(section: TutorialSectionData) {
 @Composable
 private fun CodeBlock(code: String) {
     val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     
     Card(
         colors = CardDefaults.cardColors(
@@ -120,7 +123,9 @@ private fun CodeBlock(code: String) {
             ) {
                 IconButton(
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(code))
+                        scope.launch {
+                            clipboardManager.setText(AnnotatedString(code))
+                        }
                     },
                     modifier = Modifier.size(32.dp)
                 ) {

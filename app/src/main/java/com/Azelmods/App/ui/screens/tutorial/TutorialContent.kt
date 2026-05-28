@@ -20,16 +20,16 @@ object TutorialContent {
             icon = "🚀",
             sections = listOf(
                 TutorialSection(
-                    title = "Bienvenido a Nexus Chat",
-                    content = "Nexus Chat es una aplicación de mensajería segura con funciones avanzadas de IA, llamadas y privacidad."
+                    title = "Bienvenido a Azelgram",
+                    content = "Azelgram Messenger es una app de mensajería segura con cifrado extremo a extremo, IA integrada, llamadas HD y herramientas de privacidad avanzadas."
                 ),
                 TutorialSection(
                     title = "Crear tu Cuenta",
-                    content = "1. Abre la aplicación\n2. Toca 'Registrarse'\n3. Ingresa tu correo y contraseña\n4. Completa tu perfil con nombre y foto"
+                    content = "1. Abre la aplicación\n2. Inicia sesión con Google\n3. Completa tu perfil con nombre y foto\n4. ¡Todo cifrado desde el primer mensaje!"
                 ),
                 TutorialSection(
                     title = "Configuración Inicial",
-                    content = "Después de registrarte, configura:\n• Foto de perfil\n• Nombre de usuario\n• Biografía\n• Preferencias de privacidad"
+                    content = "Después de registrarte:\n• Foto de perfil\n• Nombre de usuario\n• Biografía\n• Preferencias de privacidad\n• Bloqueo biométrico (recomendado)"
                 )
             )
         ),
@@ -40,15 +40,19 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Enviar Mensajes",
-                    content = "1. Toca el ícono '+' en la pantalla principal\n2. Selecciona un contacto\n3. Escribe tu mensaje\n4. Toca enviar"
+                    content = "1. Toca '+' en la pantalla principal\n2. Selecciona un contacto\n3. Escribe tu mensaje\n4. Toca enviar\n\n✅ Los mensajes se cifran automáticamente con Signal Protocol."
                 ),
                 TutorialSection(
                     title = "Mensajes Multimedia",
-                    content = "Puedes enviar:\n• Fotos y videos\n• Documentos\n• Ubicación\n• Mensajes de voz\n• Stickers"
+                    content = "Tipos de contenido:\n• Fotos y videos\n• Documentos\n• Mensajes de voz\n• Stickers y emojis"
+                ),
+                TutorialSection(
+                    title = "Cifrado E2EE",
+                    content = "Azelgram utiliza Signal Protocol para cifrar todos los mensajes:\n• Claves efímeras por sesión\n• Perfect Forward Secrecy\n• Solo el emisor y receptor pueden leer\n• Activado por defecto en todos los chats"
                 ),
                 TutorialSection(
                     title = "Chats Grupales",
-                    content = "Crea grupos para chatear con múltiples personas:\n1. Toca 'Nuevo Grupo'\n2. Selecciona contactos\n3. Asigna nombre y foto al grupo"
+                    content = "1. Toca 'Nuevo Grupo'\n2. Selecciona contactos\n3. Asigna nombre y foto\n4. Los mensajes grupales también se cifran"
                 )
             )
         ),
@@ -59,34 +63,38 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Crear una Historia",
-                    content = "1. Toca el ícono de cámara en Historias\n2. Toma una foto o selecciona de galería\n3. Ajusta la posición con gestos\n4. Toca 'Publicar'"
+                    content = "1. Ve a la pestaña Historias\n2. Toca el ícono de cámara\n3. Toma foto o selecciona de galería\n4. Añade texto y emojis draggables\n5. Toca 'Publicar'"
                 ),
                 TutorialSection(
                     title = "Ver Historias",
-                    content = "• Toca el círculo de un contacto para ver su historia\n• Desliza para ver la siguiente\n• Mantén presionado para pausar"
+                    content = "• Toca el círculo de un contacto\n• Desliza para siguiente/anterior\n• Mantén presionado para pausar\n• Swipe down para cerrar\n• Expiran en 24 horas"
                 ),
                 TutorialSection(
-                    title = "Privacidad de Historias",
-                    content = "Controla quién puede ver tus historias:\n• Todos\n• Solo contactos\n• Contactos excepto...\n• Solo compartir con..."
+                    title = "Privacidad",
+                    content = "Control de quién ve tus stories:\n• Todos\n• Solo contactos\n• Contactos excepto...\n• Solo compartir con..."
                 )
             )
         ),
         Tutorial(
             id = "ai_features",
-            title = "Funciones de IA",
+            title = "Azel IA",
             icon = "🤖",
             sections = listOf(
                 TutorialSection(
-                    title = "Azel IA",
-                    content = "Asistente de IA sin censura para:\n• Programación avanzada\n• Hacking ético\n• Exploits y seguridad\n• Consultas técnicas"
+                    title = "Asistente Inteligente",
+                    content = "Azel IA es un asistente sin censura para:\n• Programación avanzada\n• Hacking ético\n• Exploits y seguridad\n• Consultas técnicas\n• Análisis de código"
                 ),
                 TutorialSection(
-                    title = "Usar Azel IA",
-                    content = "1. Ve a 'IA' en el menú\n2. Selecciona 'Azel IA'\n3. Elige una categoría o escribe tu pregunta\n4. Recibe respuestas sin censura"
+                    title = "Modo Cloud (Recomendado)",
+                    content = "Usa Ollama Cloud sin necesidad de hardware local:\n1. Ve a 'IA' en el menú\n2. Selecciona 'Azel IA'\n3. Elige una categoría o escribe tu pregunta\n4. Recibe respuestas en tiempo real"
+                ),
+                TutorialSection(
+                    title = "Modo Local (Opcional)",
+                    content = "Para usuarios con Ollama instalado:\n1. Instala Ollama en tu PC\n2. Descarga modelos (llama3, codellama, etc.)\n3. Inicia: ollama serve\n4. La app se conecta automáticamente"
                 ),
                 TutorialSection(
                     title = "Categorías Disponibles",
-                    content = "• 🔓 Exploits\n• 💻 Hacking\n• 🐍 Python\n• ⚡ JavaScript\n• 🔐 Criptografía\n• 🌐 Redes\n• 🛡️ Seguridad"
+                    content = "• 🔓 Exploits\n• 💻 Hacking\n• 🐍 Python\n• ⚡ JavaScript\n• 🔐 Criptografía\n• 🌐 Redes\n• 🛡️ Seguridad\n• 📱 Android\n• 🐧 Linux"
                 )
             )
         ),
@@ -97,19 +105,19 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Temas",
-                    content = "Personaliza la apariencia:\n• Tema oscuro (predeterminado)\n• Tema claro\n• Tema automático (según hora del día)"
+                    content = "Personaliza la apariencia:\n• Tema oscuro (predeterminado)\n• Tema claro\n• Tema automático (según el sistema)"
                 ),
                 TutorialSection(
-                    title = "Colores de Acento",
-                    content = "Elige tu color favorito:\n• Verde\n• Rojo\n• Azul\n• Morado (predeterminado)\n• Teal\n\nEl color se aplica a toda la interfaz"
+                    title = "15 Colores de Acento",
+                    content = "Elige entre 15 colores:\nVerde, Rojo, Azul, Morado, Teal, Rosa, Naranja, Amarillo, Cian, Índigo, Lima, Ámbar, Marrón, Gris, Azul Gris\n\nEl color se aplica a toda la interfaz."
                 ),
                 TutorialSection(
                     title = "Tamaño de Fuente",
-                    content = "Ajusta el tamaño del texto:\n• Pequeño\n• Mediano (predeterminado)\n• Grande"
+                    content = "Ajustes de texto:\n• Pequeño\n• Mediano (predeterminado)\n• Grande"
                 ),
                 TutorialSection(
                     title = "Fondo de Chat",
-                    content = "Personaliza el fondo de tus chats:\n• Predeterminado\n• Imagen de galería\n• Colores sólidos"
+                    content = "Personaliza fondos:\n• Predeterminado\n• Imagen de galería\n• Colores sólidos\n• Degradados\n• Video wallpaper"
                 )
             )
         ),
@@ -120,19 +128,19 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Navegación por Swipe",
-                    content = "Desliza horizontalmente entre pantallas:\n• Chats ↔ Stories ↔ Calls ↔ Profile\n• Swipe LEFT: Siguiente pantalla\n• Swipe RIGHT: Pantalla anterior\n• Animación suave como WhatsApp"
+                    content = "Desliza horizontalmente entre pantallas:\n• Chats ↔ Stories ↔ Llamadas ↔ Perfil\n• Swipe LEFT: Siguiente pantalla\n• Swipe RIGHT: Pantalla anterior\n• También funciona con tap en íconos"
                 ),
                 TutorialSection(
                     title = "Gestos en Stories",
-                    content = "• Tap izquierda/derecha: Story anterior/siguiente\n• Swipe izquierda/derecha: Usuario anterior/siguiente\n• Long press: Pausar story\n• Swipe down: Cerrar viewer"
+                    content = "• Tap izquierda/derecha: Story anterior/siguiente\n• Swipe izquierda/derecha: Usuario anterior/siguiente\n• Long press: Pausar\n• Swipe down: Cerrar viewer\n• Drag & drop: Mover texto/emojis"
                 ),
                 TutorialSection(
                     title = "Gestos en Fotos",
-                    content = "• Pinch to zoom: Zoom 1x a 4x\n• Drag: Mover imagen en zoom\n• Double tap: Zoom rápido 2x\n• Swipe down: Cerrar viewer"
+                    content = "• Pinch to zoom: 1x a 4x\n• Drag: Mover imagen en zoom\n• Double tap: Zoom rápido 2x\n• Swipe down: Cerrar viewer"
                 ),
                 TutorialSection(
                     title = "Gestos en Chat",
-                    content = "• Long press: Menú contextual\n• Swipe left: Responder rápido\n• Swipe right: Archivar\n• Pull to refresh: Actualizar"
+                    content = "• Long press: Menú contextual (copiar, eliminar, reenviar)\n• Swipe left: Responder rápido\n• Pull to refresh: Actualizar mensajes"
                 )
             )
         ),
@@ -143,15 +151,46 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Configuración de Privacidad",
-                    content = "Controla tu privacidad:\n• Última vez en línea\n• Foto de perfil\n• Información personal\n• Estados"
+                    content = "Controla tu privacidad:\n• Última vez en línea\n• Foto de perfil\n• Información personal\n• Stories\n• Bloqueo biométrico"
+                ),
+                TutorialSection(
+                    title = "Cifrado E2EE",
+                    content = "Signal Protocol integrado:\n• Cifrado extremo a extremo en todos los mensajes\n• Perfect Forward Secrecy\n• Intercambio seguro de claves\n• Sin acceso de terceros al contenido"
+                ),
+                TutorialSection(
+                    title = "Bloqueo Biométrico",
+                    content = "Protege la app con:\n• Huella digital\n• Reconocimiento facial\n• Bloqueo inmediato / 1 min / 5 min\n\nUsa el hardware de seguridad de tu dispositivo."
+                ),
+                TutorialSection(
+                    title = "Tor / Orbot",
+                    content = "Navegación anónima:\n• Orbot Setup: guía de instalación paso a paso\n• Navegación .onion integrada\n• Proxy automático a través de Tor\n• Detección de estado de Orbot en tiempo real"
                 ),
                 TutorialSection(
                     title = "Bloquear Contactos",
-                    content = "Bloquea usuarios no deseados:\n1. Abre el perfil del contacto\n2. Toca 'Más opciones'\n3. Selecciona 'Bloquear'\n4. Confirma la acción"
+                    content = "1. Abre el perfil del contacto\n2. Toca 'Más opciones'\n3. Selecciona 'Bloquear'\n4. El contacto no podrá contactarte"
                 ),
                 TutorialSection(
-                    title = "Seguridad Avanzada",
-                    content = "Funciones de seguridad:\n• Cifrado de extremo a extremo\n• Verificación en dos pasos\n• Bloqueo de aplicación\n• Tor Browser integrado"
+                    title = "Backup Cifrado",
+                    content = "Realiza backups cifrados con AES-256:\n1. Ajustes → Almacenamiento → Crear Backup\n2. Establece una contraseña\n3. Se almacena cifrado en Firebase Storage\n4. Restaura en cualquier dispositivo"
+                )
+            )
+        ),
+        Tutorial(
+            id = "calls",
+            title = "Llamadas",
+            icon = "📞",
+            sections = listOf(
+                TutorialSection(
+                    title = "Llamadas WebRTC",
+                    content = "Llamadas de audio y video HD con WebRTC:\n• Codec Opus para audio\n• VP8/VP9 para video\n• Resoluciones hasta 1080p\n• Cifrado integrado"
+                ),
+                TutorialSection(
+                    title = "Iniciar Llamada",
+                    content = "1. Abre un chat o ve a Llamadas\n2. Tapa en 📞 (audio) o 📹 (video)\n3. Concede los permisos si se solicita\n4. Espera a que el otro usuario acepte"
+                ),
+                TutorialSection(
+                    title = "Controles",
+                    content = "Durante la llamada:\n• 🔇 Mute/Unmute\n• 🔊 Altavoz\n• 📹 Cámara on/off (video)\n• 🔄 Cambiar cámara\n• ❌ Colgar"
                 )
             )
         ),
@@ -161,44 +200,25 @@ object TutorialContent {
             icon = "⚙️",
             sections = listOf(
                 TutorialSection(
-                    title = "Funciones Avanzadas",
-                    content = "Nexus Chat incluye herramientas avanzadas:\n• Automatización de tareas\n• Terminal integrado\n• Herramientas de ciberseguridad\n• Generación de payloads"
+                    title = "Funciones Exclusivas 2026",
+                    content = "Azelgram incluye herramientas avanzadas:\n• Cifrado Signal Protocol (E2EE)\n• Bloqueo biométrico con Android Biometric\n• Tor/Orbot para navegación anónima\n• Backup cifrado AES-256\n• Ollama Cloud IA sin necesidad de hardware\n• Agente autónomo local (en desarrollo)"
                 ),
                 TutorialSection(
-                    title = "Azel IA",
-                    content = "IA avanzada integrada:\n• Chat sin restricciones\n• Conocimiento técnico supremo\n• Análisis de código y vulnerabilidades\n• Generación de exploits\n\nAccede desde el menú 'IA'"
+                    title = "Azel IA - Asistente Inteligente",
+                    content = "IA sin censura integrada:\n• Chat sin restricciones\n• Conocimiento técnico avanzado\n• Análisis de código y vulnerabilidades\n• Streaming de respuestas en tiempo real\n\nAccede desde el menú 'IA'"
                 ),
                 TutorialSection(
-                    title = "Terminal",
-                    content = "Terminal integrado con:\n• Comandos Linux/Unix\n• Acceso al sistema\n• Scripts personalizados\n• Integración con herramientas"
+                    title = "Orbot / Tor",
+                    content = "Privacidad en internet:\n• Guía de instalación de Orbot\n• Conexión automática a la red Tor\n• Navegación de sitios .onion\n• Detección de estado en vivo cada 3s"
                 ),
                 TutorialSection(
-                    title = "CyberSec Toolkit",
-                    content = "Herramientas de seguridad:\n• Escaneo de puertos\n• Análisis de vulnerabilidades\n• Generación de payloads\n• Exploits y pruebas de penetración"
-                )
-            )
-        ),
-        Tutorial(
-            id = "gestures",
-            title = "Gestos Táctiles",
-            icon = "👆",
-            sections = listOf(
-                TutorialSection(
-                    title = "Navegación por Gestos",
-                    content = "Desliza entre pantallas:\n• Swipe derecha: Siguiente tab\n• Swipe izquierda: Tab anterior\n• Tabs: Chats ↔ Stories ↔ Llamadas ↔ Perfil"
-                ),
-                TutorialSection(
-                    title = "Gestos en Historias",
-                    content = "Controles táctiles:\n• Tap: Siguiente historia\n• Long press: Pausar\n• Swipe up: Ver perfil\n• Swipe down: Cerrar"
-                ),
-                TutorialSection(
-                    title = "Visor de Fotos",
-                    content = "Gestos de zoom:\n• Pinch: Zoom 1x-4x\n• Drag: Mover cuando está ampliado\n• Double tap: Zoom rápido\n• Swipe down: Cerrar"
+                    title = "Cifrado E2EE",
+                    content = "Máxima seguridad en tus mensajes:\n• Signal Protocol implementado\n• Cifrado doble ratchet\n• Intercambio de claves X3DH\n• Sin servidores intermediarios que lean tu contenido"
                 )
             )
         )
     )
-    
+
     fun getTutorialById(id: String): Tutorial? {
         return tutorials.find { it.id == id }
     }

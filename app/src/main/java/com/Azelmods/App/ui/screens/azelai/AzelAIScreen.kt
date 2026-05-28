@@ -135,7 +135,12 @@ fun AzelAIScreen(
                                     )
                                 }
                             } else if (state.isThinking) {
-                                item { AzelAIThinkingBubble() }
+                                item {
+                                    AzelAIThinkingBubble(
+                                        elapsedMs = state.thinkingElapsedMs,
+                                        timeoutMs = 60_000L
+                                    )
+                                }
                             }
                         }
                         
@@ -488,18 +493,72 @@ fun ErrorBanner(error: String, onClose: () -> Unit) {
 }
 
 @Composable
-fun AzelAIThinkingBubble() {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(AzelPurple.copy(0.1f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(16.dp))
+fun AzelAIThinkingBubble(
+    elapsedMs: Long = 0L,
+    timeoutMs: Long = 60_000L
+) {
+    val progress = (elapsedMs.toFloat() / timeoutMs.toFloat()).coerceIn(0f, 1f)
+    val timeoutColor = when {
+        progress < 0.7f -> AzelPurple
+        progress < 0.9f -> Color(0xFFED8936) // Naranja cuando se acerca
+        else -> Color(0xFFF56565) // Rojo cuando está por expirar
+    }
+    val elapsedSeconds = elapsedMs / 1000
+    
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(AzelPurple.copy(0.1f)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(12.dp))
+            repeat(3) { i ->
+                val anim = rememberInfiniteTransition(label = "dots").animateFloat(
+                    0.3f, 1f, infiniteRepeatable(tween(600, i * 200), RepeatMode.Reverse), label = "alpha"
+                )
+                Box(Modifier.size(8.dp).clip(CircleShape).background(AzelPurple.copy(anim.value)).padding(2.dp))
+                Spacer(Modifier.width(4.dp))
+            }
         }
-        Spacer(Modifier.width(12.dp))
-        repeat(3) { i ->
-            val anim = rememberInfiniteTransition(label = "dots").animateFloat(
-                0.3f, 1f, infiniteRepeatable(tween(600, i * 200), RepeatMode.Reverse), label = "alpha"
+        
+        // ── Barra de progreso de timeout ────────────────
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 44.dp, end = 44.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier.weight(1f).height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(BorderColor.copy(alpha = 0.5f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(fraction = progress)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(AzelPurple, timeoutColor)
+                            )
+                        )
+                )
+            }
+            Text(
+                text = "${elapsedSeconds}s",
+                color = TextSecondary.copy(alpha = 0.7f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
             )
-            Box(Modifier.size(8.dp).clip(CircleShape).background(AzelPurple.copy(anim.value)).padding(2.dp))
-            Spacer(Modifier.width(4.dp))
+        }
+        if (progress >= 0.85f) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "⚠️ La respuesta está tardando más de lo esperado...",
+                color = timeoutColor.copy(alpha = 0.8f),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 44.dp)
+            )
         }
     }
 }

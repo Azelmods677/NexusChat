@@ -2,8 +2,12 @@ package com.Azelmods.App.ui.screens.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Azelmods.App.data.local.CacheManager
+import com.Azelmods.App.data.local.toChat
+import com.Azelmods.App.data.manager.AppBackgroundManager
 import com.Azelmods.App.data.model.Chat
 import com.Azelmods.App.data.model.ChatType
+import com.Azelmods.App.data.model.User
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,6 +15,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -30,17 +36,22 @@ data class HomeState(
     val participantPhotos: Map<String, String> = emptyMap()
 )
 
-enum class ChatFilter { ALL, UNREAD, GROUPS }
+enum class ChatFilter { ALL, UNREAD, GROUPS, ARCHIVED }
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val databaseRepository: RealtimeDatabaseRepository
+    private val databaseRepository: RealtimeDatabaseRepository,
+    private val cacheManager: CacheManager,
+    private val backgroundManager: AppBackgroundManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
+
+    val backgroundConfig = backgroundManager.backgroundConfig
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {
         loadChats()
@@ -127,6 +138,31 @@ class HomeViewModel @Inject constructor(
             }
 
             try {
+                // ── OFFLINE CACHE: show cached chats immediately ──
+                val cachedEntities = cacheManager.getCachedChats()
+                if (cachedEntities.isNotEmpty()) {
+                    val cachedChats = cachedEntities.map { it.toChat() }
+                    android.util.Log.d("HomeVM", "📦 Loaded ${cachedChats.size} cached chats")
+                    // Aggregate participant info from cache
+                    val allNames = mutableMapOf<String, String>()
+                    val allPhotos = mutableMapOf<String, String>()
+                    cachedChats.forEach { chat ->
+                        allNames.putAll(chat.participantNames)
+                        allPhotos.putAll(chat.participantPhotos)
+                    }
+                    _state.value = _state.value.copy(
+                        chats = cachedChats,
+                        filteredChats = filterChats(
+                            chats = cachedChats,
+                            query = _state.value.searchQuery,
+                            filter = _state.value.selectedFilter
+                        ),
+                        participantNames = allNames,
+                        participantPhotos = allPhotos,
+                        isLoading = false
+                    )
+                }
+
                 databaseRepository.getUserChats(userId).collect { rawChats ->
                     // All Firebase user-profile look-ups run on the IO dispatcher.
                     val enriched: List<Chat> = withContext(Dispatchers.IO) {
@@ -141,6 +177,27 @@ class HomeViewModel @Inject constructor(
                     enriched.forEach { chat ->
                         allNames.putAll(chat.participantNames)
                         allPhotos.putAll(chat.participantPhotos)
+                    }
+
+                    // ── SAVE CHATS TO ROOM CACHE ──
+                    try {
+                        cacheManager.cacheChats(enriched)
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeVM", "Failed to cache chats", e)
+                    }
+
+                    // ── CACHE USER PROFILES too ──
+                    try {
+                        enriched.forEach { chat ->
+                            chat.participantNames.entries.forEach { (uid, name) ->
+                                val photoUrl = chat.participantPhotos[uid]
+                                cacheManager.cacheUser(
+                                    User(uid = uid, name = name, displayName = name, photoUrl = photoUrl)
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("HomeVM", "Failed to cache user profiles", e)
                     }
 
                     _state.value = _state.value.copy(
@@ -245,7 +302,8 @@ class HomeViewModel @Inject constructor(
             chatType = chatType,
             isPinned = isPinned,
             isMuted = isMuted,
-            isArchived = isArchived
+            isArchived = isArchived,
+            isE2EE = data["isE2EE"] as? Boolean ?: true
         )
     }
 
@@ -254,7 +312,10 @@ class HomeViewModel @Inject constructor(
         query: String,
         filter: ChatFilter
     ): List<Chat> {
-        var result = chats.filter { !it.isArchived }
+        var result = when (filter) {
+            ChatFilter.ARCHIVED -> chats.filter { it.isArchived }
+            else -> chats.filter { !it.isArchived }
+        }
 
         // Text search — match against participant display names or last message.
         if (query.isNotBlank()) {
@@ -265,14 +326,12 @@ class HomeViewModel @Inject constructor(
             }
         }
 
-        // Category filter.
         result = when (filter) {
-            ChatFilter.ALL -> result
+            ChatFilter.ALL, ChatFilter.ARCHIVED -> result
             ChatFilter.UNREAD -> {
                 val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 result.filter { (it.unreadCount[uid] ?: 0) > 0 }
             }
-
             ChatFilter.GROUPS -> result.filter { it.chatType == ChatType.GROUP }
         }
 
