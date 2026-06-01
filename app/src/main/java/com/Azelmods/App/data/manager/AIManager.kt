@@ -1,6 +1,7 @@
 package com.Azelmods.App.data.manager
 
 import android.util.Log
+import com.Azelmods.App.data.ai.GeminiContextManager
 import com.Azelmods.App.data.api.AzelAIApiService
 import com.Azelmods.App.data.api.Message
 import com.Azelmods.App.data.api.OllamaApiService
@@ -21,7 +22,8 @@ import javax.inject.Singleton
 class AIManager @Inject constructor(
     private val azelAIApiService: AzelAIApiService,
     private val ollamaService: OllamaApiService,
-    private val openCodeService: OpenCodeApiService
+    private val openCodeService: OpenCodeApiService,
+    private val contextManager: GeminiContextManager
 ) {
     
     companion object {
@@ -54,7 +56,9 @@ class AIManager @Inject constructor(
         try {
             when (provider) {
                 AIProvider.OLLAMA_CLOUD -> {
-                    val messages = buildAzelApiMessages(conversationHistory, userMessage)
+                    // 🛡️ Trim historial antes de enviar a Gemini
+                    val trimmedHistory = contextManager.trimHistory(conversationHistory)
+                    val messages = buildAzelApiMessages(trimmedHistory, userMessage)
                     val selectedModel = model ?: AzelAIApiService.DEEPSEEK_R1_70B
                     
                     azelAIApiService.chatCompletionStream(

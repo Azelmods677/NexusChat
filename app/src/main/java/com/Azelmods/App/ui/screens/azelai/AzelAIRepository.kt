@@ -1,6 +1,7 @@
 package com.Azelmods.App.ui.screens.azelai
 
 import android.util.Log
+import com.Azelmods.App.data.ai.GeminiContextManager
 import com.Azelmods.App.data.api.AzelAIApiService
 import com.Azelmods.App.data.api.Message
 import com.Azelmods.App.data.api.StreamResponse
@@ -24,7 +25,8 @@ import javax.inject.Singleton
  */
 @Singleton
 class AzelAIRepository @Inject constructor(
-    private val apiService: AzelAIApiService
+    private val apiService: AzelAIApiService,
+    private val contextManager: GeminiContextManager
 ) {
     
     companion object {
@@ -40,13 +42,10 @@ class AzelAIRepository @Inject constructor(
         val filteredHistory = conversationHistory
             .filter { !it.isLoading && !it.error && it.role != "system" }
             
-        val recentHistory = if (filteredHistory.size > maxHistory) {
-            filteredHistory.takeLast(maxHistory)
-        } else {
-            filteredHistory
-        }
+        // Usar GeminiContextManager para trim seguro del historial
+        val trimmedHistory = contextManager.trimHistory(filteredHistory, maxHistory)
 
-        val messages = recentHistory
+        val messages = trimmedHistory
             .map { msg -> 
                 // Optimizamos tokens truncando respuestas largas de la IA, pero respetando los prompts del usuario
                 val optimizedContent = if (msg.role == "assistant" && msg.content.length > 1500) {

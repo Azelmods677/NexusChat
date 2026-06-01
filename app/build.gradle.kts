@@ -139,7 +139,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.16.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("androidx.activity:activity-compose:1.10.1")
-    // ── Compose Stability / Performance ────────────────────
+    // ── Compose Stability / Performance 2026 ───────────────
     implementation("androidx.compose.runtime:runtime-tracing:1.7.6")
 
     // ── Compose BOM 2026 ───────────────────────────────────
@@ -157,14 +157,14 @@ dependencies {
     implementation("androidx.compose.ui:ui-util")
     implementation("androidx.compose.material3:material3-window-size-class")
 
-    // ── Navigation 2025 ────────────────────────────────────
+    // ── Navigation 2026 ────────────────────────────────────
     implementation("androidx.navigation:navigation-compose:2.8.5")
 
-    // ── Lifecycle 2025 ─────────────────────────────────────
+    // ── Lifecycle 2026 ─────────────────────────────────────
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
 
-    // ── Hilt 2025 ──────────────────────────────────────────
+    // ── Hilt 2026 ──────────────────────────────────────────
     implementation("com.google.dagger:hilt-android:2.52")
     ksp("com.google.dagger:hilt-android-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
@@ -179,13 +179,13 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-crashlytics-ktx")
 
-    // ── Google Auth 2025 (Credential Manager) ──────────────
+    // ── Google Auth 2026 (Credential Manager) ──────────────
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("androidx.credentials:credentials:1.5.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
-    // ── Coroutines 2025 ────────────────────────────────────
+    // ── Coroutines 2026 ────────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
@@ -197,30 +197,30 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-video:3.1.0")
     implementation("io.coil-kt.coil3:coil-gif:3.1.0")
 
-    // ── Media3 ExoPlayer 2025 ──────────────────────────────
+    // ── Media3 ExoPlayer 2026 ──────────────────────────────
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")
     implementation("androidx.media3:media3-common:1.5.1")
     implementation("androidx.media3:media3-datasource-okhttp:1.5.1")
 
-    // ── Room Database (Offline Cache) ──────────────────────
+    // ── Room Database (Offline Cache) 2026 ─────────────────
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    // ── DataStore 2025 ─────────────────────────────────────
+    // ── DataStore 2026 ─────────────────────────────────────
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.biometric:biometric:1.1.0")
 
-    // ── WorkManager 2025 ───────────────────────────────────
+    // ── WorkManager 2026 ───────────────────────────────────
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
-    // ── Networking 2025 ────────────────────────────────────
+    // ── Networking 2026 ────────────────────────────────────
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.squareup.okhttp3:okhttp-sse:4.12.0") // SSE para streaming
 
-    // ── Serialization 2025 ─────────────────────────────────
+    // ── Serialization 2026 ─────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.json:json:20240303")
 
@@ -245,7 +245,7 @@ dependencies {
     implementation("org.smali:dexlib2:2.5.2")
     implementation("org.smali:baksmali:2.5.2")
 
-    // ── Cryptography 2025 ──────────────────────────────────
+    // ── Cryptography 2026 ──────────────────────────────────
     implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
     
