@@ -199,7 +199,7 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Resolve the "other" participant from chats/{chatId}/members (list of UIDs)
+                // Resolve the "other" participant safely handling both List and Map structures
                 val membersSnapshot = FirebaseDatabase.getInstance().reference
                     .child("chats")
                     .child(chatId)
@@ -207,9 +207,12 @@ class ChatViewModel @Inject constructor(
                     .get()
                     .await()
 
-                val otherUid = membersSnapshot.children
-                    .mapNotNull { it.getValue(String::class.java) }
-                    .firstOrNull { it != currentUserId }
+                val uids = when (val value = membersSnapshot.value) {
+                    is List<*> -> value.filterIsInstance<String>()
+                    is Map<*, *> -> value.keys.filterIsInstance<String>()
+                    else -> emptyList()
+                }
+                val otherUid = uids.firstOrNull { it != currentUserId }
 
                 val contact: User? = if (otherUid != null) {
                     databaseRepository.getUserById(otherUid)?.let { data ->
@@ -260,11 +263,16 @@ class ChatViewModel @Inject constructor(
                             val isEncrypted = data["isEncrypted"] as? Boolean ?: false
                             val payload = data["encryptedPayload"] as? String
                             if (isEncrypted && !payload.isNullOrBlank() && senderId != currentUserId) {
-                                val bytes = Base64.decode(payload, Base64.NO_WRAP)
-                                when (val dec = decryptMessageUseCase(senderId, bytes, MessageType.WHISPER)) {
-                                    is com.Azelmods.App.data.security.encryption.DecryptionResult.Success ->
-                                        content = dec.plaintext
-                                    else -> content = "🔒 No se pudo descifrar"
+                                try {
+                                    val bytes = Base64.decode(payload, Base64.NO_WRAP)
+                                    when (val dec = decryptMessageUseCase(senderId, bytes, MessageType.WHISPER)) {
+                                        is com.Azelmods.App.data.security.encryption.DecryptionResult.Success ->
+                                            content = dec.plaintext
+                                        else -> content = "🔒 No se pudo descifrar"
+                                    }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("ChatViewModel", "Decryption crash prevented", e)
+                                    content = "🔒 Error de descifrado"
                                 }
                             }
                             Message(
@@ -703,11 +711,16 @@ class ChatViewModel @Inject constructor(
                     val isEncrypted = data["isEncrypted"] as? Boolean ?: false
                     val payload = data["encryptedPayload"] as? String
                     if (isEncrypted && !payload.isNullOrBlank() && senderId != currentUserId) {
-                        val bytes = Base64.decode(payload, Base64.NO_WRAP)
-                        when (val dec = decryptMessageUseCase(senderId, bytes, MessageType.WHISPER)) {
-                            is com.Azelmods.App.data.security.encryption.DecryptionResult.Success ->
-                                content = dec.plaintext
-                            else -> content = "🔒 No se pudo descifrar"
+                        try {
+                            val bytes = Base64.decode(payload, Base64.NO_WRAP)
+                            when (val dec = decryptMessageUseCase(senderId, bytes, MessageType.WHISPER)) {
+                                is com.Azelmods.App.data.security.encryption.DecryptionResult.Success ->
+                                    content = dec.plaintext
+                                else -> content = "🔒 No se pudo descifrar"
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("ChatViewModel", "Decryption crash prevented in loadMore", e)
+                            content = "🔒 Error de descifrado"
                         }
                     }
                     Message(
