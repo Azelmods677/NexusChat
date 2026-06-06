@@ -708,7 +708,7 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 
 ## Registro de Cambios
 
-### v2.0.0 - Actualización Mayor (2025)
+### v2.0.0 - Actualización Mayor (2026)
 
 #### 🤖 AzelAI - Asistente de IA
 - Integración de múltiples proveedores de IA (OpenAI, Anthropic, Google, Groq, Ollama)
@@ -818,7 +818,7 @@ Agrega el SHA-1 resultante en **Firebase Console > Configuracion del proyecto > 
 
 ## Licencia
 
-**MIT License** - Copyright (c) 2025 AzelMods677
+**MIT License** - Copyright (c) 2026 AzelMods677
 
 Se concede permiso, de forma gratuita, a cualquier persona que obtenga una copia de este software para utilizarlo sin restriccion, incluyendo los derechos a usar, copiar, modificar, fusionar, publicar, distribuir, sublicenciar y/o vender copias, sujeto a que el aviso de copyright anterior se incluya en todas las copias.
 
