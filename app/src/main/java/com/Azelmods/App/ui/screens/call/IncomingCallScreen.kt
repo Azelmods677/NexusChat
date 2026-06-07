@@ -122,7 +122,7 @@ fun IncomingCallScreen(
 
             // Contact name
             Text(
-                text = contact?.name ?: "Unknown",
+                text = contact?.name ?: "Anónimo",
                 color = Color.White,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold
@@ -221,13 +221,28 @@ fun IncomingCallScreen(
                 SideActionButton(
                     icon = Icons.AutoMirrored.Filled.Message,
                     label = "Message",
-                    onClick = { }
+                    onClick = {
+                        // Reply with a message: decline the call and open the chat.
+                        if (callId.isNotBlank()) viewModel.declineCall(callId)
+                        val peerId = contact?.uid?.takeIf { it.isNotBlank() }
+                        if (peerId != null) {
+                            navController.navigate("chat/$peerId") {
+                                popUpTo("incoming_call/$callId/$callType") { inclusive = true }
+                            }
+                        } else {
+                            navController.navigateUp()
+                        }
+                    }
                 )
 
                 SideActionButton(
                     icon = Icons.Default.Alarm,
                     label = "Remind me",
-                    onClick = { }
+                    onClick = {
+                        // Dismiss the incoming call (declines) and go back.
+                        if (callId.isNotBlank()) viewModel.declineCall(callId)
+                        navController.navigateUp()
+                    }
                 )
             }
 

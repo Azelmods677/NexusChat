@@ -824,7 +824,7 @@ fun StoryViewerScreen(
                                 ?: viewer["name"] as? String
                                 ?: viewer["username"] as? String
                                 ?: viewer["uid"] as? String
-                                ?: "Unknown"
+                                ?: "Anónimo"
                             val viewerPhoto = viewer["photoUrl"] as? String
 
                             Row(

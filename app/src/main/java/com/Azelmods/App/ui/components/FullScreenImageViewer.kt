@@ -40,6 +40,7 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.abs
 
+@Suppress("USELESS_IS_CHECK")
 /**
  * 🖼️ FULL SCREEN IMAGE VIEWER
  * Visor de imágenes a pantalla completa con zoom, pan, descarga y swipe-to-dismiss
@@ -115,6 +116,12 @@ private fun FullScreenImageContent(
     )
 
     val imageState = painter.state
+
+    // Extracts the currently-loaded bitmap (if the image finished loading).
+    fun extractBitmap(): Bitmap? =
+        (painter.state as? AsyncImagePainter.State.Success)
+            ?.result?.image?.asDrawable(context.resources)
+            ?.let { (it as? BitmapDrawable)?.bitmap }
 
     // Auto-hide controls after 4 seconds
     LaunchedEffect(showControls) {
@@ -361,7 +368,13 @@ private fun FullScreenImageContent(
                         icon = Icons.Default.Share,
                         label = "Compartir",
                         onClick = {
-                            // TODO: Share image
+                            val bmp = extractBitmap()
+                            if (bmp == null) {
+                                android.widget.Toast.makeText(context, "Espera a que cargue la imagen", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                val ok = com.Azelmods.App.ui.utils.ImageActions.shareImage(context, bmp)
+                                if (!ok) android.widget.Toast.makeText(context, "No se pudo compartir", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         }
                     )
 
@@ -371,49 +384,33 @@ private fun FullScreenImageContent(
                         label = "Descargar",
                         onClick = {
                             scope.launch {
-                                try {
-                                    // Download image - Coil 3 uses .image instead of .drawable
-                                    val bitmap = (painter.state as? AsyncImagePainter.State.Success)
-                                        ?.result?.image?.asDrawable(context.resources)?.let { drawable ->
-                                            (drawable as? BitmapDrawable)?.bitmap
-                                        }
-
-                                    bitmap?.let {
-                                        val fileName = "Nexus_Chat_${System.currentTimeMillis()}.jpg"
-                                        val file = File(
-                                            context.getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES),
-                                            fileName
-                                        )
-
-                                        FileOutputStream(file).use { out ->
-                                            it.compress(Bitmap.CompressFormat.JPEG, 95, out)
-                                        }
-
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            "Imagen guardada en Galería",
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
-
-                                        onDownload?.invoke()
-                                    }
-                                } catch (e: Exception) {
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Error al descargar: ${e.message}",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
+                                val bmp = extractBitmap()
+                                if (bmp == null) {
+                                    android.widget.Toast.makeText(context, "Espera a que cargue la imagen", android.widget.Toast.LENGTH_SHORT).show()
+                                    return@launch
                                 }
+                                val ok = com.Azelmods.App.ui.utils.ImageActions.saveToGallery(context, bmp)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    if (ok) "Imagen guardada en la Galería" else "Error al guardar la imagen",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                                if (ok) onDownload?.invoke()
                             }
                         }
                     )
 
-                    // Forward button
+                    // Forward button (uses the system share sheet to forward anywhere)
                     ImageViewerAction(
                         icon = Icons.AutoMirrored.Filled.Forward,
                         label = "Reenviar",
                         onClick = {
-                            // TODO: Forward image
+                            val bmp = extractBitmap()
+                            if (bmp == null) {
+                                android.widget.Toast.makeText(context, "Espera a que cargue la imagen", android.widget.Toast.LENGTH_SHORT).show()
+                            } else {
+                                com.Azelmods.App.ui.utils.ImageActions.shareImage(context, bmp)
+                            }
                         }
                     )
 
@@ -423,7 +420,11 @@ private fun FullScreenImageContent(
                         label = "Eliminar",
                         color = Color(0xFFEF4444),
                         onClick = {
-                            // TODO: Delete image
+                            android.widget.Toast.makeText(
+                                context,
+                                "Para eliminar, mantén presionado el mensaje en el chat",
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
                         }
                     )
                 }

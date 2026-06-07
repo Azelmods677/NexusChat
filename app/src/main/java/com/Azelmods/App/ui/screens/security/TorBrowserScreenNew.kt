@@ -360,8 +360,8 @@ fun TorBrowserScreenNew(
                             },
                         placeholder = {
                             Text(
-                                if (proxyEnabled) "Buscar o ingresar URL (.onion compatible)"
-                                else "Buscar o ingresar URL",
+                                if (proxyEnabled) "Buscar o ingresar URL — .onion disponible 🧅"
+                                else "Buscar o ingresar URL (solo clearnet)",
                                 color = Color.Gray,
                                 fontSize = 13.sp
                             )
@@ -568,10 +568,12 @@ private fun clearOrbotProxy() {
  * Manejo especial para .onion:
  * - Los enlaces .onion siempre usan http:// (no https://)
  * - Se valida el formato correcto de direcciones .onion
+ * - DuckDuckGo tiene soporte nativo para buscar en la dark web cuando usas Tor
  * 
- * DuckDuckGo:
- * - Búsquedas normales usan HTTPS
- * - Soporte para búsquedas en la dark web cuando Tor está activo
+ * DuckDuckGo Onion:
+ * - Búsquedas normales: https://duckduckgo.com
+ * - Con Tor activo: puedes acceder a https://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion
+ * - Los resultados .onion se muestran automáticamente cuando usas Tor
  */
 private fun processUrl(input: String): String {
     val trimmed = input.trim()
@@ -579,19 +581,27 @@ private fun processUrl(input: String): String {
         // URLs completas (http:// o https://)
         trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
         
-        // Enlaces .onion (siempre usar http://)
-        trimmed.endsWith(".onion") || trimmed.contains(".onion/") -> {
-            if (trimmed.contains("://")) trimmed else "http://$trimmed"
+        // Enlaces .onion (siempre usar http:// - Tor no soporta HTTPS en .onion)
+        trimmed.endsWith(".onion") || trimmed.contains(".onion/") || trimmed.contains(".onion?") -> {
+            val cleanUrl = if (trimmed.contains("://")) {
+                // Si ya tiene protocolo, forzar http://
+                trimmed.replaceFirst("https://", "http://")
+            } else {
+                "http://$trimmed"
+            }
+            Log.d(TAG, "🧅 URL .onion detectada: $cleanUrl")
+            cleanUrl
         }
         
         // URLs sin protocolo pero con dominio
         trimmed.contains(".") && !trimmed.contains(" ") -> {
             // Si parece una URL .onion sin protocolo
-            if (trimmed.endsWith(".onion")) "http://$trimmed"
+            if (trimmed.contains(".onion")) "http://$trimmed"
             else "https://$trimmed"
         }
         
-        // Búsqueda en DuckDuckGo
+        // Búsqueda en DuckDuckGo (clearnet)
+        // Nota: DuckDuckGo automáticamente muestra resultados .onion cuando detecta Tor
         else -> "https://duckduckgo.com/?q=${java.net.URLEncoder.encode(trimmed, "UTF-8")}"
     }
 }
@@ -696,6 +706,7 @@ private fun getSuggestionsForError(errorCode: Int, url: String): String {
 
 /**
  * Página de ayuda cuando un sitio .onion no carga (Orbot inactivo).
+ * Incluye instrucciones claras y enlaces .onion de ejemplo para probar.
  */
 private fun getOnionHelpPage(url: String): String = """
 <!DOCTYPE html>
@@ -742,11 +753,33 @@ private fun getOnionHelpPage(url: String): String = """
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             padding: 24px;
+            margin-bottom: 16px;
         }
         .steps h3 { margin-bottom: 16px; font-size: 18px; color: #7C3AED; }
         .steps ol { padding-left: 20px; }
         .steps li { margin: 12px 0; color: #CCCCCC; line-height: 1.6; }
         .steps strong { color: #00D4FF; }
+        .examples {
+            text-align: left;
+            background: rgba(0, 255, 102, 0.05);
+            border: 1px solid rgba(0, 255, 102, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .examples h3 { margin-bottom: 12px; font-size: 16px; color: #00FF66; }
+        .examples p { font-size: 13px; color: #AAAAAA; margin-bottom: 12px; }
+        .examples code {
+            display: block;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00D4FF;
+            margin: 6px 0;
+            word-break: break-all;
+        }
         .brand { margin-top: 24px; font-size: 13px; color: #666666; }
     </style>
 </head>
@@ -754,19 +787,29 @@ private fun getOnionHelpPage(url: String): String = """
     <div class="container">
         <div class="onion-icon">🧅</div>
         <h1>Sitio .onion detectado</h1>
-        <p>Los sitios .onion solo son accesibles a través de la red Tor. Necesitas Orbot para acceder.</p>
+        <p>Los sitios .onion solo son accesibles a través de la red Tor. Necesitas <strong>Orbot</strong> activo para acceder.</p>
         <div class="url-box">$url</div>
         <div class="steps">
-            <h3>🔐 Pasos para acceder</h3>
+            <h3>🔐 Cómo acceder a sitios .onion</h3>
             <ol>
-                <li><strong>1.</strong> Descarga e instala <strong>Orbot</strong> desde Google Play Store</li>
-                <li><strong>2.</strong> Abre Orbot y presiona el botón <strong>"Iniciar"</strong></li>
-                <li><strong>3.</strong> Espera a que se conecte a la red Tor (puede tardar 1-2 minutos)</li>
-                <li><strong>4.</strong> Vuelve a este navegador y recarga la página</li>
-                <li><strong>5.</strong> ¡Listo! El sitio .onion se cargará a través de Tor</li>
+                <li><strong>1.</strong> Descarga <strong>Orbot</strong> desde Google Play Store o F-Droid</li>
+                <li><strong>2.</strong> Abre Orbot y presiona el botón <strong>"Iniciar"</strong> (ícono de cebolla)</li>
+                <li><strong>3.</strong> Espera a que se conecte a Tor (1-2 minutos) hasta ver "Conectado a la red Tor"</li>
+                <li><strong>4.</strong> Vuelve a <strong>NexusChat</strong> y presiona <strong>Recargar</strong> en la barra superior</li>
+                <li><strong>5.</strong> ¡Listo! El sitio .onion se cargará automáticamente</li>
             </ol>
         </div>
-        <div class="brand">Azelgram — Navegación Privada con Tor</div>
+        <div class="examples">
+            <h3>✅ Sitios .onion para probar</h3>
+            <p>Una vez que Orbot esté activo, prueba estos enlaces:</p>
+            <code>http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion</code>
+            <code>http://thehiddenwiki.onion</code>
+            <code>http://3g2upl4pq6kufc4m.onion</code>
+        </div>
+        <p style="font-size: 13px; color: #888888;">
+            💡 DuckDuckGo automáticamente te mostrará resultados .onion cuando uses Tor
+        </p>
+        <div class="brand">NexusChat — Navegación Privada con Tor</div>
     </div>
 </body>
 </html>
@@ -829,26 +872,55 @@ private fun WebView.setupWebView(
                 return try {
                     val url = request?.url?.toString() ?: return false
                     
-                    // Verificar si es un enlace .onion y Tor no está activo
-                    if (url.contains(".onion") && !proxyEnabled()) {
-                        Log.w(TAG, "⚠️ Intento de cargar .onion sin Tor activo: $url")
-                        val helpHtml = getOnionHelpPage(url)
-                        view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
+                    Log.d(TAG, "🔗 Intentando cargar URL: $url")
+                    
+                    // Verificar si es un enlace .onion
+                    val isOnionUrl = url.contains(".onion")
+                    
+                    if (isOnionUrl) {
+                        // Verificar si Tor está activo
+                        val torActive = proxyEnabled()
                         
-                        scope.launch {
-                            try {
-                                snackbarHostState.showSnackbar(
-                                    message = "🧅 Los sitios .onion requieren Orbot activo",
-                                    duration = SnackbarDuration.Long
-                                )
-                            } catch (e: Exception) {
-                                Log.e(TAG, "❌ Error mostrando snackbar", e)
+                        if (!torActive) {
+                            // Tor NO está activo - mostrar página de ayuda
+                            Log.w(TAG, "⚠️ Intento de cargar .onion sin Tor activo: $url")
+                            val helpHtml = getOnionHelpPage(url)
+                            view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
+                            
+                            scope.launch {
+                                try {
+                                    snackbarHostState.showSnackbar(
+                                        message = "🧅 Los sitios .onion requieren Orbot activo. Abre Orbot y recarga.",
+                                        duration = SnackbarDuration.Long
+                                    )
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "❌ Error mostrando snackbar", e)
+                                }
                             }
+                            return true // Bloquear la carga
+                        } else {
+                            // Tor está activo - permitir carga del .onion
+                            Log.d(TAG, "✅ Tor activo - cargando .onion: $url")
+                            
+                            // Asegurar que la URL usa http:// (no https://)
+                            val correctedUrl = if (url.startsWith("https://") && url.contains(".onion")) {
+                                url.replaceFirst("https://", "http://")
+                            } else {
+                                url
+                            }
+                            
+                            if (correctedUrl != url) {
+                                Log.d(TAG, "🔧 Corrigiendo protocolo .onion: $correctedUrl")
+                                view?.loadUrl(correctedUrl)
+                                return true
+                            }
+                            
+                            return false // Permitir la carga normal
                         }
-                        return true // Bloquear la carga
                     }
                     
-                    false // Permitir la carga normal
+                    // URLs normales (no .onion) - permitir siempre
+                    false
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Error en shouldOverrideUrlLoading", e)
                     false

@@ -195,7 +195,7 @@ fun ActiveCallScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Text(
-                    text = contact?.name ?: "Unknown",
+                    text = contact?.name ?: "Anónimo",
                     color = Color.White,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
@@ -326,7 +326,7 @@ fun ActiveCallScreen(
                     
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = contact?.name ?: "Unknown",
+                            text = contact?.name ?: "Anónimo",
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold

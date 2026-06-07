@@ -2,6 +2,9 @@ package com.Azelmods.App.di
 
 import android.content.Context
 import androidx.credentials.CredentialManager
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import com.Azelmods.App.data.demo.DemoAccountManager
 import com.Azelmods.App.data.local.AppDatabase
 import com.Azelmods.App.data.local.CacheManager
@@ -18,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 import com.Azelmods.App.R
+
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "session_prefs")
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -91,5 +96,15 @@ object AppModule {
         db: AppDatabase
     ): CacheManager {
         return CacheManager(db)
+    }
+
+    // ── DataStore (Session Persistence) ─────────────
+    
+    @Provides
+    @Singleton
+    fun provideDataStore(
+        @ApplicationContext context: Context
+    ): DataStore<Preferences> {
+        return context.dataStore
     }
 }

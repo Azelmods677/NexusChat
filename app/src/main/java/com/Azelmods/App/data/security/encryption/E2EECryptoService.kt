@@ -23,6 +23,7 @@ import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Suppress("DEPRECATION")
 /**
  * E2EE: ECDH (curva elíptica del sistema) + AES-256-GCM.
  * Claves públicas en Firebase: users/{uid}/keys/identityPublic

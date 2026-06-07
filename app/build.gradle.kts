@@ -32,8 +32,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 200
-        versionName = "2.0.0"
+        versionCode = 300
+        versionName = "3.0.0"
         
         buildConfigField("String", "OLLAMA_API_KEY", "\"$ollamaApiKey\"")
         buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")

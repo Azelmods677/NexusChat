@@ -16,6 +16,8 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Suppress("DEPRECATION")
+
 /**
  * Secure storage for Signal Protocol keys using Android Keystore.
  *

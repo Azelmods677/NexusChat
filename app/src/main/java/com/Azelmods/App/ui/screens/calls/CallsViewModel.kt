@@ -90,7 +90,7 @@ class CallsViewModel @Inject constructor(
         val userName = (otherUser?.get("displayName") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (otherUser?.get("username") as? String)
-            ?: "Unknown"
+            ?: "Anónimo"
         val photoUrl = (otherUser?.get("photoUrl") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (otherUser?.get("profilePhotoUrl") as? String)

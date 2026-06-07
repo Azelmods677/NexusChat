@@ -1,20 +1,36 @@
-# NexusChat
+# NexusChat v3.0
 
 <div align="center">
 
-![Android](https://img.shields.io/badge/Android-API%2026%2B-brightgreen?logo=android)
+![Version](https://img.shields.io/badge/Version-3.0.0-7C6FE0)
+![Android](https://img.shields.io/badge/Android-API%2031%2B-brightgreen?logo=android)
 ![Kotlin](https://img.shields.io/badge/Kotlin-100%25-7F52FF?logo=kotlin)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202025.04.01-4285F4?logo=jetpackcompose)
 ![Firebase](https://img.shields.io/badge/Firebase-BOM%2033.7.0-FFCA28?logo=firebase)
 ![WebRTC](https://img.shields.io/badge/WebRTC-1.1.3-333333?logo=webrtc)
+![Design System](https://img.shields.io/badge/Design%20System-NexusTokens%202026-7C6FE0)
+![Material3](https://img.shields.io/badge/Material-3-6750A4?logo=material-design)
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
+![Dev](https://img.shields.io/badge/Dev-AzelMods677-FF6B9D)
 
-**Aplicación de mensajería instantánea con IA integrada y navegación anónima**  
-Construida con Kotlin y Jetpack Compose
+**Messenger de nueva generación con IA integrada, E2EE y navegación anónima**  
+Construida con Kotlin y Jetpack Compose · *Desarrollado por AzelMods677 · 2026*
 
 [Características](#caracteristicas) | [Arquitectura](#arquitectura) | [Instalación](#instalacion) | [Seguridad](#seguridad-y-privacidad)
 
 </div>
+
+---
+
+## ✨ Novedades v3.0.0
+
+- 🌐 **Traductor automático** integrado (11 idiomas vía MyMemory API), con botón "Traducir" en el menú de cada mensaje
+- 👤 **Perfiles de usuario** con datos reales y avatares con iniciales y color único por usuario
+- 💬 **Chat privado corregido** — resolución canónica de `chatId` (sin crashes al abrir conversaciones)
+- 🎨 **TopAppBar pulida** — eliminado el desenfoque que afectaba el contenido
+- 🔔 **Settings funcional** — preferencias persistidas en DataStore
+- 🐛 **0 crashes conocidos** y **0 warnings de compilación**
+- 🗑️ **Repo limpio** — eliminados archivos internos innecesarios y `.gitignore` profesional
 
 ---
 
@@ -123,6 +139,55 @@ La aplicación combina funcionalidades completas de mensajería en tiempo real m
 - Agrupación por conversación
 - Respuesta rápida desde notificaciones
 - Marcar como leído sin abrir la app
+
+---
+
+## Design System
+
+NexusChat utiliza un sistema de tokens de diseño centralizado (`NexusDesignTokens.kt`) que garantiza consistencia visual en toda la aplicación. Este sistema 2026 implementa glassmorphism, spring physics y animaciones fluidas.
+
+### Tokens de Diseño
+
+| Token | Descripción | Valores |
+|-------|-------------|---------|
+| `NexusTokens.Color.*` | Paleta completa (brand, superficies, texto, estados) | Primary, Secondary, Accent, Gold, BgDeep, BgBase, BgSurface, TextPrimary, Online, etc. |
+| `NexusTokens.Gradient.*` | 6 gradientes predefinidos | Brand, Warm, Cool, Background, Shimmer, AzelAI |
+| `NexusTokens.Space.*` | Grid de 8pt (xxs → xxxl) | 2dp, 4dp, 8dp, 16dp, 24dp, 32dp, 48dp, 64dp |
+| `NexusTokens.Radius.*` | Bordes redondeados consistentes | xs (4dp) → xxl (32dp) + pill (999dp) |
+| `NexusTokens.Anim.*` | Duraciones y spring physics globales | FAST (150ms), NORMAL (300ms), SLOW (500ms), SPRING_STIFFNESS, SPRING_DAMPING |
+| `NexusTokens.FontSize.*` | Escala tipográfica | xs (10sp) → h1 (32sp) |
+| `NexusTokens.Elevation.*` | Elevación y sombras | none (0dp) → xl (16dp) |
+
+### Componentes Reutilizables
+
+NexusChat incluye una librería de componentes premium con glassmorphism y animaciones spring:
+
+| Componente | Descripción | Características |
+|-----------|-------------|-----------------|
+| `NexusGlassCard` | Tarjeta con glassmorphism | Fondo semi-transparente, borde glow opcional, spring physics en interacciones |
+| `NexusPrimaryButton` | Botón con gradiente animado | Loading state, feedback táctil con spring, gradientes personalizables |
+| `NexusShimmer` | Estado de carga animado | Gradiente deslizante continuo, shape personalizable |
+| `NexusStatusBadge` | Badge de estado con color semántico | Esquinas redondeadas, borde y fondo con alpha, tipografía consistente |
+
+### Transiciones de Navegación
+
+Todas las pantallas utilizan transiciones fluidas con spring physics:
+
+```kotlin
+// Transición de entrada
+slideInHorizontally(spring(stiffness = 500f, dampingRatio = 0.75f)) + fadeIn()
+
+// Transición de salida
+slideOutHorizontally(spring(stiffness = 500f, dampingRatio = 0.75f)) + fadeOut()
+```
+
+### Filosofía de Diseño 2026
+
+- **Glassmorphism**: Superficies semi-transparentes con blur para profundidad visual
+- **Spring Physics**: Animaciones naturales y responsivas en todas las interacciones
+- **Consistencia**: Todos los valores provienen de `NexusTokens` - nunca hardcoded
+- **Accesibilidad**: Contraste mínimo WCAG AA, tamaños de fuente escalables
+- **Dark-first**: Diseñado primero para modo oscuro, optimizado para OLED
 
 ---
 

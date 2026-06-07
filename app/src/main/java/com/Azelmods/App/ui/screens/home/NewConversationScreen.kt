@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
+import com.google.firebase.auth.FirebaseAuth
 
 data class Contact(
     val id: String,
@@ -151,8 +152,12 @@ fun NewConversationScreen(
                         ContactItem(
                             contact = contact,
                             onClick = {
-                                // TODO: Create or navigate to existing chat
-                                navController.navigate(Screen.Chat.createRoute(contact.id))
+                                // Build the canonical chatId (sorted uid pair) so both
+                                // participants resolve to the same chat node.
+                                val me = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                                val chatId = if (me.isBlank()) contact.id
+                                    else listOf(me, contact.id).sorted().joinToString("_")
+                                navController.navigate(Screen.Chat.createRoute(chatId))
                             }
                         )
                     }

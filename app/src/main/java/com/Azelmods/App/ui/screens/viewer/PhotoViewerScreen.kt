@@ -26,6 +26,8 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.asDrawable
+import kotlinx.coroutines.launch
 
 @Composable
 fun PhotoViewerScreen(
@@ -162,7 +164,27 @@ fun PhotoViewerScreen(
                 // Save button
                 IconButton(
                     onClick = {
-                        Toast.makeText(context, "Save functionality coming soon", Toast.LENGTH_SHORT).show()
+                        scope.launch {
+                            try {
+                                val loader = coil3.ImageLoader(context)
+                                val request = ImageRequest.Builder(context)
+                                    .data(decodedUrl)
+                                    .build()
+                                val result = loader.execute(request)
+                                val bmp = (result as? coil3.request.SuccessResult)
+                                    ?.image?.asDrawable(context.resources)
+                                    ?.let { (it as? android.graphics.drawable.BitmapDrawable)?.bitmap }
+                                if (bmp != null &&
+                                    com.Azelmods.App.ui.utils.ImageActions.saveToGallery(context, bmp)
+                                ) {
+                                    Toast.makeText(context, "Imagen guardada en la Galería", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "No se pudo guardar la imagen", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
                     },
                     modifier = Modifier
                         .size(56.dp)

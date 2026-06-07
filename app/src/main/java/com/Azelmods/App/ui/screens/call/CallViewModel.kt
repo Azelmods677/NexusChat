@@ -219,10 +219,10 @@ class CallViewModel @Inject constructor(
                 // Create call data
                 val callData = mapOf(
                     "callerId" to currentUserId,
-                    "callerName" to (currentUser?.get("name") as? String ?: "Unknown"),
+                    "callerName" to (currentUser?.get("name") as? String ?: "Anónimo"),
                     "callerPhotoUrl" to (currentUser?.get("photoUrl") as? String ?: ""),
                     "receiverId" to contactId,
-                    "receiverName" to (contactUser?.get("name") as? String ?: "Unknown"),
+                    "receiverName" to (contactUser?.get("name") as? String ?: "Anónimo"),
                     "receiverPhotoUrl" to (contactUser?.get("photoUrl") as? String ?: ""),
                     "callType" to callType.name,
                     "status" to CallStatus.CALLING.name,
@@ -237,7 +237,7 @@ class CallViewModel @Inject constructor(
                 webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
                 
                 // Start foreground service
-                startCallService(callId, callType, contactUser?.get("name") as? String ?: "Unknown")
+                startCallService(callId, callType, contactUser?.get("name") as? String ?: "Anónimo")
                 
                 // Listen to call updates
                 listenToCallUpdates(callId)
@@ -267,7 +267,7 @@ class CallViewModel @Inject constructor(
                 webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
 
                 // Start foreground service
-                val contactName = _contactProfile.value?.name ?: "Unknown"
+                val contactName = _contactProfile.value?.name ?: "Anónimo"
                 startCallService(callId, callType, contactName)
 
                 // Only start listener if observeIncomingCall() didn't already start it

@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var databaseRepository: com.Azelmods.App.data.repository.RealtimeDatabaseRepository
     
+    @Inject
+    lateinit var sessionManager: com.Azelmods.App.data.session.SessionManager
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before super.onCreate()
         installSplashScreen()
@@ -90,6 +93,15 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                
+                // ── Session refresh automático cada 50 minutos ──
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        kotlinx.coroutines.delay(com.Azelmods.App.data.session.SessionManager.REFRESH_INTERVAL_MS)
+                        sessionManager.refreshSession()
+                    }
+                }
+                
                 val wallpaperType by userPreferences.wallpaperType.collectAsState()
                 val wallpaperValue by userPreferences.wallpaperValue.collectAsState()
 

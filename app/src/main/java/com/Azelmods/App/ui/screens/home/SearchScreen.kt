@@ -240,7 +240,8 @@ fun SearchScreen(
                                     ChatSearchResultItem(
                                         result = result,
                                         onClick = {
-                                            navController.navigate(Screen.Chat.createRoute(result.contactId))
+                                            // Use the real (canonical) chatId, not the peer uid.
+                                            navController.navigate(Screen.Chat.createRoute(result.chatId))
                                         }
                                     )
                                 }

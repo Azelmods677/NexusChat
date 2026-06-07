@@ -85,17 +85,44 @@ class CallService : Service() {
         callStartElapsed = SystemClock.elapsedRealtime()
 
         val notification = buildNotification(formatDuration(0))
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val foregroundServiceType = when (callType) {
-                "video" -> ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
+
+        // ── Android 14+ (API 34+): starting a microphone/camera FGS REQUIRES the
+        // matching runtime permission to be granted at this exact moment, otherwise
+        // the system throws SecurityException and crashes the app. Guard against it. ──
+        val hasMic = androidx.core.content.ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        val hasCamera = androidx.core.content.ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.CAMERA
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        if (!hasMic || (callType == "video" && !hasCamera)) {
+            Log.e(TAG, "Missing runtime permissions for call FGS (mic=$hasMic, cam=$hasCamera). Aborting service.")
+            stopSelf()
+            return
+        }
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Only request camera type when we actually hold the camera permission.
+                val foregroundServiceType = when {
+                    callType == "video" && hasCamera ->
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                    else ->
                         ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-                else -> ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+                }
+                startForeground(NOTIFICATION_ID, notification, foregroundServiceType)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
             }
-            startForeground(NOTIFICATION_ID, notification, foregroundServiceType)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            // ForegroundServiceStartNotAllowedException / SecurityException, etc.
+            Log.e(TAG, "Failed to start foreground service for call: ${e.message}", e)
+            stopSelf()
+            return
         }
 
         Log.d(TAG, "Foreground service started for call: $callId")
