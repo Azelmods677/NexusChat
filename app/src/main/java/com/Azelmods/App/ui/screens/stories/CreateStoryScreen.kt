@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +43,9 @@ import com.Azelmods.App.utils.PermissionHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.asImageBitmap
 import com.Azelmods.App.utils.VideoThumbnailExtractor
 
@@ -62,6 +66,8 @@ fun CreateStoryScreen(
     var showStickerPicker by remember { mutableStateOf(false) }
     var selectedSticker by remember { mutableStateOf("") }
     var emojiOverlays by remember { mutableStateOf<List<EmojiOverlay>>(emptyList()) }
+    var selectedMusicUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedMusicName by remember { mutableStateOf("") }
     var showPhotoAdjuster by remember { mutableStateOf(false) }
     var photoVerticalPosition by remember { mutableStateOf(0f) }
     var videoThumbnail by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
@@ -122,6 +128,28 @@ fun CreateStoryScreen(
             e.printStackTrace()
             isVideoSelected = false
             videoThumbnail = null
+        }
+    }
+
+    // Music picker launcher — lets the user attach an audio track to the story.
+    val musicPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            selectedMusicUri = uri
+            // Resolve a friendly file name for the picked audio.
+            val name = try {
+                context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                    val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+                }
+            } catch (e: Exception) { null }
+            selectedMusicName = name ?: "Audio seleccionado"
+            android.widget.Toast.makeText(
+                context,
+                "🎵 $selectedMusicName",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
     }
     
@@ -570,14 +598,10 @@ fun CreateStoryScreen(
                             )
                             ModernStoryEditOption(
                                 icon = Icons.Default.MusicNote,
-                                label = "Music",
+                                label = if (selectedMusicName.isNotBlank()) "Música ✓" else "Music",
                                 color = Color(0xFF00BFA6),
-                                onClick = { 
-                                    android.widget.Toast.makeText(
-                                        context,
-                                        "Music feature coming soon!",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
+                                onClick = {
+                                    musicPickerLauncher.launch("audio/*")
                                 }
                             )
                         }
@@ -759,60 +783,108 @@ fun CreateStoryScreen(
         }
     }
     
-    // Draw mode dialog (simple version)
+    // Draw mode — functional full-screen drawing canvas
     if (showDrawMode) {
-        AlertDialog(
+        androidx.compose.ui.window.Dialog(
             onDismissRequest = { showDrawMode = false },
-            title = { 
-                Text(
-                    "Draw Mode",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
-                ) 
-            },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            val strokes = remember { mutableStateListOf<DrawnStroke>() }
+            var current by remember { mutableStateOf<DrawnStroke?>(null) }
+            var color by remember { mutableStateOf(Color(0xFFFF6B9D)) }
+            val palette = listOf(
+                Color.White, Color.Black, Color(0xFF7C6FE0), Color(0xFFFF6B9D),
+                Color(0xFF00D4FF), Color(0xFF00E676), Color(0xFFFFD700), Color(0xFFFF5252)
+            )
+
+            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D1E))) {
+                androidx.compose.foundation.Canvas(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(color) {
+                            detectDragGestures(
+                                onDragStart = { offset ->
+                                    current = DrawnStroke(mutableStateListOf(offset), color, 10f)
+                                },
+                                onDrag = { change, _ ->
+                                    current?.points?.add(change.position)
+                                    // Force recomposition by reassigning
+                                    current = current?.copy()
+                                },
+                                onDragEnd = {
+                                    current?.let { strokes.add(it) }
+                                    current = null
+                                }
+                            )
+                        }
                 ) {
-                    Icon(
-                        Icons.Default.Draw,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color(0xFFFF6B9D)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Text(
-                        text = "Drawing feature coming soon!",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        textAlign = TextAlign.Center
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = "You'll be able to draw on your stories with different colors and brush sizes.",
-                        color = Color.Gray,
-                        fontSize = 14.sp,
-                        textAlign = TextAlign.Center
-                    )
+                    (strokes + listOfNotNull(current)).forEach { stroke ->
+                        val pts = stroke.points
+                        for (i in 1 until pts.size) {
+                            drawLine(
+                                color = stroke.color,
+                                start = pts[i - 1],
+                                end = pts[i],
+                                strokeWidth = stroke.width,
+                                cap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                        }
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { showDrawMode = false },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
-                    )
+
+                // Top bar: close + undo + clear
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Got it", fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { showDrawMode = false }) {
+                        Icon(Icons.Default.Close, "Cerrar", tint = Color.White)
+                    }
+                    Row {
+                        IconButton(onClick = { if (strokes.isNotEmpty()) strokes.removeAt(strokes.size - 1) }) {
+                            Icon(Icons.Default.Undo, "Deshacer", tint = Color.White)
+                        }
+                        IconButton(onClick = { strokes.clear() }) {
+                            Icon(Icons.Default.Delete, "Limpiar", tint = Color(0xFFFF5252))
+                        }
+                        TextButton(onClick = { showDrawMode = false }) {
+                            Text("Listo", color = Color(0xFF7C6FE0), fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
-            },
-            containerColor = Color(0xFF1A1A2E)
-        )
+
+                // Color palette at bottom
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .background(Color(0xFF141428))
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    palette.forEach { c ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(c)
+                                .border(
+                                    if (color == c) 3.dp else 1.dp,
+                                    if (color == c) Color.White else Color.Transparent,
+                                    CircleShape
+                                )
+                                .clickable { color = c }
+                        )
+                    }
+                }
+            }
+        }
     }
     
     // Photo adjuster overlay
@@ -949,3 +1021,13 @@ fun StoryEditOption(
         )
     }
 }
+
+/**
+ * A single freehand stroke drawn on the story canvas.
+ * [points] are screen-space positions; [color] and [width] define its style.
+ */
+data class DrawnStroke(
+    val points: MutableList<Offset>,
+    val color: androidx.compose.ui.graphics.Color,
+    val width: Float
+)
