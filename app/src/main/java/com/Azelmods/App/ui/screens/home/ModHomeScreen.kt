@@ -154,7 +154,7 @@ fun ModHomeScreen(
                         .padding(4.dp)
                 ) {
                     UserAvatar(
-                        name = actualDisplayName.ifBlank { currentUser?.displayName ?: "User" },
+                        name = actualDisplayName.ifBlank { currentUser?.displayName ?: currentUser?.email?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() } ?: "Anónimo" },
                         photoUrl = actualPhotoUrl ?: currentUser?.photoUrl?.toString(),
                         size = 92.dp
                     )
@@ -170,7 +170,7 @@ fun ModHomeScreen(
                 )
                 
                 Text(
-                    text = actualDisplayName.ifBlank { currentUser?.displayName ?: "Usuario" },
+                    text = actualDisplayName.ifBlank { currentUser?.displayName ?: currentUser?.email?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() } ?: "Anónimo" },
                     fontSize = 16.sp,
                     color = Color.Gray
                 )

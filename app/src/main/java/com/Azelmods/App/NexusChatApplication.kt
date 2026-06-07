@@ -43,6 +43,11 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        
+        // ══════════════════════════════════════════════════════════════
+        // INSTALL GLOBAL ERROR HANDLER — ENTERPRISE GRADE 2026
+        // ══════════════════════════════════════════════════════════════
+        com.Azelmods.App.util.NexusCrashHandler.install(this)
 
         // Firebase is initialised automatically by its ContentProvider before
         // Application.onCreate() is called. If you want explicit, ordered

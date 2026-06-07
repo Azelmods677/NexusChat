@@ -28,9 +28,14 @@ class GoogleLoginUseCase @Inject constructor(
             
             // If user doesn't exist, create profile
             if (!snapshot.exists()) {
+                // Derive a friendly name: displayName > email prefix > short uid
+                val derivedName = firebaseUser.displayName?.trim()?.takeIf { it.isNotBlank() }
+                    ?: firebaseUser.email?.substringBefore("@")?.takeIf { it.isNotBlank() }
+                        ?.replaceFirstChar { it.uppercaseChar() }
+                    ?: "User ${firebaseUser.uid.take(4)}"
                 val userData = mapOf(
                     "uid" to firebaseUser.uid,
-                    "displayName" to (firebaseUser.displayName ?: "User"),
+                    "displayName" to derivedName,
                     "username" to "@${firebaseUser.email?.substringBefore("@") ?: firebaseUser.uid.take(8)}",
                     "email" to (firebaseUser.email ?: ""),
                     "photoUrl" to (firebaseUser.photoUrl?.toString() ?: ""),
@@ -44,8 +49,8 @@ class GoogleLoginUseCase @Inject constructor(
                 
                 val newUser = User(
                     uid = firebaseUser.uid,
-                    name = firebaseUser.displayName ?: "User",
-                    displayName = firebaseUser.displayName ?: "User",
+                    name = derivedName,
+                    displayName = derivedName,
                     username = "@${firebaseUser.email?.substringBefore("@") ?: firebaseUser.uid.take(8)}",
                     email = firebaseUser.email ?: "",
                     photoUrl = firebaseUser.photoUrl?.toString(),
@@ -67,8 +72,12 @@ class GoogleLoginUseCase @Inject constructor(
                 
                 val user = User(
                     uid = userData["uid"] as? String ?: firebaseUser.uid,
-                    name = userData["displayName"] as? String ?: userData["name"] as? String ?: "User",
-                    displayName = userData["displayName"] as? String ?: userData["name"] as? String ?: "User",
+                    name = userData["displayName"] as? String ?: userData["name"] as? String
+                        ?: firebaseUser.email?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() }
+                        ?: "User ${firebaseUser.uid.take(4)}",
+                    displayName = userData["displayName"] as? String ?: userData["name"] as? String
+                        ?: firebaseUser.email?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() }
+                        ?: "User ${firebaseUser.uid.take(4)}",
                     username = userData["username"] as? String ?: "@user",
                     email = userData["email"] as? String ?: "",
                     photoUrl = userData["photoUrl"] as? String,

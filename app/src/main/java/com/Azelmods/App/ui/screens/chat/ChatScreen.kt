@@ -44,6 +44,8 @@ import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.data.model.Message
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.components.UnifiedTopBar
+import com.Azelmods.App.ui.components.TopBarActionIcon
 import com.Azelmods.App.ui.components.CompleteEmojiPicker
 import com.Azelmods.App.ui.components.StickerPicker
 import com.Azelmods.App.ui.components.AttachmentBottomSheet
@@ -120,7 +122,9 @@ fun ChatScreen(
                 onBackClick = { navController.navigateUp() },
                 onProfileClick = {
                     try {
-                        navController.navigate("profile_viewer/$contactId")
+                        // Navigate using the REAL contact uid, not the chatId.
+                        val profileId = state.contact?.uid?.takeIf { it.isNotBlank() } ?: contactId
+                        navController.navigate("profile_viewer/$profileId")
                     } catch (e: Exception) { }
                 },
                 onGalleryClick = {
@@ -130,12 +134,14 @@ fun ChatScreen(
                 },
                 onPhoneClick = { 
                     try {
-                        navController.navigate("incoming_call/$contactId/audio")
+                        val calleeId = state.contact?.uid?.takeIf { it.isNotBlank() } ?: contactId
+                        navController.navigate("active_call/$calleeId/audio")
                     } catch (e: Exception) { }
                 },
                 onVideoClick = { 
                     try {
-                        navController.navigate("incoming_call/$contactId/video")
+                        val calleeId = state.contact?.uid?.takeIf { it.isNotBlank() } ?: contactId
+                        navController.navigate("active_call/$calleeId/video")
                     } catch (e: Exception) { }
                 },
                 onMoreClick = { showMenu = true }
@@ -263,7 +269,7 @@ fun ChatScreen(
 
                         items(
                             items = state.messages,
-                            key = { it.messageId }
+                            key = { it.messageId.ifBlank { "${it.senderId}_${it.timestamp}" } }
                         ) { message ->
                             val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                             MessageBubble(
@@ -287,6 +293,10 @@ fun ChatScreen(
                                 },
                                 onMessageViewed = {
                                     viewModel.markMessageViewed(message)
+                                },
+                                translatedText = state.translatedMessages[message.messageId],
+                                onTranslate = {
+                                    viewModel.translateMessage(message.messageId, message.content)
                                 }
                             )
                         }
@@ -422,7 +432,8 @@ fun ChatScreen(
                     onClick = {
                         showMenu = false
                         try {
-                            navController.navigate("profile/$contactId")
+                            val profileId = state.contact?.uid?.takeIf { it.isNotBlank() } ?: contactId
+                            navController.navigate("profile/$profileId")
                         } catch (e: Exception) { }
                     },
                     leadingIcon = { Icon(Icons.Default.Person, null, tint = Color.White) }
@@ -478,120 +489,59 @@ fun ChatTopBar(
     onMoreClick: () -> Unit,
     onGalleryClick: () -> Unit = {}
 ) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(64.dp)
-            .shadow(4.dp),
-        color = Color(0xFF1A1A2E)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Back button
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(4.dp))
-            
-            // Avatar with online indicator - CLICKABLE
-            Box(modifier = Modifier.safeClickable(onClick = onProfileClick)) {
-                UserAvatar(
-                    name = contact?.name ?: "?",
-                    photoUrl = contact?.photoUrl,
-                    size = 40.dp
-                )
-                
-                if (contact?.isOnline == true) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "online")
-                    val scale by infiniteTransition.animateFloat(
-                        initialValue = 1.0f,
-                        targetValue = 1.15f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1000),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "scale"
-                    )
-                    
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(10.dp)
-                            .scale(scale)
-                            .background(Color(0xFF10B981), CircleShape)
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
-            // Contact info - ALSO CLICKABLE
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .safeClickable(onClick = onProfileClick)
-            ) {
-                Text(
-                    text = contact?.name ?: "Loading...",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 5,
-                    overflow = TextOverflow.Ellipsis
-                )
-                
-                AnimatedContent(
-                    targetState = isTyping,
-                    label = "status"
-                ) { typing ->
-                    if (typing) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "typing",
-                                color = Color(0xFF00BFA6),
-                                fontSize = 13.sp
-                            )
-                            TypingDots()
-                        }
-                    } else {
-                        Text(
-                            text = if (contact?.isOnline == true) "online" 
-                                   else "last seen ${formatLastSeen(contact?.lastSeen ?: 0)}",
-                            color = if (contact?.isOnline == true) Color(0xFF10B981) else Color.Gray,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            }
-            
-            // Action buttons
-            IconButton(onClick = onGalleryClick) {
-                Icon(Icons.Default.PhotoLibrary, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-            
-            IconButton(onClick = onPhoneClick) {
-                Icon(Icons.Default.Phone, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-            
-            IconButton(onClick = onVideoClick) {
-                Icon(Icons.Default.Videocam, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-            
-            IconButton(onClick = onMoreClick) {
-                Icon(Icons.Default.MoreVert, null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
-        }
+    // Resolve a real display name (never the generic "Usuario" placeholder).
+    val displayName = com.Azelmods.App.ui.utils.UserProfileHelper.resolveDisplayName(
+        displayName = contact?.displayName,
+        name = contact?.name,
+        email = contact?.email
+    )
+    
+    // Status text dinámico
+    val statusText = when {
+        isTyping -> "escribiendo..."
+        contact?.isOnline == true -> "en línea"
+        else -> "última vez ${formatLastSeen(contact?.lastSeen ?: 0)}"
     }
+    
+    val statusColor = when {
+        isTyping -> Color(0xFF00BFA6)
+        contact?.isOnline == true -> Color(0xFF10B981)
+        else -> Color.Gray
+    }
+    
+    UnifiedTopBar(
+        title = displayName,
+        userName = displayName,
+        userPhotoUrl = contact?.photoUrl,
+        userSubtitle = statusText,
+        onUserClick = onProfileClick,
+        showBackButton = true,
+        onBackClick = onBackClick,
+        actions = {
+            TopBarActionIcon(
+                icon = Icons.Default.PhotoLibrary,
+                contentDescription = "Gallery",
+                onClick = onGalleryClick
+            )
+            TopBarActionIcon(
+                icon = Icons.Default.Phone,
+                contentDescription = "Voice Call",
+                onClick = onPhoneClick
+            )
+            TopBarActionIcon(
+                icon = Icons.Default.Videocam,
+                contentDescription = "Video Call",
+                onClick = onVideoClick
+            )
+            TopBarActionIcon(
+                icon = Icons.Default.MoreVert,
+                contentDescription = "More options",
+                onClick = onMoreClick
+            )
+        },
+        backgroundColor = Color(0xFF1A1A2E),
+        contentColor = Color.White
+    )
 }
 
 @Composable

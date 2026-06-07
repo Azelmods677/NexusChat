@@ -60,7 +60,9 @@ fun MessageBubble(
     themeSecondaryColor: Color = Color(0xFF5B21B6),
     onDeleteClick: ((Boolean) -> Unit)? = null,
     onEditClick: (() -> Unit)? = null,
-    onMessageViewed: (() -> Unit)? = null  // Callback when ephemeral message is viewed
+    onMessageViewed: (() -> Unit)? = null,  // Callback when ephemeral message is viewed
+    translatedText: String? = null,
+    onTranslate: (() -> Unit)? = null
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
     var showMessageOptions by remember { mutableStateOf(false) }
@@ -209,7 +211,7 @@ fun MessageBubble(
                     )
                     .safeClickable(
                         onClick = { showReactionPicker = !showReactionPicker },
-                        onLongClick = { if (isOwnMessage) showMessageOptions = true }
+                        onLongClick = { showMessageOptions = true }
                     )
             ) {
                 Box(
@@ -422,6 +424,34 @@ fun MessageBubble(
                                     lineHeight = 20.sp
                                 )
                             }
+
+                            // ── Translated text (if available) ──
+                            if (!translatedText.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Default.Translate,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Traducción",
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = translatedText,
+                                    color = Color.White.copy(alpha = 0.92f),
+                                    fontSize = 15.sp,
+                                    lineHeight = 20.sp,
+                                    fontStyle = FontStyle.Italic
+                                )
+                            }
                         }
 
                         // ── Media content view-once placeholder ──
@@ -627,6 +657,26 @@ fun MessageBubble(
                 title = { Text("Opciones del mensaje", color = Color.White) },
                 text = {
                     Column {
+                        if (onTranslate != null && message.content.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    showMessageOptions = false
+                                    onTranslate.invoke()
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.Start,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Translate, null, tint = Color(0xFF9B75FF))
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text("Traducir mensaje", color = Color.White)
+                                }
+                            }
+                        }
+
                         if (canEdit) {
                             TextButton(
                                 onClick = {

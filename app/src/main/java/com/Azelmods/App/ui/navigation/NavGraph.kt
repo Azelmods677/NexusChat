@@ -1,6 +1,12 @@
 package com.Azelmods.App.ui.navigation
 
 import android.util.Log
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,6 +35,7 @@ import com.Azelmods.App.ui.screens.splash.SplashScreen
 import com.Azelmods.App.ui.screens.stories.CreateStoryScreen
 import com.Azelmods.App.ui.screens.stories.StoryViewerScreen
 import com.Azelmods.App.ui.screens.security.OrbotWelcomeScreen
+import com.Azelmods.App.ui.theme.NexusTokens
 import java.net.URLDecoder
 
 @Composable
@@ -38,7 +45,43 @@ fun NavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { it / 6 },
+                animationSpec = spring(
+                    stiffness = NexusTokens.Anim.SPRING_STIFFNESS,
+                    dampingRatio = NexusTokens.Anim.SPRING_DAMPING
+                )
+            ) + fadeIn(tween(NexusTokens.Anim.NORMAL))
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -it / 6 },
+                animationSpec = spring(
+                    stiffness = NexusTokens.Anim.SPRING_STIFFNESS,
+                    dampingRatio = NexusTokens.Anim.SPRING_DAMPING
+                )
+            ) + fadeOut(tween(NexusTokens.Anim.FAST))
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -it / 6 },
+                animationSpec = spring(
+                    stiffness = NexusTokens.Anim.SPRING_STIFFNESS,
+                    dampingRatio = NexusTokens.Anim.SPRING_DAMPING
+                )
+            ) + fadeIn(tween(NexusTokens.Anim.NORMAL))
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { it / 6 },
+                animationSpec = spring(
+                    stiffness = NexusTokens.Anim.SPRING_STIFFNESS,
+                    dampingRatio = NexusTokens.Anim.SPRING_DAMPING
+                )
+            ) + fadeOut(tween(NexusTokens.Anim.FAST))
+        }
     ) {
         // Auth
         composable(Screen.Splash.route) {

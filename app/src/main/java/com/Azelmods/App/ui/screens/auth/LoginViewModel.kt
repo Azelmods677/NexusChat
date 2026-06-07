@@ -70,10 +70,18 @@ class LoginViewModel @Inject constructor(
                 )
                 
                 val credential = result.credential
-                if (credential is androidx.credentials.CustomCredential &&
-                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-                    
-                    val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
+                
+                // Try to handle GoogleIdTokenCredential
+                val googleIdTokenCredential = try {
+                    GoogleIdTokenCredential.createFrom(credential.data)
+                } catch (e: Exception) {
+                    android.util.Log.e("GoogleSignIn", "Failed to create GoogleIdTokenCredential: ${e.message}")
+                    android.util.Log.e("GoogleSignIn", "Credential type: ${credential.type}")
+                    android.util.Log.e("GoogleSignIn", "Credential class: ${credential::class.java.simpleName}")
+                    null
+                }
+                
+                if (googleIdTokenCredential != null) {
                     val idToken = googleIdTokenCredential.idToken
                     // Call GoogleLoginUseCase to authenticate with Firebase
                     when (val loginResult = googleLoginUseCase(idToken)) {
@@ -95,10 +103,9 @@ class LoginViewModel @Inject constructor(
                         }
                     }
                 } else {
-                    android.util.Log.e("GoogleSignIn", "FULL ERROR: Invalid credential type: ${credential::class.java.simpleName}")
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = "Google Sign-In failed: Invalid credential type"
+                        error = "Failed to process Google Sign-In response. Please try again."
                     )
                 }
             } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {

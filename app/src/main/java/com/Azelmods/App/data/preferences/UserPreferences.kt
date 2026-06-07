@@ -21,7 +21,7 @@ class UserPreferences @Inject constructor(
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     
     // Account Settings
-    private val _displayName = MutableStateFlow(prefs.getString(KEY_DISPLAY_NAME, "User") ?: "User")
+    private val _displayName = MutableStateFlow(prefs.getString(KEY_DISPLAY_NAME, "Anónimo") ?: "Anónimo")
     val displayName: StateFlow<String> = _displayName.asStateFlow()
     
     private val _username = MutableStateFlow(prefs.getString(KEY_USERNAME, "user") ?: "user")

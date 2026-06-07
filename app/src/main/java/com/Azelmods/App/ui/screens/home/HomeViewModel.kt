@@ -262,12 +262,36 @@ class HomeViewModel @Inject constructor(
             databaseRepository.getUserById(otherUid)
         } else null
 
-        // Prefer displayName, fall back to username, then "Unknown".
+        // Real online presence of the other participant (snapshot; refreshes on each
+        // getUserChats emission). Never hardcoded.
+        val otherIsOnline = otherUserData?.get("isOnline") as? Boolean ?: false
+
+        // Real per-user unread counters from the chat node, if present.
+        val unreadMap: Map<String, Int> = when (val raw = data["unreadCount"]) {
+            is Map<*, *> -> raw.entries.mapNotNull { (k, v) ->
+                val key = k as? String ?: return@mapNotNull null
+                val count = (v as? Number)?.toInt() ?: return@mapNotNull null
+                key to count
+            }.toMap()
+            else -> emptyMap()
+        }
+
+        // Real typing state from the chat node, if present.
+        val typingMap: Map<String, Boolean> = when (val raw = data["isTyping"]) {
+            is Map<*, *> -> raw.entries.mapNotNull { (k, v) ->
+                val key = k as? String ?: return@mapNotNull null
+                val typing = v as? Boolean ?: return@mapNotNull null
+                key to typing
+            }.toMap()
+            else -> emptyMap()
+        }
+
+        // Prefer displayName, fall back to username, then "Anónimo".
         val displayName = (otherUserData?.get("displayName") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (otherUserData?.get("username") as? String)
                 ?.takeIf { it.isNotBlank() }
-            ?: "Unknown"
+            ?: "Anónimo"
 
         // Prefer photoUrl, fall back to profilePhotoUrl.
         val photoUrl = (otherUserData?.get("photoUrl") as? String)
@@ -297,9 +321,12 @@ class HomeViewModel @Inject constructor(
             lastMessage = data["lastMessage"] as? String ?: "",
             lastMessageTime = lastMessageTime,
             lastMessageSenderId = data["lastMessageSenderId"] as? String ?: "",
-            unreadCount = emptyMap(),
-            isTyping = emptyMap(),
+            unreadCount = unreadMap,
+            isTyping = typingMap,
             chatType = chatType,
+            contactName = displayName,
+            contactPhotoUrl = photoUrl.takeIf { it.isNotBlank() },
+            isOnline = otherIsOnline,
             isPinned = isPinned,
             isMuted = isMuted,
             isArchived = isArchived,

@@ -101,7 +101,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     // ╚══════════════════════════════════════════════════════════╝
     private fun showIncomingCallNotification(data: Map<String, String>) {
         val callId      = data["callId"] ?: return
-        val callerName  = data["callerName"] ?: "Unknown"
+        val callerName  = data["callerName"] ?: "Anónimo"
         val callerPhoto = data["callerPhotoUrl"]
         val callType    = data["callType"] ?: "AUDIO"
 
@@ -181,7 +181,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     // ║  MISSED CALL NOTIFICATION                               ║
     // ╚══════════════════════════════════════════════════════════╝
     private fun showMissedCallNotification(data: Map<String, String>) {
-        val callerName = data["callerName"] ?: "Unknown"
+        val callerName = data["callerName"] ?: "Anónimo"
         val callerPhoto = data["callerPhotoUrl"]
         val callId = data["callId"] ?: ""
 
@@ -216,7 +216,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     private fun showMessageNotification(data: Map<String, String>) {
         val chatId       = data["chatId"] ?: return
         val senderId     = data["senderId"] ?: return
-        val senderName   = data["senderName"] ?: "Unknown"
+        val senderName   = data["senderName"] ?: "Anónimo"
         val body         = data["body"] ?: data["message"] ?: ""
         val senderPhoto  = data["senderPhotoUrl"]
         val mediaType    = data["mediaType"]

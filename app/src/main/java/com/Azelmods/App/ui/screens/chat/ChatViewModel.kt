@@ -44,16 +44,20 @@ data class ChatState(
     // ── Ephemeral / Self-Destructing Messages ──
     val isEphemeralMode: Boolean = false,          // Toggle for ephemeral sending mode
     val ephemeralDuration: Long = 0L,              // Selected duration in seconds (0 = view once)
-    val showEphemeralPicker: Boolean = false       // Show duration picker dropdown
+    val showEphemeralPicker: Boolean = false,      // Show duration picker dropdown
+    // ── Translation ──
+    val translatedMessages: Map<String, String> = emptyMap() // messageId -> translated text
 )
 
+@Suppress("UNCHECKED_CAST")
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
     private val databaseRepository: RealtimeDatabaseRepository,
     private val backgroundRepository: com.Azelmods.App.data.repository.ChatBackgroundRepository,
     private val decryptMessageUseCase: DecryptMessageUseCase,
-    private val cacheManager: CacheManager
+    private val cacheManager: CacheManager,
+    private val translationService: com.Azelmods.App.data.translation.TranslationService
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatState())
@@ -148,11 +152,12 @@ class ChatViewModel @Inject constructor(
      * Send ephemeral media message (view once photo/video)
      */
     fun sendEphemeralMediaMessage(mediaUrl: String, mediaType: String, chatId: String) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val state = _state.value
                 databaseRepository.sendEphemeralMediaMessage(
-                    chatId = chatId,
+                    chatId = targetChatId,
                     mediaUrl = mediaUrl,
                     mediaType = mediaType,
                     caption = "",
@@ -184,8 +189,114 @@ class ChatViewModel @Inject constructor(
      * Resolves the other participant by reading chats/{chatId}/members,
      * finding the UID that is NOT the current user, then fetching from users/{uid}.
      */
-    fun loadChat(chatId: String) {
-        currentChatId = chatId
+    /**
+     * Returns true when [rawId] already is a canonical chatId that includes
+     * [currentUserId] as one of its underscore-separated participants.
+     * Firebase UIDs never contain underscores, so boundary checks are safe.
+     */
+    private fun isCanonicalForUser(rawId: String, currentUserId: String): Boolean {
+        if (currentUserId.isBlank()) return false
+        return rawId == currentUserId ||
+            rawId.startsWith("${currentUserId}_") ||
+            rawId.endsWith("_$currentUserId") ||
+            rawId.contains("_${currentUserId}_")
+    }
+
+    /**
+     * Normalizes a raw navigation argument into the canonical chatId used for
+     * storage. Group chats keep their id; an already-canonical id is returned
+     * as-is; a bare peer UID is combined with the current user (sorted) so both
+     * participants always resolve to the same chat node.
+     */
+    private fun resolveCanonicalChatId(rawId: String, currentUserId: String): String {
+        if (rawId.isBlank()) return rawId
+        if (rawId.startsWith("group_")) return rawId
+        if (isCanonicalForUser(rawId, currentUserId)) return rawId
+        return listOf(currentUserId, rawId).sorted().joinToString("_")
+    }
+
+    /**
+     * Derives the peer (other participant) UID from a canonical 1:1 chatId.
+     */
+    private fun derivePeerId(canonicalId: String, currentUserId: String): String? {
+        if (canonicalId.startsWith("group_")) return null
+        val peer = when {
+            canonicalId.startsWith("${currentUserId}_") ->
+                canonicalId.removePrefix("${currentUserId}_")
+            canonicalId.endsWith("_$currentUserId") ->
+                canonicalId.removeSuffix("_$currentUserId")
+            canonicalId.contains("_${currentUserId}_") ->
+                canonicalId.replace("_${currentUserId}_", "_")
+            else -> canonicalId
+        }
+        return peer.takeIf { it.isNotBlank() && it != currentUserId }
+    }
+
+    /**
+     * Resolves the contact for a chat. Prefers the chat's `members` node (covers
+     * legacy / group structures) and falls back to deriving the peer from the
+     * canonical chatId, then fetches the real user profile (name + photo).
+     */
+    private suspend fun resolveContact(
+        canonicalChatId: String,
+        rawChatId: String,
+        currentUserId: String
+    ): User? {
+        if (canonicalChatId.startsWith("group_")) return null
+
+        val otherUid: String? = try {
+            val membersSnapshot = FirebaseDatabase.getInstance().reference
+                .child("chats")
+                .child(canonicalChatId)
+                .child("members")
+                .get()
+                .await()
+
+            val uids = when (val value = membersSnapshot.value) {
+                is List<*> -> value.filterIsInstance<String>()
+                is Map<*, *> -> value.keys.filterIsInstance<String>()
+                else -> emptyList()
+            }
+            uids.firstOrNull { it != currentUserId }
+                ?: derivePeerId(canonicalChatId, currentUserId)
+                ?: rawChatId.takeIf { it.isNotBlank() && it != currentUserId }
+        } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "Failed reading members, deriving peer", e)
+            derivePeerId(canonicalChatId, currentUserId)
+                ?: rawChatId.takeIf { it.isNotBlank() && it != currentUserId }
+        }
+
+        val uid = otherUid ?: return null
+
+        return try {
+            databaseRepository.getUserById(uid)?.let { data ->
+                User(
+                    uid = data["uid"] as? String ?: uid,
+                    name = data["displayName"] as? String
+                        ?: data["name"] as? String
+                        ?: "Usuario",
+                    username = data["username"] as? String ?: "",
+                    email = data["email"] as? String ?: "",
+                    photoUrl = data["photoUrl"] as? String,
+                    bio = data["bio"] as? String ?: "",
+                    isOnline = data["isOnline"] as? Boolean ?: false,
+                    lastSeen = data["lastSeen"] as? Long ?: 0L
+                )
+            } ?: User(uid = uid, name = "Usuario")
+        } catch (e: Exception) {
+            android.util.Log.e("ChatViewModel", "Failed to fetch contact $uid", e)
+            User(uid = uid, name = "Usuario")
+        }
+    }
+
+    /**
+     * Returns the canonical chatId resolved during [loadChat]. Falls back to the
+     * passed value only if a chat hasn't been loaded yet.
+     */
+    private fun effectiveChatId(passed: String): String =
+        currentChatId.ifBlank { passed }
+
+    fun loadChat(rawChatId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isLoading = true)
 
@@ -199,37 +310,15 @@ class ChatViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Resolve the "other" participant safely handling both List and Map structures
-                val membersSnapshot = FirebaseDatabase.getInstance().reference
-                    .child("chats")
-                    .child(chatId)
-                    .child("members")
-                    .get()
-                    .await()
+                // ── Normalize the incoming id into a canonical chatId ──
+                // Navigation may pass either a full canonical chatId ("uidA_uidB")
+                // or just the peer's UID. We resolve both cases here so the chat,
+                // its members and its messages always live under the same node.
+                val chatId = resolveCanonicalChatId(rawChatId, currentUserId)
+                currentChatId = chatId
 
-                val uids = when (val value = membersSnapshot.value) {
-                    is List<*> -> value.filterIsInstance<String>()
-                    is Map<*, *> -> value.keys.filterIsInstance<String>()
-                    else -> emptyList()
-                }
-                val otherUid = uids.firstOrNull { it != currentUserId }
-
-                val contact: User? = if (otherUid != null) {
-                    databaseRepository.getUserById(otherUid)?.let { data ->
-                        User(
-                            uid = data["uid"] as? String ?: otherUid,
-                            name = data["displayName"] as? String
-                                ?: data["name"] as? String
-                                ?: "Usuario",
-                            username = data["username"] as? String ?: "",
-                            email = data["email"] as? String ?: "",
-                            photoUrl = data["photoUrl"] as? String,
-                            bio = data["bio"] as? String ?: "",
-                            isOnline = data["isOnline"] as? Boolean ?: false,
-                            lastSeen = data["lastSeen"] as? Long ?: 0L
-                        )
-                    }
-                } else null
+                // Resolve the contact (peer) for this chat.
+                val contact: User? = resolveContact(chatId, rawChatId, currentUserId)
 
                 _state.value = _state.value.copy(
                     contact = contact,
@@ -297,7 +386,7 @@ class ChatViewModel @Inject constructor(
                             )
                         }.filter { message ->
                             message.deletedFor[currentUserId] != true
-                        }
+                        }.distinctBy { it.messageId.ifBlank { "${it.timestamp}_${it.senderId}" } }
 
                         // ── SAVE TO ROOM CACHE ──
                         try {
@@ -380,13 +469,14 @@ class ChatViewModel @Inject constructor(
 
     fun sendMessage(content: String, chatId: String) {
         if (content.isBlank()) return
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val state = _state.value
                 if (state.isEphemeralMode) {
                     // Send as ephemeral message
                     databaseRepository.sendEphemeralMessage(
-                        chatId = chatId,
+                        chatId = targetChatId,
                         content = content,
                         replyTo = state.replyingTo?.messageId,
                         isViewOnce = state.ephemeralDuration == 0L,
@@ -394,7 +484,7 @@ class ChatViewModel @Inject constructor(
                     )
                 } else {
                     databaseRepository.sendMessage(
-                        chatId = chatId,
+                        chatId = targetChatId,
                         content = content,
                         replyTo = state.replyingTo?.messageId
                     )
@@ -432,12 +522,13 @@ class ChatViewModel @Inject constructor(
      * Send an image message.
      */
     fun sendImageMessage(imageUri: Uri, chatId: String) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                val imageUrl = storageRepository.uploadChatImage(imageUri, chatId)
+                val imageUrl = storageRepository.uploadChatImage(imageUri, targetChatId)
                 databaseRepository.sendMediaMessage(
-                    chatId = chatId,
+                    chatId = targetChatId,
                     mediaUrl = imageUrl,
                     mediaType = "IMAGE",
                     caption = ""
@@ -457,12 +548,13 @@ class ChatViewModel @Inject constructor(
      * Send an audio message.
      */
     fun sendAudioMessage(audioUri: Uri, chatId: String) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                val audioUrl = storageRepository.uploadChatAudio(audioUri, chatId)
+                val audioUrl = storageRepository.uploadChatAudio(audioUri, targetChatId)
                 databaseRepository.sendMediaMessage(
-                    chatId = chatId,
+                    chatId = targetChatId,
                     mediaUrl = audioUrl,
                     mediaType = "AUDIO",
                     caption = ""
@@ -482,12 +574,13 @@ class ChatViewModel @Inject constructor(
      * Send a video message.
      */
     fun sendVideoMessage(videoUri: Uri, chatId: String) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                val videoUrl = storageRepository.uploadChatVideo(videoUri, chatId)
+                val videoUrl = storageRepository.uploadChatVideo(videoUri, targetChatId)
                 databaseRepository.sendMediaMessage(
-                    chatId = chatId,
+                    chatId = targetChatId,
                     mediaUrl = videoUrl,
                     mediaType = "VIDEO",
                     caption = ""
@@ -507,12 +600,13 @@ class ChatViewModel @Inject constructor(
      * Send a document message uploaded to Firebase Storage.
      */
     fun sendDocumentMessage(documentUri: Uri, chatId: String, fileName: String) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                val documentUrl = storageRepository.uploadChatDocument(documentUri, chatId, fileName)
+                val documentUrl = storageRepository.uploadChatDocument(documentUri, targetChatId, fileName)
                 databaseRepository.sendMediaMessage(
-                    chatId = chatId,
+                    chatId = targetChatId,
                     mediaUrl = documentUrl,
                     mediaType = "DOCUMENT",
                     caption = fileName
@@ -537,10 +631,11 @@ class ChatViewModel @Inject constructor(
         address: String,
         chatId: String
     ) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                databaseRepository.sendLocationMessage(chatId, latitude, longitude, address)
+                databaseRepository.sendLocationMessage(targetChatId, latitude, longitude, address)
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -556,9 +651,10 @@ class ChatViewModel @Inject constructor(
      * Send a sticker message.
      */
     fun sendStickerMessage(sticker: String, chatId: String) {
+        val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                databaseRepository.sendStickerMessage(chatId, sticker, "")
+                databaseRepository.sendStickerMessage(targetChatId, sticker, "")
             } catch (e: Exception) {
                 e.printStackTrace()
                 _state.value = _state.value.copy(
@@ -570,6 +666,38 @@ class ChatViewModel @Inject constructor(
 
     fun clearError() {
         _state.value = _state.value.copy(error = null)
+    }
+
+    /**
+     * Translate a message into the device language using [TranslationService].
+     * Toggles: if a translation already exists for the message, it is removed.
+     */
+    fun translateMessage(messageId: String, text: String) {
+        if (messageId.isBlank() || text.isBlank()) return
+        // Toggle off if already translated
+        if (_state.value.translatedMessages.containsKey(messageId)) {
+            _state.value = _state.value.copy(
+                translatedMessages = _state.value.translatedMessages - messageId
+            )
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val targetLang = java.util.Locale.getDefault().language.ifBlank { "es" }
+                val result = translationService.translate(text, targetLang = targetLang)
+                result.onSuccess { translated ->
+                    _state.value = _state.value.copy(
+                        translatedMessages = _state.value.translatedMessages + (messageId to translated)
+                    )
+                }.onFailure { e ->
+                    _state.value = _state.value.copy(
+                        error = "No se pudo traducir: ${e.message}"
+                    )
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(error = "No se pudo traducir: ${e.message}")
+            }
+        }
     }
     
     /**

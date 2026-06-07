@@ -499,7 +499,7 @@ fun ProfileScreen(
                             val calendar = Calendar.getInstance()
                             calendar.timeInMillis = timestamp
                             calendar.get(Calendar.YEAR).toString()
-                        } ?: "2024"
+                        } ?: "2026"
                     }
                     
                     // Messages - formatear número

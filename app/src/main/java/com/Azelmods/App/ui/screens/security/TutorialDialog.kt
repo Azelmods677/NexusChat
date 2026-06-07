@@ -105,8 +105,8 @@ private fun TutorialSection(section: TutorialSectionData) {
 
 @Composable
 private fun CodeBlock(code: String) {
+    @Suppress("DEPRECATION")
     val clipboardManager = LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
     
     Card(
         colors = CardDefaults.cardColors(
@@ -123,9 +123,7 @@ private fun CodeBlock(code: String) {
             ) {
                 IconButton(
                     onClick = {
-                        scope.launch {
-                            clipboardManager.setText(AnnotatedString(code))
-                        }
+                        clipboardManager.setText(AnnotatedString(code))
                     },
                     modifier = Modifier.size(32.dp)
                 ) {

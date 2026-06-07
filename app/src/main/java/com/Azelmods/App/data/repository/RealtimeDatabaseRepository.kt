@@ -16,6 +16,8 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@Suppress("UNCHECKED_CAST")
+
 @Singleton
 class RealtimeDatabaseRepository @Inject constructor(
     private val e2eeCryptoService: E2EECryptoService

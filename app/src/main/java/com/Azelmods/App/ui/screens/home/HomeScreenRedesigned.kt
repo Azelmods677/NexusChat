@@ -336,7 +336,7 @@ fun ChatRow(
     themeSecondaryColor: Color = MaterialTheme.colorScheme.secondary
 ) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val contactName = chat.participantNames.values.firstOrNull() ?: "Unknown"
+    val contactName = chat.participantNames.values.firstOrNull() ?: "Anónimo"
     val isOnline = chat.isTyping.values.any { it }
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
     
