@@ -437,11 +437,9 @@ class SearchViewModel @Inject constructor(
                 val chats = repository.getUserChats(userId).first()
                 chats.forEach { data ->
                     val chatId = data["chatId"] as? String ?: return@forEach
-                    val members = when {
-                        data["members"] is List<*> ->
-                            (data["members"] as List<*>).filterIsInstance<String>()
-                        data["participants"] is List<*> ->
-                            (data["participants"] as List<*>).filterIsInstance<String>()
+                    val members = when (val m = data["members"]) {
+                        is List<*> -> m.filterIsInstance<String>()
+                        is Map<*, *> -> m.keys.filterIsInstance<String>()
                         else -> emptyList()
                     }
                     val otherId = members.firstOrNull { it != userId } ?: return@forEach

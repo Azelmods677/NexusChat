@@ -12,6 +12,7 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -135,16 +136,18 @@ class RealtimeDatabaseRepository @Inject constructor(
         val chatSnapshot = chatRef.get().await()
         
         if (!chatSnapshot.exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
             val chatData = mapOf(
                 "chatId" to chatId,
-                "members" to members,
+                "members" to membersMap,
                 "createdAt" to ServerValue.TIMESTAMP,
                 "lastMessage" to "",
                 "lastMessageTime" to ServerValue.TIMESTAMP,
                 "lastMessageSenderId" to ""
             )
             chatRef.setValue(chatData).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
 
         val messageId = chatRef.child("messages").push().key
@@ -242,29 +245,38 @@ class RealtimeDatabaseRepository @Inject constructor(
     }
 
     fun getUserChats(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
-        val chatsRef = database.child("chats")
+        val userChatsIndexRef = database.child("userChats").child(userId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val userChats = snapshot.children.mapNotNull { child ->
-                    val members = child.child("members")
-                    val isMember = when (val value = members.value) {
-                        is List<*> -> value.contains(userId)
-                        is Map<*, *> -> value.containsKey(userId)
-                        else -> false
-                    }
-                    if (isMember) {
-                        val map = child.value as? Map<String, Any> ?: return@mapNotNull null
-                        map.toMutableMap().apply { put("chatId", child.key ?: "") }
-                    } else null
+                val chatIds = snapshot.children.mapNotNull { it.key }
+                if (chatIds.isEmpty()) {
+                    trySend(emptyList())
+                    return
                 }
-                trySend(userChats)
+                launch {
+                    val chats = mutableListOf<Map<String, Any>>()
+                    chatIds.forEach { chatId ->
+                        try {
+                            val chatSnapshot = database.child("chats").child(chatId).get().await()
+                            if (chatSnapshot.exists()) {
+                                val map = chatSnapshot.value as? Map<String, Any>
+                                if (map != null) {
+                                    chats.add(map.toMutableMap().apply { put("chatId", chatId) })
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("RealtimeDB", "Failed to fetch chat $chatId: ${e.message}")
+                        }
+                    }
+                    trySend(chats)
+                }
             }
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
             }
         }
-        chatsRef.addValueEventListener(listener)
-        awaitClose { chatsRef.removeEventListener(listener) }
+        userChatsIndexRef.addValueEventListener(listener)
+        awaitClose { userChatsIndexRef.removeEventListener(listener) }
     }
 
     suspend fun setChatBooleanField(chatId: String, field: String, value: Boolean) {
@@ -359,14 +371,17 @@ class RealtimeDatabaseRepository @Inject constructor(
 
     suspend fun createGroup(groupName: String, members: List<String>): String {
         val groupId = "group_${System.currentTimeMillis()}"
+        val allMembers = (members + (auth.currentUser?.uid ?: "")).distinct()
+        val membersMap = allMembers.associateWith { true }
         val groupData = mapOf(
             "chatId" to groupId,
             "groupName" to groupName,
-            "members" to members + (auth.currentUser?.uid ?: ""),
+            "members" to membersMap,
             "createdAt" to ServerValue.TIMESTAMP,
             "isGroup" to true
         )
         database.child("chats").child(groupId).setValue(groupData).await()
+        updateUserChatsIndex(groupId, allMembers)
         return groupId
     }
 
@@ -420,16 +435,18 @@ class RealtimeDatabaseRepository @Inject constructor(
         val chatSnapshot = chatRef.get().await()
         
         if (!chatSnapshot.exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
             val chatData = mapOf(
                 "chatId" to chatId,
-                "members" to members,
+                "members" to membersMap,
                 "createdAt" to ServerValue.TIMESTAMP,
                 "lastMessage" to "",
                 "lastMessageTime" to ServerValue.TIMESTAMP,
                 "lastMessageSenderId" to ""
             )
             chatRef.setValue(chatData).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
 
         val messageId = chatRef.child("messages").push().key
@@ -528,16 +545,18 @@ class RealtimeDatabaseRepository @Inject constructor(
         val chatSnapshot = chatRef.get().await()
         
         if (!chatSnapshot.exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
             val chatData = mapOf(
                 "chatId" to chatId,
-                "members" to members,
+                "members" to membersMap,
                 "createdAt" to ServerValue.TIMESTAMP,
                 "lastMessage" to "",
                 "lastMessageTime" to ServerValue.TIMESTAMP,
                 "lastMessageSenderId" to ""
             )
             chatRef.setValue(chatData).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
 
         val messageId = chatRef.child("messages").push().key
@@ -703,8 +722,10 @@ class RealtimeDatabaseRepository @Inject constructor(
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
         if (!chatRef.get().await().exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
-            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to membersMap, "createdAt" to ServerValue.TIMESTAMP)).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
         val fileName = "IMG_${System.currentTimeMillis()}.jpg"
         val imageUrl = uploadFile(imageUri, "images", fileName)
@@ -722,8 +743,10 @@ class RealtimeDatabaseRepository @Inject constructor(
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
         if (!chatRef.get().await().exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
-            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to membersMap, "createdAt" to ServerValue.TIMESTAMP)).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
         val fileName = "VID_${System.currentTimeMillis()}.mp4"
         val videoUrl = uploadFile(videoUri, "videos", fileName)
@@ -741,8 +764,10 @@ class RealtimeDatabaseRepository @Inject constructor(
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
         if (!chatRef.get().await().exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
-            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to membersMap, "createdAt" to ServerValue.TIMESTAMP)).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
         val documentUrl = uploadFile(documentUri, "documents", fileName)
         val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
@@ -760,8 +785,10 @@ class RealtimeDatabaseRepository @Inject constructor(
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
         if (!chatRef.get().await().exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
-            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to membersMap, "createdAt" to ServerValue.TIMESTAMP)).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
         val fileName = "AUD_${System.currentTimeMillis()}.m4a"
         val audioUrl = uploadFile(audioUri, "audio", fileName)
@@ -779,8 +806,10 @@ class RealtimeDatabaseRepository @Inject constructor(
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
         if (!chatRef.get().await().exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
-            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to membersMap, "createdAt" to ServerValue.TIMESTAMP)).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
         val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
@@ -795,9 +824,12 @@ class RealtimeDatabaseRepository @Inject constructor(
     suspend fun sendStickerMessage(chatId: String, stickerUrl: String, stickerPack: String = "") {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
-        if (!chatRef.get().await().exists()) {
-            val members = chatId.split("_").filter { it.isNotBlank() }
-            chatRef.setValue(mapOf("chatId" to chatId, "members" to members, "createdAt" to ServerValue.TIMESTAMP)).await()
+        val chatSnapshot = chatRef.get().await()
+        if (!chatSnapshot.exists()) {
+            val memberIds = chatId.split("_").filter { it.isNotBlank() }
+            val membersMap = memberIds.associateWith { true }
+            chatRef.setValue(mapOf("chatId" to chatId, "members" to membersMap, "createdAt" to ServerValue.TIMESTAMP)).await()
+            updateUserChatsIndex(chatId, memberIds)
         }
         val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
@@ -872,8 +904,8 @@ class RealtimeDatabaseRepository @Inject constructor(
         try {
             val chatSnapshot = database.child("chats").child(chatId).child("members").get().await()
             val members = when (val value = chatSnapshot.value) {
-                is List<*> -> value.filterIsInstance<String>()
                 is Map<*, *> -> value.keys.filterIsInstance<String>()
+                is List<*> -> value.filterIsInstance<String>() // Fallback retrocompatibilidad
                 else -> emptyList()
             }
             val recipientId = members.firstOrNull { it != senderId } ?: return
@@ -931,6 +963,21 @@ class RealtimeDatabaseRepository @Inject constructor(
             typingRef.onDisconnect().removeValue()
         } else {
             typingRef.removeValue().await()
+        }
+    }
+
+    /**
+     * Helper function to maintain userChats index.
+     * Writes userChats/{uid}/{chatId} = true for each member.
+     * This enables efficient chat listing without reading /chats entirely.
+     */
+    private suspend fun updateUserChatsIndex(chatId: String, memberIds: List<String>) {
+        try {
+            memberIds.forEach { uid ->
+                database.child("userChats").child(uid).child(chatId).setValue(true).await()
+            }
+        } catch (e: Exception) {
+            Log.e("RealtimeDB", "Failed to update userChats index for $chatId: ${e.message}")
         }
     }
 }

@@ -8,12 +8,13 @@ Aplicación de mensajería premium para Android construida con **Kotlin + Jetpac
 
 ## ✨ Características
 
-- **Mensajería en tiempo real** (Firebase Realtime Database) con cifrado E2EE best-effort, multimedia (imagen, **video**, audio, documento, ubicación, contacto, stickers) y mensajes efímeros.
+- **Mensajería en tiempo real** (Firebase Realtime Database) con arquitectura optimizada usando índices y mapas para acceso eficiente, multimedia (imagen, **video**, audio, documento, ubicación, contacto, stickers) y mensajes efímeros.
 - **Llamadas y videollamadas** P2P con WebRTC (señalización vía Firebase + STUN).
 - **Stories** con editor (texto, stickers, emojis arrastrables) que ahora se **renderizan en el archivo final** tanto en foto (Canvas/GraphicsLayer) como en video (Media3 Transformer).
 - **Sistema de temas**: **25 acentos** curados que se aplican en toda la app en tiempo real vía `MaterialTheme.colorScheme`.
 - **Privacidad**: navegador Tor con enrutado por Orbot (HTTP 8118 con *fallback* a SOCKS5 9050), pantalla de control y guía de Orbot.
 - **Asistente de IA (AzelAI)**: integración con Gemini usando la **API key del usuario** (almacenada cifrada), selección de modelo, streaming, cola con *backoff* y *rate-limit*.
+- **Demo mode**: Sistema de cuentas demo con datos de prueba para testing sin Firebase.
 
 ---
 
@@ -44,20 +45,17 @@ cd NexusChat
 ### 2. Firebase
 Coloca tu `google-services.json` en `app/`. Habilita en la consola de Firebase: Authentication, Realtime Database, Storage y Cloud Messaging.
 
-> Reglas de Realtime Database recomendadas (punto de partida; endurécelas para producción):
-> ```json
-> {
->   "rules": {
->     "users":          { ".read": "auth != null", "$uid": { ".write": "auth != null && auth.uid === $uid" } },
->     "chats":          { ".read": "auth != null", ".write": "auth != null" },
->     "typing":         { ".read": "auth != null", ".write": "auth != null" },
->     "stories":        { ".read": "auth != null", "$uid": { ".write": "auth != null && auth.uid === $uid" } },
->     "stories_views":  { ".read": "auth != null", ".write": "auth != null" },
->     "calls":          { ".read": "auth != null", ".write": "auth != null" },
->     "friendRequests": { ".read": "auth != null", ".write": "auth != null" }
->   }
-> }
-> ```
+#### Reglas de Realtime Database
+El proyecto incluye `database.rules.json` con reglas optimizadas:
+
+- **Estructura basada en mapas**: `members` y `participants` usan `{uid: true}` en lugar de listas, permitiendo validación eficiente con `.child(auth.uid).exists()`
+- **Índice `userChats`**: Acceso O(1) a los chats del usuario en lugar de escanear toda la base de datos
+- **Permisos granulares**: Validación de membresía, autoría de mensajes y protección de datos de usuario
+
+Despliega las reglas desde la consola de Firebase o con Firebase CLI:
+```bash
+firebase deploy --only database
+```
 
 ### 3. API key de la IA (Gemini)
 La app **no** trae ninguna API key embebida. Hay dos formas de configurarla:

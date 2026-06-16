@@ -151,10 +151,10 @@ class ChatRepositoryImpl @Inject constructor(
             val chatRef = firebaseManager.database.getReference("chats").push()
             val chatId = chatRef.key ?: return Resource.Error("Failed to create chat")
             
+            val membersMap = participants.associateWith { true }
             val chatData = mapOf(
                 "chatId" to chatId,
-                "participants" to participants,
-                "members" to participants,
+                "members" to membersMap,
                 "createdAt" to System.currentTimeMillis(),
                 "lastMessage" to "",
                 "lastMessageTime" to ServerValue.TIMESTAMP,
@@ -162,6 +162,13 @@ class ChatRepositoryImpl @Inject constructor(
             )
             
             chatRef.setValue(chatData).await()
+            
+            // Update userChats index for all participants
+            participants.forEach { uid ->
+                firebaseManager.database.getReference("userChats")
+                    .child(uid).child(chatId).setValue(true).await()
+            }
+            
             Resource.Success(chatId)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to create chat")

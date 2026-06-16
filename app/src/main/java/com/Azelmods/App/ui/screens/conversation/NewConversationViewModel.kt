@@ -171,17 +171,23 @@ class NewConversationViewModel @Inject constructor(
                 }
                 
                 if (!exists) {
+                    val membersMap = mapOf(currentUid to true, otherUid to true)
                     chatRef.setValue(
                         mapOf(
                             "chatId" to chatId,
-                            "members" to listOf(currentUid, otherUid),
-                            "participants" to listOf(currentUid, otherUid), // Added for backwards compatibility
+                            "members" to membersMap,
                             "createdAt" to ServerValue.TIMESTAMP,
                             "lastMessage" to "",
                             "lastMessageTime" to ServerValue.TIMESTAMP,
                             "lastMessageSenderId" to ""
                         )
                     ).await()
+                    
+                    // Update userChats index for both users
+                    FirebaseDatabase.getInstance().reference.child("userChats")
+                        .child(currentUid).child(chatId).setValue(true).await()
+                    FirebaseDatabase.getInstance().reference.child("userChats")
+                        .child(otherUid).child(chatId).setValue(true).await()
                 }
 
                 // NavController must be called on the main thread

@@ -105,9 +105,11 @@ class DemoAccountManager @Inject constructor(
             val chatId = if (uidA < uidB) "${uidA}_${uidB}" else "${uidB}_${uidA}"
             val timestamp = System.currentTimeMillis()
             
+            val membersMap = mapOf(currentUserId to true, DEMO_USER_ID to true)
+            
             val demoChatData = mapOf(
                 "chatId" to chatId,
-                "members" to listOf(currentUserId, DEMO_USER_ID),
+                "members" to membersMap,
                 "lastMessage" to "Try exploring the features! 🚀",
                 "lastMessageTime" to timestamp,
                 "lastMessageSenderId" to DEMO_USER_ID,
@@ -120,6 +122,10 @@ class DemoAccountManager @Inject constructor(
                 .child(chatId)
                 .setValue(demoChatData)
                 .await()
+            
+            // Update userChats index for both users
+            database.reference.child("userChats").child(currentUserId).child(chatId).setValue(true).await()
+            database.reference.child("userChats").child(DEMO_USER_ID).child(chatId).setValue(true).await()
             
             Log.d(TAG, "Demo chat created: $chatId")
             

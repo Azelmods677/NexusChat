@@ -277,8 +277,9 @@ class BackupManager @Inject constructor(
         chatsSnap.children.forEach { chatNode ->
             val chatId = chatNode.key ?: return@forEach
             val chatMap = chatNode.value as? Map<*, *> ?: return@forEach
-            val members = when (val m = chatMap["members"] ?: chatMap["participants"]) {
+            val members = when (val m = chatMap["members"]) {
                 is List<*> -> m.filterIsInstance<String>()
+                is Map<*, *> -> m.keys.filterIsInstance<String>()
                 else -> emptyList()
             }
             if (!members.contains(userId)) return@forEach
