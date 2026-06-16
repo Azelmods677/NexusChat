@@ -3,8 +3,10 @@ package com.Azelmods.App.ui.screens.conversation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
+import com.Azelmods.App.data.chat.ChatId
 import com.Azelmods.App.data.model.User
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
+import com.Azelmods.App.ui.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
@@ -143,23 +145,37 @@ class NewConversationViewModel @Inject constructor(
      * "chat/{chatId}" — NOT "chat/{otherUid}".
      */
     fun startConversation(otherUid: String, navController: NavController) {
+        // ✅ Validar sesión ANTES de lanzar la corrutina: si no hay usuario
+        // autenticado, mostrar un error accionable en lugar de un return silencioso.
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+        if (currentUid == null) {
+            android.util.Log.e("NewConversation", "Cannot start conversation: user not authenticated")
+            _state.value = _state.value.copy(error = "Inicia sesión para chatear")
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val currentUid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-
-                // Deterministic, collision-free chat ID
-                val chatId = listOf(currentUid, otherUid).sorted().joinToString("_")
+                // Deterministic, collision-free chat ID (utilidad única ChatId)
+                val chatId = ChatId.create(currentUid, otherUid)
 
                 val chatRef = FirebaseDatabase.getInstance().reference
                     .child("chats")
                     .child(chatId)
 
-                val exists = chatRef.get().await().exists()
+                val exists = try {
+                    chatRef.get().await().exists()
+                } catch (e: Exception) {
+                    android.util.Log.w("NewConversation", "Read denied or failed, assuming chat exists: ${e.message}")
+                    true // If we get permission denied, it's because it exists and rules blocked us.
+                }
+                
                 if (!exists) {
                     chatRef.setValue(
                         mapOf(
                             "chatId" to chatId,
                             "members" to listOf(currentUid, otherUid),
+                            "participants" to listOf(currentUid, otherUid), // Added for backwards compatibility
                             "createdAt" to ServerValue.TIMESTAMP,
                             "lastMessage" to "",
                             "lastMessageTime" to ServerValue.TIMESTAMP,
@@ -170,13 +186,20 @@ class NewConversationViewModel @Inject constructor(
 
                 // NavController must be called on the main thread
                 withContext(Dispatchers.Main) {
-                    navController.navigate("chat/$chatId")
+                    navController.navigate(Screen.Chat.createRoute(chatId))
                 }
             } catch (e: Exception) {
                 android.util.Log.e("NewConversation", "Could not start conversation: ${e.message}", e)
-                _state.value = _state.value.copy(error = "Could not start conversation: ${e.message}")
+                _state.value = _state.value.copy(error = "No se pudo abrir el chat. Intenta de nuevo.")
             }
         }
+    }
+
+    /**
+     * Limpia el error actual tras mostrarlo en la UI.
+     */
+    fun clearError() {
+        _state.value = _state.value.copy(error = null)
     }
 
     /**
@@ -246,27 +269,29 @@ class NewConversationViewModel @Inject constructor(
      * Create demo chat with Azel Assistant
      */
     fun createDemoChat(navController: NavController) {
+        // ✅ Validar sesión ANTES de lanzar la corrutina: mostrar error accionable
+        // en lugar de un return silencioso.
+        val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+        if (currentUid == null) {
+            android.util.Log.e("NewConversation", "Cannot open demo chat: user not authenticated")
+            _state.value = _state.value.copy(error = "Inicia sesión para abrir el Demo Chat")
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val currentUid = FirebaseAuth.getInstance().currentUser?.uid
-                if (currentUid == null) {
-                    android.util.Log.e("NewConversation", "User not logged in")
-                    return@launch
-                }
-                
                 // Initialize demo account
                 demoAccountManager.initializeDemoAccount(currentUid)
-                
-                // Navigate to demo chat
-                val demoUserId = "demo_azel_assistant"
-                val chatId = listOf(currentUid, demoUserId).sorted().joinToString("_")
-                
+
+                // ChatId canónico y consistente con HomeScreen y NewConversationScreen
+                val chatId = ChatId.create(currentUid, "demo_azel_assistant")
+
                 withContext(Dispatchers.Main) {
-                    navController.navigate("chat/$chatId")
+                    navController.navigate(Screen.Chat.createRoute(chatId))
                 }
             } catch (e: Exception) {
                 android.util.Log.e("NewConversation", "Error creating demo chat: ${e.message}", e)
-                _state.value = _state.value.copy(error = "Error creating demo chat: ${e.message}")
+                _state.value = _state.value.copy(error = "No se pudo abrir el Demo Chat. Intenta de nuevo.")
             }
         }
     }

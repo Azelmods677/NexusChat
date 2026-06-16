@@ -100,12 +100,14 @@ class DemoAccountManager @Inject constructor(
      */
     private suspend fun createDemoChat(currentUserId: String) {
         try {
-            val chatId = "${currentUserId}_${DEMO_USER_ID}"
+            val uidA = currentUserId
+            val uidB = DEMO_USER_ID
+            val chatId = if (uidA < uidB) "${uidA}_${uidB}" else "${uidB}_${uidA}"
             val timestamp = System.currentTimeMillis()
             
             val demoChatData = mapOf(
                 "chatId" to chatId,
-                "participants" to listOf(currentUserId, DEMO_USER_ID),
+                "members" to listOf(currentUserId, DEMO_USER_ID),
                 "lastMessage" to "Try exploring the features! 🚀",
                 "lastMessageTime" to timestamp,
                 "lastMessageSenderId" to DEMO_USER_ID,
@@ -132,7 +134,9 @@ class DemoAccountManager @Inject constructor(
      */
     private suspend fun createDemoMessages(currentUserId: String) {
         try {
-            val chatId = "${currentUserId}_${DEMO_USER_ID}"
+            val uidA = currentUserId
+            val uidB = DEMO_USER_ID
+            val chatId = if (uidA < uidB) "${uidA}_${uidB}" else "${uidB}_${uidA}"
             val messagesRef = database.reference.child("messages").child(chatId)
             
             val baseTime = System.currentTimeMillis() - (5 * 60 * 1000) // 5 minutes ago

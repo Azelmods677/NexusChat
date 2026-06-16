@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +34,7 @@ import java.io.IOException
 fun AudioMessagePlayer(
     audioUrl: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = Color(0xFF7C3AED)
+    accentColor: Color = MaterialTheme.colorScheme.primary
 ) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }

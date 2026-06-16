@@ -91,48 +91,37 @@ fun AppearanceScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(16.dp)
             )
-            
-            // 15 accent colors in 5-column grid
-            val accentColors = listOf(
-                "Purple" to Color(0xFF7C3AED),
-                "Blue" to Color(0xFF3B82F6),
-                "Green" to Color(0xFF10B981),
-                "Red" to Color(0xFFEF4444),
-                "Pink" to Color(0xFFEC4899),
-                "Orange" to Color(0xFFF97316),
-                "Cyan" to Color(0xFF06B6D4),
-                "Toxic" to Color(0xFF00FF00),
-                "Dark" to Color(0xFF1F2937),
-                "Gold" to Color(0xFFFBBF24),
-                "Toxico_Red" to Color(0xFFFF0000),
-                "Perverso" to Color(0xFFCC0000),
-                "Crimson_Dark" to Color(0xFF8B0000),
-                "Neon_Red" to Color(0xFFFF1744),
-                "Blood_Moon" to Color(0xFFB71C1C)
-            )
-            
+
+            // 25 temas curados — fuente única en AppTheme.ACCENT_SWATCHES
+            val accentColors = AppTheme.ACCENT_SWATCHES
+
             LazyVerticalGrid(
                 columns = GridCells.Fixed(5),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
+                    .height(300.dp)
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(accentColors) { (name, color) ->
+                items(accentColors) { swatch ->
+                    val isSelected = accentColor.equals(swatch.id, ignoreCase = true) ||
+                        accentColor.equals(swatch.displayName, ignoreCase = true)
                     Box(
                         modifier = Modifier
                             .aspectRatio(1f)
                             .clip(CircleShape)
-                            .background(color)
+                            .background(
+                                androidx.compose.ui.graphics.Brush.linearGradient(
+                                    listOf(swatch.colors.primary, swatch.colors.secondary)
+                                )
+                            )
                             .border(
-                                width = if (accentColor.equals(name, ignoreCase = true)) 3.dp else 1.dp,
-                                color = if (accentColor.equals(name, ignoreCase = true)) 
-                                    Color.White else Color.White.copy(alpha = 0.3f),
+                                width = if (isSelected) 3.dp else 1.dp,
+                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.3f),
                                 shape = CircleShape
                             )
-                            .clickable { viewModel.setAccentColor(name) }
+                            .clickable { viewModel.setAccentColor(swatch.id) }
                     )
                 }
             }

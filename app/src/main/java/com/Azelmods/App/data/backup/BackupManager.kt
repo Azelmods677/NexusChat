@@ -102,10 +102,11 @@ class BackupManager @Inject constructor(
 
             // Step 4: Encrypt
             emit(BackupResult.Progress(60, "Encrypting..."))
-            val encryptedData = backupEncryptor.encrypt(compressedData, password.toByteArray())
+            val backupKey = deriveAesKey(password)
+            val encryptedData = backupEncryptor.encrypt(compressedData, backupKey)
 
             // Step 5: Calculate HMAC
-            val hmac = backupEncryptor.calculateHMAC(encryptedData, password.toByteArray())
+            val hmac = backupEncryptor.calculateHMAC(encryptedData, backupKey)
 
             // Step 6: Create backup metadata
             val backupId = generateBackupId()
@@ -185,7 +186,7 @@ class BackupManager @Inject constructor(
 
             // Step 3: Decrypt
             emit(RestoreResult.Progress(50, "Decrypting..."))
-            val compressedData = backupEncryptor.decrypt(encryptedData, password.toByteArray())
+            val compressedData = backupEncryptor.decrypt(encryptedData, deriveAesKey(password))
 
             // Step 4: Decompress
             emit(RestoreResult.Progress(60, "Decompressing..."))
@@ -363,6 +364,16 @@ class BackupManager @Inject constructor(
             }
         }
         return map
+    }
+
+    /**
+     * Derives a 256-bit (32-byte) AES key from the user's backup password/PIN
+     * using SHA-256. This guarantees a valid key length regardless of how short
+     * the PIN is (fixes "Unsupported key size" crashes with short PINs).
+     */
+    private fun deriveAesKey(password: String): ByteArray {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        return digest.digest(password.toByteArray(Charsets.UTF_8))
     }
 
     private fun compressData(data: ByteArray): ByteArray {

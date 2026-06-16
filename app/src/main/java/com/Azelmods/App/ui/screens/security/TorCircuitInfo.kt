@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.security
+﻿package com.Azelmods.App.ui.screens.security
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -12,7 +12,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.Azelmods.App.data.security.tor.TorCircuitInfo
-import com.Azelmods.App.ui.theme.Purple
 
 /**
  * Displays current Tor circuit information
@@ -67,7 +66,7 @@ fun TorCircuitInfo(
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "New Identity",
-                        tint = Purple
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -122,7 +121,7 @@ fun TorCircuitInfo(
                 onClick = onNewIdentity,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 Icon(

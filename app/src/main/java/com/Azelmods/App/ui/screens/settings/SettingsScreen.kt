@@ -113,7 +113,7 @@ fun SettingsScreen(
                     .padding(16.dp),
                 shape = RoundedCornerShape(20.dp),
                 color = Color(0xFF1A1A2E),
-                border = BorderStroke(1.dp, Color(0xFF7B5CFA).copy(0.3f))
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f))
             ) {
                 Row(
                     modifier = Modifier
@@ -167,7 +167,7 @@ fun SettingsScreen(
                         Surface(
                             modifier = Modifier.size(56.dp),
                             shape = CircleShape,
-                            color = Color(0xFF7B5CFA)
+                            color = MaterialTheme.colorScheme.primary
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 // Load user photo if available
@@ -232,7 +232,7 @@ fun SettingsScreen(
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color(0xFF7B5CFA),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -253,7 +253,7 @@ fun SettingsScreen(
                             android.util.Log.e("SettingsScreen", "Navigation error: ${e.message}")
                         }
                     },
-                color = Purple.copy(alpha = 0.2f),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                 shape = MaterialTheme.shapes.medium
             ) {
                 Row(
@@ -419,7 +419,7 @@ fun SettingsSection(
     Column {
         Text(
             text = title,
-            color = Purple,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -476,7 +476,7 @@ fun SettingsItem(
         
         if (badge != null) {
             Surface(
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 shape = MaterialTheme.shapes.small
             ) {
                 Text(

@@ -18,7 +18,6 @@ import androidx.navigation.NavController
 import com.Azelmods.App.data.security.tor.TorState
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.Purple
 
 /**
  * Pantalla de control de Tor - simplificada para usar Orbot
@@ -166,7 +165,7 @@ private fun InfoCard(
             Icon(
                 imageVector = Icons.Default.Info,
                 contentDescription = null,
-                tint = Purple,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Column {

@@ -94,8 +94,8 @@ fun NewConversationScreen(
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
-                    cursorColor = Purple
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 ),
                 singleLine = true
             )
@@ -181,13 +181,13 @@ fun QuickActionButton(
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(Purple.copy(alpha = 0.2f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 icon,
                 contentDescription = label,
-                tint = Purple,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -218,7 +218,7 @@ fun ContactItem(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Purple.copy(alpha = 0.3f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

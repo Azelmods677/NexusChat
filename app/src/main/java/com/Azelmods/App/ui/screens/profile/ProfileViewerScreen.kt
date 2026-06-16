@@ -245,8 +245,18 @@ fun ProfileViewerScreen(
                         FloatingActionButton(
                             onClick = {
                                 try {
-                                    navController.navigate("chat/$userId") {
-                                        popUpTo("profile_viewer/$userId") { inclusive = true }
+                                    val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                    if (currentUid != null) {
+                                        val chatId = com.Azelmods.App.data.chat.ChatId.create(currentUid, userId)
+                                        navController.navigate("chat/$chatId") {
+                                            popUpTo("profile_viewer/$userId") { inclusive = true }
+                                        }
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            navController.context,
+                                            "Debes iniciar sesión para chatear",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 } catch (e: Exception) { }
                             },
@@ -260,7 +270,8 @@ fun ProfileViewerScreen(
                         FloatingActionButton(
                             onClick = {
                                 try {
-                                    callViewModel.startCall(userId, CallType.AUDIO)
+                                    // ActiveCallScreen (caller mode) performs startCall itself,
+                                    // so we only navigate here to avoid creating the call twice.
                                     navController.navigate("active_call/$userId/audio")
                                 } catch (e: Exception) { }
                             },
@@ -274,7 +285,6 @@ fun ProfileViewerScreen(
                         FloatingActionButton(
                             onClick = {
                                 try {
-                                    callViewModel.startCall(userId, CallType.VIDEO)
                                     navController.navigate("active_call/$userId/video")
                                 } catch (e: Exception) { }
                             },
@@ -364,7 +374,7 @@ fun StatItem(label: String, value: String, color: Color) {
 fun AnimatedFullscreenAvatar(
     name: String,
     photoUrl: String?,
-    themeColor: Color = Color(0xFF7C3AED),
+    themeColor: Color = MaterialTheme.colorScheme.primary,
     themeSecondaryColor: Color = Color(0xFF00BFA6),
     onClick: () -> Unit = {}
 ) {

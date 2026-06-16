@@ -35,7 +35,16 @@ fun NewConversationScreen(
     var searchQuery by remember { mutableStateOf("") }
     var showAddContactSheet by remember { mutableStateOf(false) }
     var showNewGroupSheet by remember { mutableStateOf(false) }
-    
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Surface state.error so tapping a contact never goes without a response.
+    LaunchedEffect(state.error) {
+        state.error?.let { error ->
+            snackbarHostState.showSnackbar(message = error, duration = SnackbarDuration.Short)
+            viewModel.clearError()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -50,6 +59,7 @@ fun NewConversationScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color(0xFF0F0F1A)
     ) { padding ->
         Column(
@@ -70,13 +80,15 @@ fun NewConversationScreen(
                 placeholder = { Text("Search contacts...", color = Color.Gray) },
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
                 shape = RoundedCornerShape(24.dp),
+                singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedContainerColor = Color(0xFF1A1A2E),
                     unfocusedContainerColor = Color(0xFF1A1A2E),
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color(0xFF3D3D5C)
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -108,7 +120,7 @@ fun NewConversationScreen(
                     .safeClickable { viewModel.createDemoChat(navController) },
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF1A1A2E),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF7B5CFA).copy(0.4f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.4f))
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -118,7 +130,7 @@ fun NewConversationScreen(
                     Surface(
                         modifier = Modifier.size(48.dp),
                         shape = CircleShape,
-                        color = Color(0xFF7B5CFA)
+                        color = MaterialTheme.colorScheme.primary
                     ) {
                         Box(
                             contentAlignment = Alignment.Center

@@ -15,15 +15,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AiFeaturesScreen(
-    navController: NavController
+    navController: NavController,
+    aiKeyViewModel: AiKeyViewModel = hiltViewModel()
 ) {
     var smartRepliesEnabled by remember { mutableStateOf(false) }
     var autoTranslateEnabled by remember { mutableStateOf(false) }
@@ -70,7 +74,7 @@ fun AiFeaturesScreen(
                     .fillMaxWidth()
                     .background(
                         Brush.horizontalGradient(
-                            colors = listOf(Purple, Teal)
+                            colors = listOf(MaterialTheme.colorScheme.primary, Teal)
                         )
                     )
                     .padding(24.dp),
@@ -179,6 +183,9 @@ fun AiFeaturesScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // 🔑 API Key de Gemini
+            GeminiApiKeySection(viewModel = aiKeyViewModel)
+            
             // Azel IA Access Button
             Surface(
                 modifier = Modifier
@@ -196,7 +203,7 @@ fun AiFeaturesScreen(
                         Icon(
                             Icons.Default.AutoAwesome,
                             contentDescription = null,
-                            tint = Purple,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -208,7 +215,7 @@ fun AiFeaturesScreen(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Superinteligencia artificial sin restricciones",
+                                text = "Asistente de IA para programación, redacción y análisis",
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -218,7 +225,7 @@ fun AiFeaturesScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        text = "• Hacking ético y pentesting avanzado\n• Análisis de código y vulnerabilidades\n• Generación de exploits y payloads\n• Automatización de ataques\n• OSINT y ingeniería social",
+                        text = "• Asistencia de programación y revisión de código\n• Redacción, resumen y traducción de textos\n• Explicación de conceptos y respuestas a preguntas\n• Buenas prácticas de seguridad defensiva\n• Análisis y organización de información",
                         color = Color.White.copy(alpha = 0.8f),
                         fontSize = 13.sp,
                         lineHeight = 18.sp
@@ -230,7 +237,7 @@ fun AiFeaturesScreen(
                         onClick = { navController.navigate("azel_ai") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Purple,
+                            containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = Color.White
                         )
                     ) {
@@ -258,7 +265,7 @@ fun AiFeaturesScreen(
                         Icon(
                             Icons.Default.SmartToy,
                             contentDescription = null,
-                            tint = Purple,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -278,8 +285,8 @@ fun AiFeaturesScreen(
                         placeholder = { Text("Ask AI anything...") },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Purple,
-                            cursorColor = Purple
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            cursorColor = MaterialTheme.colorScheme.primary
                         ),
                         trailingIcon = {
                             IconButton(
@@ -297,7 +304,7 @@ fun AiFeaturesScreen(
                                     }
                                 }
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Purple)
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                     )
@@ -306,7 +313,7 @@ fun AiFeaturesScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Surface(
-                            color = Purple.copy(alpha = 0.2f),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                             shape = MaterialTheme.shapes.medium
                         ) {
                             Row(
@@ -316,7 +323,7 @@ fun AiFeaturesScreen(
                                 Icon(
                                     Icons.Default.SmartToy,
                                     contentDescription = null,
-                                    tint = Purple,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -358,13 +365,13 @@ fun AiFeatureCard(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(Purple.copy(alpha = 0.2f), MaterialTheme.shapes.medium),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), MaterialTheme.shapes.medium),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = Purple,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -389,10 +396,156 @@ fun AiFeatureCard(
                 checked = enabled,
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Purple,
-                    checkedTrackColor = Purple.copy(alpha = 0.5f)
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                 )
             )
         }
     }
 }
+
+/**
+ * 🔑 SECCIÓN "API KEY DE GEMINI"
+ *
+ * Permite al usuario introducir, guardar y borrar su propia API key de Gemini,
+ * almacenada de forma cifrada por [com.Azelmods.App.data.ai.AiKeyStore].
+ * Incluye toggle mostrar/ocultar, validación mínima (no vacía), indicador de
+ * estado (activa/inactiva) y mensaje de confirmación.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GeminiApiKeySection(
+    viewModel: AiKeyViewModel
+) {
+    val hasKey by viewModel.hasKey.collectAsState()
+    val feedback by viewModel.feedback.collectAsState()
+
+    var keyInput by remember { mutableStateOf("") }
+    var showKey by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        color = DarkSurface,
+        shape = MaterialTheme.shapes.large
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Key,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "API Key de Gemini",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Tu clave se guarda cifrada en este dispositivo.",
+                        color = Color.Gray,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Estado actual de la clave
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (hasKey) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                    contentDescription = null,
+                    tint = if (hasKey) Teal else Color.Gray,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (hasKey) "API Key activa" else "Sin API Key configurada",
+                    color = if (hasKey) Teal else Color.Gray,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = keyInput,
+                onValueChange = { keyInput = it },
+                singleLine = true,
+                placeholder = { Text("Pega aquí tu API key…") },
+                label = { Text("API Key") },
+                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                trailingIcon = {
+                    IconButton(onClick = { showKey = !showKey }) {
+                        Icon(
+                            imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = if (showKey) "Ocultar" else "Mostrar"
+                        )
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = {
+                        viewModel.saveApiKey(keyInput)
+                        keyInput = ""
+                        showKey = false
+                    },
+                    enabled = keyInput.isNotBlank(),
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Guardar", fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = { viewModel.clearApiKey() },
+                    enabled = hasKey,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Borrar")
+                }
+            }
+
+            // Mensaje de confirmación / validación
+            feedback?.let { message ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = message,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+

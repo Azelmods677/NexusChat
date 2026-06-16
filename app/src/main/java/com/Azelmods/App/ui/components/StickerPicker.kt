@@ -217,7 +217,7 @@ fun StickerPicker(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF7C3AED)
+                                containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
                             Icon(
@@ -232,7 +232,7 @@ fun StickerPicker(
                                 previewSticker = null
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF7C3AED)
+                                containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
                             Text("Enviar")

@@ -1,6 +1,7 @@
 package com.Azelmods.App
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +19,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +44,18 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
 
+    /**
+     * Holds a pending call-screen navigation request coming from a notification
+     * full-screen intent (incoming call). Compose observes this and navigates.
+     */
+    private val callNavRequest = mutableStateOf<CallNavRequest?>(null)
+
+    data class CallNavRequest(
+        val target: String,   // "incoming_call"
+        val callId: String,
+        val callType: String  // "audio" / "video"
+    )
+
     @Inject
     lateinit var userPreferences: UserPreferences
     
@@ -62,6 +76,9 @@ class MainActivity : ComponentActivity() {
         
         // ✅ Enable edge-to-edge (modern approach - no systemuicontroller)
         enableEdgeToEdge()
+        
+        // ── Handle incoming-call navigation coming from a notification ──
+        handleCallIntent(intent)
         
         // Fix ACTION_HOVER_EXIT crash
         window.decorView.setOnHoverListener { view, motionEvent -> true }
@@ -114,14 +131,58 @@ class MainActivity : ComponentActivity() {
                     ) {
                         val navController = rememberNavController()
                         NavGraph(navController = navController)
+
+                        // ── Navigate to the incoming-call screen when launched from a
+                        //    call notification's full-screen intent. ──
+                        val pendingCall by callNavRequest
+                        LaunchedEffect(pendingCall) {
+                            pendingCall?.let { req ->
+                                if (req.callId.isNotBlank()) {
+                                    try {
+                                        navController.navigate(
+                                            "${req.target}/${req.callId}/${req.callType}"
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Failed to navigate to call screen: ${e.message}", e)
+                                    }
+                                }
+                                callNavRequest.value = null
+                            }
+                        }
                     }
                 }
             }
         }
     }
     
-    override fun onResume() {
-        super.onResume()
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleCallIntent(intent)
+    }
+
+    /**
+     * Extracts incoming-call navigation extras (set by the FCM service / call
+     * notification full-screen intent) and stores them so Compose can navigate.
+     */
+    private fun handleCallIntent(intent: Intent?) {
+        try {
+            val navTo = intent?.getStringExtra("navigate_to") ?: return
+            if (navTo != "incoming_call") return
+            val callId = intent.getStringExtra("callId") ?: return
+            if (callId.isBlank()) return
+            val callType = intent.getStringExtra("callType") ?: "audio"
+            callNavRequest.value = CallNavRequest(
+                target = "incoming_call",
+                callId = callId,
+                callType = callType
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse call intent: ${e.message}", e)
+        }
+    }
+
+    override fun onResume() {        super.onResume()
         // Fix ACTION_HOVER_EXIT crash on older Android versions
         window.decorView.setOnHoverListener { view, motionEvent -> true }
         

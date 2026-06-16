@@ -56,8 +56,8 @@ fun MessageBubble(
     onLongPress: () -> Unit = {},
     onReactionClick: (String) -> Unit = {},
     onImageClick: ((String, String, String) -> Unit)? = null,
-    themeColor: Color = Color(0xFF7C3AED),
-    themeSecondaryColor: Color = Color(0xFF5B21B6),
+    themeColor: Color = MaterialTheme.colorScheme.primary,
+    themeSecondaryColor: Color = MaterialTheme.colorScheme.secondary,
     onDeleteClick: ((Boolean) -> Unit)? = null,
     onEditClick: (() -> Unit)? = null,
     onMessageViewed: (() -> Unit)? = null,  // Callback when ephemeral message is viewed
@@ -184,8 +184,8 @@ fun MessageBubble(
                     .shadow(
                         elevation = if (isOwnMessage) 8.dp else 6.dp,
                         shape = bubbleShape,
-                        ambientColor = if (isOwnMessage) Color(0xFF7B5CFA).copy(0.4f) else Color.Black.copy(0.3f),
-                        spotColor = if (isOwnMessage) Color(0xFF7B5CFA).copy(0.6f) else Color.Black.copy(0.3f)
+                        ambientColor = if (isOwnMessage) themeColor.copy(0.4f) else Color.Black.copy(0.3f),
+                        spotColor = if (isOwnMessage) themeColor.copy(0.6f) else Color.Black.copy(0.3f)
                     )
                     .then(
                         // Ephemeral border glow effect
@@ -194,9 +194,9 @@ fun MessageBubble(
                                 width = 1.5.dp,
                                 brush = Brush.linearGradient(
                                     colors = listOf(
-                                        Color(0xFF9B75FF).copy(alpha = 0.6f),
-                                        Color(0xFF7C3AED).copy(alpha = 0.3f),
-                                        Color(0xFF9B75FF).copy(alpha = 0.6f)
+                                        themeColor.copy(alpha = 0.6f),
+                                        themeSecondaryColor.copy(alpha = 0.3f),
+                                        themeColor.copy(alpha = 0.6f)
                                     )
                                 ),
                                 shape = bubbleShape
@@ -204,7 +204,7 @@ fun MessageBubble(
                         } else if (message.isEphemeral && (currentUserId in message.viewedBy)) {
                             Modifier.border(
                                 width = 1.dp,
-                                color = Color(0xFF9B75FF).copy(alpha = 0.2f),
+                                color = themeColor.copy(alpha = 0.2f),
                                 shape = bubbleShape
                             )
                         } else Modifier
@@ -223,9 +223,9 @@ fun MessageBubble(
                                 )
                                 isOwnMessage -> Brush.linearGradient(
                                     colors = listOf(
-                                        Color(0xFF9B75FF),
-                                        Color(0xFF7B5CFA),
-                                        Color(0xFF5A3FC8)
+                                        themeColor,
+                                        themeSecondaryColor,
+                                        themeSecondaryColor
                                     ),
                                     start = Offset(0f, 0f),
                                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
@@ -317,7 +317,7 @@ fun MessageBubble(
                                 message.mediaUrl?.let { url ->
                                     com.Azelmods.App.ui.components.AudioMessagePlayer(
                                         audioUrl = url,
-                                        accentColor = if (isOwnMessage) themeColor else Color(0xFF7C3AED)
+                                        accentColor = themeColor
                                     )
                                     if (message.content.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(8.dp))

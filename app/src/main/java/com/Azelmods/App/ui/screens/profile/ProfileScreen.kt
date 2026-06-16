@@ -176,7 +176,7 @@ fun ProfileScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Purple)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             Column(
@@ -350,7 +350,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(104.dp)
                             .clip(CircleShape)
-                            .background(Purple)
+                            .background(MaterialTheme.colorScheme.primary)
                             .clickable {
                                 if (state.isOwnProfile) {
                                     // Own profile: show menu if has photo, else open picker
@@ -436,7 +436,7 @@ fun ProfileScreen(
                                 .align(Alignment.BottomEnd)
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(Purple)
+                                .background(MaterialTheme.colorScheme.primary)
                                 .clickable {                            avatarPicker.launch(
                                 PickVisualMediaRequest(
                                     ActivityResultContracts.PickVisualMedia.ImageOnly
@@ -536,7 +536,7 @@ fun ProfileScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -551,9 +551,21 @@ fun ProfileScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Button(
-                            onClick = { /* Message */ },
+                            onClick = {
+                                val currentUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+                                if (currentUid != null) {
+                                    val chatId = com.Azelmods.App.data.chat.ChatId.create(currentUid, userId.toString())
+                                    navController.navigate("chat/$chatId")
+                                } else {
+                                    android.widget.Toast.makeText(
+                                        navController.context,
+                                        "Debes iniciar sesión para chatear",
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
                             modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(Icons.AutoMirrored.Filled.Message, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
@@ -561,7 +573,9 @@ fun ProfileScreen(
                         }
                         
                         OutlinedButton(
-                            onClick = { /* Call */ },
+                            onClick = {
+                                navController.navigate("active_call/$userId/audio")
+                            },
                             modifier = Modifier.weight(1f)
                         ) {
                             Icon(Icons.Default.Call, contentDescription = null)

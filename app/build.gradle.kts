@@ -23,6 +23,10 @@ val ollamaBaseUrl: String = (localProperties.getProperty("OLLAMA_BASE_URL")
     ?: "https://ollama.com/v1").trimEnd('/')
 val openCodeApiKey: String = localProperties.getProperty("OPENCODE_API_KEY") ?: ""
 val fcmServerKey: String = localProperties.getProperty("FCM_SERVER_KEY") ?: ""
+// Gemini API key fallback. The preferred source is the user's key stored securely at
+// runtime via AiKeyStore (EncryptedSharedPreferences). This BuildConfig value is only a
+// fallback read from local.properties (key: GEMINI_API_KEY) and defaults to empty.
+val geminiApiKey: String = localProperties.getProperty("GEMINI_API_KEY") ?: ""
 
 android {
     namespace = "com.Azelmods.App"
@@ -38,6 +42,7 @@ android {
         buildConfigField("String", "OLLAMA_API_KEY", "\"$ollamaApiKey\"")
         buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
         buildConfigField("String", "OPENCODE_API_KEY", "\"$openCodeApiKey\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "FCM_SERVER_KEY", "\"$fcmServerKey\"")
         buildConfigField("Boolean", "FCM_ENABLED", "${fcmServerKey.isNotEmpty()}")
 
@@ -202,6 +207,10 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.5.1")
     implementation("androidx.media3:media3-common:1.5.1")
     implementation("androidx.media3:media3-datasource-okhttp:1.5.1")
+    // Transformer + GL effects: used to BURN story overlays (text/stickers/emojis)
+    // into the exported video frames so the published file matches the editor preview.
+    implementation("androidx.media3:media3-transformer:1.5.1")
+    implementation("androidx.media3:media3-effect:1.5.1")
 
     // ── Room Database (Offline Cache) 2026 ─────────────────
     implementation("androidx.room:room-runtime:2.6.1")

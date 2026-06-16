@@ -111,8 +111,8 @@ fun SearchScreen(
                             }
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Purple,
-                            cursorColor = Purple,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            cursorColor = MaterialTheme.colorScheme.primary,
                             focusedContainerColor = DarkSurface,
                             unfocusedContainerColor = DarkSurface
                         ),
@@ -143,7 +143,7 @@ fun SearchScreen(
                 TabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = DarkSurface,
-                    contentColor = Purple
+                    contentColor = MaterialTheme.colorScheme.primary
                 ) {
                     Tab(
                         selected = selectedTab == 0,
@@ -199,7 +199,7 @@ fun SearchScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Purple)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 filteredResults.isEmpty() -> {
@@ -286,7 +286,7 @@ fun ChatSearchResultItem(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Purple.copy(alpha = 0.3f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -333,7 +333,7 @@ fun ContactSearchResultItem(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Purple.copy(alpha = 0.3f)),
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -363,7 +363,7 @@ fun ContactSearchResultItem(
         Icon(
             Icons.Default.PersonAdd,
             contentDescription = "Add contact",
-            tint = Purple
+            tint = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -383,7 +383,7 @@ fun MessageSearchResultItem(
         Icon(
             Icons.AutoMirrored.Filled.Message,
             contentDescription = null,
-            tint = Purple,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(48.dp)
         )
         

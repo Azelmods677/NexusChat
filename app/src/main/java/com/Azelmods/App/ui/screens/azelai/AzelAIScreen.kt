@@ -150,7 +150,14 @@ fun AzelAIScreen(
                             exit = fadeOut() + slideOutVertically(),
                             modifier = Modifier.align(Alignment.TopCenter)
                         ) {
-                            ErrorBanner(state.error ?: "", onClose = { viewModel.clearError() })
+                            ErrorBanner(
+                                state.error ?: "",
+                                onClose = { viewModel.clearError() },
+                                onRetry = {
+                                    viewModel.clearError()
+                                    viewModel.retryLastMessage()
+                                }
+                            )
                         }
                     }
                     
@@ -477,7 +484,7 @@ fun AzelAIInputBar(
 }
 
 @Composable
-fun ErrorBanner(error: String, onClose: () -> Unit) {
+fun ErrorBanner(error: String, onClose: () -> Unit, onRetry: (() -> Unit)? = null) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         color = Color(0xFF2D1212),
@@ -487,6 +494,9 @@ fun ErrorBanner(error: String, onClose: () -> Unit) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.Info, null, tint = Color(0xFFF56565))
             Text(error, color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
+            if (onRetry != null) {
+                IconButton(onClick = onRetry) { Icon(Icons.Default.Refresh, "Reintentar", tint = Color.White.copy(0.8f)) }
+            }
             IconButton(onClick = onClose) { Icon(Icons.Default.Close, null, tint = Color.White.copy(0.6f)) }
         }
     }

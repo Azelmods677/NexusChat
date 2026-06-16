@@ -7,6 +7,7 @@ import com.Azelmods.App.data.model.MessageStatus
 import com.Azelmods.App.data.repository.ChatBackgroundRepository
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
 import com.Azelmods.App.data.repository.StorageRepository
+import com.Azelmods.App.data.translation.TranslationService
 import com.Azelmods.App.domain.usecase.DecryptMessageUseCase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -44,6 +45,17 @@ class ChatViewModelTest : StringSpec({
     val backgroundRepository = mockk<ChatBackgroundRepository>(relaxed = true)
     val decryptMessageUseCase = mockk<DecryptMessageUseCase>(relaxed = true)
     val cacheManager = mockk<CacheManager>(relaxed = true)
+    val translationService = mockk<TranslationService>(relaxed = true)
+
+    // Helper that builds a ChatViewModel with the shared mocks.
+    fun buildViewModel() = ChatViewModel(
+        storageRepository = storageRepository,
+        databaseRepository = databaseRepository,
+        backgroundRepository = backgroundRepository,
+        decryptMessageUseCase = decryptMessageUseCase,
+        cacheManager = cacheManager,
+        translationService = translationService
+    )
 
     // Mock FirebaseAuth
     val mockFirebaseUser = mockk<FirebaseUser>(relaxed = true)
@@ -75,25 +87,13 @@ class ChatViewModelTest : StringSpec({
     }
 
     "initial state should be empty" {
-        val viewModel = ChatViewModel(
-            storageRepository = storageRepository,
-            databaseRepository = databaseRepository,
-            backgroundRepository = backgroundRepository,
-            decryptMessageUseCase = decryptMessageUseCase,
-            cacheManager = cacheManager
-        )
+        val viewModel = buildViewModel()
 
         viewModel.state.value shouldBe ChatState()
     }
 
     "setReplyingTo should update reply state" {
-        val viewModel = ChatViewModel(
-            storageRepository = storageRepository,
-            databaseRepository = databaseRepository,
-            backgroundRepository = backgroundRepository,
-            decryptMessageUseCase = decryptMessageUseCase,
-            cacheManager = cacheManager
-        )
+        val viewModel = buildViewModel()
 
         viewModel.state.value.replyingTo shouldBe null
 
@@ -117,13 +117,7 @@ class ChatViewModelTest : StringSpec({
     }
 
     "clearError should reset error state" {
-        val viewModel = ChatViewModel(
-            storageRepository = storageRepository,
-            databaseRepository = databaseRepository,
-            backgroundRepository = backgroundRepository,
-            decryptMessageUseCase = decryptMessageUseCase,
-            cacheManager = cacheManager
-        )
+        val viewModel = buildViewModel()
 
         // Simulate error state
         val errorState = viewModel.state.value.copy(error = "Test error")
@@ -134,13 +128,7 @@ class ChatViewModelTest : StringSpec({
 
     "sendMessage should call databaseRepository" {
         runTest {
-            val viewModel = ChatViewModel(
-                storageRepository = storageRepository,
-                databaseRepository = databaseRepository,
-                backgroundRepository = backgroundRepository,
-                decryptMessageUseCase = decryptMessageUseCase,
-                cacheManager = cacheManager
-            )
+            val viewModel = buildViewModel()
 
             coEvery { databaseRepository.sendMessage(any(), any(), any()) } returns Unit
 
@@ -151,13 +139,7 @@ class ChatViewModelTest : StringSpec({
     }
 
     "sendMessage with blank content should return early without error" {
-        val viewModel = ChatViewModel(
-            storageRepository = storageRepository,
-            databaseRepository = databaseRepository,
-            backgroundRepository = backgroundRepository,
-            decryptMessageUseCase = decryptMessageUseCase,
-            cacheManager = cacheManager
-        )
+        val viewModel = buildViewModel()
 
         // replyingTo initially null
         viewModel.state.value.replyingTo shouldBe null
@@ -171,13 +153,7 @@ class ChatViewModelTest : StringSpec({
     }
 
     "state should emit correct initial values via StateFlow" {
-        val viewModel = ChatViewModel(
-            storageRepository = storageRepository,
-            databaseRepository = databaseRepository,
-            backgroundRepository = backgroundRepository,
-            decryptMessageUseCase = decryptMessageUseCase,
-            cacheManager = cacheManager
-        )
+        val viewModel = buildViewModel()
 
         viewModel.state.value.let { state ->
             state.messages shouldBe emptyList()
@@ -191,13 +167,7 @@ class ChatViewModelTest : StringSpec({
     }
 
     "loadChat should not throw when called" {
-        val viewModel = ChatViewModel(
-            storageRepository = storageRepository,
-            databaseRepository = databaseRepository,
-            backgroundRepository = backgroundRepository,
-            decryptMessageUseCase = decryptMessageUseCase,
-            cacheManager = cacheManager
-        )
+        val viewModel = buildViewModel()
 
         // loadChat launches on Dispatchers.IO (not test-controlled)
         // We can only verify it doesn't throw or crash

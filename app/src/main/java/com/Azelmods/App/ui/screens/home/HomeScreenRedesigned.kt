@@ -32,6 +32,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.data.model.Chat
 import com.Azelmods.App.data.model.MessageStatus
+import com.Azelmods.App.data.chat.ChatId
+import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.theme.rememberThemeColor
@@ -58,6 +60,7 @@ fun HomeScreenRedesigned(
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     val themeColor = rememberThemeColor()
     val themeSecondaryColor = rememberThemeSecondaryColor()
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     Scaffold(
         topBar = {
@@ -234,8 +237,27 @@ fun HomeScreenRedesigned(
                             DemoChatCard(
                                 onClick = {
                                     try {
-                                        navController.navigate("chat/demo_azel_assistant")
-                                    } catch (e: Exception) { }
+                                        val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+                                        if (currentUid == null) {
+                                            android.util.Log.e("HomeScreen", "Cannot open demo chat: user not authenticated")
+                                            android.widget.Toast.makeText(
+                                                context,
+                                                "Inicia sesión para abrir el Demo Chat",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                        } else {
+                                            // ChatId canónico y consistente con NewConversationViewModel.createDemoChat
+                                            val chatId = ChatId.create(currentUid, "demo_azel_assistant")
+                                            navController.navigate(Screen.Chat.createRoute(chatId))
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("HomeScreen", "Error opening demo chat: ${e.message}", e)
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "No se pudo abrir el Demo Chat. Intenta de nuevo.",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
                                 },
                                 themeColor = themeColor
                             )

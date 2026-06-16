@@ -40,6 +40,7 @@ fun ActiveCallScreen(
     contactId: String,
     callType: String,
     navController: NavController,
+    isCaller: Boolean = true,
     viewModel: CallViewModel = hiltViewModel()
 ) {
     // Null safety check
@@ -126,8 +127,18 @@ fun ActiveCallScreen(
     
     LaunchedEffect(contactId) {
         try {
-            viewModel.loadContactProfileFromCall(contactId)
-            viewModel.startCall(contactId, if (callType == "video") com.Azelmods.App.data.model.CallType.VIDEO else com.Azelmods.App.data.model.CallType.AUDIO)
+            val type = if (callType == "video") com.Azelmods.App.data.model.CallType.VIDEO
+                       else com.Azelmods.App.data.model.CallType.AUDIO
+            if (isCaller) {
+                // Caller: contactId is the OTHER user's id. startCall creates the call,
+                // initializes WebRTC, registers listeners and sends the offer.
+                viewModel.startCall(contactId, type)
+            } else {
+                // Callee: contactId is the Firebase callId of an existing call.
+                // Load the caller profile and join the call (init WebRTC + answer).
+                viewModel.loadContactProfileFromCall(contactId)
+                viewModel.acceptCall(contactId, type)
+            }
         } catch (e: Exception) {
             android.util.Log.e("ActiveCallScreen", "Error initializing call: ${e.message}", e)
             navController.popBackStack()

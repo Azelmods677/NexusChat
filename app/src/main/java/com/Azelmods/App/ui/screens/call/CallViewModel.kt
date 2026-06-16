@@ -65,6 +65,21 @@ class CallViewModel @Inject constructor(
     private var callStartOtherUserId: String? = null
     /** Si este ViewModel está actuando como receptor (para detectar llamadas perdidas) */
     private var isReceiverSide = false
+
+    /**
+     * true  -> este ViewModel inició la llamada (caller): debe consumir el `answer`.
+     * false -> este ViewModel contesta la llamada (callee): debe consumir el `offer`.
+     */
+    private var isCaller = false
+    /**
+     * true cuando este ViewModel ha creado realmente una PeerConnection WebRTC
+     * (startCall o acceptCall). Sólo en ese caso debe limpiar el WebRTCManager
+     * compartido al destruirse, para no romper la llamada de otra pantalla.
+     */
+    private var ownsWebRTCSession = false
+    /** Evita procesar el offer/answer remoto más de una vez. */
+    private var remoteOfferHandled = false
+    private var remoteAnswerHandled = false
     
     init {
         setupWebRTCCallbacks()
@@ -208,6 +223,9 @@ class CallViewModel @Inject constructor(
      * Start a new call (caller side)
      */
     fun startCall(contactId: String, callType: CallType) {
+        // Caller side: this VM owns the WebRTC session and must consume the `answer`.
+        isCaller = true
+        ownsWebRTCSession = true
         viewModelScope.launch {
             try {
                 val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
@@ -215,6 +233,23 @@ class CallViewModel @Inject constructor(
                 
                 val currentUser = databaseRepository.getUserById(currentUserId)
                 val contactUser = databaseRepository.getUserById(contactId)
+
+                // Populate the contact profile for the call UI directly from the
+                // contact's user record (the caller passes a userId, not a callId,
+                // so loadContactProfileFromCall cannot resolve it).
+                if (contactUser != null) {
+                    _contactProfile.value = User(
+                        uid = contactUser["uid"] as? String ?: contactId,
+                        name = contactUser["displayName"] as? String
+                            ?: contactUser["name"] as? String ?: "Anónimo",
+                        username = contactUser["username"] as? String ?: "",
+                        email = contactUser["email"] as? String ?: "",
+                        photoUrl = contactUser["photoUrl"] as? String,
+                        bio = contactUser["bio"] as? String ?: "",
+                        isOnline = contactUser["isOnline"] as? Boolean ?: false,
+                        lastSeen = contactUser["lastSeen"] as? Long ?: 0L
+                    )
+                }
                 
                 // Create call data
                 val callData = mapOf(
@@ -233,16 +268,18 @@ class CallViewModel @Inject constructor(
                 val callId = databaseRepository.createCall(callData)
                 currentCallId = callId
                 
-                // Initialize WebRTC
+                // Initialize WebRTC FIRST so the connection exists before any
+                // remote candidates/answer can arrive.
                 webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
                 
                 // Start foreground service
                 startCallService(callId, callType, contactUser?.get("name") as? String ?: "Anónimo")
                 
-                // Listen to call updates
+                // Register signaling listeners BEFORE creating the offer, so we never
+                // miss the answer or ICE candidates from the callee.
                 listenToCallUpdates(callId)
                 
-                // Create offer
+                // Create offer (writes to Firebase via onOfferCreatedListener)
                 webRTCManager.createOffer()
                 
             } catch (e: Exception) {
@@ -256,6 +293,9 @@ class CallViewModel @Inject constructor(
      */
     fun acceptCall(callId: String, callType: CallType) {
         wasAccepted = true
+        // Callee side: this VM owns the WebRTC session and must consume the `offer`.
+        isCaller = false
+        ownsWebRTCSession = true
         viewModelScope.launch {
             try {
                 currentCallId = callId
@@ -263,17 +303,17 @@ class CallViewModel @Inject constructor(
                 // Update call status
                 databaseRepository.updateCallStatus(callId, CallStatus.ACCEPTED.name)
 
-                // Initialize WebRTC
+                // Initialize WebRTC FIRST so the offer/ICE candidates can be applied.
                 webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
 
                 // Start foreground service
                 val contactName = _contactProfile.value?.name ?: "Anónimo"
                 startCallService(callId, callType, contactName)
 
-                // Only start listener if observeIncomingCall() didn't already start it
-                if (!isReceiverSide) {
-                    listenToCallUpdates(callId)
-                }
+                // Always (re)start the signaling listener for this VM. The listener
+                // registered by observeIncomingCall() lives on a different VM instance
+                // (the IncomingCallScreen), so this VM needs its own.
+                listenToCallUpdates(callId)
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -301,67 +341,93 @@ class CallViewModel @Inject constructor(
      */
     private fun listenToCallUpdates(callId: String) {
         viewModelScope.launch {
-            databaseRepository.listenToCall(callId).collect { callData ->
-                callData?.let { data ->
-                    // Handle offer
-                    val offer = data["offer"] as? String
-                    if (offer != null && webRTCManager.connectionState.value == null) {
-                        webRTCManager.setRemoteDescription(offer, "offer")
-                        webRTCManager.createAnswer()
-                    }
-
-                    // Handle answer
-                    val answer = data["answer"] as? String
-                    if (answer != null) {
-                        webRTCManager.setRemoteDescription(answer, "answer")
-                    }
-
-                    // Handle status changes
-                    val status = data["status"] as? String
-                    when (status) {
-                        CallStatus.ACCEPTED.name -> {
-                            wasAccepted = true
-                        }
-                        CallStatus.ENDED.name -> {
-                            // ── Detectar llamada perdida ──
-                            if (isReceiverSide && !wasAccepted) {
-                                NotificationHelper.showMissedCallNotification(
-                                    context = context,
-                                    callId = callId,
-                                    callerName = callStartCallerName.ifBlank { "Unknown" },
-                                    callerPhotoUrl = callStartCallerPhotoUrl,
-                                    callerId = callStartOtherUserId
-                                )
+            try {
+                databaseRepository.listenToCall(callId).collect { callData ->
+                    callData?.let { data ->
+                        try {
+                            // ── WebRTC signaling (only if this VM drives the connection) ──
+                            if (ownsWebRTCSession) {
+                                if (isCaller) {
+                                    // Caller consumes the answer ONLY. It must never
+                                    // re-apply its own offer.
+                                    val answer = data["answer"] as? String
+                                    if (answer != null && !remoteAnswerHandled) {
+                                        remoteAnswerHandled = true
+                                        webRTCManager.setRemoteDescription(answer, "answer")
+                                    }
+                                } else {
+                                    // Callee consumes the offer ONLY, then creates an answer.
+                                    val offer = data["offer"] as? String
+                                    if (offer != null && !remoteOfferHandled) {
+                                        remoteOfferHandled = true
+                                        webRTCManager.setRemoteDescription(offer, "offer")
+                                        webRTCManager.createAnswer()
+                                    }
+                                }
                             }
-                            endCall()
-                        }
-                        CallStatus.DECLINED.name -> {
-                            // Si el receptor rechazó activamente, no es "perdida"
-                            // pero aún así limpiamos
-                            endCall()
+
+                            // Handle status changes
+                            val status = data["status"] as? String
+                            when (status?.uppercase()) {
+                                CallStatus.ACCEPTED.name -> {
+                                    wasAccepted = true
+                                }
+                                CallStatus.ENDED.name -> {
+                                    // ── Detectar llamada perdida ──
+                                    if (isReceiverSide && !wasAccepted) {
+                                        NotificationHelper.showMissedCallNotification(
+                                            context = context,
+                                            callId = callId,
+                                            callerName = callStartCallerName.ifBlank { "Unknown" },
+                                            callerPhotoUrl = callStartCallerPhotoUrl,
+                                            callerId = callStartOtherUserId
+                                        )
+                                    }
+                                    endCall()
+                                }
+                                CallStatus.DECLINED.name -> {
+                                    // Si el receptor rechazó activamente, no es "perdida"
+                                    // pero aún así limpiamos
+                                    endCall()
+                                }
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
                         }
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
 
         // Listen to ICE candidates
         viewModelScope.launch {
-            databaseRepository.listenToIceCandidates(callId).collect { candidates ->
-                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                candidates.forEach { candidateData ->
-                    val userId = candidateData["userId"] as? String
-                    // Only add candidates from the other user
-                    if (userId != currentUserId) {
-                        val candidate = com.Azelmods.App.data.model.IceCandidate(
-                            sdp = candidateData["sdp"] as? String ?: "",
-                            sdpMid = candidateData["sdpMid"] as? String ?: "",
-                            sdpMLineIndex = (candidateData["sdpMLineIndex"] as? Long)?.toInt() ?: 0,
-                            userId = userId ?: ""
-                        )
-                        webRTCManager.addIceCandidate(candidate)
+            try {
+                databaseRepository.listenToIceCandidates(callId).collect { candidates ->
+                    // Only apply remote candidates when this VM owns a peer connection.
+                    if (!ownsWebRTCSession) return@collect
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                    candidates.forEach { candidateData ->
+                        try {
+                            val userId = candidateData["userId"] as? String
+                            // Only add candidates from the other user
+                            if (userId != currentUserId) {
+                                val candidate = com.Azelmods.App.data.model.IceCandidate(
+                                    sdp = candidateData["sdp"] as? String ?: "",
+                                    sdpMid = candidateData["sdpMid"] as? String ?: "",
+                                    sdpMLineIndex = (candidateData["sdpMLineIndex"] as? Long)?.toInt() ?: 0,
+                                    userId = userId ?: ""
+                                )
+                                webRTCManager.addIceCandidate(candidate)
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -397,8 +463,11 @@ class CallViewModel @Inject constructor(
                 // Stop foreground service
                 stopCallService()
                 
-                // Cleanup WebRTC
-                webRTCManager.cleanup()
+                // Cleanup WebRTC only if this VM owns the active session.
+                if (ownsWebRTCSession) {
+                    webRTCManager.cleanup()
+                    ownsWebRTCSession = false
+                }
                 
                 currentCallId = null
                 
@@ -460,6 +529,13 @@ class CallViewModel @Inject constructor(
     
     override fun onCleared() {
         super.onCleared()
-        webRTCManager.cleanup()
+        // Only tear down the shared WebRTCManager if this VM actually owns the
+        // active call. Otherwise (e.g. the IncomingCallScreen observer VM being
+        // destroyed while navigating to ActiveCallScreen) we would kill the
+        // peer connection that another screen just created.
+        if (ownsWebRTCSession) {
+            webRTCManager.cleanup()
+            ownsWebRTCSession = false
+        }
     }
 }

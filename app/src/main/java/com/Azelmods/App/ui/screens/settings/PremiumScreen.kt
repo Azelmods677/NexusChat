@@ -225,7 +225,7 @@ fun PremiumScreen(
             TextButton(onClick = { /* Restore purchases */ }) {
                 Text(
                     text = "Restore Purchases",
-                    color = Purple
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             
@@ -250,7 +250,7 @@ fun PlanCard(
             .clickable(onClick = onClick)
             .then(
                 if (isSelected) {
-                    Modifier.border(2.dp, Purple, RoundedCornerShape(12.dp))
+                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
                 } else {
                     Modifier
                 }
@@ -266,7 +266,7 @@ fun PlanCard(
                 selected = isSelected,
                 onClick = onClick,
                 colors = RadioButtonDefaults.colors(
-                    selectedColor = Purple
+                    selectedColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -284,7 +284,7 @@ fun PlanCard(
                     if (badge != null) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Surface(
-                            color = Purple,
+                            color = MaterialTheme.colorScheme.primary,
                             shape = RoundedCornerShape(4.dp)
                         ) {
                             Text(
@@ -327,7 +327,7 @@ fun BenefitItem(icon: ImageVector, text: String) {
         Icon(
             icon,
             contentDescription = null,
-            tint = Purple,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(24.dp)
         )
         

@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.security
+﻿package com.Azelmods.App.ui.screens.security
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
@@ -10,8 +10,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Azelmods.App.data.security.tor.OrbotState
+import com.Azelmods.App.data.security.tor.OrbotUiStatus
 import com.Azelmods.App.data.security.tor.TorState
-import com.Azelmods.App.ui.theme.Purple
+import com.Azelmods.App.ui.theme.Warning
 
 /**
  * Toggle switch for Anonymous Mode with connection status display
@@ -21,20 +23,31 @@ import com.Azelmods.App.ui.theme.Purple
  * - Connection status (Disabled, Connecting X%, Connected, Error)
  * - Disables toggle during bootstrap process
  *
- * Requirements: 17.1, 17.2, 17.3, 17.4, 17.5
+ * Cuando se proporciona [orbotStatus] (derivado de `OrbotDetector` vÃ­a
+ * `mapOrbotStatus`), el estado de Orbot se presenta de forma clara y accionable
+ * y el toggle NUNCA queda en un estado de error permanente: ante un
+ * `TorState.Error` se muestra el mensaje/acciÃ³n de Orbot y el toggle vuelve a un
+ * estado consistente pero operable para reintentar (degradaciÃ³n elegante).
+ *
+ * Requirements: 6.4, 7.1, 7.3, 17.1, 17.2, 17.3, 17.4, 17.5
  */
 @Composable
 fun AnonymousModeToggle(
     torState: TorState,
     onToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    orbotStatus: OrbotUiStatus? = null,
+    onOrbotAction: (() -> Unit)? = null
 ) {
     val isEnabled = torState is TorState.Connected
     val isConnecting = torState is TorState.Connecting
-    val isError = torState is TorState.Error
+    // Cuando hay estado de Orbot accionable lo presentamos en lugar del error
+    // duro de Tor, de modo que el toggle nunca aparezca "roto".
+    val isError = torState is TorState.Error && orbotStatus == null
 
-    // Disable toggle while connecting
-    val toggleEnabled = !isConnecting
+    // El toggle se deshabilita sÃ³lo mientras conecta. Si hay estado de Orbot,
+    // respetamos `toggleEnabled` (siempre operable) para permitir reintentar.
+    val toggleEnabled = !isConnecting && (orbotStatus?.toggleEnabled ?: true)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -64,7 +77,7 @@ fun AnonymousModeToggle(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     // Status text
-                    StatusText(torState = torState)
+                    StatusText(torState = torState, orbotStatus = orbotStatus)
                 }
 
                 Switch(
@@ -77,7 +90,7 @@ fun AnonymousModeToggle(
                     enabled = toggleEnabled,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = Purple,
+                        checkedTrackColor = MaterialTheme.colorScheme.primary,
                         uncheckedThumbColor = Color.Gray,
                         uncheckedTrackColor = Color.DarkGray
                     )
@@ -97,7 +110,7 @@ fun AnonymousModeToggle(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(6.dp),
-                        color = Purple,
+                        color = MaterialTheme.colorScheme.primary,
                         trackColor = Color.DarkGray
                     )
 
@@ -105,7 +118,7 @@ fun AnonymousModeToggle(
 
                     Text(
                         text = if (connectingState.message.isNotEmpty())
-                            "Connecting: ${connectingState.progress}% – ${connectingState.message}"
+                            "Connecting: ${connectingState.progress}% â€“ ${connectingState.message}"
                         else
                             "Connecting: ${connectingState.progress}%",
                         style = MaterialTheme.typography.bodySmall,
@@ -115,7 +128,7 @@ fun AnonymousModeToggle(
                 }
             }
 
-            // Error message
+            // Error message (sÃ³lo cuando no hay estado de Orbot accionable)
             if (isError) {
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -126,24 +139,64 @@ fun AnonymousModeToggle(
                     fontSize = 12.sp
                 )
             }
+
+            // Orbot status message + action (degradaciÃ³n elegante, nunca "roto")
+            if (orbotStatus != null && orbotStatus.state != OrbotState.ACTIVE) {
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = orbotStatus.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+
+                val actionLabel = orbotStatus.actionLabel
+                if (actionLabel != null && onOrbotAction != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = onOrbotAction) {
+                        Text(text = actionLabel, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    }
+                }
+            }
         }
     }
 }
 
 /**
- * Status text based on Tor state
+ * Status text based on Tor state.
+ *
+ * Cuando se proporciona [orbotStatus] y Tor estÃ¡ en error, mostramos un estado
+ * derivado del estado real de Orbot (no un "Error" permanente).
  */
 @Composable
-private fun StatusText(torState: TorState) {
+private fun StatusText(torState: TorState, orbotStatus: OrbotUiStatus? = null) {
+    // Si Tor reporta error pero tenemos un estado de Orbot accionable, lo
+    // presentamos como estado informativo en lugar de "Error".
+    if (torState is TorState.Error && orbotStatus != null) {
+        val (text, color) = when (orbotStatus.state) {
+            OrbotState.ACTIVE -> "Connected" to Color.Green
+            OrbotState.INSTALLED_INACTIVE -> "Orbot inactivo" to Warning
+            OrbotState.NOT_INSTALLED -> "Orbot no instalado" to Warning
+        }
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = color,
+            fontSize = 14.sp
+        )
+        return
+    }
+
     val (text, color) = when (torState) {
         is TorState.Disconnected -> {
             "Disabled" to Color.Gray
         }
         is TorState.Connecting -> {
-            "Connecting..." to Purple
+            "Connecting..." to MaterialTheme.colorScheme.primary
         }
         is TorState.Bootstrapping -> {
-            "Connecting..." to Purple
+            "Connecting..." to MaterialTheme.colorScheme.primary
         }
         is TorState.Connected -> {
             "Connected" to Color.Green
@@ -197,7 +250,7 @@ private fun AnimatedConnectingDots() {
     Text(
         text = "...",
         style = MaterialTheme.typography.bodyMedium,
-        color = Purple.copy(alpha = alpha),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = alpha),
         fontSize = 14.sp
     )
 }

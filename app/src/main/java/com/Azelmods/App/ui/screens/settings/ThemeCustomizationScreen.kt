@@ -372,7 +372,7 @@ private fun BackgroundOption(
                             ChatBackground.IMAGE -> Icons.Default.Image
                         },
                         contentDescription = null,
-                        tint = if (isSelected) Color(0xFF7C3AED) else Color.Gray
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray
                     )
                     
                     Text(
@@ -386,7 +386,7 @@ private fun BackgroundOption(
                     Icon(
                         Icons.Default.Check,
                         contentDescription = "Seleccionado",
-                        tint = Color(0xFF7C3AED)
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -437,17 +437,17 @@ private fun MessageStyleOption(
                             when (style) {
                                 MessageStyle.CARD_3D -> Modifier
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFF7C3AED))
+                                    .background(MaterialTheme.colorScheme.primary)
                                     .border(1.dp, Color.White.copy(0.3f), RoundedCornerShape(12.dp))
                                 MessageStyle.FLAT -> Modifier
                                     .clip(RoundedCornerShape(4.dp))
-                                    .background(Color(0xFF7C3AED))
+                                    .background(MaterialTheme.colorScheme.primary)
                                 MessageStyle.ROUNDED -> Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(Color(0xFF7C3AED))
+                                    .background(MaterialTheme.colorScheme.primary)
                                 MessageStyle.BUBBLE -> Modifier
                                     .clip(CircleShape)
-                                    .background(Color(0xFF7C3AED))
+                                    .background(MaterialTheme.colorScheme.primary)
                             }
                         )
                 )
@@ -463,7 +463,7 @@ private fun MessageStyleOption(
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Seleccionado",
-                    tint = Color(0xFF7C3AED)
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -501,7 +501,7 @@ private fun TabOrderItem(
                 Box(
                     modifier = Modifier
                         .size(40.dp)
-                        .background(Color(0xFF7C3AED), CircleShape),
+                        .background(MaterialTheme.colorScheme.primary, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -541,7 +541,7 @@ private fun TabOrderItem(
                     Icon(
                         Icons.Default.KeyboardArrowUp,
                         contentDescription = "Mover arriba",
-                        tint = if (onMoveUp != null) Color(0xFF7C3AED) else Color.Gray
+                        tint = if (onMoveUp != null) MaterialTheme.colorScheme.primary else Color.Gray
                     )
                 }
                 
@@ -553,7 +553,7 @@ private fun TabOrderItem(
                     Icon(
                         Icons.Default.KeyboardArrowDown,
                         contentDescription = "Mover abajo",
-                        tint = if (onMoveDown != null) Color(0xFF7C3AED) else Color.Gray
+                        tint = if (onMoveDown != null) MaterialTheme.colorScheme.primary else Color.Gray
                     )
                 }
             }

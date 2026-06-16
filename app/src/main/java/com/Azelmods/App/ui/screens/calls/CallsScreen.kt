@@ -94,7 +94,7 @@ fun CallsScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(Screen.NewConversation.route) },
-                containerColor = Purple
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "New Call", tint = Color.White)
             }
@@ -119,7 +119,7 @@ fun CallsScreen(
                         onClick = { selectedFilter = filter },
                         label = { Text(filter) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Purple,
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = Color.White
                         )
                     )
@@ -132,7 +132,7 @@ fun CallsScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Purple)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
             // Calls list or empty state
@@ -223,7 +223,7 @@ fun CallItemRow(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Purple.copy(alpha = 0.3f)),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -262,7 +262,7 @@ fun CallItemRow(
                     contentDescription = null,
                     tint = when (call.status) {
                         "MISSED" -> Color.Red
-                        else -> if (call.isIncoming) Success else Purple
+                        else -> if (call.isIncoming) Success else MaterialTheme.colorScheme.primary
                     },
                     modifier = Modifier.size(16.dp)
                 )
@@ -292,7 +292,7 @@ fun CallItemRow(
             Icon(
                 imageVector = if (call.callType == "VIDEO") Icons.Default.Videocam else Icons.Default.Phone,
                 contentDescription = "Call",
-                tint = Purple
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

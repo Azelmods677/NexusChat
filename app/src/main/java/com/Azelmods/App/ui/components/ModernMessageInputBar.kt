@@ -48,7 +48,7 @@ fun ModernMessageInputBar(
     onVoiceRecordStart: () -> Unit,
     onVoiceRecordStop: () -> Unit,
     isRecording: Boolean = false,
-    themeColor: Color = Color(0xFF7C3AED),
+    themeColor: Color = MaterialTheme.colorScheme.primary,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }

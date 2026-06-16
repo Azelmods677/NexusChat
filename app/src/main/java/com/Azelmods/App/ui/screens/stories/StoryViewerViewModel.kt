@@ -44,12 +44,11 @@ class StoryViewerViewModel @Inject constructor(
                     return@launch
                 }
 
-                repository.getAllStories().collect { storiesData ->
+                repository.getStoriesForUser(userId).collect { storiesData ->
                     val userStories = mutableListOf<StoryItemData>()
 
                     for (storyMap in storiesData) {
-                        val storyUserId = storyMap["userId"] as? String ?: continue
-                        if (storyUserId != userId) continue
+                        val storyUserId = storyMap["userId"] as? String ?: userId
 
                         // Resolve user display info
                         val userData = runCatching { repository.getUserById(storyUserId) }.getOrNull()
@@ -117,9 +116,18 @@ class StoryViewerViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("StoryViewerVM", "Error cargando stories de $userId: ${e.message}", e)
+                val msg = e.message ?: ""
+                val friendly = if (msg.contains("Permission denied", ignoreCase = true) ||
+                    msg.contains("permission_denied", ignoreCase = true)
+                ) {
+                    "No tienes permiso para ver estas historias. Revisa las reglas de Firebase o vuelve a intentarlo."
+                } else {
+                    msg.ifBlank { "No se pudieron cargar las historias" }
+                }
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Unknown error"
+                    error = friendly
                 )
             }
         }

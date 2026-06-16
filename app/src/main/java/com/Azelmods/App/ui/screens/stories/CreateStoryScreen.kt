@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.stories
+﻿package com.Azelmods.App.ui.screens.stories
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -47,6 +47,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.draw.drawWithContent
 import com.Azelmods.App.utils.VideoThumbnailExtractor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,6 +75,11 @@ fun CreateStoryScreen(
     var photoVerticalPosition by remember { mutableStateOf(0f) }
     var videoThumbnail by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var isVideoSelected by remember { mutableStateOf(false) }
+
+    // GraphicsLayer used to capture the editable preview area (media + text/sticker/emoji
+    // overlays) into a Bitmap so the overlays are RENDERED into the published file.
+    val captureLayer = rememberGraphicsLayer()
+    val captureScope = rememberCoroutineScope()
     
     // Show error toast
     LaunchedEffect(state.error) {
@@ -131,7 +139,7 @@ fun CreateStoryScreen(
         }
     }
 
-    // Music picker launcher — lets the user attach an audio track to the story.
+    // Music picker launcher â€” lets the user attach an audio track to the story.
     val musicPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -147,7 +155,7 @@ fun CreateStoryScreen(
             selectedMusicName = name ?: "Audio seleccionado"
             android.widget.Toast.makeText(
                 context,
-                "🎵 $selectedMusicName",
+                "ðŸŽµ $selectedMusicName",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
@@ -195,7 +203,7 @@ fun CreateStoryScreen(
                                 .padding(end = 8.dp)
                                 .scale(if (state.isUploading) 1f else scale),
                             shape = RoundedCornerShape(20.dp),
-                            color = if (state.isUploading) Purple.copy(alpha = 0.5f) else Purple,
+                            color = if (state.isUploading) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary,
                             onClick = {
                                 if (!state.isUploading && selectedImageUri != null) {
                                     // Detect media type and upload accordingly
@@ -205,12 +213,59 @@ fun CreateStoryScreen(
                                             viewModel.createTextStory(textOverlay, "#7C3AED")
                                         }
                                         isVideoSelected -> {
-                                            // Video story (detected by picker)
-                                            viewModel.uploadVideoStory(selectedImageUri ?: return@Surface, caption)
+                                            // Video story: burn the text/sticker/emoji
+                                            // overlays into the frames with Media3
+                                            // Transformer. The capture layer records the
+                                            // editable area (the video surface punches a
+                                            // transparent hole, so we get an overlay-only
+                                            // bitmap). If there are no overlays, or the
+                                            // capture fails, we upload the original clip.
+                                            val original = selectedImageUri ?: return@Surface
+                                            val hasOverlays = textOverlay.isNotBlank() ||
+                                                emojiOverlays.isNotEmpty() ||
+                                                selectedSticker.isNotBlank()
+                                            if (!hasOverlays) {
+                                                viewModel.uploadVideoStory(original, caption)
+                                            } else {
+                                                captureScope.launch {
+                                                    try {
+                                                        val overlay = captureLayer
+                                                            .toImageBitmap()
+                                                            .asAndroidBitmap()
+                                                        viewModel.uploadComposedVideoStory(
+                                                            overlayBitmap = overlay,
+                                                            caption = caption,
+                                                            originalUri = original
+                                                        )
+                                                    } catch (e: Exception) {
+                                                        e.printStackTrace()
+                                                        // Fallback: upload the untouched video.
+                                                        viewModel.uploadVideoStory(original, caption)
+                                                    }
+                                                }
+                                            }
                                         }
                                         else -> {
-                                            // Image story
-                                            viewModel.uploadImageStory(selectedImageUri ?: return@Surface, caption)
+                                            // Image story: capture the editable preview area
+                                            // (photo + overlays) to a Bitmap and upload THAT,
+                                            // so text/stickers/emojis are rendered into the file.
+                                            val original = selectedImageUri ?: return@Surface
+                                            captureScope.launch {
+                                                try {
+                                                    val composed = captureLayer
+                                                        .toImageBitmap()
+                                                        .asAndroidBitmap()
+                                                    viewModel.uploadComposedImageStory(
+                                                        composedBitmap = composed,
+                                                        caption = caption,
+                                                        originalUri = original
+                                                    )
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                    // Fallback: upload the untouched image.
+                                                    viewModel.uploadImageStory(original, caption)
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -431,7 +486,13 @@ fun CreateStoryScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black),
+                            .background(Color.Black)
+                            .drawWithContent {
+                                // Record this subtree (media + overlays) into the layer so it
+                                // can be exported to a Bitmap on publish, then draw it normally.
+                                captureLayer.record { this@drawWithContent.drawContent() }
+                                drawContent()
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         // Show video preview with ExoPlayer if video selected, otherwise show image
@@ -598,7 +659,7 @@ fun CreateStoryScreen(
                             )
                             ModernStoryEditOption(
                                 icon = Icons.Default.MusicNote,
-                                label = if (selectedMusicName.isNotBlank()) "Música ✓" else "Music",
+                                label = if (selectedMusicName.isNotBlank()) "MÃºsica âœ“" else "Music",
                                 color = Color(0xFF00BFA6),
                                 onClick = {
                                     musicPickerLauncher.launch("audio/*")
@@ -643,11 +704,11 @@ fun CreateStoryScreen(
                             ) 
                         },
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Purple,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            cursorColor = Purple
+                            cursorColor = MaterialTheme.colorScheme.primary
                         ),
                         textStyle = LocalTextStyle.current.copy(
                             fontSize = 16.sp
@@ -663,7 +724,7 @@ fun CreateStoryScreen(
                         showTextDialog = false
                     },
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = Purple
+                        contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Text("Done", fontWeight = FontWeight.Bold)
@@ -695,10 +756,10 @@ fun CreateStoryScreen(
     if (showStickerPicker) {
         var selectedCategory by remember { mutableStateOf("Caritas") }
         val emojiCategories = mapOf(
-            "Caritas" to listOf("😀","😂","😍","😎","😭","😅","🤣","😊","😇","🥰","😘","😜","🤔","😏","😒","😡","🤯","🥳","😴","🤮","🤒","👻","💀","🤖","👽","😺","😸"),
-            "Animales" to listOf("🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🐔","🐧","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🦋","🐌","🐞","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬","🐳","🐋","🦈"),
-            "Comida" to listOf("🍎","🍊","🍋","🍇","🍓","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🥑","🍆","🥔","🥕","🌽","🌶️","🥒","🥬","🥦","🍄","🥜","🌰","🍞","🥐","🥖","🥨","🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟","🍕","🌭","🥪","🌮","🌯","🥙","🧆","🥚","🍳","🥘","🍲","🥣","🥗","🍿","🧈","🧂","🥫","🍱","🍘","🍙","🍚","🍛","🍜","🍝","🍠","🍢","🍣","🍤","🍥","🥮","🍡","🥟","🥠","🥡","🦀","🦞","🦐","🦑","🦪","🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧","🍫","🍬","🍭","🍮","🍯","🍼","🥛","☕","🍵","🍶","🍾","🍷","🍸","🍹","🍺","🍻","🥂","🥃","🥤","🧃","🧉","🧊"),
-            "Deportes" to listOf("⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛼","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️","🤼","🤸","🤺","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴","🏆","🥇","🥈","🥉","🏅","🎖️","🎗️","🎫","🎟️","🎪","🎭","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🎷","🎺","🎸","🪕","🎻","🎲","♟️","🎯","🎮","🕹️","🎰","🧩")
+            "Caritas" to listOf("ðŸ˜€","ðŸ˜‚","ðŸ˜","ðŸ˜Ž","ðŸ˜­","ðŸ˜…","ðŸ¤£","ðŸ˜Š","ðŸ˜‡","ðŸ¥°","ðŸ˜˜","ðŸ˜œ","ðŸ¤”","ðŸ˜","ðŸ˜’","ðŸ˜¡","ðŸ¤¯","ðŸ¥³","ðŸ˜´","ðŸ¤®","ðŸ¤’","ðŸ‘»","ðŸ’€","ðŸ¤–","ðŸ‘½","ðŸ˜º","ðŸ˜¸"),
+            "Animales" to listOf("ðŸ¶","ðŸ±","ðŸ­","ðŸ¹","ðŸ°","ðŸ¦Š","ðŸ»","ðŸ¼","ðŸ¨","ðŸ¯","ðŸ¦","ðŸ®","ðŸ·","ðŸ¸","ðŸµ","ðŸ”","ðŸ§","ðŸ¦†","ðŸ¦…","ðŸ¦‰","ðŸ¦‡","ðŸº","ðŸ—","ðŸ´","ðŸ¦„","ðŸ","ðŸ¦‹","ðŸŒ","ðŸž","ðŸ¢","ðŸ","ðŸ¦Ž","ðŸ¦–","ðŸ¦•","ðŸ™","ðŸ¦‘","ðŸ¦","ðŸ¦ž","ðŸ¦€","ðŸ¡","ðŸ ","ðŸŸ","ðŸ¬","ðŸ³","ðŸ‹","ðŸ¦ˆ"),
+            "Comida" to listOf("ðŸŽ","ðŸŠ","ðŸ‹","ðŸ‡","ðŸ“","ðŸ’","ðŸ‘","ðŸ¥­","ðŸ","ðŸ¥¥","ðŸ¥","ðŸ…","ðŸ¥‘","ðŸ†","ðŸ¥”","ðŸ¥•","ðŸŒ½","ðŸŒ¶ï¸","ðŸ¥’","ðŸ¥¬","ðŸ¥¦","ðŸ„","ðŸ¥œ","ðŸŒ°","ðŸž","ðŸ¥","ðŸ¥–","ðŸ¥¨","ðŸ¥¯","ðŸ¥ž","ðŸ§‡","ðŸ§€","ðŸ–","ðŸ—","ðŸ¥©","ðŸ¥“","ðŸ”","ðŸŸ","ðŸ•","ðŸŒ­","ðŸ¥ª","ðŸŒ®","ðŸŒ¯","ðŸ¥™","ðŸ§†","ðŸ¥š","ðŸ³","ðŸ¥˜","ðŸ²","ðŸ¥£","ðŸ¥—","ðŸ¿","ðŸ§ˆ","ðŸ§‚","ðŸ¥«","ðŸ±","ðŸ˜","ðŸ™","ðŸš","ðŸ›","ðŸœ","ðŸ","ðŸ ","ðŸ¢","ðŸ£","ðŸ¤","ðŸ¥","ðŸ¥®","ðŸ¡","ðŸ¥Ÿ","ðŸ¥ ","ðŸ¥¡","ðŸ¦€","ðŸ¦ž","ðŸ¦","ðŸ¦‘","ðŸ¦ª","ðŸ¦","ðŸ§","ðŸ¨","ðŸ©","ðŸª","ðŸŽ‚","ðŸ°","ðŸ§","ðŸ¥§","ðŸ«","ðŸ¬","ðŸ­","ðŸ®","ðŸ¯","ðŸ¼","ðŸ¥›","â˜•","ðŸµ","ðŸ¶","ðŸ¾","ðŸ·","ðŸ¸","ðŸ¹","ðŸº","ðŸ»","ðŸ¥‚","ðŸ¥ƒ","ðŸ¥¤","ðŸ§ƒ","ðŸ§‰","ðŸ§Š"),
+            "Deportes" to listOf("âš½","ðŸ€","ðŸˆ","âš¾","ðŸ¥Ž","ðŸŽ¾","ðŸ","ðŸ‰","ðŸ¥","ðŸŽ±","ðŸª€","ðŸ“","ðŸ¸","ðŸ’","ðŸ‘","ðŸ¥","ðŸ","ðŸ¥…","â›³","ðŸª","ðŸ¹","ðŸŽ£","ðŸ¤¿","ðŸ¥Š","ðŸ¥‹","ðŸŽ½","ðŸ›¹","ðŸ›¼","ðŸ›·","â›¸ï¸","ðŸ¥Œ","ðŸŽ¿","â›·ï¸","ðŸ‚","ðŸª‚","ðŸ‹ï¸","ðŸ¤¼","ðŸ¤¸","ðŸ¤º","ðŸ¤¾","ðŸŒï¸","ðŸ‡","ðŸ§˜","ðŸ„","ðŸŠ","ðŸ¤½","ðŸš£","ðŸ§—","ðŸšµ","ðŸš´","ðŸ†","ðŸ¥‡","ðŸ¥ˆ","ðŸ¥‰","ðŸ…","ðŸŽ–ï¸","ðŸŽ—ï¸","ðŸŽ«","ðŸŽŸï¸","ðŸŽª","ðŸŽ­","ðŸŽ¨","ðŸŽ¬","ðŸŽ¤","ðŸŽ§","ðŸŽ¼","ðŸŽ¹","ðŸ¥","ðŸŽ·","ðŸŽº","ðŸŽ¸","ðŸª•","ðŸŽ»","ðŸŽ²","â™Ÿï¸","ðŸŽ¯","ðŸŽ®","ðŸ•¹ï¸","ðŸŽ°","ðŸ§©")
         )
         
         ModalBottomSheet(
@@ -715,7 +776,7 @@ fun CreateStoryScreen(
                 ScrollableTabRow(
                     selectedTabIndex = emojiCategories.keys.indexOf(selectedCategory),
                     containerColor = Color.Transparent,
-                    contentColor = Color(0xFF7B5CFA),
+                    contentColor = MaterialTheme.colorScheme.primary,
                     edgePadding = 8.dp
                 ) {
                     emojiCategories.keys.forEach { cat ->
@@ -771,7 +832,7 @@ fun CreateStoryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "Tip: Mantén presionado un emoji para eliminarlo",
+                    text = "Tip: MantÃ©n presionado un emoji para eliminarlo",
                     fontSize = 12.sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center,
@@ -783,7 +844,7 @@ fun CreateStoryScreen(
         }
     }
     
-    // Draw mode — functional full-screen drawing canvas
+    // Draw mode â€” functional full-screen drawing canvas
     if (showDrawMode) {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showDrawMode = false },
@@ -852,7 +913,7 @@ fun CreateStoryScreen(
                             Icon(Icons.Default.Delete, "Limpiar", tint = Color(0xFFFF5252))
                         }
                         TextButton(onClick = { showDrawMode = false }) {
-                            Text("Listo", color = Color(0xFF7C6FE0), fontWeight = FontWeight.Bold)
+                            Text("Listo", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -898,7 +959,7 @@ fun CreateStoryScreen(
                 showPhotoAdjuster = false
                 android.widget.Toast.makeText(
                     context,
-                    "Posición ajustada",
+                    "PosiciÃ³n ajustada",
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
             },
@@ -1005,12 +1066,12 @@ fun StoryEditOption(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Purple.copy(alpha = 0.2f))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
         ) {
             Icon(
                 icon,
                 contentDescription = label,
-                tint = Purple
+                tint = MaterialTheme.colorScheme.primary
             )
         }
         Spacer(modifier = Modifier.height(4.dp))

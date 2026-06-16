@@ -49,6 +49,13 @@ class WebRTCManager @Inject constructor(
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null
     var onOfferCreatedListener: ((String) -> Unit)? = null
     var onAnswerCreatedListener: ((String) -> Unit)? = null
+
+    // ── ICE candidate buffering ──
+    // Remote ICE candidates that arrive BEFORE the remote description is set must be
+    // queued, otherwise WebRTC drops them and the connection silently fails to establish.
+    private val pendingIceCandidates = mutableListOf<org.webrtc.IceCandidate>()
+    private var remoteDescriptionSet = false
+    private val iceLock = Any()
     
     init {
         initializePeerConnectionFactory()
@@ -168,6 +175,12 @@ class WebRTCManager @Inject constructor(
         }
         
         peerConnection = peerConnectionFactory?.createPeerConnection(rtcConfig, observer)
+        
+        // Reset per-call signaling state for the new connection.
+        synchronized(iceLock) {
+            remoteDescriptionSet = false
+            pendingIceCandidates.clear()
+        }
         
         // Create local media tracks
         createLocalMediaTracks(isVideoCall)
@@ -312,12 +325,31 @@ class WebRTCManager @Inject constructor(
             override fun onCreateSuccess(p0: SessionDescription?) {}
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote description set successfully")
+                // Flush any ICE candidates that arrived before the remote description was ready.
+                flushPendingIceCandidates()
             }
             override fun onCreateFailure(error: String?) {}
             override fun onSetFailure(error: String?) {
                 Log.e(TAG, "Failed to set remote description: $error")
             }
         }, sessionDescription)
+    }
+
+    private fun flushPendingIceCandidates() {
+        synchronized(iceLock) {
+            remoteDescriptionSet = true
+            if (pendingIceCandidates.isNotEmpty()) {
+                Log.d(TAG, "Flushing ${pendingIceCandidates.size} buffered ICE candidates")
+                pendingIceCandidates.forEach { candidate ->
+                    try {
+                        peerConnection?.addIceCandidate(candidate)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to add buffered ICE candidate: ${e.message}")
+                    }
+                }
+                pendingIceCandidates.clear()
+            }
+        }
     }
     
     fun addIceCandidate(candidate: IceCandidate) {
@@ -326,8 +358,20 @@ class WebRTCManager @Inject constructor(
             candidate.sdpMLineIndex,
             candidate.sdp
         )
-        peerConnection?.addIceCandidate(iceCandidate)
-        Log.d(TAG, "ICE candidate added")
+        synchronized(iceLock) {
+            if (remoteDescriptionSet) {
+                try {
+                    peerConnection?.addIceCandidate(iceCandidate)
+                    Log.d(TAG, "ICE candidate added")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to add ICE candidate: ${e.message}")
+                }
+            } else {
+                // Buffer until setRemoteDescription completes.
+                pendingIceCandidates.add(iceCandidate)
+                Log.d(TAG, "ICE candidate buffered (remote description not set yet)")
+            }
+        }
     }
     
     fun toggleAudio(enabled: Boolean) {
@@ -353,19 +397,40 @@ class WebRTCManager @Inject constructor(
         } catch (e: Exception) {
             Log.w(TAG, "Error disposing video capturer: ${e.message}")
         }
+        videoCapturer = null
         
-        localVideoTrack?.dispose()
-        localAudioTrack?.dispose()
+        try {
+            localVideoTrack?.dispose()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disposing local video track: ${e.message}")
+        }
+        try {
+            localAudioTrack?.dispose()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disposing local audio track: ${e.message}")
+        }
+        localVideoTrack = null
+        localAudioTrack = null
         
-        peerConnection?.close()
-        peerConnection?.dispose()
+        try {
+            peerConnection?.close()
+            peerConnection?.dispose()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing peer connection: ${e.message}")
+        }
+        peerConnection = null
         
-        encoderEglBase?.release()
-        encoderEglBase = null
-        decoderEglBase?.release()
-        decoderEglBase = null
-        capturerEglBase?.release()
+        try {
+            capturerEglBase?.release()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error releasing capturer EglBase: ${e.message}")
+        }
         capturerEglBase = null
+        
+        synchronized(iceLock) {
+            remoteDescriptionSet = false
+            pendingIceCandidates.clear()
+        }
         
         _localVideoTrackFlow.value = null
         _remoteVideoTrackFlow.value = null

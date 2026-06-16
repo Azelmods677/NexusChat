@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.components
+﻿package com.Azelmods.App.ui.components
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -32,26 +32,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.Purple
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * ═══════════════════════════════════════════════════════════════════════════
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * UNIFIED TOP BAR COMPONENT - ULTRA MODERN 2026 DESIGN
- * ═══════════════════════════════════════════════════════════════════════════
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  * 
- * Componente ultra moderno con las últimas tendencias de diseño:
- * • Glassmorphism (efecto vidrio esmerilado)
- * • Animaciones fluidas y micro-interacciones
- * • Gradientes animados
- * • Indicadores de estado animados
- * • Transiciones suaves
+ * Componente ultra moderno con las Ãºltimas tendencias de diseÃ±o:
+ * â€¢ Glassmorphism (efecto vidrio esmerilado)
+ * â€¢ Animaciones fluidas y micro-interacciones
+ * â€¢ Gradientes animados
+ * â€¢ Indicadores de estado animados
+ * â€¢ Transiciones suaves
  * 
  * @since 2026
  * @version 3.0.0 Ultra Modern Edition
  * @author AzelMods677
- * ═══════════════════════════════════════════════════════════════════════════
+ * â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
  */
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,7 +101,7 @@ fun UnifiedTopBar(
         label = "scale"
     )
     
-    // Glassmorphism effect — translucent gradient background.
+    // Glassmorphism effect â€” translucent gradient background.
     // NOTE: blur() must never wrap the content (title/icons/avatar) or it
     // renders the whole bar blurry. We only tint the background here.
     val glassBackground = if (enableGlassmorphism) {
@@ -140,9 +139,9 @@ fun UnifiedTopBar(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    Purple.copy(alpha = 0.1f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                     Color.Transparent,
-                                    Purple.copy(alpha = 0.1f)
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                                 ),
                                 startX = gradientOffset,
                                 endX = gradientOffset + 500f
@@ -203,6 +202,7 @@ fun UnifiedTopBar(
                                             label = "ring"
                                         )
                                         
+                                        val ringAccent = MaterialTheme.colorScheme.primary
                                         androidx.compose.foundation.Canvas(
                                             modifier = Modifier
                                                 .size(46.dp)
@@ -211,9 +211,9 @@ fun UnifiedTopBar(
                                             drawCircle(
                                                 brush = Brush.sweepGradient(
                                                     listOf(
-                                                        Purple,
+                                                        ringAccent,
                                                         Color(0xFF00D4FF),
-                                                        Purple
+                                                        ringAccent
                                                     )
                                                 ),
                                                 radius = size.minDimension / 2,
@@ -230,8 +230,8 @@ fun UnifiedTopBar(
                                             .background(
                                                 Brush.radialGradient(
                                                     listOf(
-                                                        Purple.copy(alpha = 0.5f),
-                                                        Purple.copy(alpha = 0.3f)
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
                                                     )
                                                 )
                                             ),

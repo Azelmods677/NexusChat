@@ -126,7 +126,7 @@ fun StorageDataScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp),
-                        color = Color(0xFF7B5CFA),
+                        color = MaterialTheme.colorScheme.primary,
                         trackColor = Color(0xFF2D2D44)
                     )
                     

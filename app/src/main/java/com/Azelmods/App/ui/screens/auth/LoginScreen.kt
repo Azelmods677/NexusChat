@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.auth
+﻿package com.Azelmods.App.ui.screens.auth
 
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,7 +30,6 @@ import androidx.navigation.NavController
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.Purple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,10 +85,10 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = Purple,
-                    cursorColor = Purple
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -116,10 +115,10 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = Purple,
-                    cursorColor = Purple
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -145,7 +144,7 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 if (state.isLoading) {
@@ -208,7 +207,7 @@ fun LoginScreen(
                         text = "G",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Purple,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 12.dp)
                     )
                     Text(
@@ -232,7 +231,7 @@ fun LoginScreen(
                 )
                 Text(
                     text = "Register",
-                    color = Purple,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable {
                         navController.navigate(Screen.Register.route)

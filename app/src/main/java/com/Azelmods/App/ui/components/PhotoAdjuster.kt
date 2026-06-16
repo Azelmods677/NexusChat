@@ -217,7 +217,7 @@ fun PhotoAdjuster(
                         .size(64.dp)
                         .graphicsLayer { translationY = offsetY },
                     shape = CircleShape,
-                    color = Color(0xFF7C3AED).copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -266,7 +266,7 @@ fun PhotoAdjuster(
                     Icon(
                         Icons.Default.OpenWith,
                         contentDescription = null,
-                        tint = Color(0xFF7C3AED),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -294,8 +294,8 @@ fun PhotoAdjuster(
                     modifier = Modifier.background(
                         Brush.linearGradient(
                             listOf(
-                                Color(0xFF7C3AED),
-                                Color(0xFF5B21B6)
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.75f)
                             )
                         )
                     ),

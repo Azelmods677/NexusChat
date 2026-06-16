@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 enum class AttachmentType {
     GALLERY,
     CAMERA,
+    VIDEO,
     DOCUMENT,
     AUDIO,
     LOCATION,
@@ -102,13 +103,23 @@ fun AttachmentBottomSheet(
                     }
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
+                AttachmentOption(
+                    icon = Icons.Default.Videocam,
+                    label = "Video",
+                    color = Color(0xFFEF4444),
+                    onClick = {
+                        onAttachmentSelected(AttachmentType.VIDEO)
+                        onDismiss()
+                    }
+                )
+
                 AttachmentOption(
                     icon = Icons.Default.Mic,
                     label = "Audio",

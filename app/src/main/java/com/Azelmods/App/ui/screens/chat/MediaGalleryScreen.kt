@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.chat
+﻿package com.Azelmods.App.ui.screens.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -156,7 +156,7 @@ private fun MediaGridItem(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
-                        color = Color(0xFF7C3AED)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -370,7 +370,7 @@ private fun ZoomableImage(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFF7C3AED))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             }
         )

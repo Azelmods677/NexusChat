@@ -66,6 +66,15 @@ class ChatViewModel @Inject constructor(
     private val _chatBackground = MutableStateFlow(com.Azelmods.App.data.model.BackgroundConfig())
     val chatBackground: StateFlow<com.Azelmods.App.data.model.BackgroundConfig> = _chatBackground.asStateFlow()
 
+    private companion object {
+        // Valores por defecto del contacto demo (Azel Assistant), usados como
+        // fallback cuando Firebase no devuelve datos para el Demo Chat.
+        const val DEMO_USER_ID = "demo_azel_assistant"
+        const val DEMO_USER_NAME = "Azel Assistant"
+        const val DEMO_USERNAME = "@azel"
+        const val DEMO_BIO = "I'm here to help you explore AzelGram features!"
+    }
+
     /**
      * Holds the full chatId once loadChat is called.
      * Used by addReaction and other methods that don't take chatId as a parameter.
@@ -268,13 +277,15 @@ class ChatViewModel @Inject constructor(
 
         val uid = otherUid ?: return null
 
+        val isDemoContact = uid == DEMO_USER_ID
+
         return try {
             databaseRepository.getUserById(uid)?.let { data ->
                 User(
                     uid = data["uid"] as? String ?: uid,
                     name = data["displayName"] as? String
                         ?: data["name"] as? String
-                        ?: "Usuario",
+                        ?: if (isDemoContact) DEMO_USER_NAME else "Usuario",
                     username = data["username"] as? String ?: "",
                     email = data["email"] as? String ?: "",
                     photoUrl = data["photoUrl"] as? String,
@@ -282,12 +293,30 @@ class ChatViewModel @Inject constructor(
                     isOnline = data["isOnline"] as? Boolean ?: false,
                     lastSeen = data["lastSeen"] as? Long ?: 0L
                 )
-            } ?: User(uid = uid, name = "Usuario")
+            } ?: defaultContactFor(uid, isDemoContact)
         } catch (e: Exception) {
             android.util.Log.e("ChatViewModel", "Failed to fetch contact $uid", e)
-            User(uid = uid, name = "Usuario")
+            defaultContactFor(uid, isDemoContact)
         }
     }
+
+    /**
+     * Construye un [User] por defecto cuando Firebase no devuelve datos del
+     * contacto. Para el contacto demo usa los valores de Azel Assistant para
+     * que el Demo Chat nunca crashee por datos ausentes (Requisito 5.5).
+     */
+    private fun defaultContactFor(uid: String, isDemoContact: Boolean): User =
+        if (isDemoContact) {
+            User(
+                uid = DEMO_USER_ID,
+                name = DEMO_USER_NAME,
+                username = DEMO_USERNAME,
+                bio = DEMO_BIO,
+                isOnline = true
+            )
+        } else {
+            User(uid = uid, name = "Usuario")
+        }
 
     /**
      * Returns the canonical chatId resolved during [loadChat]. Falls back to the
@@ -341,6 +370,7 @@ class ChatViewModel @Inject constructor(
                 // Paginated message collection in real-time (suspends until cancelled)
                 messagesCollectionJob?.cancel()
                 messagesCollectionJob = viewModelScope.launch(Dispatchers.IO) {
+                  try {
                     databaseRepository.getChatMessagesPaginated(
                         chatId = chatId,
                         limit = 30
@@ -364,13 +394,22 @@ class ChatViewModel @Inject constructor(
                                     content = "🔒 Error de descifrado"
                                 }
                             }
+                            
+                            val timestampRaw = data["timestamp"]
+                            val timestampVal = when (timestampRaw) {
+                                is Long -> timestampRaw
+                                is Double -> timestampRaw.toLong()
+                                is String -> timestampRaw.toLongOrNull() ?: System.currentTimeMillis()
+                                else -> System.currentTimeMillis()
+                            }
+                            
                             Message(
                                 messageId = data["messageId"] as? String ?: "",
                                 chatId = chatId,
                                 senderId = senderId,
                                 senderName = data["senderName"] as? String ?: "",
                                 content = content,
-                                timestamp = data["timestamp"] as? Long ?: 0L,
+                                timestamp = timestampVal,
                                 status = MessageStatus.SENT,
                                 replyTo = data["replyTo"] as? String,
                                 reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
@@ -406,6 +445,14 @@ class ChatViewModel @Inject constructor(
                             hasMoreMessages = true
                         )
                     }
+                  } catch (ex: Exception) {
+                    // El Flow de mensajes puede cerrarse con excepción (p. ej. permiso
+                    // denegado al leer el nodo del chat) o fallar al mapear. Lo manejamos
+                    // aquí para que NUNCA crashee la app: se degrada a los mensajes en caché
+                    // (si los hay) sin cerrar la pantalla.
+                    android.util.Log.e("ChatViewModel", "Recolección de mensajes falló (manejado, sin crash)", ex)
+                    _state.value = _state.value.copy(isLoading = false)
+                  }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -851,13 +898,20 @@ class ChatViewModel @Inject constructor(
                             content = "🔒 Error de descifrado"
                         }
                     }
+                    val timestampRaw = data["timestamp"]
+                    val timestampVal = when (timestampRaw) {
+                        is Long -> timestampRaw
+                        is Double -> timestampRaw.toLong()
+                        is String -> timestampRaw.toLongOrNull() ?: System.currentTimeMillis()
+                        else -> System.currentTimeMillis()
+                    }
                     Message(
                         messageId = data["messageId"] as? String ?: "",
                         chatId = currentChatId,
                         senderId = senderId,
                         senderName = data["senderName"] as? String ?: "",
                         content = content,
-                        timestamp = data["timestamp"] as? Long ?: 0L,
+                        timestamp = timestampVal,
                         status = MessageStatus.SENT,
                         replyTo = data["replyTo"] as? String,
                         reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),

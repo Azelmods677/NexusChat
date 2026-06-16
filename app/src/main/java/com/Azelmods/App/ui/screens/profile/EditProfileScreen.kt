@@ -80,10 +80,10 @@ fun EditProfileScreen(
                         if (state.isSaving) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
-                                color = Purple
+                                color = MaterialTheme.colorScheme.primary
                             )
                         } else {
-                            Text("Save", color = Purple, fontWeight = FontWeight.Bold)
+                            Text("Save", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 },
@@ -103,7 +103,7 @@ fun EditProfileScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = Purple)
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
             }
         } else {
             Column(
@@ -132,7 +132,7 @@ fun EditProfileScreen(
                                 .align(Alignment.BottomEnd)
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Purple)
+                                .background(MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(
                                 Icons.Default.CameraAlt,
@@ -147,7 +147,7 @@ fun EditProfileScreen(
                     
                     Text(
                         text = "Change Profile Photo",
-                        color = Purple,
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -293,7 +293,7 @@ private fun ProfileEditField(
         Icon(
             icon,
             contentDescription = null,
-            tint = Purple,
+            tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier
                 .size(24.dp)
                 .padding(top = 12.dp)
@@ -315,10 +315,10 @@ private fun ProfileEditField(
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = prefix?.let { { Text(it, color = Color.Gray) } },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = Color.Gray.copy(alpha = 0.3f),
                     disabledBorderColor = Color.Gray.copy(alpha = 0.2f),
-                    cursorColor = Purple,
+                    cursorColor = MaterialTheme.colorScheme.primary,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     disabledTextColor = Color.Gray

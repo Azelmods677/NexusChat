@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.settings
+﻿package com.Azelmods.App.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -47,7 +47,7 @@ fun HelpSupportScreen(
         ) {
             Text(
                 text = "Get Help",
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(16.dp)
@@ -78,7 +78,7 @@ fun HelpSupportScreen(
             
             Text(
                 text = "Resources",
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(16.dp)
@@ -109,64 +109,64 @@ fun HelpSupportScreen(
             
             Text(
                 text = "Guides & Tutorials",
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(16.dp)
             )
             
             SettingsItem(
-                title = "🚀 Primeros Pasos",
+                title = "ðŸš€ Primeros Pasos",
                 subtitle = "Aprende a usar Nexus Chat",
                 icon = Icons.Default.School,
                 onClick = { navController.navigate("tutorial/getting_started") }
             )
             
             SettingsItem(
-                title = "💬 Mensajería",
+                title = "ðŸ’¬ MensajerÃ­a",
                 subtitle = "Enviar mensajes y multimedia",
                 icon = Icons.AutoMirrored.Filled.Message,
                 onClick = { navController.navigate("tutorial/messaging") }
             )
             
             SettingsItem(
-                title = "📸 Historias",
+                title = "ðŸ“¸ Historias",
                 subtitle = "Crear y ver historias",
                 icon = Icons.Default.PhotoLibrary,
                 onClick = { navController.navigate("tutorial/stories") }
             )
             
             SettingsItem(
-                title = "🤖 Funciones de IA",
+                title = "ðŸ¤– Funciones de IA",
                 subtitle = "Usar Azel IA y asistentes",
                 icon = Icons.Default.Psychology,
                 onClick = { navController.navigate("tutorial/ai_features") }
             )
             
             SettingsItem(
-                title = "🎨 Apariencia",
+                title = "ðŸŽ¨ Apariencia",
                 subtitle = "Personalizar temas y fondos",
                 icon = Icons.Default.Palette,
                 onClick = { navController.navigate("tutorial/appearance") }
             )
             
             SettingsItem(
-                title = "🔒 Privacidad",
+                title = "ðŸ”’ Privacidad",
                 subtitle = "Configurar privacidad y seguridad",
                 icon = Icons.Default.Security,
                 onClick = { navController.navigate("tutorial/privacy") }
             )
             
             SettingsItem(
-                title = "⚙️ Herramientas Avanzadas",
+                title = "âš™ï¸ Herramientas Avanzadas",
                 subtitle = "Terminal y CyberSec",
                 icon = Icons.Default.DeveloperMode,
                 onClick = { navController.navigate("tutorial/framework") }
             )
             
             SettingsItem(
-                title = "👆 Gestos Táctiles",
-                subtitle = "Navegación por gestos y atajos",
+                title = "ðŸ‘† Gestos TÃ¡ctiles",
+                subtitle = "NavegaciÃ³n por gestos y atajos",
                 icon = Icons.Default.TouchApp,
                 onClick = { navController.navigate("tutorial/gestures") }
             )
@@ -175,7 +175,7 @@ fun HelpSupportScreen(
             
             Text(
                 text = "Feedback",
-                color = Purple,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(16.dp)

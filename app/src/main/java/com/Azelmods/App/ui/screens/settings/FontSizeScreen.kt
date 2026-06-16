@@ -77,7 +77,7 @@ fun FontSizeScreen(navController: NavController) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
                         "Vista Previa", 
-                        color = Color(0xFF7B5CFA),
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp
                     )
                     Spacer(Modifier.height(8.dp))
@@ -106,12 +106,12 @@ fun FontSizeScreen(navController: NavController) {
                         },
                     shape = RoundedCornerShape(14.dp),
                     color = if (selectedSize == key)
-                        Color(0xFF7B5CFA).copy(0.2f)
+                        MaterialTheme.colorScheme.primary.copy(0.2f)
                     else 
                         Color(0xFF1A1A2E),
                     border = BorderStroke(
                         if (selectedSize == key) 1.dp else 0.dp,
-                        Color(0xFF7B5CFA)
+                        MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Row(
@@ -127,7 +127,7 @@ fun FontSizeScreen(navController: NavController) {
                         if (selectedSize == key) {
                             Icon(
                                 Icons.Default.Check,
-                                tint = Color(0xFF7B5CFA),
+                                tint = MaterialTheme.colorScheme.primary,
                                 contentDescription = null
                             )
                         }

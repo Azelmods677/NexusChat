@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.viewer
+﻿package com.Azelmods.App.ui.screens.viewer
 
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -91,7 +91,7 @@ fun ImageCropScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Pellizca para hacer zoom • Arrastra para mover",
+                    text = "Pellizca para hacer zoom â€¢ Arrastra para mover",
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 13.sp
                 )
@@ -164,7 +164,7 @@ fun ImageCropScreen(
                     navController.previousBackStackEntry?.savedStateHandle?.set("crop_offset_y", offset.y)
                     navController.popBackStack()
                 },
-                containerColor = Purple,
+                containerColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(64.dp)
             ) {
                 Icon(

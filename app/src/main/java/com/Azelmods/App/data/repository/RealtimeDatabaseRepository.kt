@@ -158,16 +158,23 @@ class RealtimeDatabaseRepository @Inject constructor(
         if (members.size == 2) {
             val recipientId = members.firstOrNull { it != currentUserId }
             if (recipientId != null) {
-                e2eeCryptoService.ensureLocalKeys()
-                when (val enc = e2eeCryptoService.encryptFor(recipientId, content)) {
-                    is com.Azelmods.App.data.security.encryption.EncryptionResult.Success -> {
-                        isEncrypted = true
-                        encryptedPayload = android.util.Base64.encodeToString(
-                            enc.ciphertext, android.util.Base64.NO_WRAP
-                        )
-                        displayContent = "🔒 Mensaje cifrado de extremo a extremo"
+                // La encriptación E2EE NUNCA debe bloquear el envío: si las claves
+                // no están listas o el cifrado falla (sin claves del destinatario,
+                // sin red, etc.) se envía en texto plano como fallback.
+                try {
+                    e2eeCryptoService.ensureLocalKeys()
+                    when (val enc = e2eeCryptoService.encryptFor(recipientId, content)) {
+                        is com.Azelmods.App.data.security.encryption.EncryptionResult.Success -> {
+                            isEncrypted = true
+                            encryptedPayload = android.util.Base64.encodeToString(
+                                enc.ciphertext, android.util.Base64.NO_WRAP
+                            )
+                            displayContent = "🔒 Mensaje cifrado de extremo a extremo"
+                        }
+                        else -> {}
                     }
-                    else -> {}
+                } catch (e: Exception) {
+                    android.util.Log.e("RealtimeDB", "E2EE falló, enviando en texto plano", e)
                 }
             }
         }
@@ -305,6 +312,43 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
         storiesRef.addValueEventListener(listener)
         awaitClose { storiesRef.removeEventListener(listener) }
+    }
+
+    /**
+     * Lee SOLO las stories de un usuario concreto (`/stories/{userId}`) en lugar de
+     * todo el árbol `/stories`. Esto evita el "Permission denied" al ver la story de
+     * otra persona cuando las reglas de Firebase no permiten leer el nodo raíz de
+     * stories, y es además más eficiente (menos datos y menos exigencia de permisos).
+     */
+    fun getStoriesForUser(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
+        val userStoriesRef = database.child("stories").child(userId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val now = System.currentTimeMillis()
+                val stories = snapshot.children.mapNotNull { story ->
+                    val map = story.value as? Map<String, Any> ?: return@mapNotNull null
+                    val timestamp = map["timestamp"] as? Long ?: 0L
+                    if (now - timestamp < 24 * 60 * 60 * 1000) {
+                        map.toMutableMap().apply {
+                            put("storyId", story.key ?: "")
+                            // Garantiza que userId esté presente aunque el registro no lo guarde.
+                            putIfAbsent("userId", userId)
+                        }
+                    } else null
+                }
+                trySend(stories)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        userStoriesRef.addValueEventListener(listener)
+        awaitClose { userStoriesRef.removeEventListener(listener) }
     }
 
     suspend fun addReaction(chatId: String, messageId: String, reaction: String) {
@@ -643,7 +687,7 @@ class RealtimeDatabaseRepository @Inject constructor(
     }
 
     suspend fun endCall(callId: String) {
-        database.child("calls").child(callId).child("status").setValue("ended").await()
+        database.child("calls").child(callId).child("status").setValue("ENDED").await()
         database.child("calls").child(callId).child("endedAt").setValue(ServerValue.TIMESTAMP).await()
     }
 

@@ -45,7 +45,6 @@ import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
 import com.Azelmods.App.ui.theme.DarkSurfaceVariant
-import com.Azelmods.App.ui.theme.Purple
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
@@ -108,7 +107,7 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(Screen.NewConversation.route) },
-                containerColor = Purple,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = Color.White
             ) {
                 Icon(Icons.Default.Add, contentDescription = "New Chat")
@@ -182,10 +181,10 @@ fun HomeScreen(
                             unfocusedBorderColor = Color.Transparent,
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            cursorColor = Color(0xFF7C6FE0),
+                            cursorColor = MaterialTheme.colorScheme.primary,
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
-                            focusedLeadingIconColor = Color(0xFF7C6FE0),
+                            focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
                             unfocusedLeadingIconColor = Color(0xFF55556A),
                             focusedPlaceholderColor = Color(0xFF55556A),
                             unfocusedPlaceholderColor = Color(0xFF55556A)
@@ -229,7 +228,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Purple)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
 
@@ -257,7 +256,7 @@ fun HomeScreen(
                             )
                             Button(
                                 onClick = { viewModel.refreshChats() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Purple)
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                             ) {
                                 Text("Retry", color = Color.White)
                             }
@@ -376,7 +375,7 @@ fun ChatItem(
     val accentColor = when {
         isPinned -> Color(0xFFFFD700)          // Dorado = pinneado
         isOnline -> Color(0xFF00E676)          // Verde = online
-        unreadCount > 0 -> Color(0xFF7C6FE0)   // Violeta = no leído
+        unreadCount > 0 -> MaterialTheme.colorScheme.primary   // Acento = no leído
         else -> Color.Transparent
     }
 
@@ -484,13 +483,13 @@ fun ChatItem(
                             modifier = Modifier
                                 .size(if (isOnline) 47.dp else 52.dp)
                                 .clip(CircleShape)
-                                .background(Purple.copy(alpha = 0.25f)),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Group,
                                 contentDescription = "Group Chat",
-                                tint = Purple,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -625,7 +624,7 @@ fun ChatItem(
                                     .clip(CircleShape)
                                     .background(
                                         Brush.linearGradient(
-                                            listOf(Color(0xFF7C6FE0), Color(0xFF00D4FF))
+                                            listOf(MaterialTheme.colorScheme.primary, Color(0xFF00D4FF))
                                         )
                                     )
                                     .padding(horizontal = 6.dp, vertical = 3.dp)
@@ -723,13 +722,13 @@ fun TypingDots() {
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF7C6FE0).copy(alpha = alpha))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = alpha))
             )
         }
         Spacer(Modifier.width(4.dp))
         Text(
             "escribiendo...",
-            color = Color(0xFF7C6FE0),
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 12.sp,
             fontStyle = FontStyle.Italic
         )

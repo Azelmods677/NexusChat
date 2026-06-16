@@ -93,7 +93,7 @@ fun ActiveCallScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Purple.copy(alpha = 0.3f))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
                 .blur(20.dp)
         )
         
@@ -115,7 +115,7 @@ fun ActiveCallScreen(
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape)
-                        .background(Purple),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

@@ -113,8 +113,17 @@ fun ChatScreen(
         }
     }
     
+    val sendErrorSnackbar = remember { SnackbarHostState() }
+    LaunchedEffect(state.error) {
+        state.error?.let { err ->
+            sendErrorSnackbar.showSnackbar(err)
+            viewModel.clearError()
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(sendErrorSnackbar) },
         topBar = {
             ChatTopBar(
                 contact = state.contact,
@@ -236,7 +245,7 @@ fun ChatScreen(
                                     ) {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(20.dp),
-                                            color = Color(0xFF7C3AED),
+                                            color = MaterialTheme.colorScheme.primary,
                                             strokeWidth = 2.dp
                                         )
                                         Text(
@@ -640,7 +649,7 @@ fun ReplyPreviewBar(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = message.senderName,
-                    color = Color(0xFF7C3AED),
+                    color = themeColor,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -696,7 +705,7 @@ fun EphemeralDurationPicker(
                             if (isSelected) onDismiss() else onSelect(duration)
                         },
                     shape = RoundedCornerShape(12.dp),
-                    color = if (isSelected) Color(0xFF7C3AED).copy(alpha = 0.2f) else Color.Transparent
+                    color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent
                 ) {
                     Row(
                         modifier = Modifier
@@ -987,6 +996,9 @@ fun ChatInputArea(
                         }
                         AttachmentType.DOCUMENT -> {
                             documentPickerLauncher.launch("*/*")
+                        }
+                        AttachmentType.VIDEO -> {
+                            videoPickerLauncher.launch("video/*")
                         }
                         AttachmentType.AUDIO -> {
                             // Launch audio file picker

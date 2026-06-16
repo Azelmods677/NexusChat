@@ -17,7 +17,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.Purple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,7 +223,7 @@ fun PrivacySection(
     Column {
         Text(
             text = title,
-            color = Purple,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -306,8 +305,8 @@ fun PrivacyToggleItem(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Purple,
-                checkedTrackColor = Purple.copy(alpha = 0.5f)
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
             )
         )
     }
@@ -336,7 +335,7 @@ fun VisibilityDialog(
                             selected = currentValue == option,
                             onClick = { onSelect(option) },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = Purple
+                                selectedColor = MaterialTheme.colorScheme.primary
                             )
                         )
                         Spacer(modifier = Modifier.width(8.dp))

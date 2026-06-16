@@ -280,3 +280,105 @@ exports.onCallEnded = functions.database
 
         return null;
     });
+
+/**
+ * 🆕 onCallCreate — Se dispara cuando se crea una llamada nueva en
+ * `calls/{callId}`. Envía al RECEPTOR una notificación push de tipo
+ * "incoming_call" para que su dispositivo muestre la pantalla de llamada
+ * entrante (full-screen) aunque la app esté en segundo plano.
+ *
+ * IMPORTANTE: se envía como mensaje DATA-ONLY (sin bloque `notification`)
+ * y con prioridad alta, para que `onMessageReceived` se ejecute siempre y
+ * la app construya la notificación de llamada (full-screen intent).
+ * Si se incluyera un bloque `notification`, en segundo plano la mostraría
+ * el sistema y la app nunca abriría la IncomingCallScreen.
+ */
+exports.onCallCreate = functions.database
+    .ref("/calls/{callId}")
+    .onCreate(async (snapshot, context) => {
+        const { callId } = context.params;
+        const callData = snapshot.val();
+
+        if (!callData) {
+            console.log("⚠️ No call data, skipping");
+            return null;
+        }
+
+        // Solo notificar llamadas que están iniciando.
+        const status = callData.status;
+        if (status && status !== "CALLING" && status !== "RINGING") {
+            console.log(`⚠️ Call ${callId} status is ${status}, skipping incoming push`);
+            return null;
+        }
+
+        const receiverId = callData.receiverId;
+        const callerId = callData.callerId;
+        if (!receiverId) {
+            console.log("⚠️ No receiverId, skipping");
+            return null;
+        }
+
+        const callerName = callData.callerName || "Unknown";
+        const callerPhotoUrl = callData.callerPhotoUrl || "";
+        // El cliente guarda callType como "AUDIO" / "VIDEO".
+        const callType = callData.callType || "AUDIO";
+
+        // ── Obtener FCM tokens del receptor ──
+        let fcmTokens = [];
+        try {
+            const tokensSnapshot = await db.ref(`/users/${receiverId}/fcmTokens`).once("value");
+            const tokensData = tokensSnapshot.val();
+            if (tokensData) {
+                fcmTokens = Object.values(tokensData).filter((t) => typeof t === "string");
+            }
+        } catch (e) {
+            console.error("❌ Error reading FCM tokens:", e);
+        }
+
+        if (fcmTokens.length === 0) {
+            console.log(`⚠️ No FCM tokens for receiver ${receiverId}`);
+            return null;
+        }
+
+        console.log(`📞 Sending incoming-call push to ${fcmTokens.length} device(s) for ${receiverId}`);
+
+        const dataPayload = {
+            type: "incoming_call",
+            callId: callId,
+            callerId: callerId || "",
+            callerName: callerName,
+            callerPhotoUrl: callerPhotoUrl,
+            callType: callType,
+        };
+
+        const results = await Promise.allSettled(
+            fcmTokens.map((token) =>
+                admin.messaging().send({
+                    token: token,
+                    // DATA-ONLY (sin notification) para que la app maneje el full-screen intent.
+                    data: dataPayload,
+                    android: {
+                        priority: "high",
+                    },
+                    apns: {
+                        headers: {
+                            "apns-priority": "10",
+                            "apns-push-type": "voip",
+                        },
+                        payload: {
+                            aps: {
+                                "content-available": 1,
+                            },
+                        },
+                    },
+                })
+            )
+        );
+
+        const successCount = results.filter((r) => r.status === "fulfilled").length;
+        const failCount = results.filter((r) => r.status === "rejected").length;
+
+        console.log(`✅ Incoming-call push sent: ${successCount} success, ${failCount} failed`);
+
+        return { successCount, failCount };
+    });

@@ -216,7 +216,7 @@ fun CompleteEmojiPicker(
         ScrollableTabRow(
             selectedTabIndex = selectedCategory,
             containerColor = Color(0xFF1A1A2E),
-            contentColor = Color(0xFF7C3AED),
+            contentColor = MaterialTheme.colorScheme.primary,
             edgePadding = 8.dp
         ) {
             categories.forEachIndexed { index, category ->
@@ -227,14 +227,14 @@ fun CompleteEmojiPicker(
                         Icon(
                             category.icon,
                             contentDescription = category.name,
-                            tint = if (selectedCategory == index) Color(0xFF7C3AED) else Color.Gray
+                            tint = if (selectedCategory == index) MaterialTheme.colorScheme.primary else Color.Gray
                         )
                     },
                     text = {
                         Text(
                             category.name,
                             fontSize = 12.sp,
-                            color = if (selectedCategory == index) Color(0xFF7C3AED) else Color.Gray
+                            color = if (selectedCategory == index) MaterialTheme.colorScheme.primary else Color.Gray
                         )
                     }
                 )

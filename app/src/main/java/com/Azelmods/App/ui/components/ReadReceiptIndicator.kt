@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,7 +33,7 @@ fun ReadReceiptIndicator(
         MessageStatus.SENDING -> Color.Gray.copy(alpha = 0.5f)
         MessageStatus.SENT -> Color.Gray
         MessageStatus.DELIVERED -> Color.LightGray
-        MessageStatus.READ -> Color(0xFF7B5CFA) // Nexus purple
+        MessageStatus.READ -> MaterialTheme.colorScheme.primary
         MessageStatus.FAILED -> Color.Red
     }
 

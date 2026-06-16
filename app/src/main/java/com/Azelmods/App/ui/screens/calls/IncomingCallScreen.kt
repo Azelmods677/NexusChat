@@ -104,7 +104,7 @@ fun IncomingCallScreen(
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        Purple.copy(alpha = 0.3f),
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
                         Color(0xFF0F0F1A)
                     )
                 )
@@ -148,7 +148,7 @@ fun IncomingCallScreen(
                         .size(160.dp)
                         .scale(ring1Scale)
                         .clip(CircleShape)
-                        .background(Purple.copy(alpha = ring1Alpha * 0.3f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = ring1Alpha * 0.3f))
                 )
                 
                 // Ring 2
@@ -157,7 +157,7 @@ fun IncomingCallScreen(
                         .size(160.dp)
                         .scale(ring2Scale)
                         .clip(CircleShape)
-                        .background(Purple.copy(alpha = ring2Alpha * 0.3f))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = ring2Alpha * 0.3f))
                 )
                 
                 // Avatar
@@ -166,7 +166,7 @@ fun IncomingCallScreen(
                         .size(120.dp)
                         .scale(avatarScale)
                         .clip(CircleShape)
-                        .background(Purple),
+                        .background(MaterialTheme.colorScheme.primary),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

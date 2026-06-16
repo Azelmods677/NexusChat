@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.stories
+﻿package com.Azelmods.App.ui.screens.stories
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -45,7 +45,7 @@ fun StoriesScreen(
     val context = LocalContext.current
     val tutorialPreferences = remember { TutorialPreferences(context) }
 
-    // ── Lifecycle-aware state collection ─────────────────────────────────────
+    // â”€â”€ Lifecycle-aware state collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Show tutorial on first visit
@@ -88,18 +88,18 @@ fun StoriesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .consumeWindowInsets(paddingValues) // Edge-to-Edge: consume los insets del Scaffold
-                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegación
+                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegaciÃ³n
                 .padding(horizontal = 16.dp) // Padding general de 16dp
         ) {
-            // ── Stories horizontal scroll ─────────────────────────────────────
+            // â”€â”€ Stories horizontal scroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 20.dp), // Aumentado para que respire más
+                    .padding(vertical = 20.dp), // Aumentado para que respire mÃ¡s
                 horizontalArrangement = Arrangement.spacedBy(16.dp), // Espaciado aumentado
                 contentPadding = PaddingValues(horizontal = 0.dp) // Ya tenemos padding general
             ) {
-                // Your story bubble — shows the logged-in user's own profile photo
+                // Your story bubble â€” shows the logged-in user's own profile photo
                 item {
                     YourStoryItem(
                         currentUserPhotoUrl = state.currentUserPhotoUrl,
@@ -124,25 +124,25 @@ fun StoriesScreen(
                 }
             }
 
-            // ── Body: loading indicator OR content ────────────────────────────
+            // â”€â”€ Body: loading indicator OR content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 when {
                     state.isLoading -> {
-                        CircularProgressIndicator(color = Purple)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
 
                     state.stories.isEmpty() -> {
-                        // ── Improved empty state ──────────────────────────────
+                        // â”€â”€ Improved empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.padding(32.dp)
                         ) {
                             Text(
-                                text = "📖",
+                                text = "ðŸ“–",
                                 fontSize = 64.sp
                             )
                             Text(
@@ -164,9 +164,9 @@ fun StoriesScreen(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Your Story bubble
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 fun YourStoryItem(
@@ -194,9 +194,9 @@ fun YourStoryItem(
                     .background(
                         Brush.sweepGradient(
                             listOf(
-                                Purple.copy(alpha = 0.6f),
-                                Purple.copy(alpha = 0.2f),
-                                Purple.copy(alpha = 0.6f)
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                             )
                         )
                     )
@@ -246,7 +246,7 @@ fun YourStoryItem(
                     .size(22.dp)
                     .align(Alignment.BottomEnd)
                     .clip(CircleShape)
-                    .background(Purple)
+                    .background(MaterialTheme.colorScheme.primary)
                     .border(1.5.dp, Color.Black, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -270,9 +270,9 @@ fun YourStoryItem(
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Contact story bubble
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @Composable
 fun StoryItem(
@@ -394,7 +394,7 @@ fun StoryItem(
 
         val displayName = story.userName
             .ifBlank { "User" }
-            .let { if (it.length > 12) it.take(11) + "…" else it }
+            .let { if (it.length > 12) it.take(11) + "â€¦" else it }
 
         Text(
             text = displayName,

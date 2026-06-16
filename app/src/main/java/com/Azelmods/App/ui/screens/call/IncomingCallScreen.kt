@@ -306,12 +306,11 @@ fun IncomingCallScreen(
                             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                             try {
                                 if (callId.isNotBlank() && callType.isNotBlank()) {
-                                    // Accept call with the REAL callId from Firebase
-                                    val type = if (callType == "video") CallType.VIDEO else CallType.AUDIO
-                                    viewModel.acceptCall(callId, type)
-
-                                    // Navigate to active_call with contactId and type
-                                    navController.navigate("active_call/$callId/$callType") {
+                                    // Navigate to active_call as the CALLEE (isCaller=false).
+                                    // ActiveCallScreen will perform acceptCall() there so the
+                                    // WebRTC session is owned by the screen that displays it
+                                    // (this IncomingCallScreen VM is destroyed on navigation).
+                                    navController.navigate("active_call/$callId/$callType?isCaller=false") {
                                         popUpTo("incoming_call/$callId/$callType") { inclusive = true }
                                     }
                                 }

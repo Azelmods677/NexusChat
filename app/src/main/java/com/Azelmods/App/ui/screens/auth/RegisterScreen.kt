@@ -1,4 +1,4 @@
-package com.Azelmods.App.ui.screens.auth
+﻿package com.Azelmods.App.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,7 +24,6 @@ import androidx.navigation.NavController
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.Purple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,10 +79,10 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = Purple,
-                    cursorColor = Purple
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -101,10 +100,10 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = Purple,
-                    cursorColor = Purple
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -131,10 +130,10 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = Purple,
-                    cursorColor = Purple
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -161,10 +160,10 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = Purple,
-                    cursorColor = Purple
+                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                    cursorColor = MaterialTheme.colorScheme.primary
                 )
             )
             
@@ -190,7 +189,7 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
                 if (state.isLoading) {
@@ -251,7 +250,7 @@ fun RegisterScreen(
                         text = "G",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Purple,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(end = 12.dp)
                     )
                     Text(
@@ -275,7 +274,7 @@ fun RegisterScreen(
                 )
                 Text(
                     text = "Login",
-                    color = Purple,
+                    color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clickable {
                         navController.popBackStack()

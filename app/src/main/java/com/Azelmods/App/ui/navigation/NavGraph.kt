@@ -107,7 +107,11 @@ fun NavGraph(
             arguments = listOf(navArgument("chatId") { type = NavType.StringType })
         ) { backStackEntry ->
             val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
-            ChatScreen(contactId = chatId, navController = navController)
+            if (chatId.isBlank()) {
+                LaunchedEffect(Unit) { navController.popBackStack() }
+            } else {
+                ChatScreen(contactId = chatId, navController = navController)
+            }
         }
         
         // Media Gallery
@@ -207,7 +211,7 @@ fun NavGraph(
         }
         
         composable(
-            route = "active_call/{callId}/{callType}",
+            route = "active_call/{callId}/{callType}?isCaller={isCaller}",
             arguments = listOf(
                 navArgument("callId") { 
                     type = NavType.StringType
@@ -216,15 +220,21 @@ fun NavGraph(
                 navArgument("callType") { 
                     type = NavType.StringType
                     defaultValue = "audio"
+                },
+                navArgument("isCaller") {
+                    type = NavType.BoolType
+                    defaultValue = true
                 }
             )
         ) { backStackEntry ->
             val callId = backStackEntry.arguments?.getString("callId") ?: ""
             val callType = backStackEntry.arguments?.getString("callType") ?: "audio"
+            val isCaller = backStackEntry.arguments?.getBoolean("isCaller") ?: true
             ActiveCallScreen(
                 contactId = callId,
                 callType = callType,
-                navController = navController
+                navController = navController,
+                isCaller = isCaller
             )
         }
         

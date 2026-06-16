@@ -293,7 +293,7 @@ fun AnimatedAppIcon(visible: Boolean) {
             modifier = Modifier
                 .size(80.dp)
                 .blur(12.dp)
-                .background(Color(0xFF7C3AED), RoundedCornerShape(20.dp))
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp))
         )
         
         // Icon
@@ -307,7 +307,7 @@ fun AnimatedAppIcon(visible: Boolean) {
             Box(
                 modifier = Modifier.background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF7C3AED), Color(0xFF5B21B6))
+                        listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
                     )
                 ),
                 contentAlignment = Alignment.Center
@@ -388,7 +388,7 @@ fun LinkItem(
                 Box(
                     modifier = Modifier.background(
                         Brush.linearGradient(
-                            listOf(Color(0xFF7C3AED), Color(0xFF5B21B6))
+                            listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
                         )
                     ),
                     contentAlignment = Alignment.Center
