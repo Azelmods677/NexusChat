@@ -68,6 +68,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionManager: com.Azelmods.App.data.session.SessionManager
     
+    @Inject
+    lateinit var appLockManager: com.Azelmods.App.data.security.AppLockManager
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before super.onCreate()
         installSplashScreen()
@@ -121,6 +124,23 @@ class MainActivity : ComponentActivity() {
                 
                 val wallpaperType by userPreferences.wallpaperType.collectAsState()
                 val wallpaperValue by userPreferences.wallpaperValue.collectAsState()
+                
+                // ── App Lock State ──
+                val isAppLocked by appLockManager.isLocked.collectAsState(initial = false)
+                val showLockScreen = remember { mutableStateOf(false) }
+                
+                // Verificar si debe bloquearse al iniciar
+                LaunchedEffect(Unit) {
+                    if (appLockManager.shouldLockOnResume()) {
+                        appLockManager.lock()
+                        showLockScreen.value = true
+                    }
+                }
+                
+                // Sincronizar estado de bloqueo con UI
+                LaunchedEffect(isAppLocked) {
+                    showLockScreen.value = isAppLocked
+                }
 
                 com.Azelmods.App.ui.components.AppBackground(
                     backgroundManager = appBackgroundManager
@@ -129,24 +149,34 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = Color.Transparent
                     ) {
-                        val navController = rememberNavController()
-                        NavGraph(navController = navController)
-
-                        // ── Navigate to the incoming-call screen when launched from a
-                        //    call notification's full-screen intent. ──
-                        val pendingCall by callNavRequest
-                        LaunchedEffect(pendingCall) {
-                            pendingCall?.let { req ->
-                                if (req.callId.isNotBlank()) {
-                                    try {
-                                        navController.navigate(
-                                            "${req.target}/${req.callId}/${req.callType}"
-                                        )
-                                    } catch (e: Exception) {
-                                        Log.e(TAG, "Failed to navigate to call screen: ${e.message}", e)
-                                    }
+                        if (showLockScreen.value) {
+                            // Mostrar pantalla de bloqueo
+                            com.Azelmods.App.ui.screens.security.AppLockScreen(
+                                onUnlocked = {
+                                    showLockScreen.value = false
                                 }
-                                callNavRequest.value = null
+                            )
+                        } else {
+                            // Contenido normal de la app
+                            val navController = rememberNavController()
+                            NavGraph(navController = navController)
+
+                            // ── Navigate to the incoming-call screen when launched from a
+                            //    call notification's full-screen intent. ──
+                            val pendingCall by callNavRequest
+                            LaunchedEffect(pendingCall) {
+                                pendingCall?.let { req ->
+                                    if (req.callId.isNotBlank()) {
+                                        try {
+                                            navController.navigate(
+                                                "${req.target}/${req.callId}/${req.callType}"
+                                            )
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Failed to navigate to call screen: ${e.message}", e)
+                                        }
+                                    }
+                                    callNavRequest.value = null
+                                }
                             }
                         }
                     }
@@ -190,6 +220,13 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             runCatching { databaseRepository.updatePresence(isOnline = true) }
         }
+        
+        // ✅ Verificar si debe bloquearse la app
+        lifecycleScope.launch {
+            if (appLockManager.shouldLockOnResume()) {
+                appLockManager.lock()
+            }
+        }
     }
     
     override fun onDestroy() {
@@ -204,5 +241,8 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             runCatching { databaseRepository.updatePresence(isOnline = false) }
         }
+        
+        // ✅ Actualizar timestamp para auto-bloqueo
+        appLockManager.updateLastActiveTime()
     }
 }

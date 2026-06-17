@@ -910,7 +910,7 @@ private fun WebView.setupWebView(
                     
                     if (isOnionUrl) {
                         // Verificar si Tor estÃ¡ activo
-                        val torActive = proxyEnabled()
+                        val torActive = OrbotDetector.isSocksProxyAvailable() || OrbotDetector.isHttpProxyAvailable()
                         
                         if (!torActive) {
                             // Tor NO estÃ¡ activo - mostrar pÃ¡gina de ayuda
@@ -1091,3 +1091,4 @@ private fun WebView.setupWebView(
         }
     }
 }
+

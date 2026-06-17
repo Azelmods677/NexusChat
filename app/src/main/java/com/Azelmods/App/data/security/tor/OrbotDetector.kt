@@ -17,21 +17,31 @@ object OrbotDetector {
 
     private const val TAG = "OrbotDetector"
     private const val ORBOT_PACKAGE = "org.torproject.android"
+    private const val ORBOT_PACKAGE_ALT = "org.torproject.orbot"  // F-Droid, older versions
     private const val SOCKS5_PORT = 9050
     private const val HTTP_PROXY_PORT = 8118
     private const val TIMEOUT_MS = 1500
 
     /**
      * Verifica si Orbot está instalado en el dispositivo.
+     * Soporta ambos nombres de paquete oficiales:
+     * - org.torproject.android (Play Store)
+     * - org.torproject.orbot (F-Droid)
      */
     fun isOrbotInstalled(context: Context): Boolean {
         return try {
             context.packageManager.getPackageInfo(ORBOT_PACKAGE, 0)
-            Log.d(TAG, "✓ Orbot está instalado")
+            Log.d(TAG, "✓ Orbot está instalado (package: $ORBOT_PACKAGE)")
             true
         } catch (e: PackageManager.NameNotFoundException) {
-            Log.d(TAG, "✗ Orbot NO está instalado")
-            false
+            try {
+                context.packageManager.getPackageInfo(ORBOT_PACKAGE_ALT, 0)
+                Log.d(TAG, "✓ Orbot está instalado (package: $ORBOT_PACKAGE_ALT)")
+                true
+            } catch (e2: PackageManager.NameNotFoundException) {
+                Log.d(TAG, "✗ Orbot NO está instalado")
+                false
+            }
         }
     }
 
@@ -97,6 +107,7 @@ object OrbotDetector {
     fun launchOrbot(context: Context): Boolean {
         return try {
             val intent = context.packageManager.getLaunchIntentForPackage(ORBOT_PACKAGE)
+                ?: context.packageManager.getLaunchIntentForPackage(ORBOT_PACKAGE_ALT)
             if (intent != null) {
                 context.startActivity(intent)
                 true
@@ -106,6 +117,51 @@ object OrbotDetector {
         } catch (e: Exception) {
             Log.e(TAG, "Error al abrir Orbot", e)
             false
+        }
+    }
+
+    /**
+     * Obtiene información detallada del estado de Orbot con acciones sugeridas
+     */
+    fun getOrbotStatusInfo(context: Context): OrbotStatusInfo {
+        val installed = isOrbotInstalled(context)
+        val socksAvailable = isSocksProxyAvailable()
+        val httpAvailable = isHttpProxyAvailable()
+        
+        return when {
+            !installed -> OrbotStatusInfo(
+                status = OrbotStatus.NOT_INSTALLED,
+                message = "Orbot no está instalado",
+                actionLabel = "Descargar Orbot",
+                actionIntent = {
+                    try {
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                            data = android.net.Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.android")
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error abriendo Play Store", e)
+                    }
+                }
+            )
+            !socksAvailable && !httpAvailable -> OrbotStatusInfo(
+                status = OrbotStatus.INSTALLED_INACTIVE,
+                message = "Orbot está instalado pero no activo",
+                actionLabel = "Abrir Orbot",
+                actionIntent = { launchOrbot(context) }
+            )
+            socksAvailable || httpAvailable -> OrbotStatusInfo(
+                status = OrbotStatus.ACTIVE_CONNECTED,
+                message = "Conectado a la red Tor",
+                actionLabel = null,
+                actionIntent = null
+            )
+            else -> OrbotStatusInfo(
+                status = OrbotStatus.ERROR,
+                message = "Error al conectar con Orbot",
+                actionLabel = "Reintentar",
+                actionIntent = { launchOrbot(context) }
+            )
         }
     }
 }

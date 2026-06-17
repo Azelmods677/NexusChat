@@ -51,6 +51,10 @@
 
     <!-- Vibration for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    
+    <!-- Biometric authentication for app lock -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
 
     <!-- Tor Kill Switch – required to declare VPN capability (no VpnService UI is shown;
          TorKillSwitch uses this permission only to signal intent, not to create a VPN) -->

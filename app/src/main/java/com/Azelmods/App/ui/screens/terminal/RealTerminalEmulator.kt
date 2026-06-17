@@ -65,7 +65,7 @@ class RealTerminalEmulator(private val context: Context) {
         }
         
         addLine("╔═══════════════════════════════════════════════════╗", TerminalLine.Type.SYSTEM)
-        addLine("║      REAL TERMUX TERMINAL - libsu powered        ║", TerminalLine.Type.SYSTEM)
+        addLine("║      REAL TERMUX TERMINAL - Azel powered        ║", TerminalLine.Type.SYSTEM)
         addLine("║         Full Interactive Shell Support           ║", TerminalLine.Type.SYSTEM)
         addLine("╚═══════════════════════════════════════════════════╝", TerminalLine.Type.SYSTEM)
         addLine("", TerminalLine.Type.SYSTEM)
@@ -192,7 +192,7 @@ class RealTerminalEmulator(private val context: Context) {
             ║         REAL TERMUX TERMINAL - HELP              ║
             ╚═══════════════════════════════════════════════════╝
             
-            This is a REAL terminal powered by libsu.
+            This is a REAL terminal powered by azel.
             All Android shell commands are available.
             
             BUILT-IN COMMANDS:
