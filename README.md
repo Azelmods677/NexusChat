@@ -9,8 +9,6 @@
 ![MinSDK](https://img.shields.io/badge/minSdk-31_(Android_12)-orange.svg)
 ![TargetSDK](https://img.shields.io/badge/targetSdk-36_(Android_16)-green.svg)
 
-**Aplicación de mensajería avanzada para Android** con características empresariales: llamadas WebRTC, Stories multimedia, navegación Tor, asistente IA con Gemini, terminal integrado, editor de código y seguridad de nivel militar.
-
 [Características](#-características-principales) •
 [Requisitos](#-requisitos-del-sistema) •
 [Instalación](#-instalación-y-configuración) •
