@@ -1,4 +1,4 @@
-# 🚀 Azelgram Messenger
+# 🚀 NexusChat
 
 <div align="center">
 
@@ -153,7 +153,7 @@
 
 ## 🏗️ Arquitectura
 
-Azelgram sigue una arquitectura **MVVM (Model-View-ViewModel)** limpia con:
+NexusChat sigue una arquitectura **MVVM (Model-View-ViewModel)** limpia con:
 - **Inyección de dependencias**: Hilt
 - **Programación reactiva**: Kotlin Flow y StateFlow
 - **UI moderna**: Jetpack Compose con Material 3
@@ -247,8 +247,8 @@ UI Layer (Compose) ↔ ViewModel Layer ↔ Repository Layer ↔ Data Sources (Fi
 ### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/AzelMods677/Azelgram-Messenger.git
-cd Azelgram-Messenger
+git clone https://github.com/AzelMods677/NexusChat-Messenger.git
+cd NexusChat-Messenger
 ```
 
 ### 2. Configurar Firebase
@@ -354,7 +354,7 @@ Para habilitar navegación anónima:
    
 2. Abre Orbot y pulsa **Iniciar**
 
-3. En Azelgram:
+3. En NexusChat:
    - Ve a **Seguridad** → **Control Tor**
    - La app detectará automáticamente Orbot
    - Activa el navegador Tor integrado
@@ -1605,3 +1605,4 @@ Para solicitar permisos o licencias comerciales, contacta a:
 [![GitHub](https://img.shields.io/badge/GitHub-Azelmods677-181717?logo=github)](https://github.com/Azelmods677)
 
 </div>
+
