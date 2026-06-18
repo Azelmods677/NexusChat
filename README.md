@@ -1909,31 +1909,32 @@ Para solicitar permisos o licencias comerciales, contacta a:
 
 ---
 
-## 📞 Soporte
+## 📞 Contacto y Soporte
 
-### Contacto
+### Redes Sociales
+- **YouTube**: [@Azelmods677](https://youtube.com/@Azelmods677)
+- **TikTok**: [@azelmods677](https://tiktok.com/@azelmods677)
+- **Telegram**: [@Azelmods677](https://t.me/Azelmods677)
+- **GitHub**: [@Azelmods677](https://github.com/Azelmods677)
+
+### Soporte Técnico
 - **Email de soporte**: support@azelmods.com
 - **Email de bugs**: bugs@azelmods.com
 - **Email de seguridad**: security@azelmods.com
 
-### FAQ
-Visita nuestra [página de FAQ](https://azelmods.com/nexuschat/faq) para respuestas a preguntas frecuentes.
-
-### Documentación Completa
-La documentación técnica completa está disponible en:
-- [Documentación para Desarrolladores](./docs/DEVELOPER.md)
-- [Guía de Usuario](./docs/USER_GUIDE.md)
-- [Changelog](./CHANGELOG.md)
+### Documentación
+- [Changelog](./CHANGELOG.md) - Historial de versiones
+- [Contributing](./CONTRIBUTING.md) - Guía de contribución
+- [Security](./SECURITY.md) - Políticas de seguridad
 
 ---
 
 <div align="center">
 
-**Hecho con ❤️ por Azel Mods**
+**⭐ Si te gusta el proyecto, dale una estrella en GitHub**
 
-[![GitHub](https://img.shields.io/badge/GitHub-AzelMods677-181717?logo=github)](https://github.com/AzelMods677)
-[![Website](https://img.shields.io/badge/Website-azelmods.com-4285F4?logo=google-chrome&logoColor=white)](https://azelmods.com)
+**Desarrollado con ❤️ por Azelmods677 · 2026**
 
-⭐ Si te gusta este proyecto, considera darle una estrella en GitHub
+[![GitHub](https://img.shields.io/badge/GitHub-Azelmods677-181717?logo=github)](https://github.com/Azelmods677)
 
 </div>
