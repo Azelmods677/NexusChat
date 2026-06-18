@@ -1,15 +1,16 @@
-# 📊 Análisis Completo del Software - Azelgram Messenger v3.0.0
+# 📊 Análisis Completo del Software - NexusChat v3.0.0
 
 **Fecha de Análisis**: 2025
 **Versión Analizada**: 3.0.0 (Build 300)
 **Plataforma**: Android 12-16 (API 31-36)
 **Estado**: Beta Avanzada
+**Repositorio**: https://github.com/Azelmods677/NexusChat
 
 ---
 
 ## 📈 Resumen Ejecutivo
 
-Azelgram Messenger es una **aplicación de mensajería empresarial** para Android con características avanzadas de seguridad, privacidad y productividad. El proyecto se encuentra en un **estado de desarrollo avanzado** con la mayoría de las funcionalidades core implementadas.
+NexusChat es una **aplicación de mensajería empresarial** para Android con características avanzadas de seguridad, privacidad y productividad. El proyecto se encuentra en un **estado de desarrollo avanzado** con la mayoría de las funcionalidades core implementadas.
 
 ### Porcentaje de Completitud General
 
@@ -429,7 +430,7 @@ Azelgram Messenger es una **aplicación de mensajería empresarial** para Androi
 
 ### Estado General: BETA AVANZADA (87% completo)
 
-**Azelgram Messenger** es un proyecto **maduro y bien estructurado** con:
+**NexusChat** es un proyecto **maduro y bien estructurado** con:
 
 ✅ **Fortalezas**:
 - Arquitectura moderna y escalable
