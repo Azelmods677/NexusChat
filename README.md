@@ -1,20 +1,21 @@
-# 🚀 NexusChat - Enterprise Messaging Platform
+# 🚀 Azelgram Messenger
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Android-green.svg)
 ![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-purple.svg)
 ![Compose](https://img.shields.io/badge/compose-2025.04.01-orange.svg)
-![License](https://img.shields.io/badge/license-Private-red.svg)
+![MinSDK](https://img.shields.io/badge/minSdk-31_(Android_12)-orange.svg)
+![TargetSDK](https://img.shields.io/badge/targetSdk-36_(Android_16)-green.svg)
 
-**Aplicación de mensajería premium para Android** construida con Kotlin, Jetpack Compose y Firebase. Integra características empresariales como llamadas WebRTC, Stories multimedia, navegación Tor, asistente IA con Gemini y seguridad de nivel militar.
+**Aplicación de mensajería avanzada para Android** con características empresariales: llamadas WebRTC, Stories multimedia, navegación Tor, asistente IA con Gemini, terminal integrado, editor de código y seguridad de nivel militar.
 
 [Características](#-características-principales) •
-[Arquitectura](#-arquitectura) •
+[Requisitos](#-requisitos-del-sistema) •
 [Instalación](#-instalación-y-configuración) •
 [Documentación](#-documentación-técnica) •
-[Seguridad](#-seguridad)
+[Soporte](#-soporte-y-contacto)
 
 </div>
 
@@ -23,154 +24,147 @@
 ## 📋 Tabla de Contenidos
 
 - [Características Principales](#-características-principales)
-- [Arquitectura](#-arquitectura)
-- [Tecnologías](#-stack-tecnológico)
+- [Requisitos del Sistema](#-requisitos-del-sistema)
 - [Instalación y Configuración](#-instalación-y-configuración)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Stack Tecnológico](#-stack-tecnológico)
+- [Arquitectura](#-arquitectura)
 - [Características Técnicas Detalladas](#-características-técnicas-detalladas)
-- [Sistema de Temas](#-sistema-de-temas-dinámicos)
 - [Seguridad](#-seguridad)
-- [Firebase y Backend](#-firebase-y-backend)
-- [Diagramas de Arquitectura](#-diagramas-de-arquitectura)
-- [Testing y Calidad](#-testing-y-calidad)
-- [Contribución](#-contribución)
-- [Licencia](#-licencia)
+- [Soporte y Contacto](#-soporte-y-contacto)
 
 ---
 
 ## ✨ Características Principales
 
-### 💬 Mensajería Avanzada
-- **Mensajería en tiempo real** con Firebase Realtime Database
-- **Arquitectura optimizada** con índices y mapas para acceso O(1)
-- **Multimedia completo**: imágenes, videos, audio, documentos, ubicación, contactos, stickers
+### 💬 Mensajería en Tiempo Real
+- **Firebase Realtime Database** con arquitectura optimizada (mapas e índices para acceso O(1))
+- **Multimedia completo**: imágenes, videos, audio, documentos, ubicación, contactos
 - **Mensajes efímeros** con auto-destrucción configurable
-- **Encriptación E2E** (en desarrollo)
-- **Mensajes de voz** con visualización de forma de onda
+- **Encriptación E2E** con Signal Protocol (en desarrollo)
 - **Respuestas y reenvíos**
 - **Indicadores de lectura** y estado en línea
 
-### 📞 Llamadas y Videollamadas
-- **WebRTC P2P** con señalización vía Firebase
-- **Audio y video** de alta calidad
-- **Servidor STUN** integrado
-- **Notificaciones de llamada entrante** con FCM
-- **Control de cámara y micrófono** en tiempo real
-- **Cambio entre cámara frontal/trasera**
-- **Mute y video off/on**
+### 📞 Llamadas y Videollamadas WebRTC
+- **Llamadas P2P** de alta calidad con WebRTC
+- **Señalización vía Firebase** Realtime Database
+- **STUN servers** integrados (Google)
+- **Notificaciones de llamada** con Firebase Cloud Messaging
+- **Controles**: mute, video on/off, cambio de cámara
+- **Historial de llamadas**
 
-### 📸 Stories Multimedia
+### 📸 Stories Multimedia (24h)
 - **Editor avanzado** con overlays en tiempo real
 - **Stickers y emojis arrastrables**
-- **Texto personalizable** con fuentes y colores
-- **Renderizado en archivo final** (Canvas para fotos, Media3 Transformer para videos)
-- **Visualización temporal** (24 horas)
+- **Texto personalizable** (fuentes y colores)
+- **Renderizado en archivo final**: Canvas para fotos, Media3 Transformer para videos
+- **Auto-eliminación** después de 24 horas
 - **Indicadores de visualización**
 
-### 🎨 Sistema de Temas Dinámicos
-- **25 acentos de color** curados profesionalmente
-- **Cambio en tiempo real** sin reiniciar
-- **Material 3** con soporte completo
-- **Modo oscuro optimizado**
-- **Fondos de pantalla** personalizables (color sólido, gradiente, video)
-
-### 🤖 Asistente de IA (AzelAI)
+### 🤖 Asistente IA (Azel IA)
 - **Integración con Gemini** (Google AI)
-- **API Key del usuario** (almacenada cifrada)
-- **Selección de modelos**: gemini-1.5-flash, gemini-1.5-pro, gemini-pro-vision
-- **Streaming de respuestas** en tiempo real
+- **API key del usuario** (almacenada cifrada con AES-256)
+- **5 modelos disponibles**:
+  - Gemini 3.1 Pro Preview (Inteligencia Suprema)
+  - Gemini 2.5 Flash (Recomendado - Rápido y Eficiente)
+  - Gemini 2.0 Flash (Rápido y capaz)
+  - Gemini 1.5 Pro (Modelo clásico avanzado)
+  - Gemini 1.5 Flash (Tareas rápidas)
+- **Streaming en tiempo real** con SSE (Server-Sent Events)
 - **Cola con backoff exponencial** y rate limiting
-- **Gestión de contexto** inteligente
-- **Respuestas profesionales** con prompt de sistema optimizado
+- **Gestión inteligente de contexto** (últimos 8 mensajes)
 
+### 🎨 Sistema de Temas Dinámicos
+- **25 colores de acento** curados profesionalmente
+- **Material 3** Design System
+- **Cambio en tiempo real** sin reiniciar
+- **Fondos personalizables** (color sólido, gradiente, video)
+- **Modo oscuro** optimizado
 
 ### 🔒 Seguridad de Nivel Militar
 
-#### 1. **Bloqueo de Aplicación** (App Lock) 🆕
+#### 1. Bloqueo de Aplicación (App Lock)
 - **PIN de 4-6 dígitos** con hash SHA-256
 - **Autenticación biométrica** (huella digital / Face ID)
 - **Auto-bloqueo configurable**: inmediato, 1, 5 o 30 minutos
-- **Pantalla de bloqueo profesional** con animaciones
-- **Teclado numérico personalizado**
-- **Verificación automática** al completar PIN
-- **Feedback visual de errores** con animación shake
+- **Teclado numérico personalizado** con animaciones
 - **Interceptor en lifecycle** para bloqueo consistente
 
-#### 2. **Copias de Seguridad Cifradas**
+#### 2. Navegador Tor Integrado
+- **Enrutado automático por Orbot** (HTTP 8118 + SOCKS5 9050 fallback)
+- **Soporte para sitios .onion** (Dark Web)
+- **Detección automática** de Orbot instalado (2 paquetes soportados)
+- **Proxy para Firebase** (opcional)
+- **Estado visual** del proxy Tor
+- **Motor de navegación WebView** con NetCipher
+
+#### 3. Encriptación E2E (Signal Protocol)
+- **Signal Protocol** (libsignal-android 0.40.1)
+- **Pre-keys y session keys** gestionados automáticamente
+- **Cifrado de mensajes** de extremo a extremo
+- **Verificación de identidad** (en desarrollo)
+
+#### 4. Copias de Seguridad Cifradas
 - **AES-256-GCM** para encriptación autenticada
 - **PBKDF2** (100,000 iteraciones) para derivación de claves
 - **HMAC-SHA256** para verificación de integridad
-- **Compresión GZIP** para optimizar tamaño
 - **Almacenamiento dual**: Firebase Storage + local
-- **Backups incrementales** con auto-limpieza
-- **Formato de archivo propietario** con versioning
+- **Formato propietario** .azelback
 
-#### 3. **Navegador Tor (Orbot)**
-- **Enrutado por Orbot** (HTTP 8118 + SOCKS5 9050 fallback)
-- **Soporte para sitios .onion** (Dark Web)
-- **Detección automática** de Orbot instalado
-- **Estado visual** del proxy Tor
-- **Navegación anónima** con DuckDuckGo
-- **Guía de instalación** integrada
+### 💻 Herramientas de Desarrollo
 
-#### 4. **Mensajes Autodestructivos**
-- **Temporizador configurable** (segundos a días)
-- **Vista única** para multimedia sensible
-- **Eliminación automática** de Firebase al expirar
-- **Countdown visual** en tiempo real
-- **Barra de progreso** indicadora
+#### Terminal Integrado
+- **Emulador de terminal real** en la aplicación
+- **Soporte para comandos shell**
+- **Editor Sora** (0.23.5) para código
+- **Resaltado de sintaxis** para Java y más lenguajes
+
+#### Editor de Código
+- **Sora Editor** profesional integrado
+- **Syntax highlighting** (Java, TextMate grammar)
+- **Editor de archivos** dentro de la app
+
+### 🛡️ Características de Seguridad Avanzadas
+- **Root detection** con libsu (5.2.2)
+- **Tamper detection** con Security-Crypto
+- **Payload Generator** (APK injection, ZIP manipulation)
+- **Cryptografía avanzada** con Bouncy Castle (1.78.1)
+
+---
+## 📱 Requisitos del Sistema
+
+### Requisitos Mínimos
+- **Android**: 12.0 (API 31) o superior
+- **RAM**: 2 GB
+- **Almacenamiento**: 100 MB libres
+- **Procesador**: ARM (armeabi-v7a, arm64-v8a, x86, x86_64)
+
+### Requisitos Recomendados
+- **Android**: 12.0 (API 31) o superior (optimizado para Android 16 API 36)
+- **RAM**: 4 GB o más
+- **Almacenamiento**: 500 MB libres
+- **Procesador**: Octa-core 2.0 GHz o superior
+- **Conexión**: Wi-Fi o datos móviles 4G/5G
+
+### Dependencias Externas (Opcionales)
+- **Orbot** (para navegación Tor): [Google Play](https://play.google.com/store/apps/details?id=org.torproject.android)
+- **API Key de Gemini** (para IA): [Google AI Studio](https://makersuite.google.com/app/apikey)
 
 ---
 
-
 ## 🏗️ Arquitectura
 
-NexusChat sigue una arquitectura **MVVM (Model-View-ViewModel)** limpia y escalable, con inyección de dependencias vía **Hilt** y comunicación reactiva mediante **Kotlin Flow** y **StateFlow**.
-
-### Capas de Arquitectura
+Azelgram sigue una arquitectura **MVVM (Model-View-ViewModel)** limpia con:
+- **Inyección de dependencias**: Hilt
+- **Programación reactiva**: Kotlin Flow y StateFlow
+- **UI moderna**: Jetpack Compose con Material 3
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          UI Layer (Compose)                      │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Screens: Chat, Calls, Stories, Security, Settings, AI    │ │
-│  │  Components: MessageBubble, AttachmentSheet, VideoPlayer  │ │
-│  │  Theme: DynamicTheme (25 colores), Material 3             │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓↑
-┌─────────────────────────────────────────────────────────────────┐
-│                       ViewModel Layer                            │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  ChatViewModel, CallViewModel, StoryViewModel, etc.       │ │
-│  │  State management con StateFlow/MutableStateFlow          │ │
-│  │  Lógica de presentación y eventos UI                      │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓↑
-┌─────────────────────────────────────────────────────────────────┐
-│                      Repository Layer                            │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  RealtimeDatabaseRepository, ChatRepository, etc.         │ │
-│  │  Abstracción de fuentes de datos                          │ │
-│  │  Gestión de caché y sincronización                        │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓↑
-┌─────────────────────────────────────────────────────────────────┐
-│                       Data Sources                               │
-│  ┌──────────────┬──────────────┬──────────────┬──────────────┐ │
-│  │   Firebase   │   DataStore  │    WebRTC    │   Gemini AI  │ │
-│  │   Realtime   │ Preferences  │    Manager   │     API      │ │
-│  │   Database   │              │              │              │ │
-│  └──────────────┴──────────────┴──────────────┴──────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
+UI Layer (Compose) ↔ ViewModel Layer ↔ Repository Layer ↔ Data Sources (Firebase, WebRTC, Gemini AI)
 ```
 
 ### Principios de Diseño
 - **Single Responsibility**: Cada clase tiene una única responsabilidad
 - **Dependency Inversion**: Las capas superiores no dependen de las inferiores
-- **Interface Segregation**: Interfaces específicas y mínimas
 - **Clean Architecture**: Separación clara de responsabilidades
 
 ---
@@ -179,53 +173,65 @@ NexusChat sigue una arquitectura **MVVM (Model-View-ViewModel)** limpia y escala
 ## 🛠️ Stack Tecnológico
 
 ### Core
-- **Kotlin** 2.1.0 - Lenguaje principal
-- **Jetpack Compose** 2025.04.01 - UI moderna y declarativa
-- **Material 3** - Design system
-- **Coroutines** 1.9.0 - Programación asíncrona
-- **Flow** - Streams reactivos
+- **Kotlin** 2.1.0
+- **Jetpack Compose** BOM 2025.04.01
+- **Material 3** Design System
+- **Coroutines** 1.9.0
+- **Kotlin Flow**
 
 ### Android Jetpack
-- **Lifecycle** 2.8.7 - Gestión de ciclo de vida
-- **Navigation-Compose** 2.8.5 - Navegación declarativa
-- **DataStore** 1.1.1 - Almacenamiento de preferencias
-- **WorkManager** 2.10.0 - Tareas en background
-- **BiometricPrompt** 1.1.0 - Autenticación biométrica
-- **Security-Crypto** 1.1.0-alpha07 - Encriptación de datos
+- **Lifecycle** 2.8.7
+- **Navigation Compose** 2.8.5
+- **DataStore** 1.1.1
+- **WorkManager** 2.10.0
+- **BiometricPrompt** 1.1.0
+- **Security-Crypto** 1.1.0-alpha07 (EncryptedSharedPreferences)
+- **Room** 2.6.1 (Offline Cache)
+- **CameraX** 1.3.1 + ML Kit Barcode Scanning
 
 ### Inyección de Dependencias
-- **Hilt** 2.52 - DI framework
-- **Hilt Navigation Compose** 1.2.0 - Integración con navegación
+- **Hilt** 2.52
 
 ### Firebase (BOM 33.7.0)
-- **Firebase Auth** - Autenticación
-- **Firebase Realtime Database** - Base de datos en tiempo real
-- **Firebase Storage** - Almacenamiento de archivos
-- **Firebase Cloud Messaging** - Notificaciones push
-- **Firebase Crashlytics** - Monitoreo de errores
+- **Firebase Auth** (Email/Password + Google)
+- **Firebase Realtime Database**
+- **Firebase Storage**
+- **Firebase Cloud Messaging**
+- **Firebase Crashlytics**
 
-### WebRTC y Multimedia
-- **WebRTC** (Google) - Llamadas P2P
-- **Media3 ExoPlayer** 1.5.0 - Reproducción de video
-- **Media3 Transformer** 1.5.0 - Composición de videos
-- **Coil 3.x** - Carga de imágenes optimizada
+### Multimedia
+- **WebRTC** (Stream WebRTC Android 1.1.3)
+- **Media3 ExoPlayer** 1.5.1
+- **Media3 Transformer** 1.5.1 (Story video composition)
+- **Coil 3.x** (Image loading)
 
-### IA y APIs
-- **Generative AI SDK** (Gemini) - Asistente de IA
-- **Retrofit** 2.11.0 - Cliente HTTP
-- **OkHttp** 4.12.0 - Cliente HTTP avanzado
-- **Moshi** 1.15.1 - Serialización JSON
+### IA
+- **Gemini API** (Google Generative AI)
+- **OkHttp SSE** 4.12.0 (Server-Sent Events para streaming)
+
+### Seguridad
+- **Signal Protocol** (libsignal-android 0.40.1)
+- **Bouncy Castle** 1.78.1 (Cryptography)
+- **NetCipher WebKit** 2.1.0 (Tor integration)
+- **libsu** 5.2.2 (Root detection)
+
+### Herramientas de Desarrollo
+- **Sora Editor** 0.23.5 (Code editor)
+- **Smali/DEX** 2.5.2 (APK manipulation)
+- **ZIP4j** 2.11.5 (Payload generation)
 
 ### Testing
-- **JUnit 5** - Framework de testing
-- **Mockk** 1.13.13 - Mocking para Kotlin
-- **Turbine** 1.2.0 - Testing de Flows
-- **Coroutines Test** - Testing de coroutines
+- **JUnit 5** (Kotest 5.8.0)
+- **Mockk** 1.13.9
+- **Turbine** 1.2.0 (Flow testing)
 
-### Build Tools
-- **Gradle** 8.12 - Build system
-- **KSP** 2.1.0-1.0.29 - Kotlin Symbol Processing
+### Build
+- **Gradle** 8.12
+- **KSP** 2.1.0-1.0.29
 - **Android Gradle Plugin** 8.8.0
+- **Min SDK**: 31 (Android 12)
+- **Target SDK**: 36 (Android 16)
+- **Compile SDK**: 36
 
 ---
 
@@ -234,16 +240,15 @@ NexusChat sigue una arquitectura **MVVM (Model-View-ViewModel)** limpia y escala
 
 ### Requisitos Previos
 - **Android Studio** Ladybug (2024.2.1) o superior
-- **JDK** 17 o superior
-- **Gradle** 8.12+
-- **Android SDK** 34+
-- **Proyecto de Firebase** configurado
+- **JDK** 17
+- **Android SDK** 31+ (compileSdk 36)
+- **Proyecto Firebase** configurado
 
 ### 1. Clonar el Repositorio
 
 ```bash
-git clone https://github.com/AzelMods677/NexusChat.git
-cd NexusChat
+git clone https://github.com/AzelMods677/Azelgram-Messenger.git
+cd Azelgram-Messenger
 ```
 
 ### 2. Configurar Firebase
@@ -259,10 +264,10 @@ cd NexusChat
 
 #### c) Habilitar Servicios Firebase
 En la consola de Firebase, habilita:
-- ✅ **Authentication** (Email/Password y Google)
+- ✅ **Authentication** (Email/Password y Google Sign-In)
 - ✅ **Realtime Database**
 - ✅ **Storage**
-- ✅ **Cloud Messaging**
+- ✅ **Cloud Messaging** (FCM)
 - ✅ **Crashlytics** (opcional)
 
 #### d) Configurar Reglas de Seguridad
@@ -282,40 +287,51 @@ En la consola de Firebase, habilita:
         ".read": "auth != null && auth.uid == $userId",
         ".write": "auth != null && auth.uid == $userId"
       }
+    },
+    "users": {
+      "$userId": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $userId"
+      }
+    },
+    "stories": {
+      ".read": "auth != null",
+      "$storyId": {
+        ".write": "auth != null"
+      }
     }
   }
 }
 ```
 
-Despliega las reglas:
+Despliega las reglas con Firebase CLI:
 ```bash
 firebase deploy --only database
 ```
 
+### 3. Configurar API Key de Gemini (Opcional para IA)
 
-### 3. Configurar API Key de Gemini (IA)
-
-La aplicación NO incluye ninguna API key embebida. Configúrala de una de estas formas:
+La aplicación **NO incluye API key embebida**. Para usar el asistente IA:
 
 #### Opción A: Desde la Aplicación (Recomendado)
 1. Abre la app
-2. Ve a **Ajustes** → **IA** → **API Key de Gemini**
-3. Pega tu API key
-4. Se guardará cifrada en el dispositivo
+2. Ve a **Ajustes** → **Funciones IA** → **Configurar API Key**
+3. Pega tu API key de Gemini
+4. Se guardará cifrada con AES-256 en el dispositivo
 
-#### Opción B: Para Desarrollo
-Crea o edita `local.properties` en la raíz del proyecto:
+#### Opción B: Para Desarrollo (local.properties)
+Crea `local.properties` en la raíz del proyecto:
 ```properties
 GEMINI_API_KEY=tu_api_key_aqui
 ```
 
-Obtén tu API key en: [Google AI Studio](https://makersuite.google.com/app/apikey)
+Obtén tu API key gratuita en: [Google AI Studio](https://makersuite.google.com/app/apikey)
 
 ### 4. Compilar y Ejecutar
 
 ```bash
-# Compilar Debug
-./gradlew assembleDebug
+# Limpiar y compilar Debug
+./gradlew clean assembleDebug
 
 # Instalar en dispositivo conectado
 ./gradlew installDebug
@@ -323,387 +339,78 @@ Obtén tu API key en: [Google AI Studio](https://makersuite.google.com/app/apike
 # Ejecutar tests
 ./gradlew test
 
-# Generar APK Release
+# Generar APK Release (con splits por ABI)
 ./gradlew assembleRelease
 ```
 
-### 5. Configuración Adicional (Opcional)
+### 5. Configuración Opcional
 
-#### Orbot (Navegación Tor)
-1. Instala **Orbot** desde [Google Play](https://play.google.com/store/apps/details?id=org.torproject.android)
+#### Navegación Tor (Orbot)
+Para habilitar navegación anónima:
+
+1. Instala **Orbot** desde:
+   - [Google Play](https://play.google.com/store/apps/details?id=org.torproject.android)
+   - [F-Droid](https://guardianproject.info/fdroid/)
+   
 2. Abre Orbot y pulsa **Iniciar**
-3. La app detectará automáticamente el proxy
 
-#### Servidor TURN para WebRTC
-Para mejorar la conectividad en llamadas (especialmente detrás de NATs estrictos):
+3. En Azelgram:
+   - Ve a **Seguridad** → **Control Tor**
+   - La app detectará automáticamente Orbot
+   - Activa el navegador Tor integrado
 
-1. Configura un servidor TURN (ej: [coturn](https://github.com/coturn/coturn))
-2. Añade las credenciales en `WebRTCManager.kt`:
+#### Servidor TURN para WebRTC (Producción)
+Para mejorar conectividad en llamadas detrás de NAT estricto, configura un servidor TURN:
+
+1. Instala [coturn](https://github.com/coturn/coturn)
+2. Modifica `WebRTCManager.kt`:
 
 ```kotlin
-private fun getIceServers(): List<PeerConnection.IceServer> {
-    return listOf(
-        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-        PeerConnection.IceServer.builder("turn:tu-servidor.com:3478")
-            .setUsername("usuario")
-            .setPassword("contraseña")
-            .createIceServer()
-    )
-}
+val iceServers = listOf(
+    PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
+    PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
+    // Añade tu servidor TURN
+    PeerConnection.IceServer.builder("turn:tu-servidor.com:3478")
+        .setUsername("usuario")
+        .setPassword("contraseña")
+        .createIceServer()
+)
 ```
 
 ---
 
 
-## 📂 Estructura del Proyecto
-
-```
-NexusChat/
-├── app/
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/Azelmods/App/
-│   │   │   │   ├── data/                      # Capa de datos
-│   │   │   │   │   ├── ai/                    # IA (Gemini)
-│   │   │   │   │   │   ├── AiKeyStore.kt
-│   │   │   │   │   │   ├── GeminiContextManager.kt
-│   │   │   │   │   │   ├── GeminiRateLimiter.kt
-│   │   │   │   │   │   └── GeminiRequestQueue.kt
-│   │   │   │   │   ├── api/                   # APIs externas
-│   │   │   │   │   │   ├── AzelAIApiService.kt
-│   │   │   │   │   │   └── GeminiApiService.kt
-│   │   │   │   │   ├── backup/                # Copias de seguridad
-│   │   │   │   │   │   ├── BackupEncryptor.kt  # AES-256-GCM
-│   │   │   │   │   │   ├── BackupManager.kt
-│   │   │   │   │   │   └── BackupStorage.kt    # Firebase + Local
-│   │   │   │   │   ├── manager/               # Gestores
-│   │   │   │   │   │   ├── AppBackgroundManager.kt
-│   │   │   │   │   │   └── DemoAccountManager.kt
-│   │   │   │   │   ├── model/                 # Modelos de datos
-│   │   │   │   │   │   ├── Chat.kt
-│   │   │   │   │   │   ├── Message.kt
-│   │   │   │   │   │   ├── Story.kt
-│   │   │   │   │   │   ├── User.kt
-│   │   │   │   │   │   └── Call.kt
-│   │   │   │   │   ├── preferences/           # Almacenamiento local
-│   │   │   │   │   │   ├── AppLockPreferences.kt
-│   │   │   │   │   │   ├── TutorialPreferences.kt
-│   │   │   │   │   │   └── UserPreferences.kt
-│   │   │   │   │   ├── repository/            # Repositorios
-│   │   │   │   │   │   ├── ChatRepository.kt
-│   │   │   │   │   │   ├── RealtimeDatabaseRepository.kt
-│   │   │   │   │   │   ├── StoryRepository.kt
-│   │   │   │   │   │   └── UserRepository.kt
-│   │   │   │   │   ├── security/              # Seguridad
-│   │   │   │   │   │   ├── AppLockManager.kt  # 🆕 Bloqueo de app
-│   │   │   │   │   │   └── tor/
-│   │   │   │   │   │       ├── OrbotDetector.kt
-│   │   │   │   │   │       ├── OrbotStatus.kt
-│   │   │   │   │   │       └── OrbotStatusMapper.kt
-│   │   │   │   │   └── session/               # Sesiones
-│   │   │   │   │       └── SessionManager.kt
-│   │   │   │   ├── di/                        # Dependency Injection
-│   │   │   │   │   ├── AppModule.kt
-│   │   │   │   │   ├── DatabaseModule.kt
-│   │   │   │   │   ├── NetworkModule.kt
-│   │   │   │   │   └── RepositoryModule.kt
-│   │   │   │   ├── service/                   # Servicios Android
-│   │   │   │   │   ├── CallService.kt
-│   │   │   │   │   ├── NexusFirebaseMessagingService.kt
-│   │   │   │   │   ├── CallNotificationReceiver.kt
-│   │   │   │   │   └── MessageNotificationReceiver.kt
-│   │   │   │   ├── ui/                        # UI (Jetpack Compose)
-│   │   │   │   │   ├── components/            # Componentes reutilizables
-│   │   │   │   │   │   ├── MessageBubble.kt
-│   │   │   │   │   │   ├── AttachmentBottomSheet.kt
-│   │   │   │   │   │   ├── VideoPlayer.kt
-│   │   │   │   │   │   ├── DraggableEmoji.kt
-│   │   │   │   │   │   └── AutoTutorial.kt
-│   │   │   │   │   ├── navigation/            # Navegación
-│   │   │   │   │   │   ├── NavGraph.kt
-│   │   │   │   │   │   └── Screen.kt
-│   │   │   │   │   ├── screens/               # Pantallas principales
-│   │   │   │   │   │   ├── auth/              # Autenticación
-│   │   │   │   │   │   │   ├── LoginScreen.kt
-│   │   │   │   │   │   │   └── SignupScreen.kt
-│   │   │   │   │   │   ├── azelai/            # Asistente IA
-│   │   │   │   │   │   │   ├── AzelAIScreen.kt
-│   │   │   │   │   │   │   ├── AzelAIViewModel.kt
-│   │   │   │   │   │   │   └── AzelAIErrorMapper.kt
-│   │   │   │   │   │   ├── call/              # Llamadas
-│   │   │   │   │   │   │   ├── AudioCallScreen.kt
-│   │   │   │   │   │   │   ├── VideoCallScreen.kt
-│   │   │   │   │   │   │   └── IncomingCallScreen.kt
-│   │   │   │   │   │   ├── chat/              # Chat
-│   │   │   │   │   │   │   ├── ChatListScreen.kt
-│   │   │   │   │   │   │   ├── ChatScreen.kt
-│   │   │   │   │   │   │   └── ChatViewModel.kt
-│   │   │   │   │   │   ├── profile/           # Perfiles
-│   │   │   │   │   │   │   ├── ProfileScreen.kt
-│   │   │   │   │   │   │   └── ProfileViewerScreen.kt
-│   │   │   │   │   │   ├── security/          # Seguridad
-│   │   │   │   │   │   │   ├── AppLockScreen.kt     # 🆕 Pantalla de bloqueo
-│   │   │   │   │   │   │   ├── SecurityScreen.kt
-│   │   │   │   │   │   │   ├── TorBrowserScreenNew.kt
-│   │   │   │   │   │   │   └── TorControlScreen.kt
-│   │   │   │   │   │   ├── settings/          # Ajustes
-│   │   │   │   │   │   │   ├── SettingsScreen.kt
-│   │   │   │   │   │   │   ├── HelpSupportScreen.kt
-│   │   │   │   │   │   │   └── PrivacyScreen.kt
-│   │   │   │   │   │   └── story/             # Stories
-│   │   │   │   │   │       ├── StoryScreen.kt
-│   │   │   │   │   │       ├── StoryEditorScreen.kt
-│   │   │   │   │   │       └── StoryViewerScreen.kt
-│   │   │   │   │   └── theme/                 # Tema y estilos
-│   │   │   │   │       ├── Color.kt
-│   │   │   │   │       ├── DynamicTheme.kt    # 25 colores
-│   │   │   │   │       ├── Theme.kt
-│   │   │   │   │       └── Type.kt
-│   │   │   │   ├── utils/                     # Utilidades
-│   │   │   │   │   ├── StoryVideoComposer.kt
-│   │   │   │   │   ├── DateUtils.kt
-│   │   │   │   │   └── PermissionUtils.kt
-│   │   │   │   ├── webrtc/                    # WebRTC
-│   │   │   │   │   └── WebRTCManager.kt
-│   │   │   │   ├── MainActivity.kt            # Activity principal
-│   │   │   │   └── NexusChatApplication.kt    # Application class
-│   │   │   ├── AndroidManifest.xml
-│   │   │   └── res/                           # Recursos
-│   │   └── androidTest/                       # Tests instrumentados
-│   └── build.gradle.kts
-├── functions/                                  # Cloud Functions
-│   ├── index.js
-│   └── package.json
-├── database.rules.json                         # Reglas Firebase
-├── CHANGELOG.md                                # Historial de cambios
-├── CONTRIBUTING.md                             # Guía de contribución
-├── LICENSE                                     # Licencia
-├── README.md                                   # Este archivo
-├── SECURITY.md                                 # Políticas de seguridad
-├── build.gradle.kts                            # Build principal
-└── settings.gradle.kts                         # Configuración Gradle
-```
-
----
-
-
-## 📊 Diagramas de Arquitectura
-
-### 1. Diagrama de Flujo de Mensajería
-
-```mermaid
-sequenceDiagram
-    participant U as Usuario
-    participant UI as ChatScreen
-    participant VM as ChatViewModel
-    participant R as ChatRepository
-    participant FB as Firebase RTDB
-    participant FCM as Firebase Cloud Messaging
-    
-    U->>UI: Escribe mensaje
-    UI->>VM: sendMessage()
-    VM->>R: sendMessage(chatId, content)
-    R->>FB: setValue("/chats/{chatId}/messages/{msgId}")
-    FB-->>R: onSuccess
-    R->>FB: setValue("/userChats/{uid}/{chatId}")
-    FB-->>R: onSuccess
-    R-->>VM: Result.Success
-    VM-->>UI: Update State
-    UI-->>U: Muestra mensaje enviado
-    
-    FB->>FCM: Trigger onDataChange
-    FCM->>UI: Push Notification
-    UI-->>U: Notificación recibida
-```
-
-### 2. Diagrama de Arquitectura WebRTC
-
-```mermaid
-graph TB
-    A[Usuario A<br/>Caller] -->|1. createOffer| B[WebRTCManager A]
-    B -->|2. setLocalDescription| C[PeerConnection A]
-    C -->|3. save SDP| D[Firebase<br/>Signaling]
-    
-    E[Usuario B<br/>Callee] -->|4. listen offer| F[WebRTCManager B]
-    D -->|5. read SDP| F
-    F -->|6. setRemoteDescription| G[PeerConnection B]
-    G -->|7. createAnswer| F
-    F -->|8. setLocalDescription| G
-    G -->|9. save answer| D
-    
-    D -->|10. read answer| B
-    B -->|11. setRemoteDescription| C
-    
-    C -.->|ICE Candidates| D
-    D -.->|ICE Candidates| G
-    
-    C -->|12. P2P Connection| G
-    
-    style A fill:#e1f5e1
-    style E fill:#e1f5e1
-    style D fill:#fff3cd
-    style C fill:#cfe2ff
-    style G fill:#cfe2ff
-```
-
-
-### 3. Diagrama de Flujo de Stories
-
-```mermaid
-flowchart TD
-    A[Usuario captura<br/>foto/video] --> B{¿Editar?}
-    B -->|Sí| C[StoryEditorScreen]
-    C --> D[Añadir texto]
-    C --> E[Añadir stickers]
-    C --> F[Añadir emojis]
-    D & E & F --> G[Renderizar overlays]
-    
-    G --> H{¿Tipo de media?}
-    H -->|Foto| I[Canvas/<br/>GraphicsLayer]
-    H -->|Video| J[Media3<br/>Transformer]
-    
-    I & J --> K[Guardar archivo<br/>procesado]
-    B -->|No| K
-    
-    K --> L[Subir a Firebase<br/>Storage]
-    L --> M[Guardar metadata<br/>en RTDB]
-    M --> N[Notificar seguidores<br/>vía FCM]
-    N --> O[Story visible<br/>24 horas]
-    O --> P[Auto-delete<br/>después de 24h]
-    
-    style A fill:#e1f5e1
-    style G fill:#fff3cd
-    style I fill:#cfe2ff
-    style J fill:#cfe2ff
-    style P fill:#f8d7da
-```
-
-### 4. Diagrama de Sistema de Temas
-
-```mermaid
-graph LR
-    A[UserPreferences<br/>DataStore] -->|selectedAccent| B[DynamicTheme.kt]
-    B -->|ACCENT_SWATCHES| C[25 Colores<br/>Curados]
-    C --> D[Color Primario]
-    C --> E[Color Secundario]
-    C --> F[Color Terciario]
-    
-    D & E & F --> G[MaterialTheme<br/>colorScheme]
-    G --> H[Toda la App UI]
-    
-    I[Usuario cambia<br/>tema] -->|update| A
-    A -.->|Flow observe| B
-    
-    style A fill:#fff3cd
-    style C fill:#e1f5e1
-    style G fill:#cfe2ff
-    style H fill:#f0f0f0
-```
-
-
-### 5. Diagrama de Seguridad - App Lock
-
-```mermaid
-flowchart TD
-    A[App inicia] --> B{¿Lock habilitado?}
-    B -->|No| C[Navegar normal]
-    B -->|Sí| D[MainActivity.onResume]
-    
-    D --> E[AppLockManager<br/>shouldLockOnResume]
-    E --> F{¿Primera vez?}
-    F -->|Sí| G[Bloquear]
-    F -->|No| H{¿Tiempo >= AutoLock?}
-    
-    H -->|Sí| G
-    H -->|No| C
-    
-    G --> I[Mostrar AppLockScreen]
-    I --> J{¿Método?}
-    
-    J -->|PIN| K[Teclado numérico]
-    J -->|Biometría| L[BiometricPrompt]
-    
-    K --> M[Verificar PIN]
-    L --> N[Verificar huella/Face]
-    
-    M & N --> O{¿Correcto?}
-    O -->|Sí| P[AppLockManager.unlock]
-    O -->|No| Q[Animación shake<br/>+ Error]
-    
-    Q --> I
-    P --> C
-    
-    R[Usuario sale<br/>onPause] --> S[Guardar timestamp]
-    
-    style G fill:#f8d7da
-    style I fill:#fff3cd
-    style P fill:#e1f5e1
-    style Q fill:#f8d7da
-```
-
-### 6. Diagrama de Copias de Seguridad Cifradas
-
-```mermaid
-flowchart TD
-    A[Usuario solicita<br/>backup] --> B[BackupManager<br/>createBackup]
-    B --> C[Recopilar datos<br/>de Firebase RTDB]
-    C --> D[Serializar a JSON]
-    D --> E[GZIP Compresión]
-    
-    E --> F[BackupEncryptor<br/>encryptBackup]
-    F --> G[Generar Salt + IV]
-    G --> H[PBKDF2<br/>100k iteraciones]
-    H --> I[Derivar clave AES-256]
-    I --> J[AES-256-GCM<br/>Encriptación]
-    J --> K[Calcular HMAC-SHA256]
-    
-    K --> L[Escribir archivo<br/>.azelback]
-    L --> M{¿Dónde guardar?}
-    
-    M -->|Local| N[Almacenamiento<br/>local]
-    M -->|Firebase| O[Firebase Storage]
-    
-    N & O --> P[Auto-cleanup<br/>máx 5 backups]
-    
-    style E fill:#fff3cd
-    style J fill:#f8d7da
-    style K fill:#e1f5e1
-    style P fill:#cfe2ff
-```
-
----
-
-
-## 🔧 Características Técnicas Detalladas
+## � Características Técnicas Detalladas
 
 ### Firebase Realtime Database - Arquitectura Optimizada
 
-#### Estructura de Datos con Mapas e Índices
-
-La base de datos utiliza una arquitectura optimizada con **mapas** en lugar de arrays para membresía de chats y un **índice `userChats`** para acceso O(1):
+#### Estructura con Mapas e Índices (O(1) Access)
 
 ```javascript
 {
   "chats": {
     "chatId123": {
-      "members": {                    // ✅ Map en lugar de array
+      "members": {              // Map (no array) para O(1) lookup
         "uid1": true,
         "uid2": true
       },
-      "participants": {               // ✅ Map en lugar de array
+      "participants": {          // Map (no array)
         "uid1": true,
         "uid2": true
       },
       "messages": {
-        "msgId1": { /* ... */ }
+        "msgId1": {
+          "senderId": "uid1",
+          "content": "Hola",
+          "timestamp": 1234567890,
+          "type": "text"
+        }
       },
-      "lastMessage": "Hola mundo",
-      "lastMessageTimestamp": 1234567890,
-      "createdBy": "uid1",
-      "createdAt": 1234567890
+      "lastMessage": "Hola",
+      "lastMessageTimestamp": 1234567890
     }
   },
-  "userChats": {                      // ✅ Índice para acceso O(1)
+  "userChats": {                 // Índice para acceso O(1)
     "uid1": {
       "chatId123": true,
       "chatId456": true
@@ -711,136 +418,101 @@ La base de datos utiliza una arquitectura optimizada con **mapas** en lugar de a
   },
   "users": {
     "uid1": {
-      "displayName": "Juan Pérez",
-      "email": "juan@example.com",
+      "displayName": "Usuario",
+      "email": "user@example.com",
       "photoUrl": "https://...",
       "status": "online",
       "lastSeen": 1234567890
+    }
+  },
+  "stories": {
+    "storyId1": {
+      "userId": "uid1",
+      "mediaUrl": "https://...",
+      "type": "image",
+      "timestamp": 1234567890,
+      "expiresAt": 1234654290
     }
   }
 }
 ```
 
-#### Ventajas de esta Arquitectura
-
-1. **Validación eficiente**: `.child(auth.uid).exists()` es O(1) vs O(n) con arrays
-2. **Acceso directo a chats**: `userChats/{uid}` lista los chats sin escanear toda la DB
-3. **Escalabilidad**: Rendimiento constante independientemente del número de miembros
-4. **Reglas de seguridad simples**: Verificación directa de membresía
-
+**Ventajas**:
+- `.child(auth.uid).exists()` es O(1) vs O(n) con arrays
+- `userChats/{uid}` lista chats sin escanear toda la DB
+- Escalable independiente del número de miembros
+- Reglas de seguridad simples y eficientes
 
 ### WebRTC - Llamadas P2P
 
-#### Flujo de Conexión
-
-1. **Caller** crea una oferta (SDP) y la guarda en Firebase
-2. **Callee** escucha la oferta y crea una respuesta (SDP)
-3. Intercambio de **ICE candidates** vía Firebase
+**Flujo de conexión**:
+1. Caller crea oferta (SDP) → guarda en Firebase
+2. Callee escucha oferta → crea respuesta (SDP)
+3. Intercambio de ICE candidates vía Firebase
 4. Establecimiento de conexión P2P directa
 
-#### Configuración de Servidores ICE
+**ICE Candidate Buffering**:
+Los candidatos ICE que llegan ANTES de setRemoteDescription se almacenan en buffer para evitar que WebRTC los descarte.
 
-```kotlin
-private fun getIceServers(): List<PeerConnection.IceServer> {
-    return listOf(
-        // STUN server gratuito de Google
-        PeerConnection.IceServer.builder("stun:stun.l.google.com:19302")
-            .createIceServer(),
-        
-        // TURN server (opcional, para NATs estrictos)
-        // PeerConnection.IceServer.builder("turn:tu-servidor.com:3478")
-        //     .setUsername("usuario")
-        //     .setPassword("contraseña")
-        //     .createIceServer()
-    )
-}
+**Características implementadas**:
+- ✅ Audio y video simultáneos (1280x720 @ 30fps)
+- ✅ Cambio de cámara frontal/trasera
+- ✅ Mute audio / Video on-off
+- ✅ Echo cancellation, noise suppression, auto gain
+- ✅ Notificaciones FCM de llamada entrante
+- ✅ Foreground Service (Android 14+)
+
+### Asistente IA - Gemini Integration
+
+**Arquitectura del sistema IA**:
+
+```
+User Input → AzelAIViewModel → GeminiRequestQueue → GeminiRateLimiter → Gemini API (SSE Stream)
+                    ↓                     ↓
+              AiKeyStore         GeminiContextManager
+           (EncryptedPrefs)      (últimos 8 msgs)
 ```
 
-#### Características WebRTC Implementadas
+**Rate Limiting y Retry**:
+- `GeminiRateLimiter`: Espaciado mínimo entre requests (429 prevention)
+- `GeminiRequestQueue`: Backoff exponencial automático ante errores 429/quota
+- Streaming con SSE (Server-Sent Events) para respuestas en tiempo real
 
-- ✅ Audio y video simultáneos
-- ✅ Cambio de cámara (frontal/trasera)
-- ✅ Mute de audio
-- ✅ Desactivar/activar video
-- ✅ Manejo de permisos de cámara y micrófono
-- ✅ Notificaciones de llamada entrante
-- ✅ Conexión automática al contestar
-- ✅ Desconexión limpia
+**API Key Resolution**:
+1. Primero: Clave del usuario (EncryptedSharedPreferences)
+2. Fallback: BuildConfig.GEMINI_API_KEY (local.properties)
 
----
+### Signal Protocol - E2E Encryption
 
+**Componentes**:
+- `SignalProtocolManager`: Gestión de sesiones Signal
+- `SignalKeyStore`: Almacenamiento de claves (identity, pre-keys, session keys)
+- `E2EECryptoService`: Encriptación/desencriptación de mensajes
+- `PreKeyManager`: Generación y rotación de pre-keys
 
-## 🎨 Sistema de Temas Dinámicos
+**Estado**: En desarrollo (infraestructura lista, integración pendiente)
 
-### 25 Colores de Acento Curados
+### Tor Integration
 
-La aplicación incluye una paleta cuidadosamente seleccionada de 25 colores que se aplican en tiempo real a toda la interfaz:
-
+**Proxy Detection**:
 ```kotlin
-// DynamicTheme.kt
-object AppTheme {
-    val ACCENT_SWATCHES = listOf(
-        // Colores primarios
-        Pair("Material You", Color(0xFF6750A4)),      // Morado Material
-        Pair("Ocean Blue", Color(0xFF0277BD)),        // Azul océano
-        Pair("Forest Green", Color(0xFF2E7D32)),      // Verde bosque
-        Pair("Sunset Orange", Color(0xFFE65100)),     // Naranja atardecer
-        Pair("Ruby Red", Color(0xFFC62828)),          // Rojo rubí
-        
-        // Colores pasteles
-        Pair("Lavender", Color(0xFF9575CD)),          // Lavanda
-        Pair("Mint", Color(0xFF4DB6AC)),              // Menta
-        Pair("Peach", Color(0xFFFF8A65)),             // Durazno
-        Pair("Sky", Color(0xFF4FC3F7)),               // Cielo
-        Pair("Rose", Color(0xFFF06292)),              // Rosa
-        
-        // Colores vibrantes
-        Pair("Electric Purple", Color(0xFF7C4DFF)),   // Púrpura eléctrico
-        Pair("Neon Green", Color(0xFF00E676)),        // Verde neón
-        Pair("Hot Pink", Color(0xFFFF4081)),          // Rosa fuerte
-        Pair("Cyan", Color(0xFF00BCD4)),              // Cian
-        Pair("Amber", Color(0xFFFFC107)),             // Ámbar
-        
-        // Colores oscuros
-        Pair("Midnight Blue", Color(0xFF1A237E)),     // Azul medianoche
-        Pair("Deep Purple", Color(0xFF4A148C)),       // Púrpura profundo
-        Pair("Dark Teal", Color(0xFF004D40)),         // Verde azulado oscuro
-        Pair("Burgundy", Color(0xFF880E4F)),          // Borgoña
-        Pair("Chocolate", Color(0xFF4E342E)),         // Chocolate
-        
-        // Colores naturales
-        Pair("Olive", Color(0xFF827717)),             // Oliva
-        Pair("Coral", Color(0xFFFF7043)),             // Coral
-        Pair("Turquoise", Color(0xFF26C6DA)),         // Turquesa
-        Pair("Gold", Color(0xFFFFD600)),              // Oro
-        Pair("Slate", Color(0xFF546E7A))              // Pizarra
-    )
-}
+// Soporta 2 paquetes de Orbot
+val ORBOT_PACKAGES = listOf(
+    "org.torproject.android",           // Google Play / F-Droid
+    "org.torproject.android.debug"      // Debug builds
+)
 ```
 
-### Aplicación en Tiempo Real
+**Proxy Cascade**:
+1. HTTP Proxy: `localhost:8118` (Polipo)
+2. Fallback SOCKS5: `localhost:9050` (Tor)
 
-El tema se aplica a través de `MaterialTheme.colorScheme`, lo que significa que **todos los componentes Material 3** respetan automáticamente el color seleccionado:
+**Features**:
+- WebView routing automático con NetCipher
+- Firebase RTDB via Tor (opcional, configurable)
+- Estado reactivo con StateFlow
 
-```kotlin
-@Composable
-fun NexusChatTheme(
-    userPreferences: UserPreferences,
-    content: @Composable () -> Unit
-) {
-    val selectedAccent by userPreferences.themeAccent.collectAsState(initial = 0)
-    val accentColor = AppTheme.ACCENT_SWATCHES[selectedAccent].second
-    
-    val colorScheme = darkColorScheme(
-        primary = accentColor,
-        secondary = accentColor.copy(alpha = 0.7f),
-        tertiary = accentColor.copy(alpha = 0.5f),
-        // ... demás colores derivados
-    )
-    
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
+---raphy,
         content = content
     )
 }
@@ -1903,9 +1575,9 @@ Para solicitar permisos o licencias comerciales, contacta a:
 | Canales | 📋 Planeado | 3.0.0 |
 
 ### Última Actualización
-**Versión**: 2.0.0  
-**Fecha**: Diciembre 2024  
-**Build**: 44 tasks successful in 1m 27s
+**Versión**: 3.0.0  
+**Fecha**: junio 2026  
+**Build**: 100
 
 ---
 
@@ -1916,11 +1588,6 @@ Para solicitar permisos o licencias comerciales, contacta a:
 - **TikTok**: [@azelmods677](https://tiktok.com/@azelmods677)
 - **Telegram**: [@Azelmods677](https://t.me/Azelmods677)
 - **GitHub**: [@Azelmods677](https://github.com/Azelmods677)
-
-### Soporte Técnico
-- **Email de soporte**: support@azelmods.com
-- **Email de bugs**: bugs@azelmods.com
-- **Email de seguridad**: security@azelmods.com
 
 ### Documentación
 - [Changelog](./CHANGELOG.md) - Historial de versiones
