@@ -1,3 +1,6 @@
+<img width="1254" height="1254" alt="icono de la aplicacion" src="https://github.com/user-attachments/assets/46a31b46-e254-4bd8-96ea-8e1abce14930" />
+
+
 <div align="center">
 
 <h1>
