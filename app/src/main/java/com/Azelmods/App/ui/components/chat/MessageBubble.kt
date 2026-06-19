@@ -62,6 +62,7 @@ fun MessageBubble(
     onEditClick: (() -> Unit)? = null,
     onMessageViewed: (() -> Unit)? = null,  // Callback when ephemeral message is viewed
     translatedText: String? = null,
+    isTranslating: Boolean = false,
     onTranslate: (() -> Unit)? = null
 ) {
     var showReactionPicker by remember { mutableStateOf(false) }
@@ -280,12 +281,15 @@ fun MessageBubble(
                             }
                             "VIDEO" -> {
                                 message.mediaUrl?.let { url ->
+                                    var showVideoPlayer by remember { mutableStateOf(false) }
+                                    
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .height(200.dp)
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.Black.copy(alpha = 0.3f)),
+                                            .background(Color.Black.copy(alpha = 0.3f))
+                                            .safeClickable { showVideoPlayer = true },
                                         contentAlignment = Alignment.Center
                                     ) {
                                         AsyncImage(
@@ -308,6 +312,62 @@ fun MessageBubble(
                                             )
                                         }
                                     }
+                                    
+                                    // Full-screen video player dialog
+                                    if (showVideoPlayer) {
+                                        androidx.compose.ui.window.Dialog(
+                                            onDismissRequest = { showVideoPlayer = false },
+                                            properties = androidx.compose.ui.window.DialogProperties(
+                                                usePlatformDefaultWidth = false
+                                            )
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .background(Color.Black)
+                                            ) {
+                                                val context = androidx.compose.ui.platform.LocalContext.current
+                                                val videoPlayer = remember {
+                                                    androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+                                                        setMediaItem(androidx.media3.common.MediaItem.fromUri(url))
+                                                        prepare()
+                                                        playWhenReady = true
+                                                    }
+                                                }
+                                                
+                                                DisposableEffect(Unit) {
+                                                    onDispose {
+                                                        videoPlayer.release()
+                                                    }
+                                                }
+                                                
+                                                androidx.compose.ui.viewinterop.AndroidView(
+                                                    factory = { ctx ->
+                                                        androidx.media3.ui.PlayerView(ctx).apply {
+                                                            player = videoPlayer
+                                                            useController = true
+                                                        }
+                                                    },
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                                
+                                                IconButton(
+                                                    onClick = { showVideoPlayer = false },
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .padding(16.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.Close,
+                                                        contentDescription = "Close",
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(32.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
                                     if (message.content.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(8.dp))
                                     }
@@ -426,7 +486,23 @@ fun MessageBubble(
                             }
 
                             // ── Translated text (if available) ──
-                            if (!translatedText.isNullOrBlank()) {
+                            if (isTranslating) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Traduciendo...",
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            } else if (!translatedText.isNullOrBlank()) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(

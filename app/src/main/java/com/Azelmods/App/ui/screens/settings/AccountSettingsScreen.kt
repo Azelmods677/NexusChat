@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.settings
+package com.Azelmods.App.ui.screens.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,6 +38,38 @@ fun AccountSettingsScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var editField by remember { mutableStateOf("") }
     var editValue by remember { mutableStateOf("") }
+    
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var deleteConfirmText by remember { mutableStateOf("") }
+    
+    val accountActionState by viewModel.accountActionState.collectAsState()
+    
+    LaunchedEffect(accountActionState) {
+        when (accountActionState) {
+            is SettingsViewModel.AccountActionState.Success -> {
+                val message = (accountActionState as SettingsViewModel.AccountActionState.Success).message
+                if (message.contains("Account deleted", ignoreCase = true)) {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                } else {
+                    showChangePasswordDialog = false
+                    showDeleteAccountDialog = false
+                    newPassword = ""
+                    confirmPassword = ""
+                    deleteConfirmText = ""
+                }
+                viewModel.clearAccountActionState()
+            }
+            is SettingsViewModel.AccountActionState.Error -> {
+                viewModel.clearAccountActionState()
+            }
+            else -> {}
+        }
+    }
     
     // Safe navigation helper
     fun safeNavigateBack() {
@@ -204,7 +236,7 @@ fun AccountSettingsScreen(
                 title = "Change Password",
                 icon = Icons.Default.Lock,
                 iconTint = Color.Yellow,
-                onClick = { /* TODO: Change password */ }
+                onClick = { showChangePasswordDialog = true }
             )
             
             SettingsItem(
@@ -212,7 +244,7 @@ fun AccountSettingsScreen(
                 subtitle = "Permanently delete your account and all data",
                 icon = Icons.Default.DeleteForever,
                 iconTint = Color.Red,
-                onClick = { /* TODO: Delete account */ }
+                onClick = { showDeleteAccountDialog = true }
             )
         }
     }
@@ -265,6 +297,131 @@ fun AccountSettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF1A1A2E)
+        )
+    }
+
+    // Change Password Dialog
+    if (showChangePasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangePasswordDialog = false },
+            title = { Text("Change Password", color = Color.White) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = newPassword,
+                        onValueChange = { newPassword = it },
+                        label = { Text("New Password", color = Color.Gray) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("Confirm Password", color = Color.Gray) },
+                        singleLine = true,
+                        isError = confirmPassword.isNotEmpty() && confirmPassword != newPassword,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                    if (accountActionState is SettingsViewModel.AccountActionState.Error) {
+                        val err = (accountActionState as SettingsViewModel.AccountActionState.Error).message
+                        Text(err, color = Color(0xFFEF4444), fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newPassword.length >= 6 && newPassword == confirmPassword) {
+                            viewModel.changePassword("", newPassword)
+                        }
+                    },
+                    enabled = newPassword.length >= 6 && newPassword == confirmPassword &&
+                        accountActionState != SettingsViewModel.AccountActionState.Loading
+                ) {
+                    if (accountActionState is SettingsViewModel.AccountActionState.Loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                    } else {
+                        Text("Change", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showChangePasswordDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF1A1A2E)
+        )
+    }
+
+    // Delete Account Dialog
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            title = { Text("Delete Account", color = Color(0xFFEF4444)) },
+            text = {
+                Column {
+                    Text(
+                        "This will permanently delete your account and all data. This action cannot be undone.",
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "Type 'DELETE' to confirm:",
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = deleteConfirmText,
+                        onValueChange = { deleteConfirmText = it },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFFEF4444),
+                            unfocusedBorderColor = Color.Gray
+                        )
+                    )
+                    if (accountActionState is SettingsViewModel.AccountActionState.Error) {
+                        val err = (accountActionState as SettingsViewModel.AccountActionState.Error).message
+                        Text(err, color = Color(0xFFEF4444), fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (deleteConfirmText == "DELETE") {
+                            viewModel.deleteAccount()
+                        }
+                    },
+                    enabled = deleteConfirmText == "DELETE" &&
+                        accountActionState != SettingsViewModel.AccountActionState.Loading
+                ) {
+                    if (accountActionState is SettingsViewModel.AccountActionState.Loading) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
+                    } else {
+                        Text("Delete", color = Color(0xFFEF4444))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteAccountDialog = false }) {
                     Text("Cancel", color = Color.Gray)
                 }
             },

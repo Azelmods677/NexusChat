@@ -31,6 +31,9 @@ class CacheManager @Inject constructor(
     private val messageDao: MessageDao = db.messageDao()
     private val chatDao: ChatDao = db.chatDao()
     private val userDao: UserDao = db.userDao()
+    
+    // Expose database for direct DAO access when needed
+    val database: AppDatabase get() = db
 
     // ════════════════════════════════════════════════════════════
     //  MESSAGES

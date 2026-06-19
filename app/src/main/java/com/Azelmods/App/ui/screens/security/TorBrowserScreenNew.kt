@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.security
+package com.Azelmods.App.ui.screens.security
 
 import android.annotation.SuppressLint
 import android.util.Log
@@ -39,34 +39,35 @@ import kotlinx.coroutines.withContext
 private const val TAG = "TorBrowser"
 
 /** Tiempo mÃ¡ximo de espera para conectar al proxy de Orbot */
+/** Tiempo máximo de espera para conectar al proxy de Orbot */
 private const val PROXY_CONNECT_TIMEOUT_MS = 2000
 
 /** URL inicial por defecto (NO depende de Tor) */
 private const val DEFAULT_HOMEPAGE = "https://duckduckgo.com"
 
 /**
- * ðŸŒ Tor Browser â€” Navegador privado con soporte opcional de Tor vÃ­a Orbot
+ * 🌐 Tor Browser — Navegador privado con soporte opcional de Tor vía Orbot
  *
- * ## Cambios crÃ­ticos (fix 404):
+ * ## Cambios críticos (fix 404):
  *
  * ### 1. El navegador NO depende de Tor para funcionar
- * Si Orbot no estÃ¡ activo, el WebView carga pÃ¡ginas directamente (sin proxy).
- * Solo cuando Orbot estÃ¡ CONFIRMADO funcionando se activa el proxy Tor.
+ * Si Orbot no está activo, el WebView carga páginas directamente (sin proxy).
+ * Solo cuando Orbot está CONFIRMADO funcionando se activa el proxy Tor.
  *
  * ### 2. Proxy configurado ANTES de cargar URLs
- * Se eliminÃ³ la race condition: el WebView inicia con "about:blank",
- * se configura el proxy si estÃ¡ disponible, y SOLO ENTONCES se carga la URL inicial.
+ * Se eliminó la race condition: el WebView inicia con "about:blank",
+ * se configura el proxy si está disponible, y SOLO ENTONCES se carga la URL inicial.
  *
  * ### 3. Manejo completo de errores HTTP
- * - `onReceivedHttpError` captura errores 404, 500, etc. y muestra pÃ¡gina de error.
- * - `onReceivedError` captura errores de red y muestra pÃ¡gina de error.
- * - Las URLs .onion tienen su propio mensaje de ayuda cuando Tor no estÃ¡ activo.
+ * - `onReceivedHttpError` captura errores 404, 500, etc. y muestra página de error.
+ * - `onReceivedError` captura errores de red y muestra página de error.
+ * - Las URLs .onion tienen su propio mensaje de ayuda cuando Tor no está activo.
  *
- * ### 4. VerificaciÃ³n del proxy antes de aplicarlo
- * Se verifica que el puerto HTTP de Orbot (127.0.0.1:8118) estÃ© realmente
+ * ### 4. Verificación del proxy antes de aplicarlo
+ * Se verifica que el puerto HTTP de Orbot (127.0.0.1:8118) esté realmente
  * aceptando conexiones antes de configurarlo via ProxyController.
  *
- * @param navController Controlador de navegaciÃ³n para retroceder
+ * @param navController Controlador de navegación para retroceder
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,7 +93,7 @@ fun TorBrowserScreenNew(
     // que WebView invoca en el executor de larga vida de ProxyManager (hilo de background).
     val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
 
-    // â”€â”€ PASO 1: Configurar proxy de Orbot ANTES de cargar URLs â”€â”€
+    // ── PASO 1: Configurar proxy de Orbot ANTES de cargar URLs ──
     LaunchedEffect(isWebViewReady) {
         if (!isWebViewReady) return@LaunchedEffect
 
@@ -100,10 +101,10 @@ fun TorBrowserScreenNew(
         // Evita la "pantalla en blanco" si la fase de setup falla antes de llegar a PASO 2.
         var initialUrlLoaded = false
         try {
-            // PequeÃ±o delay para asegurar que el WebView estÃ© completamente listo
+            // Pequeño delay para asegurar que el WebView esté completamente listo
             kotlinx.coroutines.delay(300)
 
-            // Determinar en el IOThread si el proxy de Orbot estÃ¡ disponible y operativo.
+            // Determinar en el IOThread si el proxy de Orbot está disponible y operativo.
             var torReady = false
             var proxyRule: String? = null
             withContext(Dispatchers.IO) {
@@ -112,8 +113,8 @@ fun TorBrowserScreenNew(
                     val hasSocks = OrbotDetector.isSocksProxyAvailable()
 
                     // WebView (Chromium) enruta por el proxy HTTP de Orbot (8118) cuando
-                    // estÃ¡ disponible. Si 8118 NO estÃ¡ pero SOCKS5 (9050) SÃ (Tor conectado),
-                    // usamos socks5:// como fallback. AsÃ­ los .onion funcionan aunque Orbot
+                    // está disponible. Si 8118 NO está pero SOCKS5 (9050) SÍ (Tor conectado),
+                    // usamos socks5:// como fallback. Así los .onion funcionan aunque Orbot
                     // no exponga el proxy HTTP (causa del bug "necesitas Orbot activo").
                     proxyRule = when {
                         hasHttp -> "http://$ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT"
@@ -124,7 +125,7 @@ fun TorBrowserScreenNew(
 
                     orbotStatus = OrbotDetector.getStatus(context)
                 } catch (e: Exception) {
-                    Log.e(TAG, "âŒ Error detectando Orbot", e)
+                    Log.e(TAG, "❌ Error detectando Orbot", e)
                     orbotStatus = "Error al detectar Orbot"
                 }
             }
@@ -140,14 +141,14 @@ fun TorBrowserScreenNew(
                     mainHandler.post {
                         proxyEnabled = true
                         browsingMode = "tor"
-                        Log.d(TAG, "âœ“ Proxy Tor confirmado (callback) â€” proxyEnabled=true")
+                        Log.d(TAG, "✓ Proxy Tor confirmado (callback) — proxyEnabled=true")
                     }
                 }
                 if (result is ProxyResult.Applied) {
                     torActivated = true
-                    Log.d(TAG, "âœ“ Proxy Tor solicitado: $ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT")
+                    Log.d(TAG, "✓ Proxy Tor solicitado: $ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT")
                 } else if (result is ProxyResult.Failed) {
-                    Log.w(TAG, "Proxy Tor no aplicado: ${result.reason} â€” modo directo")
+                    Log.w(TAG, "Proxy Tor no aplicado: ${result.reason} — modo directo")
                 }
             }
 
@@ -156,73 +157,73 @@ fun TorBrowserScreenNew(
                 when {
                     torActivated || proxyEnabled -> {
                         snackbarHostState.showSnackbar(
-                            message = "ðŸ§… Proxy Tor activo â€” Sitios .onion y navegaciÃ³n anÃ³nima",
+                            message = "🧅 Proxy Tor activo — Sitios .onion y navegación anónima",
                             duration = SnackbarDuration.Short
                         )
                     }
                     OrbotDetector.isTorAvailable() && !proxyEnabled -> {
                         snackbarHostState.showSnackbar(
-                            message = "âš ï¸ Proxy SOCKS disponible pero HTTP (8118) no responde. Usando modo directo.",
+                            message = "⚠️ Proxy SOCKS disponible pero HTTP (8118) no responde. Usando modo directo.",
                             duration = SnackbarDuration.Long
                         )
                     }
                     OrbotDetector.isOrbotInstalled(context) -> {
                         snackbarHostState.showSnackbar(
-                            message = "ðŸŒ Modo directo â€” Orbot instalado pero no activo. Abre Orbot para .onion",
+                            message = "🌐 Modo directo — Orbot instalado pero no activo. Abre Orbot para .onion",
                             duration = SnackbarDuration.Long
                         )
                     }
                     else -> {
                         snackbarHostState.showSnackbar(
-                            message = "ðŸŒ Modo directo â€” Tor no disponible. Descarga Orbot para navegaciÃ³n anÃ³nima",
+                            message = "🌐 Modo directo — Tor no disponible. Descarga Orbot para navegación anónima",
                             duration = SnackbarDuration.Long
                         )
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "âŒ Error mostrando snackbar", e)
+                Log.e(TAG, "❌ Error mostrando snackbar", e)
             }
 
-            // â”€â”€ PASO 2: Cargar URL inicial DESPUÃ‰S de configurar el proxy â”€â”€
-            // Esto elimina la race condition: el proxy ya estÃ¡ listo antes de cualquier loadUrl().
+            // ── PASO 2: Cargar URL inicial DESPUÉS de configurar el proxy ──
+            // Esto elimina la race condition: el proxy ya está listo antes de cualquier loadUrl().
             // La carga ocurre SIEMPRE tras la fase de setup, haya proxy (torReady=true) o se navegue
-            // en modo directo (torReady=false). AsÃ­ el usuario nunca ve una pantalla en blanco.
+            // en modo directo (torReady=false). Así el usuario nunca ve una pantalla en blanco.
             try {
                 webView?.loadUrl(DEFAULT_HOMEPAGE)
                 initialUrlLoaded = true
-                Log.d(TAG, "âœ“ Loading initial URL: $DEFAULT_HOMEPAGE (modo=$browsingMode)")
+                Log.d(TAG, "✓ Loading initial URL: $DEFAULT_HOMEPAGE (modo=$browsingMode)")
             } catch (e: Exception) {
-                Log.e(TAG, "âŒ Error loading initial URL", e)
+                Log.e(TAG, "❌ Error loading initial URL", e)
                 snackbarHostState.showSnackbar(
-                    message = "âŒ Error al cargar el navegador: ${e.message}",
+                    message = "❌ Error al cargar el navegador: ${e.message}",
                     duration = SnackbarDuration.Long
                 )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "âŒ Error crÃ­tico en inicializaciÃ³n del navegador", e)
-            // Fallback: aunque la fase de setup (detecciÃ³n de Orbot/proxy) haya fallado,
-            // cargamos la pÃ¡gina inicial en modo directo para no dejar el WebView en blanco.
+            Log.e(TAG, "❌ Error crítico en inicialización del navegador", e)
+            // Fallback: aunque la fase de setup (detección de Orbot/proxy) haya fallado,
+            // cargamos la página inicial en modo directo para no dejar el WebView en blanco.
             if (!initialUrlLoaded) {
                 try {
                     webView?.loadUrl(DEFAULT_HOMEPAGE)
                     initialUrlLoaded = true
-                    Log.d(TAG, "âœ“ Carga de respaldo de URL inicial en modo directo: $DEFAULT_HOMEPAGE")
+                    Log.d(TAG, "✓ Carga de respaldo de URL inicial en modo directo: $DEFAULT_HOMEPAGE")
                 } catch (loadError: Exception) {
-                    Log.e(TAG, "âŒ Error en carga de respaldo de URL inicial", loadError)
+                    Log.e(TAG, "❌ Error en carga de respaldo de URL inicial", loadError)
                 }
             }
             try {
                 snackbarHostState.showSnackbar(
-                    message = "âŒ Error al inicializar el navegador. Intenta de nuevo.",
+                    message = "❌ Error al inicializar el navegador. Intenta de nuevo.",
                     duration = SnackbarDuration.Long
                 )
             } catch (snackbarError: Exception) {
-                Log.e(TAG, "âŒ No se pudo mostrar error al usuario", snackbarError)
+                Log.e(TAG, "❌ No se pudo mostrar error al usuario", snackbarError)
             }
         }
     }
 
-    // â”€â”€ Limpiar proxy al salir â”€â”€
+    // ── Limpiar proxy al salir ──
     DisposableEffect(Unit) {
         onDispose {
             clearOrbotProxy()
@@ -245,7 +246,7 @@ fun TorBrowserScreenNew(
                             tint = if (proxyEnabled) Color(0xFF00FF00) else MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = if (proxyEnabled) "ðŸ§… Navegador Tor" else "ðŸŒ Navegador",
+                            text = if (proxyEnabled) "🧅 Navegador Tor" else "🌐 Navegador",
                             color = Color.White,
                             style = MaterialTheme.typography.titleMedium
                         )
@@ -272,7 +273,7 @@ fun TorBrowserScreenNew(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // â”€â”€ Status bar â”€â”€
+            // ── Status bar ──
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -296,8 +297,8 @@ fun TorBrowserScreenNew(
                     )
                     Text(
                         text = when {
-                            proxyEnabled -> "âœ… Navegando por Tor (Orbot)"
-                            browsingMode == "directo" -> "ðŸŒ Modo directo â€” sin proxy"
+                            proxyEnabled -> "✅ Navegando por Tor (Orbot)"
+                            browsingMode == "directo" -> "🌐 Modo directo — sin proxy"
                             else -> orbotStatus.ifEmpty { "Inicializando..." }
                         },
                         color = Color.Gray,
@@ -335,7 +336,7 @@ fun TorBrowserScreenNew(
                 }
             }
 
-            // â”€â”€ URL Bar â”€â”€
+            // ── URL Bar ──
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -400,7 +401,7 @@ fun TorBrowserScreenNew(
                             },
                         placeholder = {
                             Text(
-                                if (proxyEnabled) "Buscar o ingresar URL â€” .onion disponible ðŸ§…"
+                                if (proxyEnabled) "Buscar o ingresar URL — .onion disponible 🧅"
                                 else "Buscar o ingresar URL (solo clearnet)",
                                 color = Color.Gray,
                                 fontSize = 13.sp
@@ -472,7 +473,7 @@ fun TorBrowserScreenNew(
                 }
             }
 
-            // â”€â”€ WebView â”€â”€
+            // ── WebView ──
             AndroidView(
                 factory = { ctx ->
                     WebView(ctx).apply {
@@ -489,9 +490,9 @@ fun TorBrowserScreenNew(
                             snackbarHostState = snackbarHostState,
                             proxyEnabled = { proxyEnabled }
                         )
-                        // Marcar que el WebView estÃ¡ listo
+                        // Marcar que el WebView está listo
                         isWebViewReady = true
-                        Log.d(TAG, "âœ“ WebView initialized and ready")
+                        Log.d(TAG, "✓ WebView initialized and ready")
                     }
                 },
                 modifier = Modifier
@@ -499,7 +500,9 @@ fun TorBrowserScreenNew(
                     .weight(1f)
             )
 
-            // â”€â”€ Loading indicator â”€â”€
+            // ─────────────────────────────────────────────────────────────────────────────
+            // Loading indicator
+            // ─────────────────────────────────────────────────────────────────────────────
             if (isLoading && currentUrl.isNotEmpty()) {
                 LinearProgressIndicator(
                     modifier = Modifier
@@ -513,9 +516,9 @@ fun TorBrowserScreenNew(
     }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ─────────────────────────────────────────────────────────────────────────────
 //  CONSTANTES
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Host del proxy HTTP de Orbot */
 private const val ORBOT_HTTP_HOST = "127.0.0.1"
@@ -523,26 +526,26 @@ private const val ORBOT_HTTP_HOST = "127.0.0.1"
 /** Puerto del proxy HTTP de Orbot */
 private const val ORBOT_HTTP_PORT = 8118
 
-/** Puerto SOCKS5 de Orbot (para verificaciÃ³n) */
+/** Puerto SOCKS5 de Orbot (para verificación) */
 private const val ORBOT_SOCKS_PORT = 9050
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  PROXY CONFIG â€” AndroidX WebKit oficial API
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ─────────────────────────────────────────────────────────────────────────────
+//  PROXY CONFIG — AndroidX WebKit oficial API
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Verifica que el puerto del proxy HTTP de Orbot estÃ© realmente aceptando conexiones.
- * Esto evita configurar un proxy que no funciona y causarÃ­a errores 404.
+ * Verifica que el puerto del proxy HTTP de Orbot esté realmente aceptando conexiones.
+ * Esto evita configurar un proxy que no funciona y causaría errores 404.
  */
 private fun verifyProxyPort(host: String, port: Int): Boolean {
     return try {
         Socket().use { socket ->
             socket.connect(InetSocketAddress(host, port), PROXY_CONNECT_TIMEOUT_MS)
-            Log.d(TAG, "âœ“ Puerto $host:$port verificada â€” acepta conexiones")
+            Log.d(TAG, "✓ Puerto $host:$port verificada — acepta conexiones")
             true
         }
     } catch (e: Exception) {
-        Log.w(TAG, "âœ— Puerto $host:$port no responde: ${e.message}")
+        Log.w(TAG, "✗ Puerto $host:$port no responde: ${e.message}")
         false
     }
 }
@@ -551,13 +554,13 @@ private fun verifyProxyPort(host: String, port: Int): Boolean {
  * Configura el proxy de Orbot a nivel de WebView delegando en [ProxyManager].
  *
  * Orbot expone un proxy HTTP en 127.0.0.1:8118 que internamente
- * traduce HTTP â†’ SOCKS5 â†’ Tor. Esto permite que WebView acceda
+ * traduce HTTP → SOCKS5 → Tor. Esto permite que WebView acceda
  * a sitios .onion sin necesidad de reflection ni hacks.
  *
- * La causa raÃ­z del crash (`RejectedExecutionException`) era crear un `Executor` por operaciÃ³n
- * y apagarlo (`shutdown()`) de inmediato, antes de que WebView invocara el callback asÃ­ncrono de
+ * La causa raíz del crash (`RejectedExecutionException`) era crear un `Executor` por operación
+ * y apagarlo (`shutdown()`) de inmediato, antes de que WebView invocara el callback asíncrono de
  * `setProxyOverride`. [ProxyManager] usa un executor de larga vida compartido que NUNCA se apaga
- * antes del callback, por lo que ya no se llama a `shutdown()` aquÃ­.
+ * antes del callback, por lo que ya no se llama a `shutdown()` aquí.
  *
  * @param onApplied callback que WebView invoca (en el executor de [ProxyManager]) cuando el
  *   override de proxy se ha aplicado; el llamador debe postear al MainThread para tocar la UI.
@@ -571,8 +574,8 @@ private fun setupOrbotProxy(proxyUrl: String, onApplied: () -> Unit): ProxyResul
 }
 
 /**
- * Limpia la configuraciÃ³n del proxy para que el resto de la app
- * no quede enrutando trÃ¡fico a travÃ©s de Tor.
+ * Limpia la configuración del proxy para que el resto de la app
+ * no quede enrutando tráfico a través de Tor.
  *
  * Delega en [ProxyManager.clearProxy], que reutiliza el executor de larga vida compartido
  * (sin `shutdown()` inmediato). Se envuelve en `try/catch` para no propagar excepciones,
@@ -581,16 +584,16 @@ private fun setupOrbotProxy(proxyUrl: String, onApplied: () -> Unit): ProxyResul
 private fun clearOrbotProxy() {
     try {
         ProxyManager.clearProxy {
-            Log.d(TAG, "âœ“ Proxy limpiado (callback) â€” trÃ¡fico directo restaurado")
+            Log.d(TAG, "✓ Proxy limpiado (callback) — tráfico directo restaurado")
         }
     } catch (e: Exception) {
         Log.e(TAG, "Error limpiando proxy", e)
     }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ─────────────────────────────────────────────────────────────────────────────
 //  WEBVIEW SETUP
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Procesa la entrada del usuario: si es una URL, la completa;
@@ -602,9 +605,9 @@ private fun clearOrbotProxy() {
  * - DuckDuckGo tiene soporte nativo para buscar en la dark web cuando usas Tor
  * 
  * DuckDuckGo Onion:
- * - BÃºsquedas normales: https://duckduckgo.com
+ * - Búsquedas normales: https://duckduckgo.com
  * - Con Tor activo: puedes acceder a https://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion
- * - Los resultados .onion se muestran automÃ¡ticamente cuando usas Tor
+ * - Los resultados .onion se muestran automáticamente cuando usas Tor
  */
 private fun processUrl(input: String): String {
     val trimmed = input.trim()
@@ -620,7 +623,7 @@ private fun processUrl(input: String): String {
             } else {
                 "http://$trimmed"
             }
-            Log.d(TAG, "ðŸ§… URL .onion detectada: $cleanUrl")
+            Log.d(TAG, "🧅 URL .onion detectada: $cleanUrl")
             cleanUrl
         }
         
@@ -631,18 +634,18 @@ private fun processUrl(input: String): String {
             else "https://$trimmed"
         }
         
-        // BÃºsqueda en DuckDuckGo (clearnet)
-        // Nota: DuckDuckGo automÃ¡ticamente muestra resultados .onion cuando detecta Tor
+        // Búsqueda en DuckDuckGo (clearnet)
+        // Nota: DuckDuckGo automáticamente muestra resultados .onion cuando detecta Tor
         else -> "https://duckduckgo.com/?q=${java.net.URLEncoder.encode(trimmed, "UTF-8")}"
     }
 }
 
 /**
- * Genera una pÃ¡gina de error HTML estilizada para mostrar cuando una URL falla.
+ * Genera una página de error HTML estilizada para mostrar cuando una URL falla.
  *
- * @param url La URL que fallÃ³
- * @param errorCode CÃ³digo de error HTTP (404, 500, etc.) o -1 para error de red
- * @param description DescripciÃ³n del error
+ * @param url La URL que falló
+ * @param errorCode Código de error HTTP (404, 500, etc.) o -1 para error de red
+ * @param description Descripción del error
  */
 private fun getErrorPage(url: String, errorCode: Int, description: String): String = """
 <!DOCTYPE html>
@@ -704,39 +707,39 @@ private fun getErrorPage(url: String, errorCode: Int, description: String): Stri
 </head>
 <body>
     <div class="container">
-        <div class="error-icon">âš ï¸</div>
+        <div class="error-icon">⚠️</div>
         <div class="error-code">${if (errorCode > 0) "$errorCode" else "RED"}</div>
-        <h1>${if (errorCode == 404) "PÃ¡gina no encontrada" else if (errorCode in 500..599) "Error del servidor" else "Error de conexiÃ³n"}</h1>
+        <h1>${if (errorCode == 404) "Página no encontrada" else if (errorCode in 500..599) "Error del servidor" else "Error de conexión"}</h1>
         <p>${description}</p>
         <div class="url-box">${url}</div>
         <div class="desc-box">
-            <p>ðŸ’¡ Sugerencias:</p>
+            <p>💡 Sugerencias:</p>
             <p style="margin-top: 8px; font-size: 13px;">
                 ${getSuggestionsForError(errorCode, url)}
             </p>
         </div>
-        <div class="hint">Intenta recargar la pÃ¡gina o verifica la URL</div>
-        <div class="brand">Azelgram â€” Navegador Privado</div>
+        <div class="hint">Intenta recargar la página o verifica la URL</div>
+        <div class="brand">Azelgram — Navegador Privado</div>
     </div>
 </body>
 </html>
 """.trimIndent()
 
 /**
- * Genera sugerencias contextuales segÃºn el tipo de error.
+ * Genera sugerencias contextuales según el tipo de error.
  */
 private fun getSuggestionsForError(errorCode: Int, url: String): String {
     return when {
-        errorCode == 404 -> "La pÃ¡gina que buscas no existe en este servidor. Verifica que la URL sea correcta."
-        errorCode in 500..599 -> "El servidor estÃ¡ teniendo problemas. Espera un momento e intenta de nuevo."
+        errorCode == 404 -> "La página que buscas no existe en este servidor. Verifica que la URL sea correcta."
+        errorCode in 500..599 -> "El servidor está teniendo problemas. Espera un momento e intenta de nuevo."
         url.contains(".onion") -> "Los sitios .onion requieren Orbot activo. Abre Orbot, presiona 'Iniciar' y vuelve a intentar."
-        errorCode == -1 || errorCode == 0 -> "No se pudo conectar al servidor. Verifica tu conexiÃ³n a internet."
-        else -> "OcurriÃ³ un error inesperado. Intenta recargar la pÃ¡gina."
+        errorCode == -1 || errorCode == 0 -> "No se pudo conectar al servidor. Verifica tu conexión a internet."
+        else -> "Ocurrió un error inesperado. Intenta recargar la página."
     }
 }
 
 /**
- * PÃ¡gina de ayuda cuando un sitio .onion no carga (Orbot inactivo).
+ * Página de ayuda cuando un sitio .onion no carga (Orbot inactivo).
  * Incluye instrucciones claras y enlaces .onion de ejemplo para probar.
  */
 private fun getOnionHelpPage(url: String): String = """
@@ -816,41 +819,41 @@ private fun getOnionHelpPage(url: String): String = """
 </head>
 <body>
     <div class="container">
-        <div class="onion-icon">ðŸ§…</div>
+        <div class="onion-icon">🧅</div>
         <h1>Sitio .onion detectado</h1>
-        <p>Los sitios .onion solo son accesibles a travÃ©s de la red Tor. Necesitas <strong>Orbot</strong> activo para acceder.</p>
+        <p>Los sitios .onion solo son accesibles a través de la red Tor. Necesitas <strong>Orbot</strong> activo para acceder.</p>
         <div class="url-box">$url</div>
         <div class="steps">
-            <h3>ðŸ” CÃ³mo acceder a sitios .onion</h3>
+            <h3>🔍 Cómo acceder a sitios .onion</h3>
             <ol>
                 <li><strong>1.</strong> Descarga <strong>Orbot</strong> desde Google Play Store o F-Droid</li>
-                <li><strong>2.</strong> Abre Orbot y presiona el botÃ³n <strong>"Iniciar"</strong> (Ã­cono de cebolla)</li>
+                <li><strong>2.</strong> Abre Orbot y presiona el botón <strong>"Iniciar"</strong> (icono de cebolla)</li>
                 <li><strong>3.</strong> Espera a que se conecte a Tor (1-2 minutos) hasta ver "Conectado a la red Tor"</li>
                 <li><strong>4.</strong> Vuelve a <strong>NexusChat</strong> y presiona <strong>Recargar</strong> en la barra superior</li>
-                <li><strong>5.</strong> Â¡Listo! El sitio .onion se cargarÃ¡ automÃ¡ticamente</li>
+                <li><strong>5.</strong> ¡Listo! El sitio .onion se cargará automáticamente</li>
             </ol>
         </div>
         <div class="examples">
-            <h3>âœ… Sitios .onion para probar</h3>
-            <p>Una vez que Orbot estÃ© activo, prueba estos enlaces:</p>
+            <h3>✅ Sitios .onion para probar</h3>
+            <p>Una vez que Orbot esté activo, prueba estos enlaces:</p>
             <code>http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion</code>
             <code>http://thehiddenwiki.onion</code>
             <code>http://3g2upl4pq6kufc4m.onion</code>
         </div>
         <p style="font-size: 13px; color: #888888;">
-            ðŸ’¡ DuckDuckGo automÃ¡ticamente te mostrarÃ¡ resultados .onion cuando uses Tor
+            💡 DuckDuckGo automáticamente te mostrará resultados .onion cuando uses Tor
         </p>
-        <div class="brand">NexusChat â€” NavegaciÃ³n Privada con Tor</div>
+        <div class="brand">NexusChat — Navegación Privada con Tor</div>
     </div>
 </body>
 </html>
 """.trimIndent()
 /**
- * Configura el WebView con ajustes de privacidad y navegaciÃ³n.
+ * Configura el WebView con ajustes de privacidad y navegación.
  *
  * - El proxy se configura ANTES de cargar URLs (en [LaunchedEffect])
- * - Los errores HTTP y de red muestran pÃ¡ginas de error claras al usuario
- * - Las URLs .onion sin Tor activo muestran guÃ­a de configuraciÃ³n
+ * - Los errores HTTP y de red muestran páginas de error claras al usuario
+ * - Las URLs .onion sin Tor activo muestran guía de configuración
  */
 @SuppressLint("SetJavaScriptEnabled")
 private fun WebView.setupWebView(
@@ -886,7 +889,7 @@ private fun WebView.setupWebView(
                     onLoadingChanged(true)
                     url?.let { onUrlChanged(it) }
                 } catch (e: Exception) {
-                    Log.e(TAG, "âŒ Error en onPageStarted", e)
+                    Log.e(TAG, "❌ Error en onPageStarted", e)
                 }
             }
 
@@ -895,7 +898,7 @@ private fun WebView.setupWebView(
                 try {
                     onLoadingChanged(false)
                 } catch (e: Exception) {
-                    Log.e(TAG, "âŒ Error en onPageFinished", e)
+                    Log.e(TAG, "❌ Error en onPageFinished", e)
                 }
             }
 
@@ -903,35 +906,35 @@ private fun WebView.setupWebView(
                 return try {
                     val url = request?.url?.toString() ?: return false
                     
-                    Log.d(TAG, "ðŸ”— Intentando cargar URL: $url")
+                    Log.d(TAG, "🔗 Intentando cargar URL: $url")
                     
                     // Verificar si es un enlace .onion
                     val isOnionUrl = url.contains(".onion")
                     
                     if (isOnionUrl) {
-                        // Verificar si Tor estÃ¡ activo
-                        val torActive = OrbotDetector.isSocksProxyAvailable() || OrbotDetector.isHttpProxyAvailable()
+                        // Verificar si Tor está activo
+                        val torActive = proxyEnabled() || OrbotDetector.isSocksProxyAvailable() || OrbotDetector.isHttpProxyAvailable()
                         
                         if (!torActive) {
-                            // Tor NO estÃ¡ activo - mostrar pÃ¡gina de ayuda
-                            Log.w(TAG, "âš ï¸ Intento de cargar .onion sin Tor activo: $url")
+                            // Tor NO está activo - mostrar página de ayuda
+                            Log.w(TAG, "⚠️ Intento de cargar .onion sin Tor activo: $url")
                             val helpHtml = getOnionHelpPage(url)
                             view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
                             
                             scope.launch {
                                 try {
                                     snackbarHostState.showSnackbar(
-                                        message = "ðŸ§… Los sitios .onion requieren Orbot activo. Abre Orbot y recarga.",
+                                        message = "🧅 Los sitios .onion requieren Orbot activo. Abre Orbot y recarga.",
                                         duration = SnackbarDuration.Long
                                     )
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "âŒ Error mostrando snackbar", e)
+                                    Log.e(TAG, "❌ Error mostrando snackbar", e)
                                 }
                             }
                             return true // Bloquear la carga
                         } else {
-                            // Tor estÃ¡ activo - permitir carga del .onion
-                            Log.d(TAG, "âœ… Tor activo - cargando .onion: $url")
+                            // Tor está activo - permitir carga del .onion
+                            Log.d(TAG, "✅ Tor activo - cargando .onion: $url")
                             
                             // Asegurar que la URL usa http:// (no https://)
                             val correctedUrl = if (url.startsWith("https://") && url.contains(".onion")) {
@@ -941,7 +944,7 @@ private fun WebView.setupWebView(
                             }
                             
                             if (correctedUrl != url) {
-                                Log.d(TAG, "ðŸ”§ Corrigiendo protocolo .onion: $correctedUrl")
+                                Log.d(TAG, "🔧 Corrigiendo protocolo .onion: $correctedUrl")
                                 view?.loadUrl(correctedUrl)
                                 return true
                             }
@@ -953,14 +956,14 @@ private fun WebView.setupWebView(
                     // URLs normales (no .onion) - permitir siempre
                     false
                 } catch (e: Exception) {
-                    Log.e(TAG, "âŒ Error en shouldOverrideUrlLoading", e)
+                    Log.e(TAG, "❌ Error en shouldOverrideUrlLoading", e)
                     false
                 }
             }
 
             /**
-             * Maneja ERRORES DE RED (DNS, timeout, conexiÃ³n rechazada, etc.)
-             * Se muestra una pÃ¡gina de error clara al usuario.
+             * Maneja ERRORES DE RED (DNS, timeout, conexión rechazada, etc.)
+             * Se muestra una página de error clara al usuario.
              */
             override fun onReceivedError(
                 view: WebView?,
@@ -973,12 +976,12 @@ private fun WebView.setupWebView(
                         val url = request.url.toString()
                         val errorCode = error?.errorCode ?: -1
                         val description = error?.description?.toString()
-                            ?: "No se pudo cargar la pÃ¡gina"
+                            ?: "No se pudo cargar la página"
 
                         Log.w(TAG, "Error de red en $url: code=$errorCode desc=$description")
 
-                        // Mostrar pÃ¡gina de error apropiada segÃºn el tipo de URL
-                        if (url.contains(".onion")) {
+                        // Mostrar página de error apropiada según el tipo de URL
+                        if (url.contains(".onion") && !proxyEnabled()) {
                             val helpHtml = getOnionHelpPage(url)
                             view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
                         } else {
@@ -989,22 +992,22 @@ private fun WebView.setupWebView(
                         scope.launch {
                             try {
                                 snackbarHostState.showSnackbar(
-                                    message = "âš ï¸ Error al cargar $url â€” ${if (errorCode > 0) "CÃ³digo $errorCode" else "Sin conexiÃ³n"}",
+                                    message = "⚠️ Error al cargar $url — ${if (errorCode > 0) "Código $errorCode" else "Sin conexión"}",
                                     duration = SnackbarDuration.Long
                                 )
                             } catch (e: Exception) {
-                                Log.e(TAG, "âŒ Error mostrando snackbar", e)
+                                Log.e(TAG, "❌ Error mostrando snackbar", e)
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "âŒ Error en onReceivedError", e)
+                    Log.e(TAG, "❌ Error en onReceivedError", e)
                 }
             }
 
             /**
              * Maneja ERRORES HTTP (404, 500, 403, etc.)
-             * Esto es NUEVO â€” antes solo se manejaban errores de red, no HTTP.
+             * Esto es NUEVO — antes solo se manejaban errores de red, no HTTP.
              * Los errores HTTP 404 ahora muestran una pÃ¡gina de error informativa.
              */
             override fun onReceivedHttpError(
@@ -1021,33 +1024,33 @@ private fun WebView.setupWebView(
 
                         Log.w(TAG, "Error HTTP en $url: $statusCode $reasonPhrase")
 
-                        // Para .onion con error, mostrar la guÃ­a de ayuda
+                        // Para .onion con error, mostrar la guía de ayuda
                         if (url.contains(".onion")) {
                             val helpHtml = getOnionHelpPage(url)
                             view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
                             scope.launch {
                                 try {
                                     snackbarHostState.showSnackbar(
-                                        message = "ðŸ§… No se pudo cargar $url â€” Â¿Orbot activo?",
+                                        message = "🧅 No se pudo cargar $url — ¿Orbot activo?",
                                         duration = SnackbarDuration.Long
                                     )
                                 } catch (e: Exception) {
-                                    Log.e(TAG, "âŒ Error mostrando snackbar", e)
+                                    Log.e(TAG, "❌ Error mostrando snackbar", e)
                                 }
                             }
                             return
                         }
 
-                        // Para errores HTTP especÃ­ficos, mostrar pÃ¡gina de error detallada
+                        // Para errores HTTP específicos, mostrar página de error detallada
                         val description = when (statusCode) {
-                            404 -> "La pÃ¡gina o recurso solicitado no existe en este servidor."
-                            403 -> "No tienes permiso para acceder a esta pÃ¡gina."
-                            408 -> "La conexiÃ³n con el servidor se agotÃ³. Intenta de nuevo."
+                            404 -> "La página o recurso solicitado no existe en este servidor."
+                            403 -> "No tienes permiso para acceder a esta página."
+                            408 -> "La conexión con el servidor se agotó. Intenta de nuevo."
                             429 -> "Demasiadas solicitudes. Espera un momento e intenta de nuevo."
-                            500 -> "El servidor encontrÃ³ un error interno. Intenta mÃ¡s tarde."
-                            502 -> "El servidor recibiÃ³ una respuesta invÃ¡lida de otro servidor."
-                            503 -> "El servidor estÃ¡ temporalmente fuera de servicio. Intenta mÃ¡s tarde."
-                            504 -> "El servidor no respondiÃ³ a tiempo. Verifica tu conexiÃ³n."
+                            500 -> "El servidor encontró un error interno. Intenta más tarde."
+                            502 -> "El servidor recibió una respuesta inválida de otro servidor."
+                            503 -> "El servidor está temporalmente fuera de servicio. Intenta más tarde."
+                            504 -> "El servidor no respondió a tiempo. Verifica tu conexión."
                             else -> "HTTP $statusCode: $reasonPhrase"
                         }
 
@@ -1057,36 +1060,36 @@ private fun WebView.setupWebView(
                         scope.launch {
                             try {
                                 val msg = when (statusCode) {
-                                    404 -> "âŒ 404 â€” PÃ¡gina no encontrada"
-                                    in 500..599 -> "âš ï¸ Error del servidor ($statusCode)"
-                                    else -> "âš ï¸ HTTP $statusCode"
+                                    404 -> "❌ 404 — Página no encontrada"
+                                    in 500..599 -> "⚠️ Error del servidor ($statusCode)"
+                                    else -> "⚠️ HTTP $statusCode"
                                 }
                                 snackbarHostState.showSnackbar(
                                     message = "$msg: $url",
                                     duration = SnackbarDuration.Long
                                 )
                             } catch (e: Exception) {
-                                Log.e(TAG, "âŒ Error mostrando snackbar", e)
+                                Log.e(TAG, "❌ Error mostrando snackbar", e)
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    Log.e(TAG, "âŒ Error en onReceivedHttpError", e)
+                    Log.e(TAG, "❌ Error en onReceivedHttpError", e)
                 }
             }
         }
         
-        Log.d(TAG, "âœ“ WebView configurado exitosamente")
+        Log.d(TAG, "✅ WebView configurado exitosamente")
     } catch (e: Exception) {
-        Log.e(TAG, "âŒ Error crÃ­tico configurando WebView", e)
+        Log.e(TAG, "❌ Error crítico configurando WebView", e)
         scope.launch {
             try {
                 snackbarHostState.showSnackbar(
-                    message = "âŒ Error al configurar el navegador: ${e.message}",
+                    message = "❌ Error al configurar el navegador: ${e.message}",
                     duration = SnackbarDuration.Long
                 )
             } catch (snackbarError: Exception) {
-                Log.e(TAG, "âŒ No se pudo mostrar error al usuario", snackbarError)
+                Log.e(TAG, "❌ No se pudo mostrar error al usuario", snackbarError)
             }
         }
     }

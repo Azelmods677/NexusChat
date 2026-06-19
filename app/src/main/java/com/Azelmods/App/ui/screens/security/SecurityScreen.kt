@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.security
+package com.Azelmods.App.ui.screens.security
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -116,7 +116,7 @@ fun SecurityScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // â”€â”€ Tor Integration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Tor Integration ────────────────────────────────────
             SecurityFeatureCard(
                 title = "Anonymous Mode (Tor)",
                 description = "Route all traffic through the Tor network for maximum privacy",
@@ -160,16 +160,16 @@ fun SecurityScreen(
                 }
             }
 
-            // â”€â”€ Orbot Setup Guide â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Orbot Setup Guide ──────────────────────────────────
             SecurityFeatureCard(
                 title = "Orbot Setup",
-                description = "GuÃ­a para instalar y configurar Orbot para navegaciÃ³n anÃ³nima",
+                description = "Guía para instalar y configurar Orbot para navegación anónima",
                 icon = Icons.Default.FlightTakeoff,
                 isActive = torState is TorState.Connected,
                 onClick = { navController.navigate(Screen.OrbotWelcome.route) }
             )
 
-            // â”€â”€ Tor Browser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Tor Browser ────────────────────────────────────────
             SecurityFeatureCard(
                 title = "Tor Browser",
                 description = "Browse .onion sites anonymously with DuckDuckGo integration",
@@ -178,7 +178,7 @@ fun SecurityScreen(
                 onClick = { navController.navigate(Screen.TorBrowser.route) }
             )
 
-            // â”€â”€ Terminal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Terminal ───────────────────────────────────────────
             SecurityFeatureCard(
                 title = "Terminal",
                 description = "Comandos avanzados del sistema con interfaz hacker",
@@ -188,8 +188,8 @@ fun SecurityScreen(
             )
 
             SecurityFeatureCard(
-                title = "Bloqueo de aplicaciÃ³n",
-                description = "PIN o biometrÃ­a. Auto-bloqueo: inmediato, 1, 5 o 30 min",
+                title = "Bloqueo de aplicación",
+                description = "PIN o biometría. Auto-bloqueo: inmediato, 1, 5 o 30 min",
                 icon = Icons.Default.Lock,
                 isActive = true,
                 onClick = { showAppLockDialog = true }
@@ -205,13 +205,13 @@ fun SecurityScreen(
 
             SecurityFeatureCard(
                 title = "Mensajes autodestructivos",
-                description = "EliminaciÃ³n automÃ¡tica tras un tiempo configurado",
+                description = "Eliminación automática tras un tiempo configurado",
                 icon = Icons.Default.Timer,
                 isActive = true,
                 onClick = { showSelfDestructInfo = true }
             )
 
-            // â”€â”€ Tor connection logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Tor connection logs ────────────────────────────────
             if (torState !is TorState.Disconnected && torLogs.isNotEmpty()) {
                 TorLogsCard(
                     logs = torLogs,
@@ -219,7 +219,7 @@ fun SecurityScreen(
                 )
             }
 
-            // â”€â”€ Info section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Info section ───────────────────────────────────────
             Spacer(modifier = Modifier.height(16.dp))
             InfoSection()
         }
@@ -235,7 +235,7 @@ fun SecurityScreen(
         AlertDialog(
             onDismissRequest = { showSelfDestructInfo = false },
             title = { Text("Mensajes autodestructivos") },
-            text = { Text("Configura el temporizador en cada chat desde el menÃº del mensaje. PrÃ³xima versiÃ³n: borrado automÃ¡tico en Firebase.") },
+            text = { Text("Configura el temporizador en cada chat desde el menú del mensaje. Próxima versión: borrado automático en Firebase.") },
             confirmButton = {
                 TextButton(onClick = { showSelfDestructInfo = false }) { Text("Entendido") }
             }
@@ -243,9 +243,9 @@ fun SecurityScreen(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // SecurityFeatureCard
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun SecurityFeatureCard(
@@ -336,9 +336,9 @@ private fun SecurityFeatureCard(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // TorLogsCard
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun TorLogsCard(logs: List<String>, onClear: () -> Unit) {
@@ -402,9 +402,9 @@ private fun TorLogsCard(logs: List<String>, onClear: () -> Unit) {
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // InfoSection
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun InfoSection() {
@@ -445,7 +445,7 @@ private fun InfoSection() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "âš ï¸ Use responsibly and in accordance with local laws and regulations.",
+                        text = "⚠️ Use responsibly and in accordance with local laws and regulations.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp,
@@ -468,13 +468,13 @@ private fun AppLockSetupDialog(onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Bloqueo de aplicaciÃ³n") },
+        title = { Text("Bloqueo de aplicación") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = pin,
                     onValueChange = { pin = it },
-                    label = { Text("PIN (4+ dÃ­gitos)") },
+                    label = { Text("PIN (4+ dígitos)") },
                     singleLine = true
                 )
                 OutlinedTextField(
@@ -532,7 +532,7 @@ private fun BackupRestoreDialog(onDismiss: () -> Unit) {
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("ContraseÃ±a de cifrado") },
+                    label = { Text("Contraseña de cifrado") },
                     singleLine = true
                 )
                 if (progress.isNotEmpty()) {
@@ -567,19 +567,19 @@ private fun BackupRestoreDialog(onDismiss: () -> Unit) {
     )
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Orbot status helpers (Task 8.3 â€” Requirements 6.4, 6.5, 7.1, 7.3)
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
+// Orbot status helpers (Task 8.3 — Requirements 6.4, 6.5, 7.1, 7.3)
+// ─────────────────────────────────────────────────────────────────────────────
 
 private const val ORBOT_TAG = "OrbotStatus"
 
 /**
  * Verifica el estado de Orbot en el IOThread (los sockets de [OrbotDetector]
- * bloquean) y lo mapea a un [OrbotUiStatus] consistente vÃ­a `mapOrbotStatus`.
+ * bloquean) y lo mapea a un [OrbotUiStatus] consistente vía `mapOrbotStatus`.
  *
- * Ante cualquier excepciÃ³n se registra y se devuelve un estado accionable
+ * Ante cualquier excepción se registra y se devuelve un estado accionable
  * (tratado como "no instalado") manteniendo el toggle operable para reintentar,
- * permitiendo continuar en modo directo (degradaciÃ³n elegante).
+ * permitiendo continuar en modo directo (degradación elegante).
  */
 private suspend fun checkOrbotStatus(context: android.content.Context): OrbotUiStatus =
     withContext(Dispatchers.IO) {
@@ -595,8 +595,8 @@ private suspend fun checkOrbotStatus(context: android.content.Context): OrbotUiS
     }
 
 /**
- * Ejecuta la acciÃ³n sugerida por [orbotStatus]: descargar Orbot cuando no estÃ¡
- * instalado, o abrir Orbot cuando estÃ¡ instalado pero inactivo.
+ * Ejecuta la acción sugerida por [orbotStatus]: descargar Orbot cuando no está
+ * instalado, o abrir Orbot cuando está instalado pero inactivo.
  */
 private fun handleOrbotAction(context: android.content.Context, orbotStatus: OrbotUiStatus?) {
     when (orbotStatus?.state) {
@@ -608,7 +608,7 @@ private fun handleOrbotAction(context: android.content.Context, orbotStatus: Orb
                 Log.e(ORBOT_TAG, "Fallo al abrir Orbot", e)
             }
         }
-        else -> { /* ACTIVE o null: sin acciÃ³n */ }
+        else -> { /* ACTIVE o null: sin acción */ }
     }
 }
 

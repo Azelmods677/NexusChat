@@ -139,7 +139,7 @@ fun CreateStoryScreen(
         }
     }
 
-    // Music picker launcher â€” lets the user attach an audio track to the story.
+    // Music picker launcher — lets the user attach an audio track to the story.
     val musicPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -155,7 +155,7 @@ fun CreateStoryScreen(
             selectedMusicName = name ?: "Audio seleccionado"
             android.widget.Toast.makeText(
                 context,
-                "ðŸŽµ $selectedMusicName",
+                "🎵 $selectedMusicName",
                 android.widget.Toast.LENGTH_SHORT
             ).show()
         }
@@ -659,7 +659,7 @@ fun CreateStoryScreen(
                             )
                             ModernStoryEditOption(
                                 icon = Icons.Default.MusicNote,
-                                label = if (selectedMusicName.isNotBlank()) "MÃºsica âœ“" else "Music",
+                                label = if (selectedMusicName.isNotBlank()) "Música ✔" else "Music",
                                 color = Color(0xFF00BFA6),
                                 onClick = {
                                     musicPickerLauncher.launch("audio/*")
@@ -756,10 +756,10 @@ fun CreateStoryScreen(
     if (showStickerPicker) {
         var selectedCategory by remember { mutableStateOf("Caritas") }
         val emojiCategories = mapOf(
-            "Caritas" to listOf("ðŸ˜€","ðŸ˜‚","ðŸ˜","ðŸ˜Ž","ðŸ˜­","ðŸ˜…","ðŸ¤£","ðŸ˜Š","ðŸ˜‡","ðŸ¥°","ðŸ˜˜","ðŸ˜œ","ðŸ¤”","ðŸ˜","ðŸ˜’","ðŸ˜¡","ðŸ¤¯","ðŸ¥³","ðŸ˜´","ðŸ¤®","ðŸ¤’","ðŸ‘»","ðŸ’€","ðŸ¤–","ðŸ‘½","ðŸ˜º","ðŸ˜¸"),
-            "Animales" to listOf("ðŸ¶","ðŸ±","ðŸ­","ðŸ¹","ðŸ°","ðŸ¦Š","ðŸ»","ðŸ¼","ðŸ¨","ðŸ¯","ðŸ¦","ðŸ®","ðŸ·","ðŸ¸","ðŸµ","ðŸ”","ðŸ§","ðŸ¦†","ðŸ¦…","ðŸ¦‰","ðŸ¦‡","ðŸº","ðŸ—","ðŸ´","ðŸ¦„","ðŸ","ðŸ¦‹","ðŸŒ","ðŸž","ðŸ¢","ðŸ","ðŸ¦Ž","ðŸ¦–","ðŸ¦•","ðŸ™","ðŸ¦‘","ðŸ¦","ðŸ¦ž","ðŸ¦€","ðŸ¡","ðŸ ","ðŸŸ","ðŸ¬","ðŸ³","ðŸ‹","ðŸ¦ˆ"),
-            "Comida" to listOf("ðŸŽ","ðŸŠ","ðŸ‹","ðŸ‡","ðŸ“","ðŸ’","ðŸ‘","ðŸ¥­","ðŸ","ðŸ¥¥","ðŸ¥","ðŸ…","ðŸ¥‘","ðŸ†","ðŸ¥”","ðŸ¥•","ðŸŒ½","ðŸŒ¶ï¸","ðŸ¥’","ðŸ¥¬","ðŸ¥¦","ðŸ„","ðŸ¥œ","ðŸŒ°","ðŸž","ðŸ¥","ðŸ¥–","ðŸ¥¨","ðŸ¥¯","ðŸ¥ž","ðŸ§‡","ðŸ§€","ðŸ–","ðŸ—","ðŸ¥©","ðŸ¥“","ðŸ”","ðŸŸ","ðŸ•","ðŸŒ­","ðŸ¥ª","ðŸŒ®","ðŸŒ¯","ðŸ¥™","ðŸ§†","ðŸ¥š","ðŸ³","ðŸ¥˜","ðŸ²","ðŸ¥£","ðŸ¥—","ðŸ¿","ðŸ§ˆ","ðŸ§‚","ðŸ¥«","ðŸ±","ðŸ˜","ðŸ™","ðŸš","ðŸ›","ðŸœ","ðŸ","ðŸ ","ðŸ¢","ðŸ£","ðŸ¤","ðŸ¥","ðŸ¥®","ðŸ¡","ðŸ¥Ÿ","ðŸ¥ ","ðŸ¥¡","ðŸ¦€","ðŸ¦ž","ðŸ¦","ðŸ¦‘","ðŸ¦ª","ðŸ¦","ðŸ§","ðŸ¨","ðŸ©","ðŸª","ðŸŽ‚","ðŸ°","ðŸ§","ðŸ¥§","ðŸ«","ðŸ¬","ðŸ­","ðŸ®","ðŸ¯","ðŸ¼","ðŸ¥›","â˜•","ðŸµ","ðŸ¶","ðŸ¾","ðŸ·","ðŸ¸","ðŸ¹","ðŸº","ðŸ»","ðŸ¥‚","ðŸ¥ƒ","ðŸ¥¤","ðŸ§ƒ","ðŸ§‰","ðŸ§Š"),
-            "Deportes" to listOf("âš½","ðŸ€","ðŸˆ","âš¾","ðŸ¥Ž","ðŸŽ¾","ðŸ","ðŸ‰","ðŸ¥","ðŸŽ±","ðŸª€","ðŸ“","ðŸ¸","ðŸ’","ðŸ‘","ðŸ¥","ðŸ","ðŸ¥…","â›³","ðŸª","ðŸ¹","ðŸŽ£","ðŸ¤¿","ðŸ¥Š","ðŸ¥‹","ðŸŽ½","ðŸ›¹","ðŸ›¼","ðŸ›·","â›¸ï¸","ðŸ¥Œ","ðŸŽ¿","â›·ï¸","ðŸ‚","ðŸª‚","ðŸ‹ï¸","ðŸ¤¼","ðŸ¤¸","ðŸ¤º","ðŸ¤¾","ðŸŒï¸","ðŸ‡","ðŸ§˜","ðŸ„","ðŸŠ","ðŸ¤½","ðŸš£","ðŸ§—","ðŸšµ","ðŸš´","ðŸ†","ðŸ¥‡","ðŸ¥ˆ","ðŸ¥‰","ðŸ…","ðŸŽ–ï¸","ðŸŽ—ï¸","ðŸŽ«","ðŸŽŸï¸","ðŸŽª","ðŸŽ­","ðŸŽ¨","ðŸŽ¬","ðŸŽ¤","ðŸŽ§","ðŸŽ¼","ðŸŽ¹","ðŸ¥","ðŸŽ·","ðŸŽº","ðŸŽ¸","ðŸª•","ðŸŽ»","ðŸŽ²","â™Ÿï¸","ðŸŽ¯","ðŸŽ®","ðŸ•¹ï¸","ðŸŽ°","ðŸ§©")
+            "Caritas" to listOf("😀","😂","😍","😎","😭","😅","🤣","😊","😇","🥰","😘","😜","🤔","😏","😒","😡","🤯","🥳","😴","🤮","🤑","👻","💀","🤖","👽","😺","😸"),
+            "Animales" to listOf("🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐽","🐸","🐵","🙈","🙉","🙊","🐒","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄","🐝","🐛","🦋","🐌","🐞","🐜","🦟","🦗","🕷️","🕸️","🦂","🐢"),
+            "Comida" to listOf("🍏","🍎","🍐","🍊","🍋","🍌","🍉","🍇","🍓","🍈","🍒","🍑","🥭","🍍","🥥","🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌶️","🌽","🥕","🥔","🍠","🥐","🥯","🍞","🥖","🥨","🧀","🥚","🍳","🥞","🥓","🥩","🍗","🍖","🦴","🌭","🍔","🍟","🍕","🥪","🥙","🌮","🌯","🥗","🥘","🥫","🍝","🍜","🍲","🍛","🍣","🍱","🥟","🍤","🍙","🍚","🍘","🍥","🥠","🥮","🍢","🍡","🍧","🍨","🍦","🥧","🍰","🎂","🍮","🍭","🍬","🍫","🍿","🍩","🍪","🌰","🥜","🍯","🥛","☕","🍵","🍶","🍾","🍷","🍸","🍹","🍺","🍻","🥂","🥃","🥤","🥢","🍽️","🍴","🥄"),
+            "Deportes" to listOf("⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🥏","🎱","🪀","🏓","🏸","🏒","🏑","🥍","🏏","🥅","⛳","🪁","🏹","🎣","🤿","🥊","🥋","🎽","🛹","🛷","⛸️","🥌","🎿","⛷️","🏂","🪂","🏋️","🤼","🤸","⛹️","🤺","🤾","🏌️","🏇","🧘","🏄","🏊","🤽","🚣","🧗","🚵","🚴","🏆","🥇","🥈","🥉","🏅","🎖️","🎗️","🎫","🎟️","🎪","🎭","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🎷","🎺","🎸","🪕","🎻","🎲","♟️","🎯","🎳","🎮","🕹️","🎰","🧩")
         )
         
         ModalBottomSheet(
@@ -832,7 +832,7 @@ fun CreateStoryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "Tip: MantÃ©n presionado un emoji para eliminarlo",
+                    text = "Tip: Mantén presionado un emoji para eliminarlo",
                     fontSize = 12.sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center,
@@ -844,7 +844,7 @@ fun CreateStoryScreen(
         }
     }
     
-    // Draw mode â€” functional full-screen drawing canvas
+    // Draw mode — functional full-screen drawing canvas
     if (showDrawMode) {
         androidx.compose.ui.window.Dialog(
             onDismissRequest = { showDrawMode = false },
@@ -907,6 +907,7 @@ fun CreateStoryScreen(
                     }
                     Row {
                         IconButton(onClick = { if (strokes.isNotEmpty()) strokes.removeAt(strokes.size - 1) }) {
+                            @Suppress("DEPRECATION")
                             Icon(Icons.Default.Undo, "Deshacer", tint = Color.White)
                         }
                         IconButton(onClick = { strokes.clear() }) {
@@ -959,7 +960,7 @@ fun CreateStoryScreen(
                 showPhotoAdjuster = false
                 android.widget.Toast.makeText(
                     context,
-                    "PosiciÃ³n ajustada",
+                    "Posición ajustada",
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
             },

@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.Azelmods.App.data.security.encryption
 
 import android.content.Context
@@ -43,6 +44,7 @@ class E2EECryptoService @Inject constructor(
         private const val EC_ALGORITHM = "EC"
     }
 
+    @Suppress("DEPRECATION")
     private val prefs by lazy {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

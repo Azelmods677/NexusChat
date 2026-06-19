@@ -61,6 +61,7 @@ class SignalKeyStore @Inject constructor(
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
+    @Suppress("DEPRECATION")
     private val encryptedPrefs = EncryptedSharedPreferences.create(
         context,
         PREFS_NAME,

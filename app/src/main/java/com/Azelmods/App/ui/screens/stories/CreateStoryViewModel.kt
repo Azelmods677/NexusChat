@@ -73,7 +73,8 @@ class CreateStoryViewModel @Inject constructor(
                 databaseRepository.createStory(
                     mediaUrl = imageUrl,
                     mediaType = "IMAGE",
-                    isVideo = false
+                    isVideo = false,
+                    caption = caption
                 )
 
                 _state.value = _state.value.copy(
@@ -116,7 +117,8 @@ class CreateStoryViewModel @Inject constructor(
                 databaseRepository.createStory(
                     mediaUrl = imageUrl,
                     mediaType = "IMAGE",
-                    isVideo = false
+                    isVideo = false,
+                    caption = caption
                 )
 
                 _state.value = _state.value.copy(
@@ -169,7 +171,8 @@ class CreateStoryViewModel @Inject constructor(
                 databaseRepository.createStory(
                     mediaUrl = videoUrl,
                     mediaType = "VIDEO",
-                    isVideo = true
+                    isVideo = true,
+                    caption = caption
                 )
 
                 _state.value = _state.value.copy(
@@ -211,7 +214,8 @@ class CreateStoryViewModel @Inject constructor(
                 databaseRepository.createStory(
                     mediaUrl = videoUrl,
                     mediaType = "VIDEO",
-                    isVideo = true
+                    isVideo = true,
+                    caption = caption
                 )
 
                 _state.value = _state.value.copy(

@@ -18,8 +18,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,6 +84,7 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val themeColor = rememberThemeColor()
     val themeSecondaryColor = rememberThemeSecondaryColor()
+    val haptic = LocalHapticFeedback.current
     
     // Load chat background from repository
     val backgroundConfig by viewModel.chatBackground.collectAsState()
@@ -118,6 +122,13 @@ fun ChatScreen(
         state.error?.let { err ->
             sendErrorSnackbar.showSnackbar(err)
             viewModel.clearError()
+        }
+    }
+
+    LaunchedEffect(state.translationError) {
+        state.translationError?.let { err ->
+            sendErrorSnackbar.showSnackbar(err)
+            viewModel.clearTranslationError()
         }
     }
 
@@ -223,7 +234,11 @@ fun ChatScreen(
                     .imePadding() // CRITICAL: This makes content adjust when keyboard appears
             ) {
                 // Messages List
-                Box(modifier = Modifier.weight(1f)) {
+                PullToRefreshBox(
+                    isRefreshing = state.isLoading,
+                    onRefresh = { viewModel.refreshChat() },
+                    modifier = Modifier.weight(1f)
+                ) {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.fillMaxSize(),
@@ -284,7 +299,10 @@ fun ChatScreen(
                             MessageBubble(
                                 message = message,
                                 isOwnMessage = message.senderId == currentUserId,
-                                onLongPress = { viewModel.setReplyingTo(message) },
+                                onLongPress = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    viewModel.setReplyingTo(message)
+                                },
                                 onReactionClick = { emoji -> viewModel.addReaction(message.messageId, emoji) },
                                 onImageClick = { url, sender, timestamp ->
                                     selectedImageUrl = url
@@ -304,6 +322,7 @@ fun ChatScreen(
                                     viewModel.markMessageViewed(message)
                                 },
                                 translatedText = state.translatedMessages[message.messageId],
+                                isTranslating = message.messageId in state.translatingMessageIds,
                                 onTranslate = {
                                     viewModel.translateMessage(message.messageId, message.content)
                                 }
@@ -407,6 +426,7 @@ fun ChatScreen(
                         messageText = messageText,
                         onMessageChange = { messageText = it },
                         onSendClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             state.editingMessage?.let { editingMsg ->
                                 // Edit mode - save edited message
                                 viewModel.editMessage(editingMsg.messageId, messageText)

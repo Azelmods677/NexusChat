@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.stories
+package com.Azelmods.App.ui.screens.stories
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -45,7 +45,7 @@ fun StoriesScreen(
     val context = LocalContext.current
     val tutorialPreferences = remember { TutorialPreferences(context) }
 
-    // â”€â”€ Lifecycle-aware state collection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Lifecycle-aware state collection ──────────────────────────────────────
     val state by viewModel.state.collectAsStateWithLifecycle()
 
     // Show tutorial on first visit
@@ -88,18 +88,18 @@ fun StoriesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .consumeWindowInsets(paddingValues) // Edge-to-Edge: consume los insets del Scaffold
-                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegaciÃ³n
+                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegación
                 .padding(horizontal = 16.dp) // Padding general de 16dp
         ) {
-            // â”€â”€ Stories horizontal scroll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Stories horizontal scroll ──────────────────────────────────────
             LazyRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 20.dp), // Aumentado para que respire mÃ¡s
+                    .padding(vertical = 20.dp), // Aumentado para que respire más
                 horizontalArrangement = Arrangement.spacedBy(16.dp), // Espaciado aumentado
                 contentPadding = PaddingValues(horizontal = 0.dp) // Ya tenemos padding general
             ) {
-                // Your story bubble â€” shows the logged-in user's own profile photo
+                // Your story bubble — shows the logged-in user's own profile photo
                 item {
                     YourStoryItem(
                         currentUserPhotoUrl = state.currentUserPhotoUrl,
@@ -124,7 +124,7 @@ fun StoriesScreen(
                 }
             }
 
-            // â”€â”€ Body: loading indicator OR content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Body: loading indicator OR content ──────────────────────────
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -135,14 +135,14 @@ fun StoriesScreen(
                     }
 
                     state.stories.isEmpty() -> {
-                        // â”€â”€ Improved empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                        // ── Improved empty state ────────────────────────────
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.padding(32.dp)
                         ) {
                             Text(
-                                text = "ðŸ“–",
+                                text = "📖",
                                 fontSize = 64.sp
                             )
                             Text(
@@ -164,9 +164,9 @@ fun StoriesScreen(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────
 // Your Story bubble
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun YourStoryItem(
@@ -270,9 +270,9 @@ fun YourStoryItem(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────
 // Contact story bubble
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────
 
 @Composable
 fun StoryItem(
@@ -394,7 +394,7 @@ fun StoryItem(
 
         val displayName = story.userName
             .ifBlank { "User" }
-            .let { if (it.length > 12) it.take(11) + "â€¦" else it }
+            .let { if (it.length > 12) it.take(11) + "…" else it }
 
         Text(
             text = displayName,

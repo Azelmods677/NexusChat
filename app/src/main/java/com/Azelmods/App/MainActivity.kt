@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
         
         // ── Handle incoming-call navigation coming from a notification ──
         handleCallIntent(intent)
+        handleDeepLink(intent)
         
         // Fix ACTION_HOVER_EXIT crash
         window.decorView.setOnHoverListener { view, motionEvent -> true }
@@ -161,6 +162,26 @@ class MainActivity : ComponentActivity() {
                             val navController = rememberNavController()
                             NavGraph(navController = navController)
 
+                            // ── Handle deep links (nexuschat://chat/{id} or nexuschat://profile/{id}) ──
+                            val pendingDeepLink by deepLinkNavRequest
+                            LaunchedEffect(pendingDeepLink) {
+                                pendingDeepLink?.let { req ->
+                                    try {
+                                        when (req.target) {
+                                            "chat" -> {
+                                                navController.navigate("chat/${req.id}")
+                                            }
+                                            "profile" -> {
+                                                navController.navigate("profile/${req.id}")
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Failed to navigate deep link: ${e.message}", e)
+                                    }
+                                    deepLinkNavRequest.value = null
+                                }
+                            }
+
                             // ── Navigate to the incoming-call screen when launched from a
                             //    call notification's full-screen intent. ──
                             val pendingCall by callNavRequest
@@ -198,19 +219,45 @@ class MainActivity : ComponentActivity() {
     private fun handleCallIntent(intent: Intent?) {
         try {
             val navTo = intent?.getStringExtra("navigate_to") ?: return
-            if (navTo != "incoming_call") return
-            val callId = intent.getStringExtra("callId") ?: return
-            if (callId.isBlank()) return
-            val callType = intent.getStringExtra("callType") ?: "audio"
-            callNavRequest.value = CallNavRequest(
-                target = "incoming_call",
-                callId = callId,
-                callType = callType
-            )
+            if (navTo == "incoming_call") {
+                val callId = intent.getStringExtra("callId") ?: return
+                if (callId.isBlank()) return
+                val callType = intent.getStringExtra("callType") ?: "audio"
+                callNavRequest.value = CallNavRequest(
+                    target = "incoming_call",
+                    callId = callId,
+                    callType = callType
+                )
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse call intent: ${e.message}", e)
         }
     }
+
+    private fun handleDeepLink(intent: Intent?) {
+        try {
+            val data = intent?.data ?: return
+            val host = data.host ?: return
+            val path = data.pathSegments?.firstOrNull() ?: return
+            when (host) {
+                "chat" -> {
+                    deepLinkNavRequest.value = DeepLinkNavRequest("chat", path)
+                }
+                "profile" -> {
+                    deepLinkNavRequest.value = DeepLinkNavRequest("profile", path)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to parse deep link: ${e.message}", e)
+        }
+    }
+
+    data class DeepLinkNavRequest(
+        val target: String,
+        val id: String
+    )
+    
+    private val deepLinkNavRequest = mutableStateOf<DeepLinkNavRequest?>(null)
 
     override fun onResume() {        super.onResume()
         // Fix ACTION_HOVER_EXIT crash on older Android versions

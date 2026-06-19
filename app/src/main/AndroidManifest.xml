@@ -83,6 +83,13 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nexuschat" android:host="chat" />
+                <data android:scheme="nexuschat" android:host="profile" />
+            </intent-filter>
         </activity>
 
         <!-- Foreground Service for Audio/Video Calls (Android 16 API 36) -->

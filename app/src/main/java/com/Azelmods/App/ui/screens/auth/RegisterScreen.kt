@@ -1,10 +1,14 @@
-﻿package com.Azelmods.App.ui.screens.auth
+package com.Azelmods.App.ui.screens.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -34,6 +38,9 @@ fun RegisterScreen(
     val state by viewModel.state.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val confirmPasswordFocusRequester = remember { FocusRequester() }
     
     // Navigate to Home on success
     LaunchedEffect(state.isSuccess) {
@@ -74,6 +81,10 @@ fun RegisterScreen(
                 leadingIcon = {
                     Icon(Icons.Default.Person, contentDescription = null)
                 },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { emailFocusRequester.requestFocus() }
+                ),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -94,10 +105,17 @@ fun RegisterScreen(
                 leadingIcon = {
                     Icon(Icons.Default.Email, contentDescription = null)
                 },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { passwordFocusRequester.requestFocus() }
+                ),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(emailFocusRequester)
                     .padding(bottom = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -124,10 +142,17 @@ fun RegisterScreen(
                     }
                 },
                 visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { confirmPasswordFocusRequester.requestFocus() }
+                ),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(passwordFocusRequester)
                     .padding(bottom = 16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -154,10 +179,17 @@ fun RegisterScreen(
                     }
                 },
                 visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = { viewModel.register() }
+                ),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .focusRequester(confirmPasswordFocusRequester)
                     .padding(bottom = 8.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -231,8 +263,33 @@ fun RegisterScreen(
             }
             
             // Google Sign-In button
+            // TODO: Migrar a Google Credential Manager API cuando sea posible
+            val context = androidx.compose.ui.platform.LocalContext.current
+            @Suppress("DEPRECATION")
+            val googleSignInClient = remember {
+                com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+                    com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
+                )
+                    .requestIdToken(context.getString(com.Azelmods.App.R.string.default_web_client_id))
+                    .requestEmail()
+                    .build()
+                    .let { com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(context, it) }
+            }
+            val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+                contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                @Suppress("DEPRECATION")
+                val task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                try {
+                    val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
+                    account?.idToken?.let { viewModel.registerWithGoogle(it) }
+                } catch (e: com.google.android.gms.common.api.ApiException) {
+                    viewModel.clearError()
+                }
+            }
+            
             OutlinedButton(
-                onClick = { /* TODO: Implement Google Sign-In for Register */ },
+                onClick = { launcher.launch(googleSignInClient.signInIntent) },
                 enabled = !state.isLoading,
                 modifier = Modifier
                     .fillMaxWidth()

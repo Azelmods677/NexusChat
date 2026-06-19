@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.home
+package com.Azelmods.App.ui.screens.home
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
@@ -19,11 +19,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,6 +54,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 // ── Screen ────────────────────────────────────────────────────────────────────
+
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -220,110 +227,152 @@ fun HomeScreen(
             }
 
             // ── Main content ───────────────────────────────────────────────
-            when {
+            PullToRefreshBox(
+                isRefreshing = state.isLoading,
+                onRefresh = { viewModel.refreshChats() },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                when {
 
-                // Loading spinner
-                state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-
-                // Error state with retry
-                state.error != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.padding(horizontal = 32.dp)
+                    // Skeleton shimmer loading state (initial load)
+                    state.isLoading && state.chats.isEmpty() -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                modifier = Modifier.size(56.dp),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                            Text(
-                                text = state.error ?: "Something went wrong",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            Button(
-                                onClick = { viewModel.refreshChats() },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            items(6) { ChatSkeletonItem() }
+                        }
+                    }
+
+                    // Error state with retry (shown inside pull box)
+                    state.error != null -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.padding(horizontal = 32.dp)
                             ) {
-                                Text("Retry", color = Color.White)
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(56.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = state.error ?: "Something went wrong",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                                Button(
+                                    onClick = { viewModel.refreshChats() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                ) {
+                                    Text("Retry", color = Color.White)
+                                }
                             }
                         }
                     }
-                }
 
-                // Illustrated empty state
-                state.filteredChats.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.padding(horizontal = 32.dp)
+                    // Illustrated empty state
+                    state.filteredChats.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = null,
-                                modifier = Modifier.size(80.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = "No conversations yet",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Tap + to start chatting",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.padding(horizontal = 32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(80.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "No conversations yet",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Tap + to start chatting",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
-                }
 
-                // Populated chat list
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0xFF070714), Color(0xFF0D0D1E))
-                                )
-                            ),
-                        contentPadding = PaddingValues(top = 6.dp, bottom = 90.dp)
-                    ) {
-                        items(
-                            items = state.filteredChats,
-                            key = { chat -> chat.chatId }
-                        ) { chat ->
-                            ChatItem(
-                                chat = chat,
-                                currentUserId = currentUserId,
-                                onChatClick = {
-                                    navController.navigate(
-                                        Screen.Chat.createRoute(chat.chatId)
+                    // Populated chat list
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color(0xFF070714), Color(0xFF0D0D1E))
                                     )
-                                },
-                                onTogglePin = { viewModel.togglePin(chat.chatId) },
-                                onToggleMute = { viewModel.toggleMute(chat.chatId) },
-                                onArchiveChat = { viewModel.archiveChat(chat.chatId) },
-                                onDeleteChat = { viewModel.deleteChat(chat.chatId) }
-                            )
+                                ),
+                            contentPadding = PaddingValues(top = 6.dp, bottom = 90.dp)
+                        ) {
+                            items(
+                                items = state.filteredChats,
+                                key = { chat -> chat.chatId }
+                            ) { chat ->
+                                val dismissState = rememberSwipeToDismissBoxState(
+                                    confirmValueChange = { value ->
+                                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                                            viewModel.deleteChat(chat.chatId)
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    }
+                                )
+                                SwipeToDismissBox(
+                                    state = dismissState,
+                                    backgroundContent = {
+                                        val color = when (dismissState.dismissDirection) {
+                                            SwipeToDismissBoxValue.EndToStart -> Color(0xFFEF4444)
+                                            else -> Color.Transparent
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 10.dp, vertical = 3.dp)
+                                                .clip(RoundedCornerShape(18.dp))
+                                                .background(color),
+                                            contentAlignment = Alignment.CenterEnd
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Delete,
+                                                contentDescription = "Delete",
+                                                tint = Color.White,
+                                                modifier = Modifier.padding(end = 24.dp)
+                                            )
+                                        }
+                                    },
+                                    modifier = Modifier
+                                ) {
+                                    ChatItem(
+                                        chat = chat,
+                                        currentUserId = currentUserId,
+                                        onChatClick = {
+                                            navController.navigate(
+                                                Screen.Chat.createRoute(chat.chatId)
+                                            )
+                                        },
+                                        onTogglePin = { viewModel.togglePin(chat.chatId) },
+                                        onToggleMute = { viewModel.toggleMute(chat.chatId) },
+                                        onArchiveChat = { viewModel.archiveChat(chat.chatId) },
+                                        onDeleteChat = { viewModel.deleteChat(chat.chatId) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -346,6 +395,7 @@ fun ChatItem(
     onDeleteChat: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     // Extraer datos del chat
     val otherUserName = chat.participantNames.values.firstOrNull() ?: "Anónimo"
@@ -416,7 +466,10 @@ fun ChatItem(
                         interactionSource = interactionSource,
                         indication = null,
                         onClick = onChatClick,
-                        onLongClick = { showMenu = true }
+                        onLongClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            showMenu = true
+                        }
                     )
                     .padding(start = 0.dp, end = 14.dp, top = 11.dp, bottom = 11.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -762,5 +815,89 @@ private fun formatTimestamp(timestamp: Long): String {
 
         else ->
             SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
+    }
+}
+
+// ── Skeleton Shimmer ─────────────────────────────────────────────────────────
+
+@Composable
+fun ChatSkeletonItem() {
+    val shimmerColors = listOf(
+        Color(0xFF1A1A2E),
+        Color(0xFF2D2D44),
+        Color(0xFF1A1A2E)
+    )
+    val transition = rememberInfiniteTransition(label = "shimmer")
+    val translateX by transition.animateFloat(
+        initialValue = -300f,
+        targetValue = 300f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_x"
+    )
+    val brush = Brush.linearGradient(
+        colors = shimmerColors,
+        start = Offset(translateX, 0f),
+        end = Offset(translateX + 300f, 0f)
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF141424))
+            .padding(start = 0.dp, end = 14.dp, top = 11.dp, bottom = 11.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Skeleton accent bar
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(52.dp)
+                    .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                    .background(brush)
+            )
+            Spacer(Modifier.width(10.dp))
+            // Skeleton avatar
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(brush)
+            )
+            Spacer(Modifier.width(12.dp))
+            // Skeleton text lines
+            Column(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .width(140.dp)
+                        .height(16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(brush)
+                )
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .width(200.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(brush)
+                )
+            }
+            // Skeleton time badge
+            Box(
+                modifier = Modifier
+                    .width(36.dp)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(brush)
+            )
+        }
     }
 }

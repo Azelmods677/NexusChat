@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class RegisterState(
@@ -113,5 +114,18 @@ class RegisterViewModel @Inject constructor(
     
     fun clearError() {
         _state.value = _state.value.copy(error = null)
+    }
+    
+    fun registerWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, error = null)
+            try {
+                val credential = com.google.firebase.auth.GoogleAuthProvider.getCredential(idToken, null)
+                com.google.firebase.auth.FirebaseAuth.getInstance().signInWithCredential(credential).await()
+                _state.value = _state.value.copy(isLoading = false, isSuccess = true)
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(isLoading = false, error = "Google Sign-In failed: ${e.message}")
+            }
+        }
     }
 }

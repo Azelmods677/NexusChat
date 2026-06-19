@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.stories
+package com.Azelmods.App.ui.screens.stories
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -62,14 +62,14 @@ fun StoryViewerScreen(
 
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid }
 
-    // â”€â”€ Initial load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Initial load ─────────────────────────────────────────────────────────
     LaunchedEffect(userId) {
         viewModel.loadStoriesForUser(userId)
     }
 
     val currentStory = state.stories.getOrNull(state.currentIndex)
 
-    // â”€â”€ Auto-advance progress timer (images and fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Auto-advance progress timer (images and fallback) ────────────────────
     LaunchedEffect(state.currentIndex, isPaused, currentStory) {
         if (currentStory?.type?.uppercase() == "VIDEO") {
             // Video progress is handled by ExoPlayer sync, not this timer
@@ -93,7 +93,7 @@ fun StoryViewerScreen(
         }
     }
 
-    // â”€â”€ Snackbar on reply sent â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Snackbar on reply sent ───────────────────────────────────────────────
     LaunchedEffect(state.replySent) {
         if (state.replySent) {
             snackbarHostState.showSnackbar("Reply sent!")
@@ -101,7 +101,7 @@ fun StoryViewerScreen(
         }
     }
 
-    // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Loading ──────────────────────────────────────────────────────────────
     if (state.isLoading) {
         Box(
             modifier = Modifier
@@ -114,7 +114,7 @@ fun StoryViewerScreen(
         return
     }
 
-    // â”€â”€ Error / Empty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Error / Empty ────────────────────────────────────────────────────────
     if (state.stories.isEmpty() || state.error != null) {
         Box(
             modifier = Modifier
@@ -160,15 +160,15 @@ fun StoryViewerScreen(
         return
     }
 
-    // Safety guard â€” should never happen after the checks above
+    // Safety guard — should never happen after the checks above
     if (currentStory == null) {
         navController.popBackStack()
         return
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ────────────────────────────────────────────────────────────────────────
     // Main story viewer
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ────────────────────────────────────────────────────────────────────────
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -177,10 +177,10 @@ fun StoryViewerScreen(
             .navigationBarsPadding()
     ) {
 
-        // â”€â”€ 1. STORY CONTENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── 1. STORY CONTENT ─────────────────────────────────────────────────
         when (currentStory.type.uppercase()) {
 
-            // â”€â”€ IMAGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── IMAGE ────────────────────────────────────────────────────────
             "IMAGE" -> {
                 if (!currentStory.mediaUrl.isNullOrBlank()) {
                     SubcomposeAsyncImage(
@@ -242,7 +242,7 @@ fun StoryViewerScreen(
                 }
             }
 
-            // â”€â”€ VIDEO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── VIDEO ────────────────────────────────────────────────────────
             "VIDEO" -> {
                 val videoUrl = currentStory.mediaUrl ?: ""
                 var isBuffering by remember { mutableStateOf(true) }
@@ -390,7 +390,7 @@ fun StoryViewerScreen(
                 }
             }
 
-            // â”€â”€ TEXT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── TEXT ─────────────────────────────────────────────────────────
             "TEXT" -> {
                 val parsedBgColor = remember(currentStory.backgroundColor) {
                     runCatching {
@@ -427,7 +427,7 @@ fun StoryViewerScreen(
                 }
             }
 
-            // â”€â”€ Fallback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Fallback ─────────────────────────────────────────────────────
             else -> {
                 Box(
                     modifier = Modifier
@@ -444,7 +444,7 @@ fun StoryViewerScreen(
             }
         }
 
-        // â”€â”€ 2. CAPTION OVERLAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── 2. CAPTION OVERLAY ───────────────────────────────────────────────
         if (!currentStory.caption.isNullOrBlank()) {
             Box(
                 modifier = Modifier
@@ -472,11 +472,11 @@ fun StoryViewerScreen(
             }
         }
 
-        // â”€â”€ 3. TOUCH ZONES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── 3. TOUCH ZONES ───────────────────────────────────────────────────
         // Placed before the top/bottom bars so the bars' clickable elements
         // sit on top and capture their taps first.
         Row(modifier = Modifier.fillMaxSize()) {
-            // Left zone â†’ previous story
+            // Left zone → previous story
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -485,7 +485,7 @@ fun StoryViewerScreen(
                         detectTapGestures(onTap = { viewModel.previousStory() })
                     }
             )
-            // Right zone â†’ next story / close; long-press toggles pause
+            // Right zone → next story / close; long-press toggles pause
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -504,14 +504,14 @@ fun StoryViewerScreen(
             )
         }
 
-        // â”€â”€ 4. TOP BAR (progress + user info) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── 4. TOP BAR (progress + user info) ───────────────────────────────
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopStart)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // Progress bars â€” one per story
+            // Progress bars — one per story
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -577,7 +577,7 @@ fun StoryViewerScreen(
 
                 Spacer(modifier = Modifier.width(2.dp))
 
-                // Close button â€” larger touch target sits above touch zones
+                // Close button — larger touch target sits above touch zones
                 IconButton(
                     onClick = { navController.popBackStack() },
                     modifier = Modifier.size(44.dp)
@@ -592,7 +592,7 @@ fun StoryViewerScreen(
             }
         }
 
-        // â”€â”€ 5. BOTTOM BAR (reply / viewers) + snackbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // ── 5. BOTTOM BAR (reply / viewers) + snackbar ──────────────────────
         Column(modifier = Modifier.align(Alignment.BottomCenter)) {
 
             // Snackbar floats just above the bar
@@ -606,7 +606,7 @@ fun StoryViewerScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (currentStory.userId != currentUserId) {
-                    // â”€â”€ Reply pill (opens sheet) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // ── Reply pill (opens sheet) ──────────────────────────────
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -620,7 +620,7 @@ fun StoryViewerScreen(
                             .padding(horizontal = 16.dp, vertical = 11.dp)
                     ) {
                         Text(
-                            text = "Reply to ${currentStory.userName.ifBlank { "story" }}â€¦",
+                            text = "Reply to ${currentStory.userName.ifBlank { "story" }}…",
                             color = Color.White.copy(alpha = 0.65f),
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -636,7 +636,7 @@ fun StoryViewerScreen(
                         )
                     }
                 } else {
-                    // â”€â”€ Own story: viewers count â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    // ── Own story: viewers count ──────────────────────────────
                     Spacer(modifier = Modifier.weight(1f))
                     TextButton(
                         onClick = {
@@ -645,7 +645,7 @@ fun StoryViewerScreen(
                         }
                     ) {
                         Text(
-                            text = "ðŸ‘  ${currentStory.views.size}",
+                            text = "👁 ${currentStory.views.size}",
                             color = Color.White,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
@@ -656,9 +656,9 @@ fun StoryViewerScreen(
         }
     } // end main Box
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ────────────────────────────────────────────────────────────────────────
     // REPLY BOTTOM SHEET
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ────────────────────────────────────────────────────────────────────────
     if (showReplySheet) {
         ModalBottomSheet(
             onDismissRequest = {
@@ -699,7 +699,7 @@ fun StoryViewerScreen(
                     value = replyText,
                     onValueChange = { replyText = it },
                     placeholder = {
-                        Text("Type a messageâ€¦", color = Color.White.copy(alpha = 0.38f))
+                        Text("Type a message…", color = Color.White.copy(alpha = 0.38f))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 4,
@@ -752,9 +752,9 @@ fun StoryViewerScreen(
         }
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ────────────────────────────────────────────────────────────────────────
     // VIEWERS BOTTOM SHEET
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ────────────────────────────────────────────────────────────────────────
     if (showViewersSheet) {
         ModalBottomSheet(
             onDismissRequest = { showViewersSheet = false },
@@ -855,9 +855,9 @@ fun StoryViewerScreen(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 // Helpers
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 
 fun getTimeAgo(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp

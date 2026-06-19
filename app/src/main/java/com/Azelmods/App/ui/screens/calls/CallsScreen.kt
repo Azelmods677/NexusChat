@@ -40,6 +40,9 @@ fun CallsScreen(
     val tutorialPreferences = remember { TutorialPreferences(context) }
     val state by viewModel.state.collectAsState()
     var selectedFilter by remember { mutableStateOf("All") }
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCallDetails by remember { mutableStateOf<CallHistoryItem?>(null) }
     
     // Limpiar contador de llamadas perdidas al abrir la pantalla
     LaunchedEffect(Unit) {
@@ -62,34 +65,105 @@ fun CallsScreen(
     
     // Filter calls from Firebase (NO DEMO DATA)
     val filteredCalls = state.calls.filter { call ->
-        when (selectedFilter) {
+        val matchesFilter = when (selectedFilter) {
             "All" -> true
             "Missed" -> call.status == "MISSED"
             else -> true
         }
+        val matchesSearch = if (searchQuery.isNotEmpty()) {
+            call.userName.contains(searchQuery, ignoreCase = true)
+        } else true
+        
+        matchesFilter && matchesSearch
+    }
+    
+    if (selectedCallDetails != null) {
+        val call = selectedCallDetails!!
+        AlertDialog(
+            onDismissRequest = { selectedCallDetails = null },
+            title = { Text(text = "Call Details") },
+            text = {
+                Column {
+                    Text(text = "Name: ${call.userName}")
+                    Text(text = "Type: ${call.callType}")
+                    Text(text = "Direction: ${if (call.isIncoming) "Incoming" else "Outgoing"}")
+                    Text(text = "Status: ${call.status}")
+                    if (call.duration != null) {
+                        Text(text = "Duration: ${call.duration}")
+                    }
+                    Text(text = "Time: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(call.startTime))}")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedCallDetails = null }) {
+                    Text("Close")
+                }
+            },
+            containerColor = DarkSurface,
+            titleContentColor = Color.White,
+            textContentColor = Color.LightGray
+        )
     }
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Calls",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
+            if (isSearchActive) {
+                TopAppBar(
+                    title = {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("Search calls...", color = Color.Gray) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { 
+                            isSearchActive = false
+                            searchQuery = "" 
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White)
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DarkSurface
                     )
-                },
-                actions = {
-                    IconButton(onClick = { /* TODO: Search calls */ }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = Color.White
                 )
-            )
+            } else {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Calls",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        )
+                    },
+                    actions = {
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                        titleContentColor = Color.White,
+                        actionIconContentColor = Color.White
+                    )
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -152,16 +226,18 @@ fun CallsScreen(
                             tint = Color.Gray
                         )
                         Text(
-                            text = if (selectedFilter == "Missed") "No missed calls" else "No calls yet",
+                            text = if (searchQuery.isNotEmpty()) "No results found" else if (selectedFilter == "Missed") "No missed calls" else "No calls yet",
                             color = Color.Gray,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium
                         )
-                        Text(
-                            text = "Tap the + button to start a call",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Tap the + button to start a call",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             } else {
@@ -182,7 +258,7 @@ fun CallsScreen(
                                 }
                             },
                             onInfoClick = {
-                                // TODO: Show call details
+                                selectedCallDetails = call
                             }
                         )
                     }

@@ -24,6 +24,7 @@ import com.Azelmods.App.ui.screens.call.IncomingCallScreen
 import com.Azelmods.App.ui.screens.calls.CallsScreen
 import com.Azelmods.App.ui.screens.chat.ChatScreen
 import com.Azelmods.App.ui.screens.conversation.NewConversationScreen
+import com.Azelmods.App.ui.screens.editor.CodeEditorScreen
 import com.Azelmods.App.ui.screens.home.SearchScreen
 import com.Azelmods.App.ui.screens.main.MainScreen
 import com.Azelmods.App.ui.screens.premium.PremiumScreen
@@ -104,7 +105,12 @@ fun NavGraph(
         // Chats
         composable(
             route = Screen.Chat.route,
-            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
+            arguments = listOf(navArgument("chatId") { type = NavType.StringType }),
+            deepLinks = listOf(
+                androidx.navigation.navDeepLink {
+                    uriPattern = "nexuschat://chat/{chatId}"
+                }
+            )
         ) { backStackEntry ->
             val chatId = backStackEntry.arguments?.getString("chatId") ?: ""
             if (chatId.isBlank()) {
@@ -241,7 +247,12 @@ fun NavGraph(
         // Profile
         composable(
             route = Screen.Profile.route,
-            arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            arguments = listOf(navArgument("userId") { type = NavType.StringType }),
+            deepLinks = listOf(
+                androidx.navigation.navDeepLink {
+                    uriPattern = "nexuschat://profile/{userId}"
+                }
+            )
         ) { backStackEntry ->
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
             ProfileScreen(userId = userId, navController = navController)
@@ -326,6 +337,14 @@ fun NavGraph(
         
         composable(Screen.AiFeatures.route) {
             AiFeaturesScreen(navController = navController)
+        }
+        
+        composable("translation_language") {
+            TranslationLanguageScreen(navController = navController)
+        }
+
+        composable("code_editor") {
+            CodeEditorScreen(navController = navController)
         }
         
         // Photo Viewer - Full screen image viewer with zoom

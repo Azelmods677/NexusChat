@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.profile
+package com.Azelmods.App.ui.screens.profile
 
 import android.net.Uri
 import android.widget.Toast
@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -232,7 +233,7 @@ fun EditProfileScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { /* TODO: Navigate to change password */ },
+                            .clickable { navController.navigate(Screen.SettingsAccount.route) },
                         colors = CardDefaults.cardColors(
                             containerColor = DarkSurface
                         )

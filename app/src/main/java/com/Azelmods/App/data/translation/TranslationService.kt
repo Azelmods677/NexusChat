@@ -37,9 +37,22 @@ class TranslationService @Inject constructor() {
 
             val response = URL(url).readText()
             val json = JSONObject(response)
+            
+            // Check for API errors (e.g. quota limit)
+            val responseStatus = json.optInt("responseStatus", 200)
+            if (responseStatus != 200) {
+                val errorDetails = json.optString("responseDetails", "Error $responseStatus")
+                return@withContext Result.failure(Exception("Error de traducción: $errorDetails"))
+            }
+            
             val translated = json
                 .getJSONObject("responseData")
                 .getString("translatedText")
+
+            // Sometimes the API puts the quota warning directly in the translated text with a 200 status
+            if (translated.startsWith("MYMEMORY WARNING", ignoreCase = true)) {
+                return@withContext Result.failure(Exception("Límite diario de traducciones agotado"))
+            }
 
             if (translated.isBlank()) Result.failure(Exception("Traducción vacía"))
             else Result.success(translated)

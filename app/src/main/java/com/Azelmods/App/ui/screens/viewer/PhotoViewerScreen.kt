@@ -266,9 +266,17 @@ fun PhotoViewerScreen(
                 TextButton(
                     onClick = {
                         showDeleteDialog = false
-                        // TODO: Implement actual delete from Firebase Storage
-                        Toast.makeText(context, "Delete functionality coming soon", Toast.LENGTH_SHORT).show()
-                        navController.popBackStack()
+                        try {
+                            val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().getReferenceFromUrl(decodedUrl)
+                            storageRef.delete().addOnSuccessListener {
+                                Toast.makeText(context, "Imagen eliminada", Toast.LENGTH_SHORT).show()
+                                navController.popBackStack()
+                            }.addOnFailureListener { e ->
+                                Toast.makeText(context, "Error al eliminar: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "No se pudo eliminar: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 ) {
                     Text("Delete", color = Color.Red)

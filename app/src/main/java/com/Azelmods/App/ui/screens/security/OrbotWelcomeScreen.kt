@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.security
+package com.Azelmods.App.ui.screens.security
 
 import android.content.Intent
 import android.net.Uri
@@ -38,13 +38,13 @@ import com.Azelmods.App.ui.theme.*
 import kotlinx.coroutines.delay
 
 /**
- * ðŸŒ OrbotWelcomeScreen â€” Pantalla de bienvenida que guÃ­a al usuario
- * a instalar y configurar Orbot para navegaciÃ³n anÃ³nima.
+ * 🌐 OrbotWelcomeScreen — Pantalla de bienvenida que guía al usuario
+ * a instalar y configurar Orbot para navegación anónima.
  *
  * Estados:
- * 1. Orbot no instalado â†’ BotÃ³n para descargar desde Guardian Project
- * 2. Orbot instalado pero no activo â†’ BotÃ³n para abrir Orbot
- * 3. Orbot conectado y funcionando â†’ ConfirmaciÃ³n + acceso a Tor Browser
+ * 1. Orbot no instalado → Botón para descargar desde Guardian Project
+ * 2. Orbot instalado pero no activo → Botón para abrir Orbot
+ * 3. Orbot conectado y funcionando → Confirmación + acceso a Tor Browser
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,13 +98,13 @@ fun OrbotWelcomeScreen(
         ) {
             Spacer(Modifier.height(24.dp))
 
-            // â”€â”€ Animated Tor icon â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Animated Tor icon ────────────────────────────────────────
             TorOnionAnimation(status = orbotStatus)
             Spacer(Modifier.height(24.dp))
 
-            // â”€â”€ Title â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Title ──────────────────────────────────────────────────
             Text(
-                text = "NavegaciÃ³n AnÃ³nima",
+                text = "Navegación Anónima",
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -114,7 +114,7 @@ fun OrbotWelcomeScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Accede a sitios .onion y navega de forma privada usando la red Tor a travÃ©s de Orbot",
+                text = "Accede a sitios .onion y navega de forma privada usando la red Tor a través de Orbot",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
@@ -123,12 +123,12 @@ fun OrbotWelcomeScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // â”€â”€ Status Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Status Card ──────────────────────────────────────────────
             OrbotStatusCard(status = orbotStatus)
 
             Spacer(Modifier.height(24.dp))
 
-            // â”€â”€ Action buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Action buttons ───────────────────────────────────────────
             when (orbotStatus) {
                 OrbotStatus.CHECKING -> {
                     Box(
@@ -187,7 +187,7 @@ fun OrbotWelcomeScreen(
                     InstallStepCard(
                         step = 3,
                         title = "Vuelve a esta pantalla",
-                        description = "VerÃ¡s el estado 'Conectado' automÃ¡ticamente"
+                        description = "Verás el estado 'Conectado' automáticamente"
                     )
                 }
 
@@ -195,7 +195,7 @@ fun OrbotWelcomeScreen(
                     OrbotActionButton(
                         icon = Icons.Default.PlayArrow,
                         text = "Abrir Orbot",
-                        description = "Orbot estÃ¡ instalado pero no conectado",
+                        description = "Orbot está instalado pero no conectado",
                         color = Warning,
                         onClick = { OrbotDetector.launchOrbot(context) }
                     )
@@ -225,7 +225,7 @@ fun OrbotWelcomeScreen(
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    "Una vez que Orbot se conecte, el estado cambiarÃ¡ automÃ¡ticamente.",
+                                    "Una vez que Orbot se conecte, el estado cambiará automáticamente.",
                                     color = Color.Gray,
                                     fontSize = 12.sp
                                 )
@@ -237,8 +237,8 @@ fun OrbotWelcomeScreen(
                 OrbotStatus.ACTIVE -> {
                     OrbotActionButton(
                         icon = Icons.Default.Verified,
-                        text = "Â¡Conectado a Tor!",
-                        description = "Tu trÃ¡fico estÃ¡ siendo anonimizado",
+                        text = "¡Conectado a Tor!",
+                        description = "Tu tráfico está siendo anonimizado",
                         color = Success,
                         enabled = false,
                         onClick = {}
@@ -255,7 +255,7 @@ fun OrbotWelcomeScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                "Â¿QuÃ© sigue?",
+                                "¿Qué sigue?",
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 fontSize = 14.sp
@@ -269,8 +269,8 @@ fun OrbotWelcomeScreen(
                             )
                             NextStepItem(
                                 icon = Icons.Default.Security,
-                                title = "ConfiguraciÃ³n de Tor",
-                                description = "Ajusta el modo anÃ³nimo y proxy selector",
+                                title = "Configuración de Tor",
+                                description = "Ajusta el modo anónimo y proxy selector",
                                 onClick = { navController.navigate(Screen.TorControl.route) }
                             )
                             NextStepItem(
@@ -286,7 +286,7 @@ fun OrbotWelcomeScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // â”€â”€ Refresh button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // ── Refresh button ───────────────────────────────────────────
             TextButton(
                 onClick = {
                     orbotStatus = OrbotStatus.CHECKING
@@ -307,9 +307,9 @@ fun OrbotWelcomeScreen(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 // TorOnionAnimation
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun TorOnionAnimation(status: OrbotStatus) {
@@ -409,9 +409,9 @@ private fun TorOnionAnimation(status: OrbotStatus) {
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 // OrbotStatusCard
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun OrbotStatusCard(status: OrbotStatus) {
@@ -431,9 +431,9 @@ private fun OrbotStatusCard(status: OrbotStatus) {
 
     val description = when (status) {
         OrbotStatus.CHECKING -> "Detectando Orbot en tu dispositivo"
-        OrbotStatus.NOT_INSTALLED -> "Necesitas Orbot para navegar por la red Tor"
-        OrbotStatus.INACTIVE -> "Orbot estÃ¡ instalado pero no conectado a Tor"
-        OrbotStatus.ACTIVE -> "Tu dispositivo estÃ¡ conectado a la red Tor"
+        OrbotStatus.NOT_INSTALLED -> "Orbot no está instalado en tu dispositivo"
+        OrbotStatus.INACTIVE -> "Orbot está instalado pero no conectado a Tor"
+        OrbotStatus.ACTIVE -> "Tu dispositivo está conectado a la red Tor"
     }
 
     Card(
@@ -492,9 +492,9 @@ private fun OrbotStatusCard(status: OrbotStatus) {
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 // OrbotActionButton
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun OrbotActionButton(
@@ -524,9 +524,9 @@ private fun OrbotActionButton(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 // InstallStepCard
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun InstallStepCard(step: Int, title: String, description: String) {
@@ -557,9 +557,9 @@ private fun InstallStepCard(step: Int, title: String, description: String) {
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 // NextStepItem
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun NextStepItem(
@@ -589,9 +589,9 @@ private fun NextStepItem(
     }
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 // OrbotStatus enum
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ───────────────────────────────────────────────────────────────────────────────
 
 private enum class OrbotStatus {
     CHECKING,

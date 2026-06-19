@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.Azelmods.App.data.ai
 
 import android.content.Context
@@ -114,6 +115,7 @@ class AiKeyStore @Inject constructor(
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun buildEncryptedPrefs(): SharedPreferences {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

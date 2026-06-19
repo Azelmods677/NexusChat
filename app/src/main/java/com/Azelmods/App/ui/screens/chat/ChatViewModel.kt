@@ -46,6 +46,8 @@ data class ChatState(
     val ephemeralDuration: Long = 0L,              // Selected duration in seconds (0 = view once)
     val showEphemeralPicker: Boolean = false,      // Show duration picker dropdown
     // ── Translation ──
+    val translatingMessageIds: Set<String> = emptySet(), // IDs currently being translated
+    val translationError: String? = null,
     val translatedMessages: Map<String, String> = emptyMap() // messageId -> translated text
 )
 
@@ -57,7 +59,8 @@ class ChatViewModel @Inject constructor(
     private val backgroundRepository: com.Azelmods.App.data.repository.ChatBackgroundRepository,
     private val decryptMessageUseCase: DecryptMessageUseCase,
     private val cacheManager: CacheManager,
-    private val translationService: com.Azelmods.App.data.translation.TranslationService
+    private val translationService: com.Azelmods.App.data.translation.TranslationService,
+    private val userPreferences: com.Azelmods.App.data.preferences.UserPreferences
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatState())
@@ -464,6 +467,12 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    fun refreshChat() {
+        if (currentChatId.isNotBlank()) {
+            loadChat(currentChatId)
+        }
+    }
+
     /**
      * Write the current user's typing status to typing/{chatId}/{userId}.
      * Debounced: only writes if the value actually changes.
@@ -538,10 +547,29 @@ class ChatViewModel @Inject constructor(
                 }
                 _state.value = _state.value.copy(replyingTo = null)
             } catch (e: Exception) {
-                e.printStackTrace()
-                _state.value = _state.value.copy(
-                    error = "Error al enviar mensaje: ${e.message}"
-                )
+                // Offline fallback: save to pending queue
+                try {
+                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                    cacheManager.database.pendingMessageDao().insert(
+                        com.Azelmods.App.data.local.entity.PendingMessageEntity(
+                            chatId = targetChatId,
+                            content = content,
+                            senderId = currentUserId,
+                            replyTo = _state.value.replyingTo?.messageId,
+                            isEphemeral = _state.value.isEphemeralMode,
+                            isViewOnce = _state.value.ephemeralDuration == 0L,
+                            selfDestructDuration = _state.value.ephemeralDuration
+                        )
+                    )
+                    _state.value = _state.value.copy(
+                        replyingTo = null,
+                        error = "Mensaje guardado. Se enviará cuando haya conexión."
+                    )
+                } catch (e2: Exception) {
+                    _state.value = _state.value.copy(
+                        error = "Error al enviar mensaje: ${e.message}"
+                    )
+                }
             }
         }
     }
@@ -716,7 +744,7 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * Translate a message into the device language using [TranslationService].
+     * Translate a message into the preferred language using [TranslationService].
      * Toggles: if a translation already exists for the message, it is removed.
      */
     fun translateMessage(messageId: String, text: String) {
@@ -724,27 +752,44 @@ class ChatViewModel @Inject constructor(
         // Toggle off if already translated
         if (_state.value.translatedMessages.containsKey(messageId)) {
             _state.value = _state.value.copy(
-                translatedMessages = _state.value.translatedMessages - messageId
+                translatedMessages = _state.value.translatedMessages - messageId,
+                translationError = null
             )
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(
+                translatingMessageIds = _state.value.translatingMessageIds + messageId,
+                translationError = null
+            )
             try {
-                val targetLang = java.util.Locale.getDefault().language.ifBlank { "es" }
+                val prefLang = userPreferences.translationLanguage.value
+                val targetLang = if (prefLang == "auto" || prefLang.isBlank()) {
+                    java.util.Locale.getDefault().language.ifBlank { "es" }
+                } else prefLang
                 val result = translationService.translate(text, targetLang = targetLang)
                 result.onSuccess { translated ->
                     _state.value = _state.value.copy(
-                        translatedMessages = _state.value.translatedMessages + (messageId to translated)
+                        translatedMessages = _state.value.translatedMessages + (messageId to translated),
+                        translatingMessageIds = _state.value.translatingMessageIds - messageId
                     )
                 }.onFailure { e ->
                     _state.value = _state.value.copy(
-                        error = "No se pudo traducir: ${e.message}"
+                        translationError = "No se pudo traducir: ${e.message}",
+                        translatingMessageIds = _state.value.translatingMessageIds - messageId
                     )
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(error = "No se pudo traducir: ${e.message}")
+                _state.value = _state.value.copy(
+                    translationError = "No se pudo traducir: ${e.message}",
+                    translatingMessageIds = _state.value.translatingMessageIds - messageId
+                )
             }
         }
+    }
+    
+    fun clearTranslationError() {
+        _state.value = _state.value.copy(translationError = null)
     }
     
     /**

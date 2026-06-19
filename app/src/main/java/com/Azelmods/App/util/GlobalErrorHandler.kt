@@ -65,7 +65,7 @@ class NexusCrashHandler private constructor(
             appendLine("NEXUS CHAT CRASH REPORT")
             appendLine("═══════════════════════════════════════")
             appendLine("Time: $timestamp")
-            appendLine("Thread: ${thread.name} (ID: ${thread.id})")
+            appendLine("Thread: ${thread.name} (ID: ${thread.threadId()})")
             appendLine("Exception: ${throwable.javaClass.name}")
             appendLine("Message: ${throwable.message ?: "No message"}")
             appendLine()

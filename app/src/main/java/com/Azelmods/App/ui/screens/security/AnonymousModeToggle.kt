@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.security
+package com.Azelmods.App.ui.screens.security
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
@@ -23,11 +23,11 @@ import com.Azelmods.App.ui.theme.Warning
  * - Connection status (Disabled, Connecting X%, Connected, Error)
  * - Disables toggle during bootstrap process
  *
- * Cuando se proporciona [orbotStatus] (derivado de `OrbotDetector` vÃ­a
+ * Cuando se proporciona [orbotStatus] (derivado de `OrbotDetector` vía
  * `mapOrbotStatus`), el estado de Orbot se presenta de forma clara y accionable
  * y el toggle NUNCA queda en un estado de error permanente: ante un
- * `TorState.Error` se muestra el mensaje/acciÃ³n de Orbot y el toggle vuelve a un
- * estado consistente pero operable para reintentar (degradaciÃ³n elegante).
+ * `TorState.Error` se muestra el mensaje/acción de Orbot y el toggle vuelve a un
+ * estado consistente pero operable para reintentar (degradación elegante).
  *
  * Requirements: 6.4, 7.1, 7.3, 17.1, 17.2, 17.3, 17.4, 17.5
  */
@@ -45,7 +45,7 @@ fun AnonymousModeToggle(
     // duro de Tor, de modo que el toggle nunca aparezca "roto".
     val isError = torState is TorState.Error && orbotStatus == null
 
-    // El toggle se deshabilita sÃ³lo mientras conecta. Si hay estado de Orbot,
+    // El toggle se deshabilita sólo mientras conecta. Si hay estado de Orbot,
     // respetamos `toggleEnabled` (siempre operable) para permitir reintentar.
     val toggleEnabled = !isConnecting && (orbotStatus?.toggleEnabled ?: true)
 
@@ -118,7 +118,7 @@ fun AnonymousModeToggle(
 
                     Text(
                         text = if (connectingState.message.isNotEmpty())
-                            "Connecting: ${connectingState.progress}% â€“ ${connectingState.message}"
+                            "Connecting: ${connectingState.progress}% – ${connectingState.message}"
                         else
                             "Connecting: ${connectingState.progress}%",
                         style = MaterialTheme.typography.bodySmall,
@@ -128,7 +128,7 @@ fun AnonymousModeToggle(
                 }
             }
 
-            // Error message (sÃ³lo cuando no hay estado de Orbot accionable)
+            // Error message (sólo cuando no hay estado de Orbot accionable)
             if (isError) {
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -140,7 +140,7 @@ fun AnonymousModeToggle(
                 )
             }
 
-            // Orbot status message + action (degradaciÃ³n elegante, nunca "roto")
+            // Orbot status message + action (degradación elegante, nunca "roto")
             if (orbotStatus != null && orbotStatus.state != OrbotState.ACTIVE) {
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -166,7 +166,7 @@ fun AnonymousModeToggle(
 /**
  * Status text based on Tor state.
  *
- * Cuando se proporciona [orbotStatus] y Tor estÃ¡ en error, mostramos un estado
+ * Cuando se proporciona [orbotStatus] y Tor está en error, mostramos un estado
  * derivado del estado real de Orbot (no un "Error" permanente).
  */
 @Composable

@@ -403,13 +403,13 @@ class RealtimeDatabaseRepository @Inject constructor(
         database.child("users").child(userId).child("profilePhotoUrl").setValue(photoUrl).await()
     }
 
-    suspend fun createStory(mediaUrl: String, mediaType: String, isVideo: Boolean): String {
+    suspend fun createStory(mediaUrl: String, mediaType: String, isVideo: Boolean, caption: String? = null): String {
         val userId = auth.currentUser?.uid ?: throw Exception("Not logged in")
         val storyId = database.child("stories").child(userId).push().key ?: ""
         
         // Usar el mediaType que se pasa como parámetro directamente
         // Esto permite TEXT, IMAGE, VIDEO correctamente
-        val storyData = mapOf(
+        val storyData = mutableMapOf<String, Any>(
             "storyId" to storyId,
             "userId" to userId,
             "mediaUrl" to mediaUrl,
@@ -417,6 +417,9 @@ class RealtimeDatabaseRepository @Inject constructor(
             "type" to mediaType.uppercase(),
             "timestamp" to ServerValue.TIMESTAMP
         )
+        if (!caption.isNullOrBlank()) {
+            storyData["caption"] = caption
+        }
         database.child("stories").child(userId).child(storyId).setValue(storyData).await()
         return storyId
     }

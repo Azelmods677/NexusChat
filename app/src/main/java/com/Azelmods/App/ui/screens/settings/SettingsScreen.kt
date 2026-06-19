@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.settings
+package com.Azelmods.App.ui.screens.settings
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -327,6 +327,16 @@ fun SettingsScreen(
                     icon = Icons.Default.Notifications,
                     title = "Notifications",
                     onClick = { navController.navigate(Screen.SettingsNotifications.route) }
+                )
+                SettingsItem(
+                    icon = Icons.Default.Translate,
+                    title = "Translation Language",
+                    onClick = { navController.navigate("translation_language") }
+                )
+                SettingsItem(
+                    icon = Icons.Default.Code,
+                    title = "Code Editor",
+                    onClick = { navController.navigate("code_editor") }
                 )
             }
             

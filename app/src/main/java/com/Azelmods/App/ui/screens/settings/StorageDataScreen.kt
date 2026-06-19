@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.settings
+package com.Azelmods.App.ui.screens.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,6 +26,8 @@ fun StorageDataScreen(
     val autoDownloadPhotos by viewModel.autoDownloadPhotos.collectAsState()
     val autoDownloadVideos by viewModel.autoDownloadVideos.collectAsState()
     val autoDownloadFiles by viewModel.autoDownloadFiles.collectAsState()
+    val lowDataMode by viewModel.lowDataMode.collectAsState()
+    var showDataUsageDialog by remember { mutableStateOf(false) }
     
     // Real-time storage info
     var totalStorage by remember { mutableStateOf(0L) }
@@ -200,15 +202,41 @@ fun StorageDataScreen(
                 title = "Data Usage",
                 subtitle = "View data consumption",
                 icon = Icons.Default.DataUsage,
-                onClick = { /* TODO: Data usage stats */ }
+                onClick = { showDataUsageDialog = true }
             )
             
-            SettingsItem(
+            SettingsSwitchItem(
                 title = "Low Data Mode",
-                subtitle = "Reduce data consumption",
+                subtitle = "Reduce media auto-download",
                 icon = Icons.Default.DataSaverOn,
-                onClick = { /* TODO: Low data mode */ }
+                checked = lowDataMode,
+                onCheckedChange = { viewModel.setLowDataMode(it) }
             )
         }
+    }
+    
+    // Data Usage Dialog
+    if (showDataUsageDialog) {
+        AlertDialog(
+            onDismissRequest = { showDataUsageDialog = false },
+            title = { Text("Data Usage", color = Color.White) },
+            text = {
+                Column {
+                    Text("Approximate data consumption:", color = Color.Gray)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text("Cache size: ${formatBytes(cacheSize)}", color = Color.White)
+                    Text("Storage used: ${formatBytes(usedStorage)}", color = Color.White)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Low Data Mode ${if (lowDataMode) "enabled" else "disabled"}", color = Color.Gray, fontSize = 12.sp)
+                    Text("When enabled, photos and videos will not auto-download.", color = Color.Gray, fontSize = 12.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDataUsageDialog = false }) {
+                    Text("Close", color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            containerColor = Color(0xFF1A1A2E)
+        )
     }
 }

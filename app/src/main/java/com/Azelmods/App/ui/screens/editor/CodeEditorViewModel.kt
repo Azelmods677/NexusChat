@@ -131,6 +131,10 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
         _currentFile.value = file
     }
     
+    fun closeFile() {
+        _currentFile.value = null
+    }
+    
     fun clearOutput() {
         _output.value = ""
     }

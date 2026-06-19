@@ -33,6 +33,19 @@ models_new_key.json
 *.jks
 key.properties
 
+# Firebase / Google Services (si contiene info sensible)
+google-services.json
+
+# API Keys y configuraciones personales
+**/api_keys.properties
+**/secrets.properties
+*.env
+.env.local
+.env.*.local
+
+# User-specific AI API keys (cada usuario configura la suya)
+**/user_api_keys.json
+
 # ───────────────────────────────────────────────
 # Internal analysis / scratch docs (not for the public repo)
 # ───────────────────────────────────────────────

@@ -87,6 +87,10 @@ class UserPreferences @Inject constructor(
     private val _wallpaperValue = MutableStateFlow(prefs.getString(KEY_WALLPAPER_VALUE, "") ?: "")
     val wallpaperValue: StateFlow<String> = _wallpaperValue.asStateFlow()
     
+    // Translation Settings
+    private val _translationLanguage = MutableStateFlow(prefs.getString(KEY_TRANSLATION_LANGUAGE, "auto") ?: "auto")
+    val translationLanguage: StateFlow<String> = _translationLanguage.asStateFlow()
+    
     // Storage Settings
     private val _autoDownloadPhotos = MutableStateFlow(prefs.getBoolean(KEY_AUTO_DOWNLOAD_PHOTOS, true))
     val autoDownloadPhotos: StateFlow<Boolean> = _autoDownloadPhotos.asStateFlow()
@@ -96,6 +100,10 @@ class UserPreferences @Inject constructor(
     
     private val _autoDownloadFiles = MutableStateFlow(prefs.getBoolean(KEY_AUTO_DOWNLOAD_FILES, false))
     val autoDownloadFiles: StateFlow<Boolean> = _autoDownloadFiles.asStateFlow()
+    
+    // Network Settings
+    private val _lowDataMode = MutableStateFlow(prefs.getBoolean(KEY_LOW_DATA_MODE, false))
+    val lowDataMode: StateFlow<Boolean> = _lowDataMode.asStateFlow()
     
     // Account Settings Update Functions
     fun updateDisplayName(name: String) {
@@ -142,6 +150,11 @@ class UserPreferences @Inject constructor(
     fun setTwoFactorEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_TWO_FACTOR, enabled) }
         _twoFactorEnabled.value = enabled
+    }
+    
+    fun setLowDataMode(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_LOW_DATA_MODE, enabled) }
+        _lowDataMode.value = enabled
     }
     
     // Notification Settings Update Functions
@@ -204,6 +217,12 @@ class UserPreferences @Inject constructor(
         _wallpaperValue.value = value
     }
     
+    // Translation Settings Update Functions
+    fun setTranslationLanguage(language: String) {
+        prefs.edit { putString(KEY_TRANSLATION_LANGUAGE, language) }
+        _translationLanguage.value = language
+    }
+    
     // Storage Settings Update Functions
     fun setAutoDownloadPhotos(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_AUTO_DOWNLOAD_PHOTOS, enabled) }
@@ -264,6 +283,12 @@ class UserPreferences @Inject constructor(
         private const val KEY_FONT_SIZE = "font_size"
         private const val KEY_WALLPAPER_TYPE = "wallpaper_type"
         private const val KEY_WALLPAPER_VALUE = "wallpaper_value"
+        
+        // Translation Keys
+        private const val KEY_TRANSLATION_LANGUAGE = "translation_language"
+        
+        // Network Keys
+        private const val KEY_LOW_DATA_MODE = "low_data_mode"
         
         // Storage Keys
         private const val KEY_AUTO_DOWNLOAD_PHOTOS = "auto_download_photos"

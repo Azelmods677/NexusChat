@@ -72,6 +72,7 @@ fun FullScreenImageViewer(
     }
 }
 
+@Suppress("KotlinConstantConditions")
 @Composable
 private fun FullScreenImageContent(
     imageUrl: String,
@@ -82,6 +83,7 @@ private fun FullScreenImageContent(
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    var showOptionsMenu by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -327,19 +329,61 @@ private fun FullScreenImageContent(
                     }
 
                     // More options
-                    IconButton(
-                        onClick = { /* TODO: Show options menu */ },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f))
-                    ) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { showOptionsMenu = true },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.15f))
+                        ) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOptionsMenu,
+                            onDismissRequest = { showOptionsMenu = false },
+                            containerColor = Color(0xFF1A1A2E)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Save to device", color = Color.White) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    onDownload?.invoke()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Download, null, tint = Color.White)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Share", color = Color.White) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(android.content.Intent.EXTRA_TEXT, imageUrl)
+                                    }
+                                    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share image"))
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Share, null, tint = Color.White)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Close", color = Color.White) },
+                                onClick = {
+                                    showOptionsMenu = false
+                                    onDismiss()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Close, null, tint = Color.White)
+                                }
+                            )
+                        }
                     }
                 }
             }
