@@ -1,559 +1,377 @@
-<img width="1254" height="1254" alt="icono de la aplicacion" src="https://github.com/user-attachments/assets/46a31b46-e254-4bd8-96ea-8e1abce14930" />
+
+
+
+<img width="1254" height="1254" alt="icono de la aplicacion" src="https://github.com/user-attachments/assets/6fac646f-da64-41e7-a9e9-73c0c96abfff" />
+
 
 
 <div align="center">
 
-<h1>
-  🔐 NexusChat v3.0.0
-</h1>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:7F52FF,100:4285F4&height=200&section=header&text=NexusChat&fontSize=70&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=Plantilla%20Open%20Source%20de%20Mensajería%20Android%20%7C%20Enterprise%20Grade&descAlignY=55&descSize=18" />
+
+<br>
 
 <p align="center">
-  <strong>Plantilla Open Source de Mensajería Android · Enterprise Grade</strong>
+  <a href="https://github.com/Azelmods677/NexusChat/stargazers">
+    <img src="https://img.shields.io/github/stars/Azelmods677/NexusChat?style=flat-square&logo=github&color=FFD700&labelColor=0d1117" alt="Stars" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=flat-square&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Compose-BOM%202025.04.01-4285F4?style=flat-square&logo=jetpack-compose&logoColor=white&labelColor=0d1117" alt="Compose" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Firebase-BOM%2033.7.0-FFCA28?style=flat-square&logo=firebase&logoColor=white&labelColor=0d1117" alt="Firebase" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Min%20SDK-31%20(Android%2012)-3DDC84?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Min SDK" />
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Target%20SDK-36%20(Android%2016)-3DDC84?style=flat-square&logo=android&logoColor=white&labelColor=0d1117" alt="Target SDK" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-00C853?style=flat-square&logo=opensourceinitiative&logoColor=white&labelColor=0d1117" alt="License" />
+  </a>
 </p>
 
 <p align="center">
-  <a href="#estado-de-completitud">
-    <img src="https://img.shields.io/badge/Completitud-97.75%25-success?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Completitud" />
-  </a>
-  <a href="#stack-tecnol%C3%B3gico">
-    <img src="https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=0d1117" alt="Kotlin" />
-  </a>
-  <a href="#stack-tecnol%C3%B3gico">
-    <img src="https://img.shields.io/badge/Compose-BOM%202025.04.01-4285F4?style=for-the-badge&logo=jetpack-compose&logoColor=white&labelColor=0d1117" alt="Compose" />
-  </a>
-  <a href="#stack-tecnol%C3%B3gico">
-    <img src="https://img.shields.io/badge/Firebase-BOM%2033.7.0-FFCA28?style=for-the-badge&logo=firebase&logoColor=white&labelColor=0d1117" alt="Firebase" />
-  </a>
-  <a href="#licencia">
-    <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=0d1117" alt="License" />
-  </a>
-</p>
-
-<p align="center">
-  <a href="#arquitectura">🏗️ Arquitectura</a> ·
-  <a href="#estado-de-completitud">📊 Completitud</a> ·
-  <a href="#stack-tecnol%C3%B3gico">🛠️ Stack</a> ·
-  <a href="#diagramas-de-flujo">🔄 Diagramas</a> ·
-  <a href="#estructura-del-proyecto">📁 Estructura</a> ·
-  <a href="#configuraci%C3%B3n">⚙️ Config</a> ·
-  <a href="#m%C3%A9tricas">📈 Métricas</a>
+  <a href="#-qué-es-nexuschat">✨ Qué es</a> ·
+  <a href="#-arquitectura">🏗️ Arquitectura</a> ·
+  <a href="#-features">🚀 Features</a> ·
+  <a href="#-stack-tecnológico">🛠️ Stack</a> ·
+  <a href="#-seguridad">🔐 Seguridad</a> ·
+  <a href="#-quick-start">⚡ Quick Start</a> ·
+  <a href="#-redes">🌐 Redes</a>
 </p>
 
 </div>
 
 ---
 
-## 🚀 ¿Qué es NexusChat?
+<br>
 
-NexusChat es una **plantilla de mensajería open source** para Android, construida como referencia de arquitectura **enterprise**. Incluye chat en tiempo real, llamadas WebRTC, cifrado end-to-end, IA integrada, y un sistema de seguridad multi-capa.
+## ✨ ¿Qué es NexusChat?
+
+**NexusChat** es una plantilla de mensajería **open source** para Android, construida con arquitectura **enterprise-grade**. Diseñada para desarrolladores que necesitan un boilerplate sólido: chat en tiempo real, llamadas WebRTC, cifrado end-to-end, inteligencia artificial integrada, y un sistema de seguridad multi-capa — todo en **100% Kotlin** con Jetpack Compose.
 
 **Público objetivo:**
-- 👶 **Devs junior** → Aprender Clean Architecture, Hilt, Compose, Firebase, Flow
-- 🧙 **Devs senior** → Boilerplate con WebRTC, E2EE, Media3, AI streaming
-- 🎓 **Estudiantes** → Ver cómo se conectan features complejos en una app real
+- 🧑‍💻 **Devs junior** → Aprende Clean Architecture, Hilt, Firebase, Compose y Flow en un proyecto real.
+- 🧙‍♂️ **Devs senior** → Base de código con WebRTC, E2EE, Media3 Transformer, AI Streaming y Tor.
+- 🎓 **Estudiantes** → Observa cómo se conectan features complejos de producción en una sola app.
 
-**Pilares:**
-- ✅ **100% Kotlin** — Código moderno, sin legacy Java
-- ✅ **Arquitectura limpia** — MVVM + Clean Architecture + Hilt DI
-- ✅ **Seguridad real** — E2EE (ECDH + AES-256-GCM), AppLock, Biometría, Root detection
-- ✅ **Multimedia avanzada** — WebRTC P2P, Media3 Transformer, Coil 3
-- ✅ **IA integrada** — Gemini streaming SSE + Ollama configurable
-- ✅ **Offline-first** — Room cache + WorkManager retry
-- ✅ **UX profesional** — Skeletons, pull-to-refresh, swipe-to-delete, animations
+<br>
+
+<div align="center">
+
+| 🏗️ Arquitectura | 🔐 Seguridad | 🤖 IA | 📞 WebRTC | 🎨 UX |
+|:---:|:---:|:---:|:---:|:---:|
+| MVVM + Clean | E2EE + AppLock | Gemini + Ollama | P2P + TURN | Material 3 + Animaciones |
+
+</div>
+
+<br>
 
 ---
+
+<br>
 
 ## 🏗️ Arquitectura
 
+<div align="center">
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     UI Layer (Compose)                      │
+┌────────────────────────────────────────────────────────────┐
+│                      UI Layer (Compose)                       │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐       │
+│  │ 72+      │ │ 24+      │ │ StateFlow│ │ Events   │       │
+│  │ Screens  │ │ ViewModels│ │ States   │ │ Actions  │       │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘       │
+├────────────────────────────────────────────────────────────┤
+│                     Domain Layer                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                    │
+│  │ 19+      │ │ Repository│ │ Data     │                    │
+│  │ Use Cases│ │ Interfaces│ │ Models   │                    │
+│  └──────────┘ └──────────┘ └──────────┘                    │
+├────────────────────────────────────────────────────────────┤
+│                     Data Layer                               │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐     │
-│  │  Screens │ │ ViewModel│ │  State   │ │  Events  │     │
-│  │  72+     │ │  24+     │ │  Flow    │ │  Actions │     │
+│  │ Firebase │ │ Room     │ │ Storage  │ │ APIs     │     │
+│  │ RTDB     │ │ Cache    │ │ Cloud    │ │ AI/WebRTC│     │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘     │
-├─────────────────────────────────────────────────────────────┤
-│                    Domain Layer                             │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                  │
-│  │ Use Cases│ │Repository│ │  Models  │                  │
-│  │  19+     │ │Interfaces│ │  Data    │                  │
-│  └──────────┘ └──────────┘ └──────────┘                  │
-├─────────────────────────────────────────────────────────────┤
-│                    Data Layer                               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐     │
-│  │Firebase  │ │  Room    │ │ Storage  │ │   APIs   │     │
-│  │  RTDB    │ │  Cache   │ │  Cloud   │ │ AI/WebRTC│     │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘     │
-├─────────────────────────────────────────────────────────────┤
-│              Dependency Injection (Hilt)                    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                   │
-│  │  AppMod  │ │FirebaseMod│ │SecurityMod│                  │
-│  └──────────┘ └──────────┘ └──────────┘                   │
-└─────────────────────────────────────────────────────────────┘
+├────────────────────────────────────────────────────────────┤
+│              Dependency Injection (Hilt)                     │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                     │
+│  │ AppModule│ │ Firebase │ │ Security │                     │
+│  └──────────┘ └──────────┘ └──────────┘                     │
+└────────────────────────────────────────────────────────────┘
 ```
+
+</div>
 
 **Patrón:** MVVM + Clean Architecture  
-**Flujo de datos:** `UI → ViewModel → UseCase → Repository → DataSource`  
-**Estado:** `StateFlow` unidireccional, `collectAsStateWithLifecycle()`
+**Flujo:** `UI → ViewModel → UseCase → Repository → DataSource`  
+**Estado:** Unidireccional con `StateFlow` + `collectAsStateWithLifecycle()`
+
+<br>
 
 ---
 
-## 📊 Estado de Completitud
+<br>
 
-### 🟢 100% — Completamente Funcional
+## 🚀 Features
 
-| Feature | Descripción | Estado |
-|---------|-------------|--------|
-| 🔐 **Auth (Email/Password)** | Login + Register + Logout. Firebase Auth. | ✅ |
-| 🔐 **Auth (Google Sign-In)** | `play-services-auth` + `credentials-play-services-auth`. Launcher funcional. | ✅ |
-| 💬 **Chat en tiempo real** | Firebase RTDB + paginación + reactions + reply + edit + delete + ephemeral. | ✅ |
-| 📋 **Lista de chats** | Pull-to-refresh, swipe-to-delete, skeleton shimmer, pin, mute, archive. | ✅ |
-| 🎨 **UI/UX general** | Todos los botones, settings, dialogs, snackbars funcionan. | ✅ |
-| 🌐 **Traductor de mensajes** | MyMemory API, 12 idiomas, spinner de carga, error feedback, setting persistente. | ✅ |
-| 🔒 **App Lock / Biometría** | PIN + fingerprint. EncryptedSharedPreferences. | ✅ |
-| 👤 **Settings (Account)** | Change password + delete account dialogs funcionales. | ✅ |
-| 🛡️ **Settings (Privacy)** | Blocked users, active sessions, passcode redirect, download data, delete data. | ✅ |
-| 💾 **Settings (Storage)** | Data usage dialog + low data mode toggle. | ✅ |
-| 🌐 **Settings (Translation)** | Pantalla de selección de idioma con RadioButton. | ✅ |
-| 💻 **Code Editor** | Lista de archivos, editor, ejecutar código, output panel. | ✅ |
-| 🤖 **AI Assistant (Gemini)** | Streaming SSE, rate limiting, cola de requests. | ✅ |
-| 📸 **Stories** | Editor + viewer con Media3 Transformer. | ✅ |
-| 📞 **Call Service** | FCM + notificaciones de llamada. Accept/Decline. | ✅ |
-| 🔔 **Notifications** | FCM push + notification channel. | ✅ |
-| 🖼️ **Image Viewer** | Full-screen con zoom, share, download, close. | ✅ |
-| 🧅 **Tor Browser** | WebView + Orbot proxy + .onion sites. | ✅ |
-| 🎨 **Theme / Personalización** | Material 3, colores, backgrounds, tipografía. | ✅ |
+<div align="center">
 
-### 🟡 95% — Funcional con notas
+### 💬 Mensajería en Tiempo Real
 
-| Feature | Descripción | Notas |
-|---------|-------------|-------|
-| 📞 **Llamadas WebRTC** | Llamadas P2P audio/video. | ✅ Funcionan. TURN servers gratuitos de OpenRelay agregados. |
-| 🔐 **E2EE (ECDH + AES-256-GCM)** | Cifrado end-to-end. | ✅ Funcional en envío/recepción. Integración completa. |
-| 📴 **Offline-First** | Room + WorkManager. | ✅ Cola de mensajes offline funcional. Room como cache. |
-| 💾 **Backups Cifrados** | AES-256-GCM + PBKDF2. | ✅ Funcionan. Sin task cancellation (esqueleto). |
-| 🤖 **AI (Ollama local)** | Configurable via setting. | ✅ Funciona. Sin detección de servidor offline. |
-| 👤 **Edit Profile** | Cambiar foto, nombre, etc. | ✅ Redirige a account settings. Upload funciona. |
-| ➕ **New Conversation** | Buscar por UID. | ✅ SearchViewModel con filtrado. Sin importación de contactos del teléfono. |
-| 💻 **Terminal** | Sora Editor como emulador. | ✅ Comandos básicos funcionan. |
-| 🎨 **Chat Backgrounds** | Cache en Room. | ✅ Funcional. Persistencia offline. |
-| 🖼️ **Zoomable Cropper** | UI lista. | ⚠️ Crop transformation no aplica (devuelve URI original). |
-| 🎬 **Media Gallery** | Lista funcional. | ⚠️ Video player sin zoom. |
-| 📞 **Call History** | Lista básica. | ⚠️ Sin búsqueda ni filtros avanzados. |
-| 📱 **Swipeable Screen** | Funcional. | ⚠️ Sin indicador visual de swipe. |
-| 👥 **Contactos / Sync** | Manual por UID. | ⚠️ Sin importación de agenda telefónica. |
+</div>
 
-### 🔴 40% — Parcial / No implementado
+- **Firebase Realtime Database** con arquitectura optimizada (mapas e índices para acceso O(1))
+- **Multimedia completo**: imágenes, videos, audio, documentos
+- **Mensajes efímeros** con auto-destrucción configurable
+- **Reacciones con emojis**, respuestas, reenvíos, edición y borrado
+- **Indicadores de lectura** y estado de conexión en línea
+- **Pull-to-refresh** y **swipe-to-delete** en lista de chats
+- **Skeleton shimmer** durante carga
 
-| Feature | Descripción | Estado |
-|---------|-------------|--------|
-| 🧪 **Tests** | Unit tests. | ⚠️ 10 tests en ChatState. Falta cobertura de ViewModels. |
-| ♿ **Accessibility** | TalkBack. | ⚠️ `contentDescription` en iconos principales. No auditado completo. |
+<div align="center">
 
----
+### 📞 Llamadas WebRTC P2P
 
-## 🔄 Diagramas de Flujo
+</div>
 
-### 1. Flujo de Envío de Mensaje (con E2EE + Offline)
+- **Llamadas de audio y video** en alta calidad (1280x720 @ 30fps)
+- **Señalización vía Firebase** Realtime Database
+- **STUN + TURN servers** integrados (incluye OpenRelay para NAT estricto)
+- **Notificaciones de llamada** con Firebase Cloud Messaging
+- **Controles**: mute, video on/off, cambio de cámara
+- **Echo cancellation, noise suppression, auto gain**
 
-```
-┌─────────┐     ┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│ Usuario │────→│ ChatScreen   │────→│ ChatViewModel│────→│ SendMessage │
-│  Toca   │     │ Input Area   │     │              │     │   UseCase   │
-│  Send   │     │              │     │              │     │             │
-└─────────┘     └─────────────┘     └──────────────┘     └─────────────┘
-                                                               │
-                         ┌─────────────────────┐              │
-                         │  ¿Network OK?       │              │
-                         │  Sí → Firebase RTDB│              │
-                         │  No → Room Pending │              │
-                         └─────────────────────┘              ▼
-                                                                
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐    ┌────────────┐
-│   Room      │←────│  Firebase     │←────│  Repository│←───│  Encrypt   │
-│  Pending    │     │   RTDB        │     │  (Data)    │    │ ECDH +     │
-│  (Offline)  │     │  (Real-time)  │     │            │    │ AES-256-GCM│
-└─────────────┘     └──────────────┘     └─────────────┘    └────────────┘
-```
+<div align="center">
 
-**Pasos:**
-1. Usuario escribe y toca Send (haptic feedback)
-2. `ChatViewModel` valida texto
-3. `SendMessageUseCase` prepara mensaje
-4. E2EE: `RealtimeDatabaseRepository` cifra con ECDH + AES-256-GCM
-5. Si hay red: escribe en Firebase RTDB + Room cache
-6. Si NO hay red: guarda en `PendingMessageEntity` (Room) + WorkManager retry
-7. FCM notifica al receptor
-8. `MessageBubble` recompone con `StateFlow`
+### 📸 Stories Multimedia (24h)
 
-### 2. Flujo de Llamada WebRTC (con TURN)
+</div>
 
-```
-┌──────────┐              ┌──────────┐              ┌──────────┐
-│  Caller  │ ──OFFER──→  │  STUN    │ ←──ANSWER──  │  Callee  │
-│  (Alice) │              │  Server  │              │  (Bob)   │
-└──────────┘              └──────────┘              └──────────┘
-     │                         │                         │
-     │  ICE Candidates         │                         │
-     │────────────────────────→│←─────────────────────────│
-     │                         │                         │
-     ▼                         ▼                         ▼
-┌──────────┐              ┌──────────┐              ┌──────────┐
-│  TURN    │ ←─────────── │  P2P     │ ───────────→ │  TURN    │
-│  Server  │   Fallback   │  Conn    │   Fallback   │  Server  │
-│  (NAT)   │              │          │              │  (NAT)   │
-└──────────┘              └──────────┘              └──────────┘
-```
+- **Editor avanzado** con overlays en tiempo real
+- **Stickers y emojis** arrastrables
+- **Texto personalizable** con fuentes y colores
+- **Renderizado final**: Canvas para fotos, **Media3 Transformer** para videos
+- **Auto-eliminación** después de 24 horas
 
-**Pasos:**
-1. Alice toca llamada → `WebRTCManager.createOffer()`
-2. Offer por Firebase RTDB signaling channel
-3. Bob recibe offer → `createAnswer()` → answer
-4. Intercambio de ICE candidates
-5. Si NAT estricto → TURN server relay (OpenRelay)
-6. `MediaStream` P2P directa (o relayed)
+<div align="center">
 
-### 3. Flujo de Traducción
+### 🤖 Asistente IA — Azel AI
 
-```
-┌──────────┐     ┌──────────────┐     ┌────────────────┐
-│ LongPress │────→│ translateMsg │────→│ TranslationService│
-│  Message  │     │ (ChatViewModel)│    │   (MyMemory API) │
-└──────────┘     └──────────────┘     └────────────────┘
-                                              │
-                    ┌──────────────┐         │
-                    │  ChatState    │←────────┘
-                    │ translatingIds│
-                    │ translatedMsgs│
-                    └──────────────┘
-```
+</div>
 
-**Pasos:**
-1. Usuario hace long-press en mensaje → haptic feedback → menú contextual
-2. Toca "Traducir" → `ChatViewModel.translateMessage()`
-3. Se muestra spinner "Traduciendo..." en `MessageBubble`
-4. `TranslationService` consulta MyMemory API (GET `api.mymemory.translated.net/get`)
-5. Idioma destino: `UserPreferences.translationLanguage` (default = device locale)
-6. Si success: texto traducido aparece debajo del original (italic, diferente alpha)
-7. Si fail: `translationError` → Snackbar en `ChatScreen`
-8. Toggle: si ya existe traducción, tocar de nuevo la elimina
+- **Integración con Gemini** (Google Generative AI)
+- **API key cifrada** con AES-256 en EncryptedSharedPreferences
+- **Streaming en tiempo real** con SSE (Server-Sent Events)
+- **Cola con backoff exponencial** y rate limiting inteligente
+- **Gestión de contexto** (últimos 8 mensajes)
+- **Ollama configurable** para modelo local
 
-### 4. Flujo de Backup Cifrado
+<div align="center">
 
-```
-┌──────────┐     ┌──────────────┐     ┌──────────────┐     ┌────────────┐
-│  User    │────→│  BackupUse   │────→│  AES-256-GCM │────→│  .azelback │
-│  Export  │     │  Case        │     │  + PBKDF2    │     │  file      │
-└──────────┘     └──────────────┘     └──────────────┘     └────────────┘
-```
+### 🌐 Traducción de Mensajes
 
-**Pasos:**
-1. Usuario va a Settings → Privacy → Export Data
-2. Se genera clave de derivación con PBKDF2 (100k iteraciones, salt aleatorio)
-3. Datos de Firebase se serializan a JSON (profile, chats, settings)
-4. AES-256-GCM cifra el JSON con clave derivada
-5. Archivo `.azelback` se guarda en almacenamiento local compartido
-6. Se comparte via `Intent.ACTION_SEND` (email, Drive, etc.)
-7. **Import:** mismo flujo inverso → PBKDF2 → AES decrypt → Firebase restore
+</div>
 
-### 5. Flujo de AI Assistant (Gemini)
+- **12 idiomas** disponibles (Español, English, Français, Deutsch, Português, Italiano, 日本語, 中文, 한국어, Русский, العربية)
+- **MyMemory API** con rate limiting
+- **Spinner de carga** y feedback visual en cada mensaje
+- **Toggle**: traducir / eliminar traducción con un toque
+- **Preferencia persistente** en DataStore
 
-```
-┌──────────┐     ┌──────────────┐     ┌──────────────┐     ┌────────────┐
-│  User    │────→│  AzelAIScreen│────→│  AiManager   │────→│  Gemini API │
-│  Prompt  │     │  Input       │     │  (SSE Queue) │     │  (Streaming)│
-└──────────┘     └──────────────┘     └──────────────┘     └────────────┘
-                                              │                    │
-                                              ▼                    ▼
-                                       ┌──────────────┐     ┌────────────┐
-                                       │  RateLimiter │     │  Response  │
-                                       │  (tokens/min)│     │  (SSE)     │
-                                       └──────────────┘     └────────────┘
-```
+<div align="center">
 
-**Pasos:**
-1. Usuario escribe prompt en `AzelAIScreen`
-2. `AiManager` verifica `RateLimiter` (previene costos excesivos)
-3. Si dentro del límite: request a Gemini API con `OkHttp + SSE`
-4. Si fuera del límite: request se encola en `pendingQueue`
-5. Respuesta llega en streaming (SSE chunks) → se muestra palabra por palabra
-6. Historia de conversación guardada en `DataStore`
-7. **Prompts "hacking":** incluidos en `UncensoredPrompts.kt` (jailbreak, DAN, etc.)
+### 💻 Code Editor + Terminal
+
+</div>
+
+- **Editor de código** con lista de archivos, syntax highlighting y panel de output
+- **Terminal integrado** con Sora Editor (0.23.5)
+- Soporte para ejecutar código en múltiples lenguajes
+
+<div align="center">
+
+### 🧅 Navegador Tor Integrado
+
+</div>
+
+- **Enrutado automático** por Orbot (HTTP 8118 + SOCKS5 9050 fallback)
+- **Soporte para sitios .onion**
+- **Detección automática** de Orbot instalado
+- **WebView** con NetCipher para navegación anónima
+
+<div align="center">
+
+### 🎨 Sistema de Temas Dinámicos
+
+</div>
+
+- **25 colores de acento** curados profesionalmente
+- **Material 3** Design System
+- **Cambio en tiempo real** sin reiniciar la app
+- **Fondos personalizables**: color sólido, gradiente, video
+- **Modo oscuro** optimizado
+
+<br>
 
 ---
 
-## 🛠️ Stack Tecnológico
-
-### Core
-| Tecnología | Versión | Uso |
-|------------|---------|-----|
-| Kotlin | 2.0.21 | 100% del código fuente |
-| Jetpack Compose | BOM 2025.04.01 | UI declarativa |
-| Material 3 | Compose BOM | Design system |
-| Hilt | 2.52 | Inyección de dependencias |
-| KSP | 2.0.21-1.0.28 | Procesamiento de anotaciones |
-| Coroutines | 1.9.0 | Concurrencia + Flow |
-| Java 17 | 17 | sourceCompatibility / targetCompatibility |
-
-### Firebase
-| Servicio | Uso |
-|----------|-----|
-| Authentication | Email/Password + Google Sign-In |
-| Realtime Database | Mensajes, presencia, typing, signaling WebRTC |
-| Cloud Storage | Imágenes, audio, video, documentos |
-| Cloud Messaging | Notificaciones push |
-| Crashlytics | Reporte de crashes |
-
-### Multimedia
-| Tecnología | Uso |
-|------------|-----|
-| WebRTC | Llamadas P2P (audio/video) |
-| Media3 ExoPlayer | Reproducción de video/stories |
-| Media3 Transformer | Export de stories con overlays |
-| Coil 3 | Imágenes, GIF, video thumbnails |
-
-### Seguridad
-| Tecnología | Uso |
-|------------|-----|
-| E2EE (ECDH + AES-256-GCM) | Cifrado end-to-end en mensajes |
-| AES-256-GCM | Backups cifrados |
-| PBKDF2 | Derivación de clave de backups (100k iteraciones) |
-| EncryptedSharedPreferences | API keys, PIN hash, tokens |
-| Biometric | AppLock + desbloqueo |
-| libsu | Root detection |
-| NetCipher | Tor proxy integration |
-
-### IA
-| Tecnología | Uso |
-|------------|-----|
-| Gemini API | Streaming SSE, rate limiting, cola de requests |
-| Ollama API | Modelo local configurable |
-| Uncensored Prompts | Jailbreak, DAN, prompts de "hacking" |
-
-### Testing
-| Tecnología | Uso |
-|------------|-----|
-| JUnit 4 | Tests unitarios (base) |
-| Kotest 5.8.0 | BDD testing |
-| Mockk 1.13.9 | Mocking |
-| Turbine 1.2.0 | Testing de Flows |
-| Espresso | Tests de UI (base) |
-
----
-
-## 📁 Estructura del Proyecto
-
-```
-com.Azelmods.App
-├── MainActivity.kt              # Entry point, NavHost, deep links
-├── NexusChatApplication.kt    # Hilt Application, notif channels, Coil
-│
-├── data/                        # Data Layer (21.2% del código)
-│   ├── ai/                      # Gemini, Ollama, prompts, rate limiting
-│   ├── api/                     # Retrofit/OkHttp services
-│   ├── backup/                  # Encrypted .azelback (AES-256-GCM + PBKDF2)
-│   ├── chat/                    # ChatId helpers, ChatManager
-│   ├── demo/                    # Demo accounts
-│   ├── encryption/              # E2EE (ECDH + AES-256-GCM), Signal Protocol
-│   ├── file/                    # Cache, SecureFileManager
-│   ├── firebase/                # FirebaseManager, FirebaseAuth helpers
-│   ├── local/                   # Room: DB, DAOs, Entities
-│   │   ├── dao/                 # MessageDao, ChatDao, UserDao, PendingMessageDao
-│   │   ├── entity/              # CachedMessage, CachedChat, CachedUser, PendingMessage
-│   │   └── AppDatabase.kt       # Room Database v2
-│   ├── manager/                 # AiManager, BackgroundManager
-│   ├── model/                   # User, Chat, Message, Story...
-│   ├── preferences/             # DataStore wrappers (UserPreferences)
-│   ├── repository/              # 10 Repositories (Auth, Chat, RTDB, Storage...)
-│   ├── security/                # AppLock, Tor, NetCipher, AppLockManager
-│   ├── session/                 # SessionManager
-│   ├── translation/             # MyMemory API, TranslationService
-│   └── work/                    # SendPendingMessagesWorker (WorkManager + HiltWorker)
-│
-├── domain/                      # Domain Layer (1.5%)
-│   ├── repository/              # Repository interfaces
-│   └── usecase/                 # AuthUseCase, ChatUseCase, etc.
-│
-├── di/                          # Hilt Modules (0.4%)
-│   ├── AppModule.kt
-│   ├── FirebaseModule.kt
-│   ├── RepositoryModule.kt
-│   └── SecurityModule.kt
-│
-├── ui/                          # UI Layer (67.7%)
-│   ├── components/              # 26 reusable components
-│   │   ├── chat/                # MessageBubble, TypingIndicator, ChatInputBar
-│   │   ├── UserAvatar.kt
-│   │   ├── FullScreenImageViewer.kt
-│   │   └── ZoomableCropper.kt
-│   ├── screens/                 # 72+ screens by feature
-│   │   ├── auth/                # Login, Register, Splash
-│   │   ├── chat/                # Chat, ChatViewModel, ChatState
-│   │   ├── home/                # Home, HomeViewModel, ChatListScreen
-│   │   ├── settings/            # All settings (Account, Privacy, Storage, Appearance...)
-│   │   ├── call/                # ActiveCall, IncomingCall, CallViewModel
-│   │   ├── stories/             # CreateStory, StoryViewer, StoryEditor
-│   │   ├── editor/              # CodeEditorScreen, CodeEditorViewModel, CodeFile
-│   │   ├── terminal/            # TerminalScreen, TerminalViewModel, RealTerminalEmulator
-│   │   ├── profile/             # ProfileScreen, EditProfileScreen
-│   │   └── about/               # AboutScreen, AboutScreenRedesigned
-│   ├── theme/                   # Material 3 theme, colors, typography, dark mode
-│   └── utils/                   # UI helpers, navigation extensions
-│
-├── service/                     # FCM, FirebaseMessagingService
-├── services/                    # CallService (foreground service for calls)
-├── startup/                     # FirebaseInitializer (App Startup library)
-├── security/                    # RootDetection, TamperDetection
-├── util/ & utils/               # General helpers, extensions
-├── webrtc/                      # WebRTCManager (call lifecycle, peer connection, TURN)
-└── navigation/                  # NavGraph, Screen routes, type-safe navigation, deep links
-```
-
----
+<br>
 
 ## 🔐 Seguridad
 
-| Amenaza | Mitigación | Estado |
-|---------|------------|--------|
-| 🕵️ Firebase admin lee mensajes | E2EE (ECDH + AES-256-GCM) | ✅ Funcional en envío/recepción |
-| 📱 Dispositivo robado | AppLock + Biometría + EncryptedSharedPreferences | ✅ |
-| 🔓 Root / jailbreak | libsu detection + Tamper detection | ✅ |
-| 🔑 API keys expuestas | EncryptedSharedPreferences + fallback mínimo | ⚠️ Ollama key hardcoded en build.gradle (fallback dev) |
-| 🕵️ Man-in-the-middle | TLS 1.3 + Firebase cert pinning | ✅ |
-| 💾 Backups no autorizados | AES-256-GCM + PBKDF2 + password derivada | ✅ |
-| 📹 Screen recording | FLAG_SECURE | ✅ Aplicado en AuthScreen |
-| 📸 Screenshot | FLAG_SECURE | ✅ Aplicado en AuthScreen |
-| 📋 Clipboard | Clear clipboard en logout | ✅ |
+<div align="center">
+
+| Capa | Tecnología | Descripción |
+|:---|:---|:---|
+| 🔒 **App Lock** | PIN + Biometría | SHA-256 + EncryptedSharedPreferences |
+| 🔐 **E2EE** | ECDH + AES-256-GCM | Cifrado end-to-end en mensajes |
+| 💾 **Backups** | AES-256-GCM + PBKDF2 | 100k iteraciones, formato .azelback |
+| 🧅 **Tor** | Orbot + NetCipher | Proxy HTTP/SOCKS5 para navegación anónima |
+| 🛡️ **Root Detection** | libsu | Bloqueo en dispositivos rooteados |
+| 🛡️ **Tamper Detection** | Security-Crypto | Detección de manipulación de APK |
+| 🚫 **Screen Recording** | FLAG_SECURE | Bloqueo en pantallas sensibles |
+
+</div>
+
+<br>
 
 ---
 
-## ⚙️ Configuración
+<br>
+
+## 🛠️ Stack Tecnológico
+
+<div align="center">
+
+### Core
+
+| Kotlin | Compose | Material 3 | Hilt | Coroutines |
+|:---:|:---:|:---:|:---:|:---:|
+| 2.0.21 | BOM 2025.04.01 | Compose BOM | 2.52 | 1.9.0 |
+
+### Firebase
+
+| Auth | RTDB | Storage | FCM | Crashlytics |
+|:---:|:---:|:---:|:---:|:---:|
+| Email/Google | Real-time | Multimedia | Push | Errors |
+
+### Multimedia
+
+| WebRTC | ExoPlayer | Transformer | Coil |
+|:---:|:---:|:---:|:---:|
+| P2P Calls | Video | Stories | Images/GIF |
+
+### Seguridad
+
+| E2EE | AES-256-GCM | PBKDF2 | Biometric | libsu |
+|:---:|:---:|:---:|:---:|:---:|
+| Messages | Backups | Key Derivation | AppLock | Root Detection |
+
+### IA
+
+| Gemini | SSE | Rate Limiter | Ollama |
+|:---:|:---:|:---:|:---:|
+| Streaming | Real-time | Queue | Local Model |
+
+</div>
+
+<br>
+
+---
+
+<br>
+
+## ⚡ Quick Start
+
+```bash
+# 1. Clonar
+git clone https://github.com/Azelmods677/NexusChat.git
+cd NexusChat
+
+# 2. Crear local.properties
+cat > local.properties << 'EOF'
+sdk.dir=/path/to/android/sdk
+GEMINI_API_KEY=tu_key
+FCM_SERVER_KEY=tu_key
+EOF
+
+# 3. Descargar google-services.json en app/
+#    (desde Firebase Console)
+
+# 4. Compilar
+./gradlew assembleDebug
+```
 
 ### Requisitos
-- Android Studio Koala o superior
-- JDK 17
-- Gradle 8.14
-
-### Setup paso a paso
-1. **Clona el repo**
-   ```bash
-   git clone https://github.com/Azelmods677/NexusChat.git
-   cd NexusChat
-   ```
-
-2. **Crea `local.properties`** en la raíz:
-   ```properties
-   sdk.dir=/path/to/android/sdk
-   OLLAMA_API_KEY=tu_key_aqui
-   OLLAMA_BASE_URL=https://tu-ollama.com/v1
-   GEMINI_API_KEY=tu_gemini_key
-   FCM_SERVER_KEY=tu_fcm_key
-   ```
-
-3. **Conecta Firebase:**
-   - Crea proyecto en [Firebase Console](https://console.firebase.google.com)
-   - Descarga `google-services.json` → coloca en `app/`
-   - Agrega SHA-1 de debug: `./gradlew signingReport`
-   - Habilita Authentication, Realtime Database, Storage, FCM
-
-4. **Google Sign-In:**
-   - Agrega SHA-1 en Firebase Console → Project Settings → Add fingerprint
-   - Verifica `default_web_client_id` en `app/src/main/res/values/strings.xml`
-   - Asegúrate que el package name coincide
-
-5. **Sync y run:**
-   ```bash
-   ./gradlew assembleDebug
-   ```
+- Android Studio Koala+ · JDK 17 · Gradle 8.14
+- Firebase project configurado (Auth, RTDB, Storage, FCM)
 
 ### 🔗 Deep Links
 
-La app soporta deep links para abrir chats y perfiles directamente:
-
 ```bash
-# Abrir un chat
 nexuschat://chat/{chatId}
-
-# Abrir un perfil
 nexuschat://profile/{userId}
 ```
 
-Ejemplo desde terminal ADB:
-```bash
-adb shell am start -a android.intent.action.VIEW -d "nexuschat://chat/userA_userB"
-```
+<br>
 
 ---
 
-## 📈 Métricas
+<br>
 
-| Métrica | Valor |
-|---------|-------|
-| 📝 Líneas de código Kotlin | 58,242 |
-| 📄 Archivos Kotlin | 253 |
-| 📄 Archivos Java | 0 (100% Kotlin) |
-| 🏗️ Clases / Objetos | ~157 |
-| 🎨 Composables @Composable | 88 |
-| 🧠 ViewModels @HiltViewModel | 24 |
-| 🖼️ Pantallas (Screens) | 72+ |
-| 💾 Repositories | 10 |
-| ⚙️ Use Cases | 19 |
-| 🔌 Hilt Modules | 4 |
-| 🛡️ Bloques try-catch | 401 |
-| ⚠️ Operadores `!!` | 4 (solo en UI) |
-| 📭 Estados vacíos implementados | 84 |
-| ⏳ Loading states | 35 |
-| 🔔 Snackbars | 59 |
-| ✨ Animaciones | 33 |
-| 🧪 Tests unitarios | 10 (ChatStateTest) |
-| 📱 Min SDK | 31 (Android 12) |
-| 🎯 Target SDK | 36 (Android 16) |
-| 🔧 Compile SDK | 36 |
-| 💜 Kotlin | 2.0.21 |
-| 🏗️ AGP | 8.7.3 |
-| ⚙️ Gradle | 8.14 |
+## 📈 Métricas del Proyecto
+
+<div align="center">
+
+| 📊 **58,242** líneas Kotlin | 📄 **253** archivos | 🏗️ **157** clases | 🎨 **88** Composables |
+|:---:|:---:|:---:|:---:|
+| 🧠 **24** ViewModels | 💾 **10** Repositories | ⚙️ **19** Use Cases | 🔌 **4** Hilt Modules |
+
+</div>
+
+<br>
 
 ---
 
-## 🤝 Contribución
-
-Las contribuciones son bienvenidas. Antes de hacer un PR:
-1. 🔀 Fork el repo
-2. 🌿 Crea una branch (`git checkout -b feature/nueva-feature`)
-3. 💾 Commit tus cambios (`git commit -m 'Agrega nueva feature'`)
-4. 📤 Push a la branch (`git push origin feature/nueva-feature`)
-5. 📋 Abre un Pull Request
-
-**Reglas:**
-- 💜 100% Kotlin
-- 🏗️ Seguir Clean Architecture
-- 🧪 Agregar tests para nuevos ViewModels
-- 📖 Documentar features en el README
-
----
-
-## 📄 Licencia
-
-MIT License — Libre para uso personal, comercial, y educativo.  
-Crédito a **Azel Mods** como autor original.
-
----
+<br>
 
 ## 🌐 Redes Oficiales
 
-| Plataforma | Enlace |
-|------------|--------|
-| 🎬 **YouTube** | [youtube.com/@AzelModsx677](https://www.youtube.com/@AzelModsx677) |
-| 🎵 **TikTok** | [tiktok.com/@azelmodsx677](https://www.tiktok.com/@azelmodsx677?lang=es) |
-| ✈️ **Telegram** | [t.me/AzelModsx67779](https://t.me/AzelModsx67779) |
-| 🐙 **GitHub** | [github.com/Azelmods677](https://github.com/Azelmods677) |
+<div align="center">
+
+| 🎬 YouTube | 🎵 TikTok | ✈️ Telegram | 🐙 GitHub |
+|:---:|:---:|:---:|:---:|
+| [@AzelModsx677](https://www.youtube.com/@AzelModsx677) | [@azelmodsx677](https://www.tiktok.com/@azelmodsx677?lang=es) | [@AzelModsx67779](https://t.me/AzelModsx67779) | [@Azelmods677](https://github.com/Azelmods677) |
+
+</div>
+
+<br>
 
 ---
 
-<p align="center">
-  <strong>⭐ Si te sirvió esta plantilla, dale una estrella en GitHub ⭐</strong>
-</p>
+<br>
 
-<p align="center">
-  <em>Construido con ❤️ por <strong>Azel Mods</strong> para la comunidad de desarrolladores Android</em>
-</p>
+<div align="center">
+
+**⭐ Si te sirvió esta plantilla, dale una estrella en GitHub ⭐**
+
+<br>
+
+*Construido con ❤️ por **Azel Mods** para la comunidad de desarrolladores Android*
+
+<br>
+
+<a href="https://github.com/Azelmods677/NexusChat">
+  <img src="https://img.shields.io/github/stars/Azelmods677/NexusChat?style=social&logo=github" alt="GitHub Stars" />
+</a>
+
+</div>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:4285F4,100:7F52FF&height=100&section=footer" />
