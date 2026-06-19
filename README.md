@@ -1,3 +1,8 @@
+<img width="1254" height="1254" alt="icono de la aplicacion" src="https://github.com/user-attachments/assets/274215c9-abd2-46d4-a39d-04017603121f" />
+
+
+
+
 # 🚀 NexusChat
 
 <div align="center">
