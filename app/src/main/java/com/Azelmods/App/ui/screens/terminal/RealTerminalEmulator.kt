@@ -46,22 +46,43 @@ class RealTerminalEmulator(private val context: Context) {
                 .setTimeout(60)
         )
         
-        checkRootAndInitialize()
+        try {
+            checkRootAndInitialize()
+        } catch (e: Exception) {
+            android.util.Log.e("RealTerminalEmulator", "Failed to initialize shell: ${e.message}", e)
+            addLine("╔═══════════════════════════════════════════════════╗", TerminalLine.Type.SYSTEM)
+            addLine("║      REAL TERMUX TERMINAL - Azel powered        ║", TerminalLine.Type.SYSTEM)
+            addLine("║         Full Interactive Shell Support           ║", TerminalLine.Type.SYSTEM)
+            addLine("╚═══════════════════════════════════════════════════╝", TerminalLine.Type.SYSTEM)
+            addLine("", TerminalLine.Type.SYSTEM)
+            addLine("⚠️ Terminal inicializado en modo simulado", TerminalLine.Type.WARNING)
+            addLine("   Shell nativo no disponible en este dispositivo", TerminalLine.Type.WARNING)
+            addLine("", TerminalLine.Type.SYSTEM)
+            addLine("Working directory: $currentDirectory", TerminalLine.Type.OUTPUT)
+            addLine("", TerminalLine.Type.SYSTEM)
+            addLine("Type 'help' for available commands", TerminalLine.Type.WARNING)
+            addLine("═══════════════════════════════════════════════════", TerminalLine.Type.SYSTEM)
+        }
     }
     
     private fun checkRootAndInitialize() {
         // Check if root is available
         _isRoot.value = Shell.isAppGrantedRoot() == true
         
-        // Create shell instance
-        shell = if (_isRoot.value) {
-            Shell.Builder.create()
-                .setTimeout(60)
-                .build()
-        } else {
-            Shell.Builder.create()
-                .setTimeout(60)
-                .build()
+        // Create shell instance with error handling
+        try {
+            shell = if (_isRoot.value) {
+                Shell.Builder.create()
+                    .setTimeout(60)
+                    .build()
+            } else {
+                Shell.Builder.create()
+                    .setTimeout(60)
+                    .build()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("RealTerminalEmulator", "Shell build failed: ${e.message}", e)
+            throw e
         }
         
         addLine("╔═══════════════════════════════════════════════════╗", TerminalLine.Type.SYSTEM)

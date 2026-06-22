@@ -1,217 +1,254 @@
-# Changelog - Firebase Realtime Database Optimization
+<div align="center">
 
-## Versión: Stable v1.0 (Junio 2026)
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,22,28,40&height=200&section=header&text=CHANGELOG&fontSize=70&fontColor=fff&animation=twinkling&fontAlignY=35&desc=NexusChat%20—%20Historial%20de%20Cambios&descAlignY=60&descSize=20&descAlign=50" />
 
-### 🔥 Cambios Críticos en Arquitectura de Firebase
+<br>
 
-#### 1. Migración de Listas a Mapas para Membresía
-**Problema anterior**: Los campos `members` y `participants` se almacenaban como listas `["uid1", "uid2"]`, lo que impedía validación eficiente en Firebase Rules (`.contains()` no existe en RTDB).
+<p align="center">
+  <a href="https://github.com/Azelmods677/NexusChat">
+    <img src="https://img.shields.io/badge/Version-3.0.1-7F52FF?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
+  </a>
+  <a href="https://github.com/Azelmods677/NexusChat/releases">
+    <img src="https://img.shields.io/github/v/release/Azelmods677/NexusChat?style=for-the-badge&logo=github&color=00E676&labelColor=0d1117" alt="Latest Release" />
+  </a>
+  <a href="https://github.com/Azelmods677/NexusChat/commits/main">
+    <img src="https://img.shields.io/github/last-commit/Azelmods677/NexusChat?style=for-the-badge&logo=git&color=FFD700&labelColor=0d1117" alt="Last Commit" />
+  </a>
+</p>
 
-**Solución implementada**: Todos los campos de membresía ahora usan estructura de mapa:
-```json
-{
-  "members": {
-    "uid1": true,
-    "uid2": true
-  }
-}
-```
+<p align="center">
+  <a href="#v301">🆕 v3.0.1</a> ·
+  <a href="#v300">🚀 v3.0.0</a> ·
+  <a href="#v220">🔧 v2.2.0</a> ·
+  <a href="#v210">⚡ v2.1.0</a> ·
+  <a href="#v200">🎉 v2.0.0</a> ·
+  <a href="#v100">🌱 v1.0.0</a>
+</p>
 
-**Beneficios**:
-- Validación O(1) con `.child(auth.uid).exists()` en Firebase Rules
-- Eliminación completa de errores "Permission Denied"
-- Operaciones atómicas de agregar/remover miembros
-
-#### 2. Índice `userChats` para Acceso Eficiente
-**Problema anterior**: `getUserChats()` escaneaba TODA la base de datos `/chats` y filtraba en cliente, causando:
-- Alto uso de ancho de banda
-- Latencia elevada
-- Consumo innecesario de cuota de Firebase
-
-**Solución implementada**: Estructura de índice dedicada:
-```json
-{
-  "userChats": {
-    "uid1": {
-      "chatId1": true,
-      "chatId2": true
-    }
-  }
-}
-```
-
-**Beneficios**:
-- Lectura O(1) de chats del usuario
-- Reducción drástica de transferencia de datos
-- Mejor escalabilidad (funciona con millones de chats)
-
-#### 3. Firebase Rules Optimizadas
-**Archivo**: `database.rules.json` (nuevo)
-
-**Reglas principales**:
-- **`/chats/{chatId}`**: Solo miembros pueden leer/escribir (`.child(auth.uid).exists()`)
-- **`/messages/{chatId}`**: Solo miembros del chat pueden acceder
-- **`/userChats/{uid}`**: Solo el propietario puede leer su índice
-- **`/users/{uid}`**: Lectura pública (autenticado), escritura solo del propietario
-- **Validación de datos**: Schema validation para tipos de mensaje, timestamps, etc.
+</div>
 
 ---
 
-### 📝 Archivos Modificados
+<br>
 
-#### `RealtimeDatabaseRepository.kt`
-**Cambios principales**:
-1. **Helper `addChatToUserIndex()`**: Mantiene sincronizado el índice `userChats` al crear chats
-2. **`getUserChats()` refactorizado**: Lee de `/userChats/{uid}` en lugar de `/chats`
-3. **Todas las funciones de creación de chat actualizadas**:
-   - `sendMessage()` - Chats privados
-   - `sendMediaMessage()` - Multimedia en chats privados
-   - `createGroup()` - Grupos
-   - `sendGroupMessage()` - Mensajes de grupo
-   - `sendGroupMediaMessage()` - Multimedia en grupos
+<div align="center">
 
-4. **Estructura de datos actualizada**:
-   ```kotlin
-   // ANTES
-   "members" to listOf("uid1", "uid2")
-   
-   // AHORA
-   "members" to participants.associateWith { true }
-   ```
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&duration=2000&pause=500&color=00E676&center=true&vCenter=true&width=600&lines=🆕+v3.0.1+—+Robustez+y+Estabilidad;2025-06-15" alt="v3.0.1" />
 
-#### `ChatRepository.kt`
-- Migrado de listas a mapas en todas las operaciones de chat
-- Sincronización con índice `userChats`
-- Manejo robusto de campos opcionales vs requeridos
+</div>
 
-#### `NewConversationViewModel.kt`
-- Adaptado para trabajar con estructura de mapas
-- Conversión correcta de `Map<String, Boolean>` a `List<String>` para UI
+<br>
 
-#### `SearchScreen.kt`
-- Manejo de miembros como mapas en lugar de listas
-- Conversión de `members.keys.toList()` para visualización
+> 🎯 **Enfoque**: Corrección de 4 bugs críticos reportados por usuarios. Todos los fixes priorizan **graceful degradation** — nunca crashea, siempre hay fallback.
 
-#### `BackupManager.kt`
-- Soporte para ambos formatos (migración gradual)
-- Conversión de listas legadas a mapas durante restore
-- Backup transparente del nuevo formato
+<br>
 
-#### `DemoAccountManager.kt`
-- Datos demo actualizados con estructura de mapas
-- Simulación correcta de índice `userChats`
-- Datos de prueba consistentes con producción
+### 🐛 Fixed
+
+| Icono | Fix | Descripción | Archivo |
+|:---:|:---|:---|:---|
+| 🌍 | **Traducción multi-idioma** | MyMemory `Auto\|target` a veces devolvía el mismo texto cuando la auto-detección fallaba. Ahora se reintenta con el idioma **detectado explícitamente** (`detectedLang\|targetLang`) como fallback. | `TranslationService.kt` |
+| 💻 | **Code Editor crash** | `executeCode()` usaba `ProcessBuilder("python3")` (no existe en Android) y creaba `WebView` desde `ViewModel`. Reescrito con mensajes informativos seguros para cada lenguaje. | `CodeEditorViewModel.kt` |
+| 💻 | **Terminal inaccesible** | `RealTerminalEmulator.init()` llamaba `Shell.Builder.create().build()` sin try-catch. Si `libsu` no puede crear shell, ahora hay **fallback a modo simulado** con mensajes de ayuda. | `RealTerminalEmulator.kt` |
+| 🧅 | **Tor Browser pantalla en blanco** | `LaunchedEffect` complejo bloqueaba la carga de URL si la detección de Orbot fallaba. Refactorizado: **URL se carga inmediatamente**, proxy async en background. | `TorBrowserScreenNew.kt` |
+
+<br>
+
+### 🔧 Changed
+
+| Icono | Cambio | Descripción |
+|:---:|:---|:---|
+| 🛡️ | **Graceful degradation general** | Todos los módulos críticos ahora tienen fallback informativo en lugar de crashear |
+| 📝 | **README actualizado** | Sección "Novedades Recientes" agregada con descripción de fixes v3.0.1 |
+
+<br>
 
 ---
 
-### 🐛 Bugs Corregidos
+<br>
 
-1. **❌ "Permission Denied" al enviar mensajes** → ✅ Resuelto con validación `.child(auth.uid).exists()`
-2. **❌ Carga lenta de lista de chats** → ✅ Resuelto con índice `userChats`
-3. **❌ Alto consumo de datos en getUserChats()** → ✅ Resuelto leyendo solo índice del usuario
-4. **❌ Crash al abrir chat demo** → ✅ Resuelto sincronizando estructura de datos
-5. **❌ Inconsistencias en estructura de miembros** → ✅ Resuelto con formato único de mapas
+<div align="center">
 
----
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&duration=2000&pause=500&color=4285F4&center=true&vCenter=true&width=600&lines=🚀+v3.0.0+—+Major+Release;2025-06-10" alt="v3.0.0" />
 
-### 🔄 Migración de Datos Existentes
+</div>
 
-**Para desarrolladores con datos existentes en Firebase**:
+<br>
 
-Los datos en formato antiguo (listas) seguirán funcionando para lectura, pero los nuevos chats usarán el formato optimizado. Para migrar completamente:
+> 🎉 **Release más grande hasta la fecha**. Completa funcionalidad de 5 módulos clave + E2EE + WebRTC TURN + UX overhaul.
 
-```javascript
-// Script de migración (Firebase Console > Realtime Database > Rules > Ejecutar)
-// ADVERTENCIA: Probar en ambiente de desarrollo primero
+<br>
 
-const migrateChatsToMaps = async () => {
-  const chatsRef = firebase.database().ref('chats');
-  const snapshot = await chatsRef.once('value');
-  
-  snapshot.forEach(chatSnap => {
-    const chat = chatSnap.val();
-    const updates = {};
-    
-    // Convertir members si es array
-    if (Array.isArray(chat.members)) {
-      updates[`chats/${chatSnap.key}/members`] = 
-        chat.members.reduce((acc, uid) => ({...acc, [uid]: true}), {});
-    }
-    
-    // Convertir participants si es array
-    if (Array.isArray(chat.participants)) {
-      updates[`chats/${chatSnap.key}/participants`] = 
-        chat.participants.reduce((acc, uid) => ({...acc, [uid]: true}), {});
-    }
-    
-    // Crear índice userChats
-    const memberUids = Array.isArray(chat.members) ? chat.members : Object.keys(chat.members || {});
-    memberUids.forEach(uid => {
-      updates[`userChats/${uid}/${chatSnap.key}`] = true;
-    });
-    
-    return firebase.database().ref().update(updates);
-  });
-};
-```
+### ✨ Added
+
+| Icono | Feature | Descripción |
+|:---:|:---|:---|
+| 🌍 | **Traductor de Mensajes** | MyMemory API con auto-detección. 12 idiomas: ES, EN, FR, DE, PT, IT, JA, ZH, KO, RU, AR, TR. Preferencia persistente en DataStore. |
+| 🔐 | **Privacy & Security Settings** | Pantalla completa con: App Lock (PIN/biometría), E2EE toggle, bloqueo de capturas, notificaciones silenciosas, auto-borrado. |
+| 👤 | **Account Settings** | Cambiar contraseña, eliminar cuenta, sesiones activas, exportar datos. |
+| 👥 | **Contactos / Nueva Conversación** | Búsqueda de usuarios, QR scanner, lista de contactos, iniciar chat desde perfil. |
+| 💻 | **Code Editor** | Editor con syntax highlighting, lista de archivos, ejecución de scripts (Python/JS/Bash/Kotlin). |
+| 💻 | **Terminal** | Terminal interactiva usando `libsu` con Sora Editor para syntax highlighting. |
+| 🧅 | **Navegador Tor** | WebView con proxy Orbot (HTTP 8118 + SOCKS5 9050). Soporte .onion, detección automática de Orbot. |
+| 🔐 | **E2EE** | Cifrado end-to-end con ECDH + AES-256-GCM en `RealtimeDatabaseRepository`. |
+| 📡 | **WebRTC TURN** | Servidores TURN de OpenRelay agregados para NAT estricto. |
+| 🔗 | **Deep Links** | `nexuschat://chat/{id}` y `nexuschat://profile/{id}` con `IntentFilter` en `AndroidManifest.xml`. |
+| ✨ | **UX Polish** | Skeleton shimmer, pull-to-refresh, swipe-to-delete, haptic feedback, mejor keyboard UX. |
+
+<br>
+
+### 🔧 Changed
+
+| Icono | Cambio | Descripción |
+|:---:|:---|:---|
+| 🎨 | **Offline-first** | `PendingMessageEntity` + `PendingMessageDao` + `SendPendingMessagesWorker` para cola offline. |
+| 🎨 | **Translation Settings** | `TranslationLanguageScreen` + `UserPreferences.translationLanguage` con selector de idioma. |
+
+<br>
 
 ---
 
-### ✅ Testing Realizado
+<br>
 
-- [x] Envío de mensajes privados (texto, imagen, video, audio)
-- [x] Creación de grupos
-- [x] Envío de mensajes en grupos
-- [x] Carga de lista de chats del usuario
-- [x] Validación de permisos en Firebase Rules
-- [x] Modo demo con datos de prueba
-- [x] Backup y restore con nuevo formato
-- [x] Compilación sin errores ni warnings
-- [x] Navegación entre pantallas sin crashes
+<div align="center">
 
----
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&duration=2000&pause=500&color=FFD700&center=true&vCenter=true&width=600&lines=🔧+v2.2.0+—+UX+Improvements;2025-05-20" alt="v2.2.0" />
 
-### 🚀 Próximos Pasos Recomendados
+</div>
 
-1. **Desplegar Firebase Rules**: `firebase deploy --only database`
-2. **Probar en dispositivo real**: Verificar envío/recepción de mensajes
-3. **Monitorear Firebase Console**: Revisar uso de ancho de banda (debería disminuir significativamente)
-4. **Migrar datos existentes**: Si hay usuarios en producción, ejecutar script de migración
-5. **Configurar App Check**: Proteger el backend contra acceso no autorizado
+<br>
 
----
+### ✨ Added
 
-### 📊 Métricas de Rendimiento
+| Icono | Feature | Descripción |
+|:---:|:---|:---|
+| 🎨 | **Dynamic Themes** | 25 colores de acento + Material 3 + cambio en tiempo real. |
+| 🎨 | **Custom Backgrounds** | Color sólido, gradiente animado, video de fondo. |
+| 🌙 | **Dark Mode** | Modo oscuro optimizado con Material 3 dynamic colors. |
+| 📞 | **Call Controls** | Mute, video on/off, cambio de cámara durante llamadas WebRTC. |
 
-**Antes de la optimización**:
-- `getUserChats()`: ~500ms - 2s (depende del total de chats en DB)
-- Transferencia de datos: ~100KB - 1MB por carga
-- Errores de permisos: 30-40% de operaciones
+<br>
 
-**Después de la optimización**:
-- `getUserChats()`: ~50-100ms (constante, independiente del total)
-- Transferencia de datos: ~5-10KB por carga
-- Errores de permisos: 0%
+### 🔧 Changed
+
+| Icono | Cambio | Descripción |
+|:---:|:---|:---|
+| 🎨 | **Stories Editor** | Overlays en tiempo real, stickers arrastrables, texto con fuentes personalizables. |
+
+<br>
 
 ---
 
-### 🎯 Impacto en Usuarios
+<br>
 
-- **Velocidad**: La app carga chats 5-10x más rápido
-- **Confiabilidad**: Eliminación de errores "Permission Denied"
-- **Consumo de datos**: Reducción del 90% en transferencia al cargar chats
-- **Experiencia**: Interfaz más fluida y responsiva
+<div align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&duration=2000&pause=500&color=FF5252&center=true&vCenter=true&width=600&lines=⚡+v2.1.0+—+AI+Integration;2025-05-01" alt="v2.1.0" />
+
+</div>
+
+<br>
+
+### ✨ Added
+
+| Icono | Feature | Descripción |
+|:---:|:---|:---|
+| 🤖 | **Azel AI** | Asistente integrado con Gemini (Google Generative AI). |
+| 🔐 | **API Key Encryption** | AES-256 en EncryptedSharedPreferences para la key de Gemini. |
+| 📡 | **SSE Streaming** | Server-Sent Events para respuestas en tiempo real. |
+| ⏱️ | **Rate Limiter** | Cola con backoff exponencial y rate limiting inteligente. |
+| 📝 | **Context Management** | Gestión de últimos 8 mensajes para contexto de conversación. |
+| 🏠 | **Ollama Support** | Configuración para modelo local vía Ollama. |
+
+<br>
 
 ---
 
-### 📚 Recursos Adicionales
+<br>
 
-- [Firebase Realtime Database Best Practices](https://firebase.google.com/docs/database/usage/best-practices)
-- [Firebase Security Rules Guide](https://firebase.google.com/docs/database/security)
-- [Estructuras de datos eficientes en RTDB](https://firebase.google.com/docs/database/android/structure-data)
+<div align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&duration=2000&pause=500&color=9C27B0&center=true&vCenter=true&width=600&lines=🎉+v2.0.0+—+WebRTC+%26+Stories;2025-04-10" alt="v2.0.0" />
+
+</div>
+
+<br>
+
+### ✨ Added
+
+| Icono | Feature | Descripción |
+|:---:|:---|:---|
+| 📞 | **WebRTC P2P Calls** | Llamadas de audio y video en alta calidad (1280x720 @ 30fps). |
+| 📡 | **Firebase Signaling** | Señalización de llamadas vía Realtime Database. |
+| 🔔 | **FCM Call Notifications** | Notificaciones push para llamadas entrantes. |
+| 📸 | **Stories Multimedia** | Editor 24h con Canvas + Media3 Transformer. |
+| 🎬 | **Media3 Transformer** | Renderizado de videos con overlays y efectos. |
+
+<br>
 
 ---
 
-**Desarrollado por**: Claude Sonnet 4.5  
-**Fecha**: Junio 16, 2026  
-**Versión**: Stable v1.0
+<br>
+
+<div align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=24&duration=2000&pause=500&color=00E676&center=true&vCenter=true&width=600&lines=🌱+v1.0.0+—+Initial+Release;2025-03-15" alt="v1.0.0" />
+
+</div>
+
+<br>
+
+### ✨ Added
+
+| Icono | Feature | Descripción |
+|:---:|:---|:---|
+| 💬 | **Chat en Tiempo Real** | Firebase Realtime Database con mensajes de texto. |
+| 🔥 | **Firebase Auth** | Email/password + Google Sign-In. |
+| 🖼️ | **Media Sharing** | Imágenes, videos, audio, documentos vía Firebase Storage. |
+| 🎨 | **Material 3 UI** | Jetpack Compose con Material 3 Design System. |
+| 🏗️ | **Clean Architecture** | MVVM + Use Cases + Repositories + Hilt DI. |
+| 🎨 | **Custom Themes** | Sistema de temas con colores personalizables. |
+
+<br>
+
+---
+
+<br>
+
+<div align="center">
+
+### 🏷️ Leyenda de Cambios
+
+| Icono | Tipo | Descripción | Color |
+|:---:|:---:|:---|:---:|
+| ✨ | **Added** | Nueva feature | 🟢 |
+| 🐛 | **Fixed** | Bug corregido | 🔴 |
+| 🔧 | **Changed** | Mejora o cambio | 🟡 |
+| ⚡ | **Performance** | Optimización | 🔵 |
+| 🔐 | **Security** | Mejora de seguridad | 🟣 |
+| 🗑️ | **Deprecated** | Feature obsoleta | 🟤 |
+| 🚫 | **Removed** | Feature eliminada | ⚫ |
+
+</div>
+
+<br>
+
+---
+
+<br>
+
+<div align="center">
+
+*Changelog mantenido por **Azel Mods** · Seguimos el formato [Keep a Changelog](https://keepachangelog.com/)*
+
+<br>
+
+<a href="https://github.com/Azelmods677/NexusChat">
+  <img src="https://img.shields.io/github/stars/Azelmods677/NexusChat?style=social&logo=github" alt="GitHub Stars" />
+</a>
+
+<br><br>
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,22,28,40&height=100&section=footer&text=Azel%20Mods&fontSize=40&fontColor=fff&animation=twinkling&fontAlignY=65" />
+
+</div>

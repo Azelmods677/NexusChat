@@ -30,6 +30,10 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
     
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
+
+    // 🔥 JS execution via WebView (Composable handles the actual WebView)
+    private val _jsToExecute = MutableStateFlow<String?>(null)
+    val jsToExecute: StateFlow<String?> = _jsToExecute.asStateFlow()
     
     init {
         loadFiles()
@@ -84,38 +88,72 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
         }
     }
     
-    // Execute code (shell command)
+    /**
+     * Execute code. For JavaScript, delegates to the Composable via [jsToExecute].
+     * For other languages, shows informative fallback messages.
+     */
     fun executeCode(code: String, language: String) {
         viewModelScope.launch {
             _isRunning.value = true
-            _output.value = ""
-            try {
-                val result = when (language) {
-                    "python" -> executeShell("python3", code)
-                    "bash" -> executeShell("bash", code)
-                    "js" -> executeShell("node", code)
-                    else -> "Lenguaje no soportado para ejecución"
+            _output.value = "Analizando..."
+            kotlinx.coroutines.delay(300)
+            
+            when (language) {
+                "js" -> {
+                    // 🔥 Signal Composable to execute JS via WebView
+                    _output.value = "🟨 Ejecutando JavaScript..."
+                    _jsToExecute.value = code
                 }
-                _output.value = result
-            } catch (e: Exception) {
-                _output.value = "Error: ${e.message}"
+                "python" -> {
+                    _output.value = "🐍 Python no está disponible en Android nativo.\n\n" +
+                        "Para ejecutar Python:\n" +
+                        "1. Instala Termux desde F-Droid\n" +
+                        "2. Ejecuta: pkg install python\n" +
+                        "3. Corre tu script desde el terminal"
+                }
+                "bash" -> {
+                    _output.value = "💻 Bash en Android es limitado.\n\n" +
+                        "Algunos comandos básicos funcionan (ls, pwd, cat)\n" +
+                        "pero otros requieren Termux.\n\n" +
+                        "Usa el Terminal integrado (Settings > Terminal) para un shell completo."
+                }
+                "kotlin" -> {
+                    _output.value = "💜 Kotlin en Android requiere compilación.\n\n" +
+                        "No se puede ejecutar código fuente directamente en el dispositivo.\n\n" +
+                        "Prueba Kotlin Playground:\nhttps://play.kotlinlang.org/"
+                }
+                "c" -> {
+                    _output.value = "🔵 C requiere compilador (gcc/clang).\n\n" +
+                        "No disponible en Android sin Termux.\n\n" +
+                        "Instala via Termux: pkg install clang"
+                }
+                else -> {
+                    _output.value = "⚠️ Lenguaje '$language' no soportado para ejecución en este dispositivo."
+                }
             }
-            _isRunning.value = false
+            if (language != "js") {
+                _isRunning.value = false
+            }
         }
+    }
+
+    /**
+     * Called by the Composable after WebView JS execution completes.
+     */
+    fun onJsResult(result: String, error: String?) {
+        _isRunning.value = false
+        _output.value = if (error != null) {
+            "❌ Error:\n$error\n\n$result"
+        } else {
+            "🟨 JavaScript Output:\n$result"
+        }
+        _jsToExecute.value = null
     }
     
-    private suspend fun executeShell(interpreter: String, code: String): String {
-        return try {
-            val process = ProcessBuilder(interpreter, "-c", code)
-                .redirectErrorStream(true)
-                .start()
-            val output = process.inputStream.bufferedReader().readText()
-            process.waitFor()
-            output.ifBlank { "[Sin salida]" }
-        } catch (e: Exception) {
-            "Error: ${e.message}"
-        }
-    }
+    private fun executePython(code: String): String = ""  // removed — no crash
+    private fun executeJavaScript(code: String): String = ""  // removed — no crash
+    private fun executeKotlin(code: String): String = ""  // removed — no crash
+    private suspend fun executeShell(interpreter: String, code: String): String = ""  // removed — no crash
     
     // Templates by language
     private fun getTemplate(lang: String) = when (lang) {

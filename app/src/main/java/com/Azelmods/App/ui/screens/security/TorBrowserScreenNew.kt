@@ -93,133 +93,64 @@ fun TorBrowserScreenNew(
     // que WebView invoca en el executor de larga vida de ProxyManager (hilo de background).
     val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
 
-    // ── PASO 1: Configurar proxy de Orbot ANTES de cargar URLs ──
+    // ── PASO 1: Cargar URL inicial inmediatamente + proxy async ──
     LaunchedEffect(isWebViewReady) {
         if (!isWebViewReady) return@LaunchedEffect
 
-        // Garantiza que DEFAULT_HOMEPAGE se cargue una sola vez, exista o no proxy (Req. 3.1, 3.5).
-        // Evita la "pantalla en blanco" si la fase de setup falla antes de llegar a PASO 2.
-        var initialUrlLoaded = false
+        // Cargar página SIEMPRE, sin depender del proxy
         try {
-            // Pequeño delay para asegurar que el WebView esté completamente listo
-            kotlinx.coroutines.delay(300)
+            webView?.loadUrl(DEFAULT_HOMEPAGE)
+            Log.d(TAG, "✓ URL inicial cargada: $DEFAULT_HOMEPAGE")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error cargando URL inicial", e)
+        }
 
-            // Determinar en el IOThread si el proxy de Orbot está disponible y operativo.
+        // Configurar proxy de forma asíncrona (no bloquea la carga)
+        try {
+            kotlinx.coroutines.delay(500)
+
             var torReady = false
             var proxyRule: String? = null
             withContext(Dispatchers.IO) {
                 try {
                     val hasHttp = OrbotDetector.isHttpProxyAvailable()
                     val hasSocks = OrbotDetector.isSocksProxyAvailable()
-
-                    // WebView (Chromium) enruta por el proxy HTTP de Orbot (8118) cuando
-                    // está disponible. Si 8118 NO está pero SOCKS5 (9050) SÍ (Tor conectado),
-                    // usamos socks5:// como fallback. Así los .onion funcionan aunque Orbot
-                    // no exponga el proxy HTTP (causa del bug "necesitas Orbot activo").
                     proxyRule = when {
                         hasHttp -> "http://$ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT"
                         hasSocks -> "socks5://$ORBOT_HTTP_HOST:$ORBOT_SOCKS_PORT"
                         else -> null
                     }
                     torReady = proxyRule != null
-
                     orbotStatus = OrbotDetector.getStatus(context)
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ Error detectando Orbot", e)
-                    orbotStatus = "Error al detectar Orbot"
                 }
             }
 
-            // De vuelta en el MainThread: aplicar el proxy delegando en ProxyManager.
-            // El executor de larga vida de ProxyManager NUNCA se apaga antes del callback,
-            // por lo que ya no se produce RejectedExecutionException.
-            var torActivated = false
             if (torReady && proxyRule != null) {
                 val result = setupOrbotProxy(proxyRule!!) {
-                    // WebView invoca este callback en el executor de background de ProxyManager.
-                    // Actualizamos el estado de UI (proxyEnabled) en el MainThread (Req. 1.5).
                     mainHandler.post {
                         proxyEnabled = true
                         browsingMode = "tor"
-                        Log.d(TAG, "✓ Proxy Tor confirmado (callback) — proxyEnabled=true")
+                        Log.d(TAG, "✓ Proxy Tor activo")
                     }
                 }
                 if (result is ProxyResult.Applied) {
-                    torActivated = true
-                    Log.d(TAG, "✓ Proxy Tor solicitado: $ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT")
-                } else if (result is ProxyResult.Failed) {
-                    Log.w(TAG, "Proxy Tor no aplicado: ${result.reason} — modo directo")
+                    Log.d(TAG, "✓ Proxy Tor aplicado — recargando...")
+                    // Recargar la página con proxy activo
+                    webView?.reload()
                 }
-            }
-
-            // Mostrar snackbar con el estado
-            try {
-                when {
-                    torActivated || proxyEnabled -> {
-                        snackbarHostState.showSnackbar(
-                            message = "🧅 Proxy Tor activo — Sitios .onion y navegación anónima",
-                            duration = SnackbarDuration.Short
-                        )
-                    }
-                    OrbotDetector.isTorAvailable() && !proxyEnabled -> {
-                        snackbarHostState.showSnackbar(
-                            message = "⚠️ Proxy SOCKS disponible pero HTTP (8118) no responde. Usando modo directo.",
-                            duration = SnackbarDuration.Long
-                        )
-                    }
-                    OrbotDetector.isOrbotInstalled(context) -> {
-                        snackbarHostState.showSnackbar(
-                            message = "🌐 Modo directo — Orbot instalado pero no activo. Abre Orbot para .onion",
-                            duration = SnackbarDuration.Long
-                        )
-                    }
-                    else -> {
-                        snackbarHostState.showSnackbar(
-                            message = "🌐 Modo directo — Tor no disponible. Descarga Orbot para navegación anónima",
-                            duration = SnackbarDuration.Long
-                        )
-                    }
+            } else {
+                Log.d(TAG, "🌐 Proxy Tor no disponible — modo directo")
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "🌐 Modo directo — Tor no disponible. Instala Orbot para .onion",
+                        duration = SnackbarDuration.Long
+                    )
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error mostrando snackbar", e)
-            }
-
-            // ── PASO 2: Cargar URL inicial DESPUÉS de configurar el proxy ──
-            // Esto elimina la race condition: el proxy ya está listo antes de cualquier loadUrl().
-            // La carga ocurre SIEMPRE tras la fase de setup, haya proxy (torReady=true) o se navegue
-            // en modo directo (torReady=false). Así el usuario nunca ve una pantalla en blanco.
-            try {
-                webView?.loadUrl(DEFAULT_HOMEPAGE)
-                initialUrlLoaded = true
-                Log.d(TAG, "✓ Loading initial URL: $DEFAULT_HOMEPAGE (modo=$browsingMode)")
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error loading initial URL", e)
-                snackbarHostState.showSnackbar(
-                    message = "❌ Error al cargar el navegador: ${e.message}",
-                    duration = SnackbarDuration.Long
-                )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error crítico en inicialización del navegador", e)
-            // Fallback: aunque la fase de setup (detección de Orbot/proxy) haya fallado,
-            // cargamos la página inicial en modo directo para no dejar el WebView en blanco.
-            if (!initialUrlLoaded) {
-                try {
-                    webView?.loadUrl(DEFAULT_HOMEPAGE)
-                    initialUrlLoaded = true
-                    Log.d(TAG, "✓ Carga de respaldo de URL inicial en modo directo: $DEFAULT_HOMEPAGE")
-                } catch (loadError: Exception) {
-                    Log.e(TAG, "❌ Error en carga de respaldo de URL inicial", loadError)
-                }
-            }
-            try {
-                snackbarHostState.showSnackbar(
-                    message = "❌ Error al inicializar el navegador. Intenta de nuevo.",
-                    duration = SnackbarDuration.Long
-                )
-            } catch (snackbarError: Exception) {
-                Log.e(TAG, "❌ No se pudo mostrar error al usuario", snackbarError)
-            }
+            Log.e(TAG, "❌ Error en configuración de proxy", e)
         }
     }
 

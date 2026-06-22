@@ -135,19 +135,54 @@ class RealtimeDatabaseRepository @Inject constructor(
         val chatRef = database.child("chats").child(chatId)
         val chatSnapshot = chatRef.get().await()
         
+        // ══════════════════════════════════════════════════════════════════
+        // 🔧 FIX BUG #5 y #6: CREAR CHAT SI NO EXISTE Y ACTUALIZAR ÍNDICE
+        // ══════════════════════════════════════════════════════════════════
         if (!chatSnapshot.exists()) {
-            val memberIds = chatId.split("_").filter { it.isNotBlank() }
-            val membersMap = memberIds.associateWith { true }
+            android.util.Log.d("RealtimeDB", "🆕 Chat $chatId no existe, creando...")
+            
+            // Extraer miembros del chatId (formato: "uid1_uid2" o "group_timestamp")
+            val memberIds = if (chatId.startsWith("group_")) {
+                // Para grupos, necesitamos los miembros del grupo
+                // Por ahora, asumimos que el grupo ya fue creado con createGroup()
+                listOf(currentUserId)
+            } else {
+                // Para chats 1:1, extraer los dos UIDs del chatId
+                chatId.split("_").filter { it.isNotBlank() && it != currentUserId } + currentUserId
+            }
+            
+            val membersMap = memberIds.distinct().associateWith { true }
+            
+            // Crear el nodo del chat en Firebase
             val chatData = mapOf(
                 "chatId" to chatId,
                 "members" to membersMap,
                 "createdAt" to ServerValue.TIMESTAMP,
                 "lastMessage" to "",
                 "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to ""
+                "lastMessageSenderId" to "",
+                "isE2EE" to true // Habilitado por defecto
             )
-            chatRef.setValue(chatData).await()
-            updateUserChatsIndex(chatId, memberIds)
+            
+            try {
+                chatRef.setValue(chatData).await()
+                android.util.Log.d("RealtimeDB", "✅ Chat $chatId creado exitosamente")
+            } catch (e: Exception) {
+                android.util.Log.e("RealtimeDB", "❌ Error creando chat: ${e.message}")
+                throw e
+            }
+            
+            // ══════════════════════════════════════════════════════════════════
+            // 🔥 CRÍTICO: ACTUALIZAR ÍNDICE userChats PARA CADA MIEMBRO
+            // Esto hace que el chat aparezca en la HomeScreen
+            // ══════════════════════════════════════════════════════════════════
+            try {
+                updateUserChatsIndex(chatId, memberIds.distinct())
+                android.util.Log.d("RealtimeDB", "✅ Índice userChats actualizado para ${memberIds.size} miembros")
+            } catch (e: Exception) {
+                android.util.Log.e("RealtimeDB", "❌ Error actualizando índice userChats: ${e.message}")
+                // No lanzamos excepción aquí para que el mensaje se envíe de todos modos
+            }
         }
 
         val messageId = chatRef.child("messages").push().key
@@ -370,19 +405,44 @@ class RealtimeDatabaseRepository @Inject constructor(
     }
 
     suspend fun createGroup(groupName: String, members: List<String>): String {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("Not logged in")
         val groupId = "group_${System.currentTimeMillis()}"
-        val allMembers = (members + (auth.currentUser?.uid ?: "")).distinct()
+        val allMembers = (members + currentUserId).distinct()
         val membersMap = allMembers.associateWith { true }
+        
+        android.util.Log.d("RealtimeDB", "🆕 Creando grupo: $groupId con ${allMembers.size} miembros")
+        
         val groupData = mapOf(
             "chatId" to groupId,
             "groupName" to groupName,
             "members" to membersMap,
             "createdAt" to ServerValue.TIMESTAMP,
-            "isGroup" to true
+            "createdBy" to currentUserId,
+            "isGroup" to true,
+            "type" to "group",
+            "lastMessage" to "Grupo creado",
+            "lastMessageTime" to ServerValue.TIMESTAMP,
+            "lastMessageSenderId" to currentUserId,
+            "isE2EE" to false // Grupos no usan E2EE por defecto
         )
-        database.child("chats").child(groupId).setValue(groupData).await()
-        updateUserChatsIndex(groupId, allMembers)
-        return groupId
+        
+        try {
+            // Crear el grupo en /chats
+            database.child("chats").child(groupId).setValue(groupData).await()
+            android.util.Log.d("RealtimeDB", "✅ Grupo $groupId creado en /chats")
+            
+            // ══════════════════════════════════════════════════════════════════
+            // 🔥 CRÍTICO: ACTUALIZAR ÍNDICE userChats PARA CADA MIEMBRO
+            // Sin esto, el grupo NO aparecerá en HomeScreen de ningún miembro
+            // ══════════════════════════════════════════════════════════════════
+            updateUserChatsIndex(groupId, allMembers)
+            android.util.Log.d("RealtimeDB", "✅ Índice userChats actualizado para grupo $groupId")
+            
+            return groupId
+        } catch (e: Exception) {
+            android.util.Log.e("RealtimeDB", "❌ Error creando grupo: ${e.message}", e)
+            throw e
+        }
     }
 
     suspend fun searchUserByUsername(username: String): Map<String, Any>? {
@@ -970,17 +1030,61 @@ class RealtimeDatabaseRepository @Inject constructor(
     }
 
     /**
-     * Helper function to maintain userChats index.
-     * Writes userChats/{uid}/{chatId} = true for each member.
-     * This enables efficient chat listing without reading /chats entirely.
+     * 🔥 CRÍTICO: Helper function to maintain userChats index.
+     * 
+     * Escribe userChats/{uid}/{chatId} = true para cada miembro.
+     * Esto permite listado eficiente de chats sin leer todo /chats.
+     * 
+     * **SIN ESTA FUNCIÓN, LOS CHATS NO APARECEN EN HOMESCREEN**
+     * 
+     * Estructura en Firebase:
+     * /userChats
+     *   /{userId1}
+     *     /{chatId}: true
+     *   /{userId2}
+     *     /{chatId}: true
+     * 
+     * @param chatId El ID del chat (puede ser "uid1_uid2" o "group_timestamp")
+     * @param memberIds Lista de UIDs de todos los miembros del chat
      */
     private suspend fun updateUserChatsIndex(chatId: String, memberIds: List<String>) {
+        if (chatId.isBlank()) {
+            android.util.Log.e("RealtimeDB", "❌ updateUserChatsIndex: chatId vacío")
+            return
+        }
+        
+        if (memberIds.isEmpty()) {
+            android.util.Log.e("RealtimeDB", "❌ updateUserChatsIndex: memberIds vacío para chat $chatId")
+            return
+        }
+        
+        android.util.Log.d("RealtimeDB", "📝 Actualizando índice userChats para chat $chatId con ${memberIds.size} miembros: $memberIds")
+        
         try {
+            val updates = mutableMapOf<String, Any>()
+            
+            // Para cada miembro, crear entrada en userChats/{uid}/{chatId} = true
             memberIds.forEach { uid ->
-                database.child("userChats").child(uid).child(chatId).setValue(true).await()
+                if (uid.isNotBlank()) {
+                    updates["userChats/$uid/$chatId"] = true
+                    android.util.Log.d("RealtimeDB", "  ✓ Agregando userChats/$uid/$chatId")
+                }
             }
+            
+            if (updates.isEmpty()) {
+                android.util.Log.e("RealtimeDB", "❌ No hay updates para aplicar en userChats")
+                return
+            }
+            
+            // Hacer update atómico de todos los índices a la vez
+            database.updateChildren(updates).await()
+            
+            android.util.Log.d("RealtimeDB", "✅ Índice userChats actualizado exitosamente: ${updates.size} entradas escritas")
+            
         } catch (e: Exception) {
-            Log.e("RealtimeDB", "Failed to update userChats index for $chatId: ${e.message}")
+            android.util.Log.e("RealtimeDB", "❌ Error fatal actualizando userChats index para $chatId: ${e.message}", e)
+            // Re-lanzar la excepción para que el caller la maneje
+            throw Exception("Failed to update userChats index: ${e.message}", e)
         }
     }
 }
