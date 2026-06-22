@@ -173,7 +173,7 @@ fun AppLockScreen(
             // Verificar PIN automáticamente cuando tiene 4-6 dígitos
             LaunchedEffect(pinValue) {
                 if (pinValue.length >= 4) {
-                    delay(200) // Pequeño delay para feedback visual
+                    delay(800) // Delay aumentado para evitar verificación prematura
                     val success = viewModel.verifyPin()
                     if (success) {
                         onUnlocked()

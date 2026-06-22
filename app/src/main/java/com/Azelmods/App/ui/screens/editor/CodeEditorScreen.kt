@@ -1,5 +1,10 @@
 package com.Azelmods.App.ui.screens.editor
 
+import android.webkit.ConsoleMessage
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +45,7 @@ fun CodeEditorScreen(
     val currentFile by viewModel.currentFile.collectAsState()
     val output by viewModel.output.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
+    val jsToExecute by viewModel.jsToExecute.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showNewFileDialog by remember { mutableStateOf(false) }
@@ -45,6 +53,157 @@ fun CodeEditorScreen(
     var newFileLanguage by remember { mutableStateOf("python") }
     var editorContent by remember { mutableStateOf("") }
     var showFileList by remember { mutableStateOf(true) }
+
+    // 🔥 WebView for real JavaScript execution
+    val context = LocalContext.current
+    val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    var jsOutput by remember { mutableStateOf("") }
+    var jsError by remember { mutableStateOf<String?>(null) }
+
+    // Create hidden WebView for JS execution with proper lifecycle management
+    DisposableEffect(context) {
+        var webView: WebView? = null
+        try {
+            webView = WebView(context).apply {
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
+                settings.databaseEnabled = true
+                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                layoutParams = android.view.ViewGroup.LayoutParams(1, 1) // 1x1 pixel — hidden
+                
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        super.onPageFinished(view, url)
+                    }
+                    
+                    override fun onReceivedError(
+                        view: WebView?,
+                        request: android.webkit.WebResourceRequest?,
+                        error: android.webkit.WebResourceError?
+                    ) {
+                        super.onReceivedError(view, request, error)
+                        jsError = "WebView Error: ${error?.description}"
+                    }
+                }
+                
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(message: ConsoleMessage?): Boolean {
+                        message?.let {
+                            val line = "[${it.messageLevel()}] ${it.message()}"
+                            jsOutput += line + "\n"
+                        }
+                        return true
+                    }
+                }
+                
+                addJavascriptInterface(object {
+                    @JavascriptInterface
+                    fun log(message: String) {
+                        jsOutput += message + "\n"
+                    }
+                    @JavascriptInterface
+                    fun error(message: String) {
+                        jsError = message
+                    }
+                }, "AndroidBridge")
+                
+                loadData(
+                    """
+                    <!DOCTYPE html>
+                    <html>
+                    <head><meta charset="UTF-8"></head>
+                    <body>
+                    <script>
+                        // Override console to capture output
+                        window.originalConsole = {
+                            log: console.log.bind(console),
+                            error: console.error.bind(console),
+                            warn: console.warn.bind(console)
+                        };
+                        console.log = function(...args) {
+                            try {
+                                window.originalConsole.log(...args);
+                                AndroidBridge.log(args.map(a => String(a)).join(' '));
+                            } catch(e) {}
+                        };
+                        console.error = function(...args) {
+                            try {
+                                window.originalConsole.error(...args);
+                                AndroidBridge.error(args.map(a => String(a)).join(' '));
+                            } catch(e) {}
+                        };
+                        console.warn = function(...args) {
+                            try {
+                                window.originalConsole.warn(...args);
+                                AndroidBridge.log('[WARN] ' + args.map(a => String(a)).join(' '));
+                            } catch(e) {}
+                        };
+                        // Error handler
+                        window.onerror = function(msg, url, line) {
+                            try {
+                                AndroidBridge.error(msg + ' (line ' + line + ')');
+                            } catch(e) {}
+                            return true;
+                        };
+                    </script>
+                    </body>
+                    </html>
+                    """.trimIndent(),
+                    "text/html",
+                    "UTF-8"
+                )
+            }
+            webViewRef.value = webView
+        } catch (e: Exception) {
+            jsError = "Error inicializando WebView: ${e.message}"
+        }
+        
+        onDispose {
+            try {
+                webViewRef.value?.apply {
+                    stopLoading()
+                    loadUrl("about:blank")
+                    clearHistory()
+                    clearCache(true)
+                    removeAllViews()
+                    destroy()
+                }
+                webViewRef.value = null
+            } catch (e: Exception) {
+                // Ignore dispose errors
+            }
+        }
+    }
+
+    // Execute JS when ViewModel signals
+    LaunchedEffect(jsToExecute) {
+        val code = jsToExecute ?: return@LaunchedEffect
+        jsOutput = ""
+        jsError = null
+
+        // Wait for WebView to be ready
+        delay(500)
+
+        val wrappedCode = """
+            (function() {
+                try {
+                    $code
+                    return '__NEXUS_DONE__';
+                } catch (e) {
+                    AndroidBridge.error(e.name + ': ' + e.message);
+                    return '__NEXUS_ERROR__';
+                }
+            })()
+        """.trimIndent()
+
+        webViewRef.value?.evaluateJavascript(wrappedCode) { result ->
+            val cleanResult = result?.trim('"') ?: ""
+            viewModel.onJsResult(
+                if (jsOutput.isBlank()) cleanResult else jsOutput,
+                jsError
+            )
+        }
+    }
 
     LaunchedEffect(currentFile) {
         editorContent = currentFile?.content ?: ""

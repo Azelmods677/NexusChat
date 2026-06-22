@@ -130,12 +130,15 @@ class HomeViewModel @Inject constructor(
 
             val userId = FirebaseAuth.getInstance().currentUser?.uid
             if (userId == null) {
+                android.util.Log.e("HomeVM", "❌ User not authenticated")
                 _state.value = _state.value.copy(
                     isLoading = false,
                     error = "User not authenticated"
                 )
                 return@launch
             }
+            
+            android.util.Log.d("HomeVM", "✅ Loading chats for user: $userId")
 
             try {
                 // ── OFFLINE CACHE: show cached chats immediately ──
@@ -161,15 +164,39 @@ class HomeViewModel @Inject constructor(
                         participantPhotos = allPhotos,
                         isLoading = false
                     )
+                } else {
+                    android.util.Log.d("HomeVM", "📭 No cached chats found")
                 }
 
                 databaseRepository.getUserChats(userId).collect { rawChats ->
+                    android.util.Log.d("HomeVM", "🔄 Received ${rawChats.size} chats from Firebase")
+                    
+                    if (rawChats.isEmpty()) {
+                        android.util.Log.w("HomeVM", "⚠️ No chats found in Firebase for user $userId")
+                        _state.value = _state.value.copy(
+                            chats = emptyList(),
+                            filteredChats = emptyList(),
+                            isLoading = false,
+                            error = null // No es error, simplemente no hay chats
+                        )
+                        return@collect
+                    }
+                    
                     // All Firebase user-profile look-ups run on the IO dispatcher.
                     val enriched: List<Chat> = withContext(Dispatchers.IO) {
                         rawChats.mapNotNull { data ->
-                            runCatching { buildChatFromMap(data, userId) }.getOrNull()
+                            runCatching { 
+                                val chat = buildChatFromMap(data, userId)
+                                android.util.Log.d("HomeVM", "✅ Built chat: ${chat.chatId}, type: ${chat.chatType}, participants: ${chat.participants.size}")
+                                chat
+                            }.getOrElse { e ->
+                                android.util.Log.e("HomeVM", "❌ Failed to build chat: ${e.message}", e)
+                                null
+                            }
                         }
                     }
+                    
+                    android.util.Log.d("HomeVM", "📊 Successfully enriched ${enriched.size} chats")
 
                     // Aggregate a single uid → name / photo map for the whole screen.
                     val allNames = mutableMapOf<String, String>()
@@ -182,8 +209,9 @@ class HomeViewModel @Inject constructor(
                     // ── SAVE CHATS TO ROOM CACHE ──
                     try {
                         cacheManager.cacheChats(enriched)
+                        android.util.Log.d("HomeVM", "💾 Cached ${enriched.size} chats successfully")
                     } catch (e: Exception) {
-                        android.util.Log.e("HomeVM", "Failed to cache chats", e)
+                        android.util.Log.e("HomeVM", "❌ Failed to cache chats: ${e.message}", e)
                     }
 
                     // ── CACHE USER PROFILES too ──
@@ -196,8 +224,9 @@ class HomeViewModel @Inject constructor(
                                 )
                             }
                         }
+                        android.util.Log.d("HomeVM", "💾 Cached user profiles successfully")
                     } catch (e: Exception) {
-                        android.util.Log.e("HomeVM", "Failed to cache user profiles", e)
+                        android.util.Log.e("HomeVM", "❌ Failed to cache user profiles: ${e.message}", e)
                     }
 
                     _state.value = _state.value.copy(
@@ -214,6 +243,7 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "❌ Critical error loading chats: ${e.message}", e)
                 _state.value = _state.value.copy(
                     isLoading = false,
                     error = e.message ?: "Failed to load chats"
@@ -237,6 +267,7 @@ class HomeViewModel @Inject constructor(
         currentUserId: String
     ): Chat {
         val chatId = data["chatId"] as? String ?: ""
+        android.util.Log.d("HomeVM", "🔨 Building chat: $chatId")
 
         val members: List<String> = when {
             data["members"] is List<*> -> (data["members"] as List<*>).filterIsInstance<String>()
@@ -244,23 +275,40 @@ class HomeViewModel @Inject constructor(
             data["participants"] is List<*> -> (data["participants"] as List<*>).filterIsInstance<String>()
             else -> emptyList()
         }
+        
+        android.util.Log.d("HomeVM", "👥 Chat $chatId has ${members.size} members: $members")
 
         val isPinned = data["isPinned"] as? Boolean ?: false
         val isMuted = data["isMuted"] as? Boolean ?: false
         val isArchived = data["isArchived"] as? Boolean ?: false
 
-        val chatType = if ((data["type"] as? String) == "group") {
+        val chatType = if ((data["type"] as? String) == "group" || 
+                           (data["isGroup"] as? Boolean) == true ||
+                           chatId.startsWith("group_")) {
+            android.util.Log.d("HomeVM", "📁 Chat $chatId is GROUP")
             ChatType.GROUP
         } else {
+            android.util.Log.d("HomeVM", "💬 Chat $chatId is PRIVATE")
             ChatType.PRIVATE
         }
 
         // Pick the first member that is not the current user as the "other" side.
         val otherUid = members.firstOrNull { it != currentUserId } ?: ""
+        android.util.Log.d("HomeVM", "👤 Other user ID: $otherUid")
 
         val otherUserData: Map<String, Any>? = if (otherUid.isNotBlank()) {
-            databaseRepository.getUserById(otherUid)
-        } else null
+            try {
+                databaseRepository.getUserById(otherUid).also {
+                    android.util.Log.d("HomeVM", "✅ Fetched user data for $otherUid: ${it?.get("displayName")}")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "❌ Failed to fetch user $otherUid: ${e.message}")
+                null
+            }
+        } else {
+            android.util.Log.w("HomeVM", "⚠️ No other user found for chat $chatId")
+            null
+        }
 
         // Real online presence of the other participant (snapshot; refreshes on each
         // getUserChats emission). Never hardcoded.
@@ -286,12 +334,18 @@ class HomeViewModel @Inject constructor(
             else -> emptyMap()
         }
 
-        // Prefer displayName, fall back to username, then "Anónimo".
-        val displayName = (otherUserData?.get("displayName") as? String)
-            ?.takeIf { it.isNotBlank() }
-            ?: (otherUserData?.get("username") as? String)
+        // For groups, use groupName if available
+        val displayName = if (chatType == ChatType.GROUP) {
+            (data["groupName"] as? String)?.takeIf { it.isNotBlank() }
+                ?: "Grupo ${members.size} miembros"
+        } else {
+            // Prefer displayName, fall back to username, then "Anónimo".
+            (otherUserData?.get("displayName") as? String)
                 ?.takeIf { it.isNotBlank() }
-            ?: "Anónimo"
+                ?: (otherUserData?.get("username") as? String)
+                    ?.takeIf { it.isNotBlank() }
+                ?: "Anónimo"
+        }
 
         // Prefer photoUrl, fall back to profilePhotoUrl.
         val photoUrl = (otherUserData?.get("photoUrl") as? String)
@@ -331,7 +385,9 @@ class HomeViewModel @Inject constructor(
             isMuted = isMuted,
             isArchived = isArchived,
             isE2EE = data["isE2EE"] as? Boolean ?: true
-        )
+        ).also {
+            android.util.Log.d("HomeVM", "✅ Successfully built chat: ${it.chatId}, name: ${it.contactName}")
+        }
     }
 
     private fun filterChats(
