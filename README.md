@@ -2,11 +2,11 @@
   <img src="https://img.icons8.com/color/150/000000/chat.png" alt="Nexus Chat Logo"/>
 </p>
 
-<h1 align="center">Nexus Chat (Template para Devs)</h1>
+<h1 align="center">Nexus Chat (Enterprise Template para Devs)</h1>
 
 <p align="center">
-  <strong>Plantilla Profesional de Mensajería para Desarrolladores Android.</strong><br>
-  Construida con Jetpack Compose, Firebase, Clean Architecture y Google Gemini AI.
+  <strong>Arquitectura de Referencia y Plantilla Profesional de Mensajería para Desarrolladores Android.</strong><br>
+  Una inmersión profunda en Jetpack Compose, Firebase RTDB, Clean Architecture Avanzada, Criptografía Local y Google Gemini AI.
 </p>
 
 <p align="center">
@@ -14,94 +14,104 @@
   <img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-blue.svg?logo=android" alt="Jetpack Compose">
   <img src="https://img.shields.io/badge/Architecture-MVVM_&_Clean-brightgreen.svg" alt="Clean Architecture">
   <img src="https://img.shields.io/badge/Security-AES--256--GCM-red.svg" alt="Security">
+  <img src="https://img.shields.io/badge/WebRTC-P2P_Audio/Video-yellow.svg" alt="WebRTC">
   <img src="https://img.shields.io/badge/AI-Google_Gemini-orange.svg" alt="AI">
   <img src="https://img.shields.io/badge/Network-Tor_Proxy-black.svg" alt="Tor Proxy">
 </p>
 
 ---
 
-## 📖 Tabla de Contenidos
-1. [Visión General](#-visión-general)
-2. [Características Principales](#-características-principales)
-3. [Arquitectura y Diseño del Sistema](#-arquitectura-y-diseño-del-sistema)
-4. [Seguridad y Privacidad](#-seguridad-y-privacidad)
+## 📖 Índice Exhaustivo
+1. [Visión General del Proyecto](#-visión-general-del-proyecto)
+2. [Arquitectura e Ingeniería de Software](#-arquitectura-e-ingeniería-de-software)
+   - [Unidirectional Data Flow (UDF)](#unidirectional-data-flow-udf)
+   - [Inyección de Dependencias (Hilt)](#inyección-de-dependencias-hilt)
+3. [Módulo de Mensajería y Tiempo Real](#-módulo-de-mensajería-y-tiempo-real)
+   - [Firebase Realtime Database (RTDB)](#firebase-realtime-database-rtdb)
+   - [Traducción Automática (MyMemory API)](#traducción-automática-mymemory-api)
+4. [Seguridad Criptográfica y Privacidad](#-seguridad-criptográfica-y-privacidad)
+   - [Pipeline de Backups (.azelback)](#pipeline-de-backups-azelback)
+   - [Biometría y App Lock](#biometría-y-app-lock)
+   - [Enrutamiento Anónimo (Tor/Orbot)](#enrutamiento-anónimo-tororbot)
 5. [Motor de Inteligencia Artificial (Azel AI)](#-motor-de-inteligencia-artificial-azel-ai)
-6. [Estructura del Proyecto](#-estructura-del-proyecto)
-7. [Esquema de Base de Datos Firebase](#-esquema-de-base-de-datos-firebase)
-8. [Instalación y Configuración](#-instalación-y-configuración)
-9. [Stack Tecnológico](#-stack-tecnológico)
+   - [Ingeniería de Prompts y Bypass Levels](#ingeniería-de-prompts-y-bypass-levels)
+   - [Streaming (Server-Sent Events)](#streaming-server-sent-events)
+6. [Ecosistema para Desarrolladores](#-ecosistema-para-desarrolladores)
+   - [Sora Code Editor Integrado](#sora-code-editor-integrado)
+   - [AndroidBridge JS Evaluator](#androidbridge-js-evaluator)
+7. [Telecomunicaciones (WebRTC)](#-telecomunicaciones-webrtc)
+8. [Estructura de Carpetas](#-estructura-de-carpetas)
+9. [Instalación y Despliegue](#-instalación-y-despliegue)
+10. [Stack Tecnológico Detallado](#-stack-tecnológico-detallado)
 
 ---
 
-## 🚀 Visión General
+## 🚀 Visión General del Proyecto
 
-**Nexus Chat** es una plantilla Android lista para producción, diseñada como portafolio y referencia de desarrollo moderno. Va mucho más allá de una simple aplicación de chat, integrando paradigmas de alta seguridad, un entorno de ejecución de código, enrutamiento anónimo y un motor avanzado de Inteligencia Artificial.
+**Nexus Chat** no es un clon de chat ordinario; es una obra maestra de ingeniería Android diseñada para servir como un **portafolio definitivo** y una **arquitectura de referencia (Template)** para aplicaciones a gran escala. 
 
-Este repositorio sirve como **plantilla arquitectónica** para cualquier desarrollador que busque construir aplicaciones Android escalables, seguras y ricas en funciones utilizando los últimos estándares de la industria (Unidirectional Data Flow, Clean Architecture, Hilt, Coroutines).
-
----
-
-## ✨ Características Principales
-
-### 💬 Ecosistema de Mensajería
-*   **Sincronización en Tiempo Real:** Impulsado por Firebase Realtime Database para entrega instantánea, indicadores de escritura y estado en línea.
-*   **Caché de Medios:** Carga ultrarrápida de imágenes con **Coil 3**, garantizando un scroll fluido y uso óptimo de memoria.
-*   **Traducción en Chat:** Traduce mensajes al instante sin salir de la conversación usando la API de MyMemory.
-*   **Historias (Stories):** Comparte fotos y videos temporales con un visor y editor de historias integrado.
-
-### 🛡️ Privacidad Sin Compromisos
-*   **Integración Tor / Orbot:** Enruta tráfico web sensible y accede a sitios ocultos `.onion` directamente desde la app usando proxy SOCKS5.
-*   **Backups AES-256-GCM:** Exporta y restaura historiales completos de chat en formato `.azelback`. Las llaves se derivan mediante PBKDF2.
-*   **Bloqueo de App (App Lock):** Protege la interfaz usando la biometría nativa de Android (Huella/Facial) o un PIN seguro.
-*   **Borrado Real de Medios:** Al borrar un mensaje multimedia, la app emite un comando de borrado físico al bucket de Firebase Storage para no dejar archivos huérfanos.
-
-### 🤖 Inteligencia Artificial Integrada
-*   **SDK Google Gemini:** Asistente conversacional capaz de analizar código, resumir chats y proveer asistencia contextual.
-*   **Ingeniería de Prompts Custom:** Motor multicapa de prompts que soporta distintos modos operativos y técnicos.
-
-### 💻 Herramientas para Desarrolladores
-*   **Editor de Código:** IDE integrado (Sora Editor) con resaltado de sintaxis para Python, JS, C, Bash y Kotlin.
-*   **Terminal Local:** Ejecuta scripts y visualiza la salida estándar (stdout) directamente en la app.
-
-### 📞 Llamadas WebRTC
-*   **Arquitectura P2P:** Llamadas de audio y video de baja latencia utilizando protocolos WebRTC.
-*   **Historial de Llamadas:** Registros detallados con duración y filtrado de historial.
+El repositorio demuestra cómo resolver problemas complejos de concurrencia, estado de UI, criptografía, comunicación P2P, y manipulación de WebViews, empujando los límites de lo que una aplicación Android nativa puede lograr en un entorno de alta seguridad.
 
 ---
 
-## 🏗️ Arquitectura y Diseño del Sistema
+## 🏗️ Arquitectura e Ingeniería de Software
 
-Nexus Chat aplica estrictamente **Clean Architecture** para garantizar modularidad y testeabilidad. Utiliza **Dagger Hilt** para inyección de dependencias y **Kotlin Coroutines/Flow** para streams de datos asíncronos.
+La aplicación se adhiere estrictamente a los principios SOLID y a una variante moderna de **Clean Architecture** recomendada por Google. 
 
-### 1. Flujo de Arquitectura (Alto Nivel)
+### Unidirectional Data Flow (UDF)
+Toda la interfaz de usuario de Jetpack Compose está impulsada por el flujo unidireccional de datos. Los eventos del usuario (Intents) suben hacia el `ViewModel`, y el estado (State) fluye hacia abajo hacia las funciones Composables.
 
 ```mermaid
 graph TD
-    subgraph UILayer ["Capa de Presentación: Jetpack Compose"]
-        Screen["Pantallas Composables"]
+    subgraph UI_Layer ["Capa UI (Compose)"]
+        Screen["Screen Composable"]
+        Components["Stateless Components"]
+    end
+
+    subgraph Presentation_Layer ["Presentación (ViewModels)"]
         VM["ViewModel"]
+        State["StateFlow (UI State)"]
     end
 
-    subgraph DomainLayer ["Lógica de Negocio"]
-        UseCase["Casos de Uso"]
-        Model["Modelos de Dominio"]
+    subgraph Domain_Layer ["Dominio (Casos de Uso)"]
+        UC1["GetMessagesUseCase"]
+        UC2["SendMessageUseCase"]
     end
 
-    subgraph DataLayer ["Datos e Infraestructura"]
-        Repo["Repositorios"]
-        Local["DataStore / Keystore"]
-        Remote["Firebase / APIs"]
+    subgraph Data_Layer ["Datos (Repositorios)"]
+        Repo["ChatRepositoryImpl"]
+        Firebase["Firebase RTDB / Storage"]
+        Room["Local DataStore"]
     end
 
-    Screen -->|"Intent/Acción"| VM
-    VM -->|"StateFlow / SharedFlow"| Screen
-    VM -->|"Ejecuta"| UseCase
-    UseCase -->|"Pide Datos"| Repo
-    Repo --> Local
-    Repo --> Remote
+    Screen -- "Eventos (Ej. onClick)" --> VM
+    VM -- "Llama a" --> UC1
+    VM -- "Llama a" --> UC2
+    UC1 -- "Consulta" --> Repo
+    UC2 -- "Ejecuta Comando" --> Repo
+    Repo -- "Sincroniza" --> Firebase
+    Repo -- "Caché" --> Room
+    Repo -- "Retorna Flow<Data>" --> UC1
+    UC1 -- "Mapea a Dominio" --> VM
+    VM -- "Actualiza" --> State
+    State -- "Recompone" --> Screen
 ```
 
-### 2. Flujo de Traducción de Mensajes
+### Inyección de Dependencias (Hilt)
+Utilizamos **Dagger Hilt** para inyectar repositorios, servicios y utilidades a lo largo del ciclo de vida de la app. Esto asegura que componentes como `TranslationService` o `ProxyManager` sean *Singletons* y no causen fugas de memoria, mientras que los `ViewModels` mantienen un ciclo de vida atado a la navegación.
+
+---
+
+## 💬 Módulo de Mensajería y Tiempo Real
+
+### Firebase Realtime Database (RTDB)
+En lugar de una base de datos relacional tradicional (SQL), Nexus Chat emplea Firebase RTDB. Esto permite mantener conexiones WebSocket abiertas con el servidor. Cuando un nodo cambia, los `ValueEventListener` de Firebase actualizan un `kotlinx.coroutines.flow.Flow` en tiempo real, desencadenando una recomposición instantánea en Jetpack Compose con latencia de milisegundos.
+
+### Traducción Automática (MyMemory API)
+Hemos integrado un traductor nativo en la burbuja del chat. El servicio `TranslationService.kt`:
+1.  Utiliza una heurística de análisis de caracteres (`Regex`) para la **detección del idioma** de origen en caso de que la API falle.
+2.  Despacha la petición HTTP a través de `Dispatchers.IO` para evitar saturar el Main Thread (UI).
+3.  Actualiza discretamente el nodo de Firebase para que ambos usuarios vean el mensaje traducido sin recargar la pantalla.
 
 ```mermaid
 sequenceDiagram
@@ -109,125 +119,115 @@ sequenceDiagram
     participant UI as Pantalla Chat
     participant VM as ChatViewModel
     participant FB as Firebase RTDB
-    participant Traductor as MyMemory API
+    participant API as MyMemory API
 
-    Usuario->>UI: Escribe y envía mensaje
-    UI->>VM: sendMessage(texto)
-    VM->>FB: push().setValue(messageData)
-    FB-->>VM: Confirmación de Éxito
-    VM-->>UI: Actualiza Estado (Enviado)
-    
     Usuario->>UI: Long-press -> "Traducir"
     UI->>VM: requestTranslation(msgId)
-    VM->>UI: Emite Estado (Cargando = true)
-    VM->>Traductor: HTTP GET /translate
-    Traductor-->>VM: JSON Response (Texto Traducido)
+    VM->>UI: Emite State(Cargando = true)
+    
+    rect rgb(30, 30, 46)
+        Note right of VM: Despacho asíncrono (Dispatchers.IO)
+        VM->>API: HTTP GET /translate (Petición)
+        API-->>VM: JSON Response (Texto Traducido)
+    end
+    
     VM->>FB: updateChildren(translatedNode)
-    FB-->>VM: Confirmación de Éxito
-    VM->>UI: Emite Estado (Cargando = false, texto actualizado)
+    FB-->>VM: Confirmación
+    VM->>UI: Emite State(Cargando = false)
 ```
 
 ---
 
-## 🔒 Seguridad y Privacidad
+## 🛡️ Seguridad Criptográfica y Privacidad
 
-### Pipeline de Backups Cifrados (.azelback)
-La app no confía ciegamente en la nube. Los usuarios pueden generar backups locales criptográficamente seguros.
+La privacidad no es una sugerencia en Nexus Chat; es la columna vertebral de la aplicación.
+
+### Pipeline de Backups (.azelback)
+Las copias de seguridad de los historiales de chat no se suben en texto plano. Hemos implementado un sistema criptográfico de nivel militar:
+1.  **Derivación de Claves:** Usamos `SecretKeyFactory` con el algoritmo `PBKDF2WithHmacSHA1`. Unimos la contraseña del usuario con un Salt aleatorio y ejecutamos iteraciones criptográficas para generar un hash invulnerable a ataques de diccionario rápido.
+2.  **Cifrado:** Usamos `Cipher` de Java Cryptography Extension con `AES/GCM/NoPadding`. Este modo proporciona confidencialidad y autenticidad (AEAD), asegurando que el backup no ha sido alterado (tampering).
 
 ```mermaid
 flowchart TD
-    Init(["Usuario inicia Exportación"]) --> Prompt["Pide Contraseña de Cifrado"]
-    Prompt --> Fetch["Obtiene JSON de Chats desde Firebase"]
-    Fetch --> KDF["Derivación de Llave: PBKDF2(Password + Random Salt)"]
-    KDF --> Encrypt["Cifra payload: AES-256-GCM"]
-    Encrypt --> Package["Empaqueta payload + IV + Salt en .azelback"]
-    Package --> Save(["Guarda en Almacenamiento Local"])
+    Init(["Exportar Backup"]) --> AskPass["Pedir Contraseña"]
+    AskPass --> Fetch["Descargar JSON de Firebase"]
+    Fetch --> Salt["Generar Salt (SecureRandom)"]
+    Salt --> PBKDF2["Derivar Llave: PBKDF2(Password + Salt)"]
+    PBKDF2 --> IV["Generar IV (Vector de Inicialización)"]
+    IV --> AES["Cifrar: AES-256-GCM"]
+    AES --> File["Empaquetar: [IV + Salt + Ciphertext] -> .azelback"]
 ```
 
-### Enrutamiento de Red Tor (Orbot)
-Cuando el Modo Tor está activado, los web views internos y clientes de red son forzados a través de un proxy local SOCKS5.
+### Biometría y App Lock
+El acceso a la app se protege usando `BiometricPrompt` nativo de AndroidX. Si falla, cae a un sistema de validación de PIN seguro respaldado por Jetpack DataStore (que cifra los valores usando `EncryptedSharedPreferences` y el `MasterKey` del Keystore de Android).
 
-```mermaid
-graph LR
-    Link["Usuario clickea enlace"] --> Checks{"¿Proxy Activado?"}
-    Checks -- "Sí" --> Orbot["Set SOCKS5 Proxy 127.0.0.1:9050"]
-    Orbot --> TorNet(("Red Tor"))
-    TorNet --> Onion["Sitio .onion / Clearnet"]
-    Checks -- "No" --> Fallback["Muestra Advertencia / Enrutamiento Estándar"]
-```
+### Enrutamiento Anónimo (Tor/Orbot)
+Para combatir la vigilancia de la red (Clearnet), Nexus incorpora un navegador interno. 
+El `ProxyManager.kt` configura el proxy a nivel de sistema web (Webkit API) para rutear todas las conexiones del `WebView` a través del demonio Tor local (Orbot) en el puerto `127.0.0.1:9050`. Permite acceder nativamente a dominios `.onion`.
 
 ---
 
-## 🧠 Motor de Inteligencia Artificial (Azel AI)
+## 🤖 Motor de Inteligencia Artificial (Azel AI)
 
-La app integra IA Generativa de Google de manera modular:
-- `AIEngine.kt`: Wrapper core alrededor del SDK de Gemini que maneja el stream de datos (`generateContentStream`).
-- `UncensoredPrompts.kt`: Contiene prompts de sistema diseñados para respuestas técnicas avanzadas y análisis profundo de código.
-- **Manejo de Estado**: Las respuestas se parsean en tiempo real, ofreciendo un efecto visual de "escritura" fluida en el `LazyColumn` de Compose.
+El bot no es un simple webhook. Implementa el SDK oficial de **Google Gemini** de forma nativa en la capa `data/ai`.
+
+### Ingeniería de Prompts y Bypass Levels
+Para casos de investigación, la IA cuenta con un objeto `UncensoredPrompts.kt` que emula escenarios académicos, ficción o forenses para superar bloqueos éticos genéricos en consultas técnicas (hacking ético, pentesting).
+
+### Streaming (Server-Sent Events)
+En lugar de esperar 10 segundos por una respuesta pesada, usamos `generateContentStream()`. La UI reacciona a cada fragmento (`Chunk`) de texto en tiempo real simulando la escritura humana.
 
 ---
 
-## 📁 Estructura del Proyecto
+## 💻 Ecosistema para Desarrolladores
 
-El código está organizado por funcionalidad (Feature-based) para asegurar alta mantenibilidad.
+### Sora Code Editor Integrado
+Nexus Chat permite desarrollar código dentro del chat. Cuenta con un editor con sintaxis resaltada, numeración de líneas y tabulaciones inteligentes adaptadas a lenguajes como Kotlin, Python y JS. Todo el código persistente se respalda en Firebase Storage.
+
+### AndroidBridge JS Evaluator
+El editor permite **ejecutar JavaScript** de forma real. Creamos un `WebView` de 1x1 píxel y construimos una interfaz `@JavascriptInterface` llamada `AndroidBridge`. Cuando el usuario da "Play", el código se inyecta en el navegador invisible, la salida de `console.log` se intercepta y se imprime en la consola UI de la app.
+
+---
+
+## 📞 Telecomunicaciones (WebRTC)
+
+Nexus Chat soporta **Llamadas Peer-to-Peer** de audio y video. 
+- **Signaling Server:** Usamos nodos dedicados en Firebase RTDB (`calls/{userId}`) para intercambiar el protocolo SDP (Session Description Protocol) (Offer/Answer).
+- **Red de Negociación:** Implementación del intercambio de ICE Candidates para sortear NATs locales.
+- **Audio Routing:** Gestión nativa de AudioManager para conmutar entre Altavoz, Auricular o Bluetooth dinámicamente.
+
+---
+
+## 📁 Estructura de Carpetas (Vista de Arquitecto)
 
 ```text
 com.Azelmods.App
-├── data/               # Capa de Datos (Red, BD Local, Repositorios)
-│   ├── ai/             # Integración Gemini API
-│   ├── security/       # Cifrado (SignalKeyStore, AES-GCM)
-│   ├── tor/            # Lógica de proxy Orbot
-│   └── models/         # Modelos DTOs
-├── domain/             # Lógica de Negocio Central
-│   └── usecases/       # Reglas de negocio granulares
-├── di/                 # Inyección de Dependencias (Hilt)
-├── navigation/         # Rutas de Navegación Compose
-├── ui/                 # Capa de Presentación
-│   ├── components/     # Widgets reutilizables
-│   ├── screens/        # Pantallas Completas
-│   │   ├── auth/       # Login / Registro
-│   │   ├── chat/       # Interfaz de mensajería
-│   │   ├── settings/   # Ajustes, Privacidad, Apariencia
-│   │   ├── editor/     # Editor de Código Sora
-│   │   └── calls/      # Interfaz de llamadas WebRTC
-│   └── theme/          # Material 3 Themes & Tipografía
-├── utils/              # Funciones de extensión
-└── webrtc/             # Lógica P2P Audio/Video
+├── data/               
+│   ├── ai/             # Motor Gemini, Prompts y Streaming
+│   ├── security/       # Cifrado AES, KeyStore y ProxyManager (Tor)
+│   ├── translation/    # MyMemory API y detectores de idioma
+│   └── models/         # DTOs (Data Transfer Objects)
+├── domain/             
+│   ├── models/         # Modelos puros agnósticos de Android
+│   └── usecases/       # Casos de uso (Ej. ExportBackupUseCase)
+├── di/                 # Módulos de provisión de Dagger Hilt
+├── navigation/         # NavGraph, NavHost y rutas selladas
+├── ui/                 
+│   ├── components/     # Composables atómicos (Botones, Burbujas, Snackbars)
+│   ├── screens/        # Features Completas
+│   │   ├── auth/       # Firebase Auth (Email/Pass)
+│   │   ├── chat/       # LazyColumn, Input bar, Voice notes
+│   │   ├── settings/   # DataStore toggles, Backups, Biometría
+│   │   ├── editor/     # Sora Editor, Terminal Output, JS Executor
+│   │   └── security/   # Tor Browser Webkit UI
+│   └── theme/          # Material 3 Color Schemes (Dark mode)
+├── utils/              # Extension Functions, Date formatters
+└── webrtc/             # PeerConnectionClient, Signaling, ICE Handlers
 ```
 
 ---
 
-## 🗄️ Esquema de Base de Datos Firebase
-
-La Realtime Database está estructurada como un árbol JSON NoSQL optimizado para lecturas y escrituras veloces.
-
-```json
-{
-  "users": {
-    "userId_1": {
-      "uid": "userId_1",
-      "name": "John Doe",
-      "email": "john@example.com",
-      "status": "online",
-      "lastSeen": 1690000000
-    }
-  },
-  "messages": {
-    "conversationId_1": {
-      "messageId_1": {
-        "senderId": "userId_1",
-        "text": "Hola Mundo",
-        "timestamp": 1690000000,
-        "isTranslated": false
-      }
-    }
-  }
-}
-```
-
----
-
-## 🛠️ Instalación y Configuración
+## 🛠️ Instalación y Despliegue
 
 1.  **Clonar el Repositorio:**
     ```bash
@@ -237,44 +237,47 @@ La Realtime Database está estructurada como un árbol JSON NoSQL optimizado par
 
 2.  **Configurar Firebase Backend:**
     *   Ve a [Firebase Console](https://console.firebase.google.com/).
-    *   Crea un nuevo proyecto y registra una App Android (`com.Azelmods.App`).
-    *   Descarga `google-services.json` y colócalo en el directorio `app/`.
-    *   Habilita **Autenticación**, **Realtime Database** y **Storage**.
+    *   Crea un nuevo proyecto y registra la aplicación (`com.Azelmods.App`).
+    *   Descarga `google-services.json` a la ruta `app/`.
+    *   Habilita **Email/Password Auth**, **Realtime Database** (establece reglas de lectura/escritura) y **Storage**.
 
-3.  **Configurar API Keys:**
-    *   Abre `local.properties` en la raíz del proyecto.
-    *   Añade tu API Key de Google Gemini:
+3.  **Configurar API Keys (Seguridad):**
+    *   Nunca expongas llaves en GitHub. Abre `local.properties` en la raíz del proyecto.
+    *   Añade tu API Key de Gemini:
         ```properties
         GEMINI_API_KEY=tu_clave_api_gemini_aqui
         ```
 
 4.  **Compilar y Ejecutar:**
-    *   Abre el proyecto en Android Studio.
-    *   Ejecuta (`Shift + F10`) o vía terminal:
+    *   Abre el proyecto con Android Studio (Koala o superior).
+    *   Realiza un "Sync Project with Gradle Files".
+    *   Ejecuta (`Shift + F10`) o vía línea de comandos:
         ```bash
         ./gradlew assembleDebug
         ```
 
 ---
 
-## 📚 Stack Tecnológico
+## 📚 Stack Tecnológico Detallado
 
-| Componente | Tecnología | Descripción |
+| Capa del Sistema | Tecnología Utilizada | Justificación Arquitectónica |
 | :--- | :--- | :--- |
-| **Lenguaje** | Kotlin | Código 100% Kotlin |
-| **Framework UI** | Jetpack Compose | UI Declarativa, Material 3 |
-| **Arquitectura** | Clean + MVVM | Separación estricta (UDF) |
-| **Inyección Dep.**| Dagger Hilt | Grafo de dependencias en compilación |
-| **Backend / BD** | Firebase | Auth, RTDB, Storage |
-| **Carga de Imágenes** | Coil 3 | Carga asíncrona con caché |
-| **Asincronía** | Kotlin Coroutines | Operaciones no bloqueantes |
-| **Streams Reactivos** | StateFlow / SharedFlow | Alternativa moderna a LiveData |
-| **Procesamiento AI** | Google Gemini SDK | Integración de IA Generativa |
-| **Almacenamiento Local** | Jetpack DataStore | Preferencias asíncronas seguras |
-| **Criptografía** | `javax.crypto` | Implementación nativa AES-256-GCM |
+| **Lenguaje Core** | Kotlin (1.9.0+) | Seguridad de nulos, sintaxis expresiva y Coroutines nativas. |
+| **Framework de Interfaz** | Jetpack Compose | UI Declarativa basada en estado (Adiós al Boilerplate XML). |
+| **Arquitectura** | Clean Architecture + UDF | Mantenibilidad a gran escala y extrema facilidad de testing (Unit tests). |
+| **Inyección de Dependencias**| Dagger Hilt | Ciclos de vida autogestionados y provisión segura de clases. |
+| **Base de Datos / Backend** | Firebase RTDB & Auth | Conexión WebSocket para sincronización bidireccional instantánea. |
+| **Telecomunicación** | WebRTC nativo | Protocolo estándar de la industria para P2P de latencia cero. |
+| **Manejo de Imágenes** | Coil 3 | Carga asíncrona optimizada para Jetpack Compose con memory-cache fuerte. |
+| **Motor de Asincronía** | Kotlin Coroutines & Flow | Hilos livianos, Dispatchers y programación reactiva estructurada. |
+| **Inteligencia Artificial** | Google Gemini SDK | SDK robusto que permite streaming nativo y tokens masivos. |
+| **Persistencia Local** | Jetpack DataStore | Reemplazo thread-safe a SharedPreferences; lectura reactiva vía Flow. |
+| **Seguridad de Datos** | `javax.crypto` AES-GCM | Cifrado validado para payloads críticos sin librerías de terceros lentas. |
 
 ---
 
-## 📄 Licencia
+## 📄 Licencia y Contribución
 
-Este software se distribuye bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más información.
+Este software es de código abierto y se distribuye bajo la Licencia MIT. Como plantilla, eres libre de forkar, modificar y emplear esta arquitectura para proyectos personales, empresariales o fines educativos.
+
+Consulta el archivo [LICENSE](LICENSE) para los detalles legales completos.
