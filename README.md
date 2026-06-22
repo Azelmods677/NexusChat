@@ -77,26 +77,26 @@ Nexus Chat aplica estrictamente **Clean Architecture** para garantizar modularid
 
 ```mermaid
 graph TD
-    subgraph UI Layer [Capa de Presentación: Jetpack Compose]
-        Screen[Pantallas Composables]
-        VM[ViewModel]
+    subgraph UILayer ["Capa de Presentación: Jetpack Compose"]
+        Screen["Pantallas Composables"]
+        VM["ViewModel"]
     end
 
-    subgraph Domain Layer [Lógica de Negocio]
-        UseCase[Casos de Uso]
-        Model[Modelos de Dominio]
+    subgraph DomainLayer ["Lógica de Negocio"]
+        UseCase["Casos de Uso"]
+        Model["Modelos de Dominio"]
     end
 
-    subgraph Data Layer [Datos e Infraestructura]
-        Repo[Repositorios]
-        Local[DataStore / Keystore]
-        Remote[Firebase / APIs]
+    subgraph DataLayer ["Datos e Infraestructura"]
+        Repo["Repositorios"]
+        Local["DataStore / Keystore"]
+        Remote["Firebase / APIs"]
     end
 
-    Screen -->|Intent/Acción| VM
-    VM -->|StateFlow / SharedFlow| Screen
-    VM -->|Ejecuta| UseCase
-    UseCase -->|Pide Datos| Repo
+    Screen -->|"Intent/Acción"| VM
+    VM -->|"StateFlow / SharedFlow"| Screen
+    VM -->|"Ejecuta"| UseCase
+    UseCase -->|"Pide Datos"| Repo
     Repo --> Local
     Repo --> Remote
 ```
@@ -136,12 +136,12 @@ La app no confía ciegamente en la nube. Los usuarios pueden generar backups loc
 
 ```mermaid
 flowchart TD
-    Init([Usuario inicia Exportación]) --> Prompt[Pide Contraseña de Cifrado]
-    Prompt --> Fetch[Obtiene JSON de Chats desde Firebase]
-    Fetch --> KDF[Derivación de Llave: PBKDF2(Password + Random Salt)]
-    KDF --> Encrypt[Cifra payload: AES-256-GCM]
-    Encrypt --> Package[Empaqueta payload + IV + Salt en .azelback]
-    Package --> Save([Guarda en Almacenamiento Local])
+    Init(["Usuario inicia Exportación"]) --> Prompt["Pide Contraseña de Cifrado"]
+    Prompt --> Fetch["Obtiene JSON de Chats desde Firebase"]
+    Fetch --> KDF["Derivación de Llave: PBKDF2(Password + Random Salt)"]
+    KDF --> Encrypt["Cifra payload: AES-256-GCM"]
+    Encrypt --> Package["Empaqueta payload + IV + Salt en .azelback"]
+    Package --> Save(["Guarda en Almacenamiento Local"])
 ```
 
 ### Enrutamiento de Red Tor (Orbot)
@@ -149,11 +149,11 @@ Cuando el Modo Tor está activado, los web views internos y clientes de red son 
 
 ```mermaid
 graph LR
-    Link[Usuario clickea enlace] --> Checks{¿Proxy Activado?}
-    Checks -- Sí --> Orbot[Set SOCKS5 Proxy 127.0.0.1:9050]
-    Orbot --> TorNet((Red Tor))
-    TorNet --> Onion[Sitio .onion / Clearnet]
-    Checks -- No --> Fallback[Muestra Advertencia / Enrutamiento Estándar]
+    Link["Usuario clickea enlace"] --> Checks{"¿Proxy Activado?"}
+    Checks -- "Sí" --> Orbot["Set SOCKS5 Proxy 127.0.0.1:9050"]
+    Orbot --> TorNet(("Red Tor"))
+    TorNet --> Onion["Sitio .onion / Clearnet"]
+    Checks -- "No" --> Fallback["Muestra Advertencia / Enrutamiento Estándar"]
 ```
 
 ---
