@@ -1,4 +1,8 @@
 <p align="center">
+
+
+  <img width="1254" height="1254" alt="icono de la aplicacion" src="https://github.com/user-attachments/assets/24793e3a-7e9c-4a2e-8451-35b28a9fa59e" />
+
   <img src="https://img.icons8.com/color/150/000000/chat.png" alt="Nexus Chat Logo"/>
 </p>
 
