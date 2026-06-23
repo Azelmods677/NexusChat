@@ -460,7 +460,10 @@ fun CodeEditorScreen(
                     Text("Language:", color = Color.Gray, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     val languages = listOf("python", "kotlin", "bash", "js", "c")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         languages.forEach { lang ->
                             FilterChip(
                                 selected = newFileLanguage == lang,

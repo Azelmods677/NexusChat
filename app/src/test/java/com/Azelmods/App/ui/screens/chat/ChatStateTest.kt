@@ -38,7 +38,6 @@ class ChatStateTest {
             senderId = "user_1",
             content = "Hello",
             timestamp = 1000L,
-            type = "text",
             status = MessageStatus.SENT
         )
         val newState = state.copy(messages = state.messages + message)
@@ -63,7 +62,6 @@ class ChatStateTest {
             senderId = "user_2",
             content = "Original",
             timestamp = 1000L,
-            type = "text",
             status = MessageStatus.SENT
         )
         val state = ChatState(replyingTo = replyMessage)
@@ -130,17 +128,16 @@ class ChatStateTest {
     }
 
     @Test
-    fun `selected message state`() = runTest {
-        val selectedMessage = Message(
+    fun `editing message state`() = runTest {
+        val editingMessage = Message(
             messageId = "selected",
             senderId = "user_1",
             content = "Selected text",
             timestamp = 1000L,
-            type = "text",
             status = MessageStatus.SENT
         )
-        val state = ChatState(selectedMessage = selectedMessage)
-        assertNotNull(state.selectedMessage)
-        assertEquals("Selected text", state.selectedMessage?.content)
+        val state = ChatState(editingMessage = editingMessage)
+        assertNotNull(state.editingMessage)
+        assertEquals("Selected text", state.editingMessage?.content)
     }
 }

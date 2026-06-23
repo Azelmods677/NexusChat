@@ -35,23 +35,18 @@ class TranslationService @Inject constructor() {
             
             // Normalizar códigos de idioma
             val normalizedTarget = normalizeLanguageCode(targetLang)
-            val normalizedSource = if (sourceLang == "auto" || sourceLang.isBlank()) "auto" else normalizeLanguageCode(sourceLang)
+            val normalizedSource = if (sourceLang == "auto" || sourceLang.isBlank()) "autodetect" else normalizeLanguageCode(sourceLang)
             
             android.util.Log.d("TranslationService", "🌐 Translating to: $normalizedTarget (from: $normalizedSource)")
             
             val encoded = URLEncoder.encode(text.take(500), "UTF-8")
             
-            // Detectar idioma de origen primero si es auto
-            val detectedSource = if (normalizedSource == "auto") {
-                detectLanguage(text)
-            } else {
-                normalizedSource
-            }
+            val detectedSource = normalizedSource
             
-            android.util.Log.d("TranslationService", "🌐 Detected source language: $detectedSource")
+            android.util.Log.d("TranslationService", "🌐 Source language: $detectedSource")
             
-            // Si el texto ya está en el idioma objetivo, no traducir
-            if (detectedSource.equals(normalizedTarget, ignoreCase = true)) {
+            // Si el texto ya está en el idioma objetivo explícitamente, no traducir
+            if (detectedSource != "autodetect" && detectedSource.equals(normalizedTarget, ignoreCase = true)) {
                 android.util.Log.d("TranslationService", "🌐 Text already in target language")
                 return@withContext Result.success(text)
             }
