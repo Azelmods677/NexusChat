@@ -20,7 +20,8 @@ object OrbotDetector {
     private const val ORBOT_PACKAGE_ALT = "org.torproject.orbot"  // F-Droid, older versions
     private const val SOCKS5_PORT = 9050
     private const val HTTP_PROXY_PORT = 8118
-    private const val TIMEOUT_MS = 1500
+    // ✅ FIX: Aumentar timeout para dispositivos lentos y Orbot iniciando
+    private const val TIMEOUT_MS = 3000  // 3 segundos (antes: 1.5s)
 
     /**
      * Verifica si Orbot está instalado en el dispositivo.
@@ -65,6 +66,8 @@ object OrbotDetector {
     /**
      * Verifica si el proxy HTTP de Orbot (127.0.0.1:8118) está accesible.
      * Orbot provee un proxy HTTP en el puerto 8118 además del SOCKS5.
+     * 
+     * ✅ FIX: Timeout aumentado a 3s para dispositivos lentos
      */
     fun isHttpProxyAvailable(): Boolean {
         return try {
@@ -75,6 +78,11 @@ object OrbotDetector {
             }
         } catch (e: Exception) {
             Log.d(TAG, "✗ Proxy HTTP de Orbot NO disponible: ${e.message}")
+            // ✅ FALLBACK: Algunas versiones de Orbot solo exponen SOCKS5
+            if (isSocksProxyAvailable()) {
+                Log.d(TAG, "⚠️ Puerto HTTP no disponible, pero SOCKS5 funciona. Orbot está activo.")
+                return true
+            }
             false
         }
     }

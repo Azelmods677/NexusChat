@@ -35,24 +35,28 @@ class TranslationService @Inject constructor() {
             
             // Normalizar códigos de idioma
             val normalizedTarget = normalizeLanguageCode(targetLang)
-            val normalizedSource = if (sourceLang == "auto" || sourceLang.isBlank()) "autodetect" else normalizeLanguageCode(sourceLang)
+            // ✅ FIX: MyMemory API usa "auto" no "autodetect"
+            val normalizedSource = if (sourceLang == "auto" || sourceLang.isBlank()) {
+                "auto"
+            } else {
+                normalizeLanguageCode(sourceLang)
+            }
             
             android.util.Log.d("TranslationService", "🌐 Translating to: $normalizedTarget (from: $normalizedSource)")
             
             val encoded = URLEncoder.encode(text.take(500), "UTF-8")
             
-            val detectedSource = normalizedSource
-            
-            android.util.Log.d("TranslationService", "🌐 Source language: $detectedSource")
+            android.util.Log.d("TranslationService", "🌐 Source language: $normalizedSource")
             
             // Si el texto ya está en el idioma objetivo explícitamente, no traducir
-            if (detectedSource != "autodetect" && detectedSource.equals(normalizedTarget, ignoreCase = true)) {
+            if (normalizedSource != "auto" && normalizedSource.equals(normalizedTarget, ignoreCase = true)) {
                 android.util.Log.d("TranslationService", "🌐 Text already in target language")
                 return@withContext Result.success(text)
             }
             
             // MyMemory usa "source|target" para pares explícitos
-            val langPair = "$detectedSource|$normalizedTarget"
+            // Cuando source es "auto", MyMemory detecta automáticamente el idioma
+            val langPair = "$normalizedSource|$normalizedTarget"
             val url = "$baseUrl?q=$encoded&langpair=$langPair"
             
             android.util.Log.d("TranslationService", "🌐 Requesting: $url")
