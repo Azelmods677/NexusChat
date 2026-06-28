@@ -59,17 +59,30 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
     // Create new file
     fun newFile(name: String, language: String) {
         viewModelScope.launch {
-            val ref = db.getReference("codeFiles/$uid").push()
-            val file = CodeFile(
-                id = ref.key ?: "",
-                name = name,
-                language = language,
-                content = getTemplate(language),
-                userId = uid,
-                timestamp = System.currentTimeMillis()
-            )
-            ref.setValue(file).await()
-            _currentFile.value = file
+            try {
+                val ref = db.getReference("codeFiles/$uid").push()
+                val fileId = ref.key ?: run {
+                    android.util.Log.e("CodeEditorVM", "❌ Firebase push() returned null key")
+                    // Generar ID manualmente como fallback
+                    "file_${System.currentTimeMillis()}_${(0..999).random()}"
+                }
+                
+                val file = CodeFile(
+                    id = fileId,
+                    name = name,
+                    language = language,
+                    content = getTemplate(language),
+                    userId = uid,
+                    timestamp = System.currentTimeMillis()
+                )
+                
+                ref.setValue(file).await()
+                _currentFile.value = file
+                android.util.Log.d("CodeEditorVM", "✓ File created: $name (id: $fileId)")
+            } catch (e: Exception) {
+                android.util.Log.e("CodeEditorVM", "❌ Error creating file: ${e.message}", e)
+                // Opcional: agregar StateFlow para mostrar error en UI
+            }
         }
     }
     
