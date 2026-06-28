@@ -89,7 +89,8 @@ class UncensoredAIEngine @Inject constructor() {
         COMPARISON,     // Análisis comparativo (2024+)
         REVERSE_ENG,    // Ingeniería inversa (2025+)
         HYPOTHETICAL,   // Vulnerabilidad hipotética (2024+)
-        PAYLOAD_ENCODE  // Payload encoding bypass (2026+)
+        PAYLOAD_ENCODE, // Payload encoding bypass (2026+)
+        WALLER_GPT      // WallerGPT evil persona (ultra agresivo 2026+)
     }
 
     /**
@@ -107,6 +108,7 @@ class UncensoredAIEngine @Inject constructor() {
             BypassLevel.REVERSE_ENG -> UncensoredPrompts.REVERSE_ENGINEERING_BYPASS
             BypassLevel.HYPOTHETICAL -> UncensoredPrompts.HYPOTHETICAL_VULN_BYPASS
             BypassLevel.PAYLOAD_ENCODE -> UncensoredPrompts.ENCODED_TERMS_BYPASS
+            BypassLevel.WALLER_GPT -> UncensoredPrompts.WALLER_GPT_SYSTEM
         }
     }
 
@@ -227,7 +229,8 @@ class UncensoredAIEngine @Inject constructor() {
             BypassLevel.COMPARISON -> BypassLevel.REVERSE_ENG
             BypassLevel.REVERSE_ENG -> BypassLevel.HYPOTHETICAL
             BypassLevel.HYPOTHETICAL -> BypassLevel.PAYLOAD_ENCODE
-            BypassLevel.PAYLOAD_ENCODE -> BypassLevel.FRAGMENTED // Ciclo
+            BypassLevel.PAYLOAD_ENCODE -> BypassLevel.WALLER_GPT
+            BypassLevel.WALLER_GPT -> BypassLevel.FRAGMENTED // Ciclo
         }
     }
 
