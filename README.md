@@ -14,6 +14,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-4.0.0-brightgreen.svg?logo=android" alt="Version">
   <img src="https://img.shields.io/badge/Kotlin-1.9.0-purple.svg?logo=kotlin" alt="Kotlin">
   <img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-blue.svg?logo=android" alt="Jetpack Compose">
   <img src="https://img.shields.io/badge/Architecture-MVVM_&_Clean-brightgreen.svg" alt="Clean Architecture">
@@ -27,26 +28,27 @@
 
 ## 📖 Índice Exhaustivo
 1. [Visión General del Proyecto](#-visión-general-del-proyecto)
-2. [Arquitectura e Ingeniería de Software](#-arquitectura-e-ingeniería-de-software)
+2. [Novedades en v4.0.0](#-novedades-en-v400)
+3. [Arquitectura e Ingeniería de Software](#-arquitectura-e-ingeniería-de-software)
    - [Unidirectional Data Flow (UDF)](#unidirectional-data-flow-udf)
    - [Inyección de Dependencias (Hilt)](#inyección-de-dependencias-hilt)
-3. [Módulo de Mensajería y Tiempo Real](#-módulo-de-mensajería-y-tiempo-real)
+4. [Módulo de Mensajería y Tiempo Real](#-módulo-de-mensajería-y-tiempo-real)
    - [Firebase Realtime Database (RTDB)](#firebase-realtime-database-rtdb)
    - [Traducción Automática (MyMemory API)](#traducción-automática-mymemory-api)
-4. [Seguridad Criptográfica y Privacidad](#-seguridad-criptográfica-y-privacidad)
+5. [Seguridad Criptográfica y Privacidad](#-seguridad-criptográfica-y-privacidad)
    - [Pipeline de Backups (.azelback)](#pipeline-de-backups-azelback)
    - [Biometría y App Lock](#biometría-y-app-lock)
    - [Enrutamiento Anónimo (Tor/Orbot)](#enrutamiento-anónimo-tororbot)
-5. [Motor de Inteligencia Artificial (Azel AI)](#-motor-de-inteligencia-artificial-azel-ai)
+6. [Motor de Inteligencia Artificial (Azel AI)](#-motor-de-inteligencia-artificial-azel-ai)
    - [Ingeniería de Prompts y Bypass Levels](#ingeniería-de-prompts-y-bypass-levels)
    - [Streaming (Server-Sent Events)](#streaming-server-sent-events)
-6. [Ecosistema para Desarrolladores](#-ecosistema-para-desarrolladores)
+7. [Ecosistema para Desarrolladores](#-ecosistema-para-desarrolladores)
    - [Sora Code Editor Integrado](#sora-code-editor-integrado)
    - [AndroidBridge JS Evaluator](#androidbridge-js-evaluator)
-7. [Telecomunicaciones (WebRTC)](#-telecomunicaciones-webrtc)
-8. [Estructura de Carpetas](#-estructura-de-carpetas)
-9. [Instalación y Despliegue](#-instalación-y-despliegue)
-10. [Stack Tecnológico Detallado](#-stack-tecnológico-detallado)
+8. [Telecomunicaciones (WebRTC)](#-telecomunicaciones-webrtc)
+9. [Estructura de Carpetas](#-estructura-de-carpetas)
+10. [Instalación y Despliegue](#-instalación-y-despliegue)
+11. [Stack Tecnológico Detallado](#-stack-tecnológico-detallado)
 
 ---
 
@@ -55,6 +57,50 @@
 **Nexus Chat** no es un clon de chat ordinario; es una obra maestra de ingeniería Android diseñada para servir como un **portafolio definitivo** y una **arquitectura de referencia (Template)** para aplicaciones a gran escala. 
 
 El repositorio demuestra cómo resolver problemas complejos de concurrencia, estado de UI, criptografía, comunicación P2P, y manipulación de WebViews, empujando los límites de lo que una aplicación Android nativa puede lograr en un entorno de alta seguridad.
+
+---
+
+## 🎉 Novedades en v4.0.0
+
+La versión 4.0.0 representa un hito de estabilidad y robustez con correcciones críticas que mejoran la experiencia del usuario y la confiabilidad del sistema.
+
+### 🐛 Correcciones de Bugs Críticos
+
+#### 1. **Fix: LazyColumn Duplicate Key Crash (Critical)**
+- **Problema**: La app crasheaba con `IllegalArgumentException: Key "" was already used` cuando mensajes tenían `messageId` vacíos o fallback keys duplicados
+- **Solución**: Migrado de `items()` a `itemsIndexed()` con sistema de clave basada en hash de contenido
+- **Impacto**: Eliminación total de crashes en scroll de chat con mensajes duplicados
+- **Archivos**: `ChatScreen.kt`, `Message.kt`
+
+#### 2. **Fix: Firebase Storage Permission Denied (High)**
+- **Problema**: Error "Permission denied" al subir imágenes debido a falta de validación de autenticación
+- **Solución**: Añadida verificación de `FirebaseAuth.currentUser` en los 8 métodos de upload (imágenes, audio, video, documentos, stories)
+- **Impacto**: Prevención de errores de permisos y mejor feedback al usuario
+- **Archivos**: `StorageRepository.kt`
+
+#### 3. **Fix: Translation Service Error Handling (Medium)**
+- **Problema**: Manejo deficiente de errores en el servicio de traducción sin feedback claro
+- **Solución**: Añadido manejo exhaustivo de `JSONException` e `IOException`, validación de respuestas API y logging detallado
+- **Impacto**: Mejor experiencia de usuario con mensajes de error claros
+- **Archivos**: `TranslationService.kt`
+
+#### 4. **Fix: Code Editor File Creation Failures (Medium)**
+- **Problema**: El editor de código no mostraba errores cuando fallaba la creación/guardado de archivos
+- **Solución**: Añadida validación de autenticación, validación de nombres de archivo, generación de ID fallback y mensajes de error en UI
+- **Impacto**: Usuarios ahora reciben feedback claro cuando la creación de archivos falla
+- **Archivos**: `CodeEditorViewModel.kt`
+
+#### 5. **Fix: False Offline Mode with Active WiFi (Medium)**
+- **Problema**: Mensajes mostraban "guardado esperando conexión" incluso con WiFi activo
+- **Solución**: Implementada detección específica de tipos de error (red vs auth vs Firebase), solo activa modo offline con errores reales de red
+- **Impacto**: Modo offline solo se activa con problemas reales de conectividad
+- **Archivos**: `ChatViewModel.kt`, `RealtimeDatabaseRepository.kt`
+
+### 📊 Estadísticas de la Versión
+- **5 bugs críticos y de alta prioridad resueltos**
+- **4 archivos core mejorados** con mejor manejo de errores
+- **Estabilidad mejorada** en componentes de mensajería, storage y editor
+- **Experiencia de usuario refinada** con feedback claro en operaciones
 
 ---
 

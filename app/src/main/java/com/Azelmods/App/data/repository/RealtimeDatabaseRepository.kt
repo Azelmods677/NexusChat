@@ -102,7 +102,9 @@ class RealtimeDatabaseRepository @Inject constructor(
     }
 
     suspend fun sendMessage(chatId: String, content: String, replyTo: String? = null) {
+        android.util.Log.d("RealtimeDB", "📤 sendMessage called: chatId=$chatId, content='${content.take(50)}', replyTo=$replyTo")
         sendMessageInternal(chatId, content, replyTo)
+        android.util.Log.d("RealtimeDB", "✅ sendMessage completed successfully")
     }
 
     suspend fun sendEphemeralMessage(
