@@ -291,10 +291,18 @@ fun ChatScreen(
                             }
                         }
 
-                        items(
+                        itemsIndexed(
                             items = state.messages,
-                            key = { it.messageId.ifBlank { "${it.senderId}_${it.timestamp}" } }
-                        ) { message ->
+                            key = { index, message ->
+                                if (message.messageId.isNotBlank()) {
+                                    message.messageId
+                                } else {
+                                    // Generate unique key from content hash + index
+                                    val contentHash = "${message.content}_${message.senderId}_${message.timestamp}_${message.mediaUrl}".hashCode()
+                                    "fallback_${contentHash}_$index"
+                                }
+                            }
+                        ) { index, message ->
                             val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                             MessageBubble(
                                 message = message,

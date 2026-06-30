@@ -528,6 +528,8 @@ class ChatViewModel @Inject constructor(
         val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                android.util.Log.d("ChatViewModel", "📤 Sending message to chat: $targetChatId")
+                
                 val state = _state.value
                 if (state.isEphemeralMode) {
                     // Send as ephemeral message
@@ -545,29 +547,60 @@ class ChatViewModel @Inject constructor(
                         replyTo = state.replyingTo?.messageId
                     )
                 }
-                _state.value = _state.value.copy(replyingTo = null)
+                
+                android.util.Log.d("ChatViewModel", "✅ Message sent successfully")
+                _state.value = _state.value.copy(replyingTo = null, error = null)
             } catch (e: Exception) {
-                // Offline fallback: save to pending queue
-                try {
-                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                    cacheManager.database.pendingMessageDao().insert(
-                        com.Azelmods.App.data.local.entity.PendingMessageEntity(
-                            chatId = targetChatId,
-                            content = content,
-                            senderId = currentUserId,
-                            replyTo = _state.value.replyingTo?.messageId,
-                            isEphemeral = _state.value.isEphemeralMode,
-                            isViewOnce = _state.value.ephemeralDuration == 0L,
-                            selfDestructDuration = _state.value.ephemeralDuration
-                        )
-                    )
+                android.util.Log.e("ChatViewModel", "❌ Error sending message: ${e.message}", e)
+                
+                // Detectar si es un error de red real o un error de Firebase
+                val isNetworkError = e is java.net.UnknownHostException || 
+                                     e is java.net.SocketTimeoutException ||
+                                     e is java.io.IOException
+                
+                val isAuthError = e.message?.contains("not authenticated", ignoreCase = true) == true ||
+                                  e.message?.contains("permission denied", ignoreCase = true) == true
+                
+                if (isAuthError) {
+                    // Error de autenticación - no es problema de red
+                    android.util.Log.e("ChatViewModel", "🔐 Authentication error - user may not be logged in")
                     _state.value = _state.value.copy(
                         replyingTo = null,
-                        error = "Mensaje guardado. Se enviará cuando haya conexión."
+                        error = "Error de autenticación. Por favor, inicia sesión de nuevo."
                     )
-                } catch (e2: Exception) {
+                } else if (isNetworkError) {
+                    // Error de red real - guardar en cola offline
+                    android.util.Log.w("ChatViewModel", "📡 Network error - saving to offline queue")
+                    try {
+                        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                        cacheManager.database.pendingMessageDao().insert(
+                            com.Azelmods.App.data.local.entity.PendingMessageEntity(
+                                chatId = targetChatId,
+                                content = content,
+                                senderId = currentUserId,
+                                replyTo = _state.value.replyingTo?.messageId,
+                                isEphemeral = _state.value.isEphemeralMode,
+                                isViewOnce = _state.value.ephemeralDuration == 0L,
+                                selfDestructDuration = _state.value.ephemeralDuration
+                            )
+                        )
+                        _state.value = _state.value.copy(
+                            replyingTo = null,
+                            error = "Mensaje guardado. Se enviará cuando haya conexión."
+                        )
+                    } catch (e2: Exception) {
+                        android.util.Log.e("ChatViewModel", "❌ Error saving to offline queue: ${e2.message}", e2)
+                        _state.value = _state.value.copy(
+                            replyingTo = null,
+                            error = "Error al guardar mensaje: ${e2.message}"
+                        )
+                    }
+                } else {
+                    // Otro tipo de error (Firebase, permisos, etc.)
+                    android.util.Log.e("ChatViewModel", "⚠️ Firebase error: ${e.message}")
                     _state.value = _state.value.copy(
-                        error = "Error al enviar mensaje: ${e.message}"
+                        replyingTo = null,
+                        error = "Error al enviar: ${e.message ?: "Error desconocido"}"
                     )
                 }
             }

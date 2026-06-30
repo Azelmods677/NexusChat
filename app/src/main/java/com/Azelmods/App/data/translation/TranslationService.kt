@@ -31,7 +31,10 @@ class TranslationService @Inject constructor() {
         sourceLang: String = "auto"
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            if (text.isBlank()) return@withContext Result.failure(Exception("Texto vacío"))
+            if (text.isBlank()) {
+                android.util.Log.w("TranslationService", "🌐 Empty text provided")
+                return@withContext Result.failure(Exception("Texto vacío"))
+            }
             
             // Normalizar códigos de idioma
             val normalizedTarget = normalizeLanguageCode(targetLang)
@@ -42,11 +45,11 @@ class TranslationService @Inject constructor() {
                 normalizeLanguageCode(sourceLang)
             }
             
-            android.util.Log.d("TranslationService", "🌐 Translating to: $normalizedTarget (from: $normalizedSource)")
+            android.util.Log.d("TranslationService", "🌐 Translating text: '${text.take(50)}...' to: $normalizedTarget (from: $normalizedSource)")
             
-            val encoded = URLEncoder.encode(text.take(500), "UTF-8")
-            
-            android.util.Log.d("TranslationService", "🌐 Source language: $normalizedSource")
+            // Limitar a 500 caracteres para la API gratuita
+            val textToTranslate = text.take(500)
+            val encoded = URLEncoder.encode(textToTranslate, "UTF-8")
             
             // Si el texto ya está en el idioma objetivo explícitamente, no traducir
             if (normalizedSource != "auto" && normalizedSource.equals(normalizedTarget, ignoreCase = true)) {
@@ -61,46 +64,62 @@ class TranslationService @Inject constructor() {
             
             android.util.Log.d("TranslationService", "🌐 Requesting: $url")
 
-            val response = URL(url).readText()
-            val json = JSONObject(response)
-            
-            // Check for API errors (e.g. quota limit)
-            val responseStatus = json.optInt("responseStatus", 200)
-            if (responseStatus != 200) {
-                val errorDetails = json.optString("responseDetails", "Error $responseStatus")
-                return@withContext Result.failure(Exception("Error de traducción: $errorDetails"))
-            }
-            
-            val translated = json
-                .getJSONObject("responseData")
-                .getString("translatedText")
+            try {
+                val response = URL(url).readText()
+                android.util.Log.d("TranslationService", "🌐 API Response: ${response.take(200)}")
+                
+                val json = JSONObject(response)
+                
+                // Check for API errors (e.g. quota limit)
+                val responseStatus = json.optInt("responseStatus", 200)
+                if (responseStatus != 200) {
+                    val errorDetails = json.optString("responseDetails", "Error $responseStatus")
+                    android.util.Log.e("TranslationService", "🌐 API returned error status: $responseStatus - $errorDetails")
+                    return@withContext Result.failure(Exception("Error de traducción: $errorDetails"))
+                }
+                
+                val responseData = json.optJSONObject("responseData")
+                if (responseData == null) {
+                    android.util.Log.e("TranslationService", "🌐 No responseData in JSON: $response")
+                    return@withContext Result.failure(Exception("Respuesta inválida del servicio de traducción"))
+                }
+                
+                val translated = responseData.optString("translatedText", "")
+                
+                if (translated.isBlank()) {
+                    android.util.Log.e("TranslationService", "🌐 Blank translation received")
+                    return@withContext Result.failure(Exception("Traducción vacía recibida"))
+                }
 
-            android.util.Log.d("TranslationService", "🌐 Success: '$text' -> '$translated'")
+                android.util.Log.d("TranslationService", "🌐 Success: '$textToTranslate' -> '$translated'")
 
-            // Sometimes the API puts the quota warning directly in the translated text with a 200 status
-            if (translated.startsWith("MYMEMORY WARNING", ignoreCase = true) || 
-                translated.contains("LIMIT EXCEEDED", ignoreCase = true)) {
-                return@withContext Result.failure(Exception("Límite diario de traducciones agotado. Intenta de nuevo mañana."))
-            }
+                // Sometimes the API puts the quota warning directly in the translated text with a 200 status
+                if (translated.startsWith("MYMEMORY WARNING", ignoreCase = true) || 
+                    translated.contains("LIMIT EXCEEDED", ignoreCase = true)) {
+                    android.util.Log.w("TranslationService", "🌐 Quota limit reached")
+                    return@withContext Result.failure(Exception("Límite diario de traducciones agotado. Intenta de nuevo mañana."))
+                }
+                
+                // Si la traducción es idéntica, puede que ya esté en el idioma correcto
+                if (translated.equals(textToTranslate, ignoreCase = true)) {
+                    android.util.Log.d("TranslationService", "🌐 Translation identical to original - text may already be in target language")
+                    return@withContext Result.success(text)
+                }
 
-            // Verificar que la traducción es válida
-            if (translated.isBlank()) {
-                return@withContext Result.failure(Exception("Traducción vacía recibida"))
+                Result.success(translated)
+            } catch (e: org.json.JSONException) {
+                android.util.Log.e("TranslationService", "🌐 JSON parsing error", e)
+                Result.failure(Exception("Error al procesar respuesta del traductor"))
             }
-            
-            // Si la traducción es idéntica, puede que ya esté en el idioma correcto
-            if (translated.equals(text, ignoreCase = true)) {
-                android.util.Log.d("TranslationService", "🌐 Translation identical to original - text may already be in target language")
-                return@withContext Result.success(text)
-            }
-
-            Result.success(translated)
         } catch (e: java.net.UnknownHostException) {
             android.util.Log.e("TranslationService", "🌐 No internet connection", e)
             Result.failure(Exception("Sin conexión a internet. Verifica tu conexión."))
         } catch (e: java.net.SocketTimeoutException) {
             android.util.Log.e("TranslationService", "🌐 Connection timeout", e)
             Result.failure(Exception("Tiempo de espera agotado. Intenta de nuevo."))
+        } catch (e: java.io.IOException) {
+            android.util.Log.e("TranslationService", "🌐 Network I/O error", e)
+            Result.failure(Exception("Error de red: ${e.message ?: "Error desconocido"}"))
         } catch (e: Exception) {
             android.util.Log.e("TranslationService", "🌐 Translation failed: ${e.message}", e)
             Result.failure(Exception("Error de traducción: ${e.message ?: "Error desconocido"}"))

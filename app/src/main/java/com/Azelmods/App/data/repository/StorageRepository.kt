@@ -2,6 +2,7 @@ package com.Azelmods.App.data.repository
 
 import android.content.Context
 import android.net.Uri
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.tasks.await
@@ -24,6 +25,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadChatImage(imageUri: Uri, chatId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             val timestamp = System.currentTimeMillis()
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/images/$timestamp.jpg")
@@ -50,6 +60,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadChatAudio(audioUri: Uri, chatId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             val timestamp = System.currentTimeMillis()
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/audio/$timestamp.aac")
@@ -76,6 +95,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadChatVideo(videoUri: Uri, chatId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             val timestamp = System.currentTimeMillis()
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/videos/$timestamp.mp4")
@@ -102,6 +130,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadStory(imageUri: Uri, userId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             val timestamp = System.currentTimeMillis()
             val storageRef = storage.reference
             val fileRef = storageRef.child("stories/$userId/$timestamp.jpg")
@@ -128,6 +165,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadProfilePhoto(imageUri: Uri, userId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             // Validate userId
             if (userId.isBlank()) {
                 continuation.resumeWithException(Exception("User ID is required"))
@@ -165,6 +211,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadCoverPhoto(imageUri: Uri, userId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             // Validate userId
             if (userId.isBlank()) {
                 continuation.resumeWithException(Exception("User ID is required"))
@@ -202,6 +257,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadChatDocument(documentUri: Uri, chatId: String, fileName: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             val timestamp = System.currentTimeMillis()
             val safeFileName = fileName.replace("[", "_").replace("]", "_").replace(" ", "_")
             val storageRef = storage.reference
@@ -229,6 +293,15 @@ class StorageRepository @Inject constructor(
      */
     suspend fun uploadStoryVideo(videoUri: Uri, userId: String): String = suspendCoroutine { continuation ->
         try {
+            // Verify user is authenticated
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+            
             val timestamp = System.currentTimeMillis()
             val storageRef = storage.reference
             val fileRef = storageRef.child("stories/$userId/$timestamp.mp4")

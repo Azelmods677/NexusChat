@@ -60,44 +60,91 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
     fun newFile(name: String, language: String) {
         viewModelScope.launch {
             try {
+                // Validar que el usuario esté autenticado
+                if (uid.isBlank()) {
+                    android.util.Log.e("CodeEditorVM", "❌ User not authenticated")
+                    _output.value = "❌ Error: Usuario no autenticado. Inicia sesión para crear archivos."
+                    return@launch
+                }
+                
+                // Validar nombre del archivo
+                if (name.isBlank()) {
+                    android.util.Log.e("CodeEditorVM", "❌ File name is blank")
+                    _output.value = "❌ Error: El nombre del archivo no puede estar vacío"
+                    return@launch
+                }
+                
+                android.util.Log.d("CodeEditorVM", "📝 Creating file: $name (language: $language)")
+                
                 val ref = db.getReference("codeFiles/$uid").push()
                 val fileId = ref.key ?: run {
                     android.util.Log.e("CodeEditorVM", "❌ Firebase push() returned null key")
                     // Generar ID manualmente como fallback
-                    "file_${System.currentTimeMillis()}_${(0..999).random()}"
+                    val generatedId = "file_${System.currentTimeMillis()}_${(0..999).random()}"
+                    android.util.Log.d("CodeEditorVM", "📝 Using generated ID: $generatedId")
+                    generatedId
                 }
                 
+                val template = getTemplate(language)
                 val file = CodeFile(
                     id = fileId,
                     name = name,
                     language = language,
-                    content = getTemplate(language),
+                    content = template,
                     userId = uid,
-                    timestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis(),
+                    size = template.length.toLong()
                 )
                 
-                ref.setValue(file).await()
+                android.util.Log.d("CodeEditorVM", "💾 Saving file to Firebase: codeFiles/$uid/$fileId")
+                
+                // Si Firebase no dio una key, usar el ID generado manualmente
+                val saveRef = if (ref.key != null) {
+                    ref
+                } else {
+                    db.getReference("codeFiles/$uid/$fileId")
+                }
+                
+                saveRef.setValue(file).await()
                 _currentFile.value = file
-                android.util.Log.d("CodeEditorVM", "✓ File created: $name (id: $fileId)")
+                _output.value = "✅ Archivo creado: $name"
+                android.util.Log.d("CodeEditorVM", "✅ File created successfully: $name (id: $fileId)")
             } catch (e: Exception) {
                 android.util.Log.e("CodeEditorVM", "❌ Error creating file: ${e.message}", e)
-                // Opcional: agregar StateFlow para mostrar error en UI
+                _output.value = "❌ Error al crear archivo: ${e.message ?: "Error desconocido"}\n\nVerifica tu conexión a internet y que tengas permisos en Firebase."
             }
         }
     }
     
     // Save file
     fun saveFile(content: String) {
-        val file = _currentFile.value ?: return
+        val file = _currentFile.value 
+        if (file == null) {
+            android.util.Log.w("CodeEditorVM", "⚠️ No file selected to save")
+            _output.value = "⚠️ Ningún archivo seleccionado para guardar"
+            return
+        }
+        
         viewModelScope.launch {
-            val updated = file.copy(
-                content = content,
-                timestamp = System.currentTimeMillis(),
-                size = content.length.toLong()
-            )
-            db.getReference("codeFiles/$uid/${file.id}")
-                .setValue(updated).await()
-            _currentFile.value = updated
+            try {
+                android.util.Log.d("CodeEditorVM", "💾 Saving file: ${file.name}")
+                
+                val updated = file.copy(
+                    content = content,
+                    timestamp = System.currentTimeMillis(),
+                    size = content.length.toLong()
+                )
+                
+                db.getReference("codeFiles/$uid/${file.id}")
+                    .setValue(updated).await()
+                    
+                _currentFile.value = updated
+                _output.value = "✅ Guardado: ${file.name}"
+                android.util.Log.d("CodeEditorVM", "✅ File saved successfully: ${file.name}")
+            } catch (e: Exception) {
+                android.util.Log.e("CodeEditorVM", "❌ Error saving file: ${e.message}", e)
+                _output.value = "❌ Error al guardar: ${e.message ?: "Error desconocido"}\n\nVerifica tu conexión a internet."
+            }
         }
     }
     
