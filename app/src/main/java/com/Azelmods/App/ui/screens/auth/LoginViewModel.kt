@@ -54,20 +54,40 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
             try {
+                // Try with authorized accounts first for better UX
                 val googleIdOption = GetGoogleIdOption.Builder()
-                    .setFilterByAuthorizedAccounts(false)
+                    .setFilterByAuthorizedAccounts(true) // First try with saved accounts
                     .setServerClientId(googleClientId)
-                    .setAutoSelectEnabled(false)
+                    .setAutoSelectEnabled(true) // Auto-select if only one account
                     .build()
                 
                 val request = GetCredentialRequest.Builder()
                     .addCredentialOption(googleIdOption)
                     .build()
                 
-                val result = credentialManager.getCredential(
-                    request = request,
-                    context = context
-                )
+                val result = try {
+                    credentialManager.getCredential(
+                        request = request,
+                        context = context
+                    )
+                } catch (e: androidx.credentials.exceptions.NoCredentialException) {
+                    // No authorized accounts, try again without filter
+                    android.util.Log.d("GoogleSignIn", "No authorized accounts, trying all accounts")
+                    val googleIdOptionAll = GetGoogleIdOption.Builder()
+                        .setFilterByAuthorizedAccounts(false) // Show all Google accounts
+                        .setServerClientId(googleClientId)
+                        .setAutoSelectEnabled(false)
+                        .build()
+                    
+                    val requestAll = GetCredentialRequest.Builder()
+                        .addCredentialOption(googleIdOptionAll)
+                        .build()
+                    
+                    credentialManager.getCredential(
+                        request = requestAll,
+                        context = context
+                    )
+                }
                 
                 val credential = result.credential
                 
@@ -95,7 +115,7 @@ class LoginViewModel @Inject constructor(
                             android.util.Log.e("GoogleSignIn", "FULL ERROR: ${loginResult.message}")
                             _state.value = _state.value.copy(
                                 isLoading = false,
-                                error = "Google Sign-In failed: ${loginResult.message}"
+                                error = "Error de autenticación: ${loginResult.message}"
                             )
                         }
                         is Resource.Loading -> {
@@ -105,7 +125,7 @@ class LoginViewModel @Inject constructor(
                 } else {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = "Failed to process Google Sign-In response. Please try again."
+                        error = "No se pudo procesar la respuesta de Google. Intenta de nuevo."
                     )
                 }
             } catch (e: androidx.credentials.exceptions.GetCredentialCancellationException) {
@@ -119,19 +139,19 @@ class LoginViewModel @Inject constructor(
                 android.util.Log.e("GoogleSignIn", "FULL ERROR: NoCredentialException: ${e.message}")
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = "No Google account found. Add a Google account in device Settings."
+                    error = "No se encontró cuenta de Google. Agrega una cuenta en Configuración del dispositivo."
                 )
             } catch (e: GetCredentialException) {
                 android.util.Log.e("GoogleSignIn", "FULL ERROR: GetCredentialException: ${e.message}")
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = "Google Sign-In unavailable: ${e.message}"
+                    error = "Error de Google Sign-In. Verifica tu conexión a internet y que tengas una cuenta de Google activa."
                 )
             } catch (e: Exception) {
                 android.util.Log.e("GoogleSignIn", "FULL ERROR: ${e::class.java.simpleName}: ${e.message}", e)
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = "Unexpected error: ${e.message}"
+                    error = "Error inesperado: ${e.message ?: "Intenta de nuevo"}"
                 )
             }
         }
