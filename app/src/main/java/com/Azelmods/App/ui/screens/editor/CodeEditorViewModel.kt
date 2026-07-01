@@ -106,8 +106,10 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
                 }
                 
                 saveRef.setValue(file).await()
+                
+                // 🔥 FIX: Abrir el archivo inmediatamente después de crearlo
                 _currentFile.value = file
-                _output.value = "✅ Archivo creado: $name"
+                _output.value = "✅ Archivo creado: $name\n💡 Listo para editar"
                 android.util.Log.d("CodeEditorVM", "✅ File created successfully: $name (id: $fileId)")
             } catch (e: Exception) {
                 android.util.Log.e("CodeEditorVM", "❌ Error creating file: ${e.message}", e)
