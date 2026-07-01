@@ -214,7 +214,15 @@ fun NewConversationScreen(
                     ) {
                         items(
                             items = state.filteredContacts,
-                            key = { it.uid }
+                            key = { contact ->
+                                // 🔥 FIX: Use composite key to avoid duplicates
+                                if (contact.uid.isNotBlank()) {
+                                    contact.uid
+                                } else {
+                                    // Fallback for invalid/empty UIDs
+                                    "contact_${contact.email?.hashCode() ?: contact.hashCode()}"
+                                }
+                            }
                         ) { contact ->
                             ContactRow(
                                 contact = contact,
