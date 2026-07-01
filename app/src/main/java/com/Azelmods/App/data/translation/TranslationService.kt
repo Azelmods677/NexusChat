@@ -106,23 +106,23 @@ class TranslationService @Inject constructor() {
                     return@withContext Result.success(text)
                 }
 
-                Result.success(translated)
+                return@withContext Result.success(translated)
             } catch (e: org.json.JSONException) {
                 android.util.Log.e("TranslationService", "🌐 JSON parsing error", e)
-                Result.failure(Exception("Error al procesar respuesta del traductor"))
+                return@withContext Result.failure(Exception("Error al procesar respuesta del traductor"))
             }
         } catch (e: java.net.UnknownHostException) {
             android.util.Log.e("TranslationService", "🌐 No internet connection", e)
-            Result.failure(Exception("Sin conexión a internet. Verifica tu conexión."))
+            return@withContext Result.failure(Exception("Sin conexión a internet. Verifica tu conexión."))
         } catch (e: java.net.SocketTimeoutException) {
             android.util.Log.e("TranslationService", "🌐 Connection timeout", e)
-            Result.failure(Exception("Tiempo de espera agotado. Intenta de nuevo."))
+            return@withContext Result.failure(Exception("Tiempo de espera agotado. Intenta de nuevo."))
         } catch (e: java.io.IOException) {
             android.util.Log.e("TranslationService", "🌐 Network I/O error", e)
-            Result.failure(Exception("Error de red: ${e.message ?: "Error desconocido"}"))
+            return@withContext Result.failure(Exception("Error de red: ${e.message ?: "Error desconocido"}"))
         } catch (e: Exception) {
             android.util.Log.e("TranslationService", "🌐 Translation failed: ${e.message}", e)
-            Result.failure(Exception("Error de traducción: ${e.message ?: "Error desconocido"}"))
+            return@withContext Result.failure(Exception("Error de traducción: ${e.message ?: "Error desconocido"}"))
         }
     }
     
