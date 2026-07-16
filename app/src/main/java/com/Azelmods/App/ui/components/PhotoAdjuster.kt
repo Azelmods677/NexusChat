@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.rememberAsyncImagePainter
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * 📸 PHOTO ADJUSTER COMPONENT
@@ -103,7 +104,7 @@ fun PhotoAdjuster(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF1A1A2E)),
+                        .background(DarkSurface),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

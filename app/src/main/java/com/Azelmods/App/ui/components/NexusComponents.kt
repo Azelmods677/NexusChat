@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.Azelmods.App.ui.theme.NexusTokens
+import com.Azelmods.App.ui.theme.DarkBubbleDeep
 
 /**
  * COMPONENTES PREMIUM NEXUSCHAT 2026
@@ -104,7 +105,7 @@ fun NexusPrimaryButton(
             .background(
                 if (enabled) Brush.horizontalGradient(gradient)
                 else Brush.horizontalGradient(
-                    listOf(Color(0xFF2A2A3A), Color(0xFF1E1E2E))
+                    listOf(Color(0xFF2A2A3A), DarkBubbleDeep)
                 )
             )
             .clickable(

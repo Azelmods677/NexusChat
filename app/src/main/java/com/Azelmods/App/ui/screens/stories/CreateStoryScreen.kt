@@ -301,13 +301,13 @@ fun CreateStoryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E),
+                    containerColor = DarkSurface,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         if (selectedImageUri == null) {
             // Media selection with modern design
@@ -397,7 +397,7 @@ fun CreateStoryScreen(
                     StoryCreationButton(
                         icon = Icons.Default.Videocam,
                         text = "Choose Video",
-                        gradient = listOf(Color(0xFFFF6B9D), Color(0xFFFF8E53)),
+                        gradient = listOf(Pink, Color(0xFFFF8E53)),
                         onClick = { 
                             if (PermissionHelper.hasMediaPermissions(context)) {
                                 videoPickerLauncher.launch("video/*")
@@ -412,7 +412,7 @@ fun CreateStoryScreen(
                     StoryCreationButton(
                         icon = Icons.Default.TextFields,
                         text = "Text Story",
-                        gradient = listOf(Color(0xFF00BFA6), Color(0xFF00D9FF)),
+                        gradient = listOf(Teal, Color(0xFF00D9FF)),
                         onClick = { 
                             selectedImageUri = Uri.parse("text_only")
                             showTextDialog = true
@@ -589,7 +589,7 @@ fun CreateStoryScreen(
                         .fillMaxWidth()
                         .align(Alignment.BottomCenter)
                         .imePadding(),
-                    color = Color(0xFF1A1A2E).copy(alpha = 0.95f),
+                    color = DarkSurface.copy(alpha = 0.95f),
                     shadowElevation = 8.dp
                 ) {
                     Column(
@@ -601,7 +601,7 @@ fun CreateStoryScreen(
                                 .fillMaxWidth()
                                 .imePadding(),
                             shape = RoundedCornerShape(16.dp),
-                            color = Color(0xFF2D2D44)
+                            color = DarkElevated
                         ) {
                             BasicTextField(
                                 value = caption,
@@ -636,13 +636,13 @@ fun CreateStoryScreen(
                             ModernStoryEditOption(
                                 icon = Icons.Default.CropRotate,
                                 label = "Ajustar",
-                                color = Color(0xFF10B981),
+                                color = EmeraldGreen,
                                 onClick = { showPhotoAdjuster = true }
                             )
                             ModernStoryEditOption(
                                 icon = Icons.Default.Draw,
                                 label = "Draw",
-                                color = Color(0xFFFF6B9D),
+                                color = Pink,
                                 onClick = { showDrawMode = true }
                             )
                             ModernStoryEditOption(
@@ -660,7 +660,7 @@ fun CreateStoryScreen(
                             ModernStoryEditOption(
                                 icon = Icons.Default.MusicNote,
                                 label = if (selectedMusicName.isNotBlank()) "Música ✔" else "Music",
-                                color = Color(0xFF00BFA6),
+                                color = Teal,
                                 onClick = {
                                     musicPickerLauncher.launch("audio/*")
                                 }
@@ -741,7 +741,7 @@ fun CreateStoryScreen(
                     Text("Clear", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E),
+            containerColor = DarkSurface,
             properties = DialogProperties(
                 usePlatformDefaultWidth = false,
                 decorFitsSystemWindows = false // Critical for Android 16
@@ -764,7 +764,7 @@ fun CreateStoryScreen(
         
         ModalBottomSheet(
             onDismissRequest = { showStickerPicker = false },
-            containerColor = Color(0xFF1A1A2E),
+            containerColor = DarkSurface,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
             Column(
@@ -852,10 +852,10 @@ fun CreateStoryScreen(
         ) {
             val strokes = remember { mutableStateListOf<DrawnStroke>() }
             var current by remember { mutableStateOf<DrawnStroke?>(null) }
-            var color by remember { mutableStateOf(Color(0xFFFF6B9D)) }
+            var color by remember { mutableStateOf(Pink) }
             val palette = listOf(
-                Color.White, Color.Black, Color(0xFF7C6FE0), Color(0xFFFF6B9D),
-                Color(0xFF00D4FF), Color(0xFF00E676), Color(0xFFFFD700), Color(0xFFFF5252)
+                Color.White, Color.Black, Color(0xFF7C6FE0), Pink,
+                CyanAccent, NeonGreen, GoldPremium, Color(0xFFFF5252)
             )
 
             Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D1E))) {

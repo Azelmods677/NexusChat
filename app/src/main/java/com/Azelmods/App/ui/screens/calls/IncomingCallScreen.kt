@@ -105,7 +105,7 @@ fun IncomingCallScreen(
                 Brush.verticalGradient(
                     colors = listOf(
                         MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        Color(0xFF0F0F1A)
+                        DarkBackground
                     )
                 )
             )

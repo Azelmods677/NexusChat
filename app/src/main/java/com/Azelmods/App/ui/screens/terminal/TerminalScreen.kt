@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
+import com.Azelmods.App.ui.theme.TerminalBlack
+import com.Azelmods.App.ui.theme.TerminalGreen
+import com.Azelmods.App.ui.theme.PurpleBright
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +52,7 @@ fun TerminalScreen(
     }
 
     Scaffold(
-        containerColor = Color(0xFF0A0A0A),
+        containerColor = TerminalBlack,
         topBar = {
             TopAppBar(
                 title = {
@@ -63,12 +66,12 @@ fun TerminalScreen(
                         Box(
                             Modifier
                                 .size(8.dp)
-                                .background(Color(0xFF00FF41).copy(blink), CircleShape)
+                                .background(TerminalGreen.copy(blink), CircleShape)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "Terminal",
-                            color = Color(0xFF00FF41),
+                            color = TerminalGreen,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
@@ -78,7 +81,7 @@ fun TerminalScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            tint = Color(0xFF00FF41),
+                            tint = TerminalGreen,
                             contentDescription = null
                         )
                     }
@@ -87,13 +90,13 @@ fun TerminalScreen(
                     IconButton(onClick = { viewModel.clear() }) {
                         Icon(
                             Icons.Default.DeleteSweep,
-                            tint = Color(0xFF00FF41),
+                            tint = TerminalGreen,
                             contentDescription = null
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0A0A0A)
+                    containerColor = TerminalBlack
                 )
             )
         }
@@ -114,10 +117,10 @@ fun TerminalScreen(
                         fontFamily = FontFamily.Monospace,
                         fontSize = 13.sp,
                         color = when (line.type) {
-                            RealTerminalEmulator.TerminalLine.Type.SYSTEM -> Color(0xFF7B5CFA)
-                            RealTerminalEmulator.TerminalLine.Type.INPUT -> Color(0xFF00FF41)
+                            RealTerminalEmulator.TerminalLine.Type.SYSTEM -> PurpleBright
+                            RealTerminalEmulator.TerminalLine.Type.INPUT -> TerminalGreen
                             RealTerminalEmulator.TerminalLine.Type.OUTPUT -> Color(0xFFCCCCCC)
-                            RealTerminalEmulator.TerminalLine.Type.SUCCESS -> Color(0xFF00FF41)
+                            RealTerminalEmulator.TerminalLine.Type.SUCCESS -> TerminalGreen
                             RealTerminalEmulator.TerminalLine.Type.ERROR -> Color(0xFFFF4444)
                             RealTerminalEmulator.TerminalLine.Type.WARNING -> Color(0xFFFFAA00)
                         }
@@ -125,7 +128,7 @@ fun TerminalScreen(
                 }
             }
 
-            HorizontalDivider(color = Color(0xFF00FF41).copy(0.2f))
+            HorizontalDivider(color = TerminalGreen.copy(0.2f))
 
             // Quick commands
             LazyRow(
@@ -146,13 +149,13 @@ fun TerminalScreen(
                     Surface(
                         onClick = { viewModel.execute(cmd) },
                         shape = RoundedCornerShape(6.dp),
-                        color = Color(0xFF00FF41).copy(0.1f),
-                        border = BorderStroke(1.dp, Color(0xFF00FF41).copy(0.3f))
+                        color = TerminalGreen.copy(0.1f),
+                        border = BorderStroke(1.dp, TerminalGreen.copy(0.3f))
                     ) {
                         Text(
                             cmd,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = Color(0xFF00FF41),
+                            color = TerminalGreen,
                             fontSize = 11.sp,
                             fontFamily = FontFamily.Monospace
                         )
@@ -171,7 +174,7 @@ fun TerminalScreen(
             ) {
                 Text(
                     "$ ",
-                    color = Color(0xFF00FF41),
+                    color = TerminalGreen,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 15.sp
                 )
@@ -180,11 +183,11 @@ fun TerminalScreen(
                     onValueChange = { input = it },
                     modifier = Modifier.weight(1f),
                     textStyle = TextStyle(
-                        color = Color(0xFF00FF41),
+                        color = TerminalGreen,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp
                     ),
-                    cursorBrush = SolidColor(Color(0xFF00FF41)),
+                    cursorBrush = SolidColor(TerminalGreen),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(
                         onSend = {
@@ -206,7 +209,7 @@ fun TerminalScreen(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
-                        tint = Color(0xFF00FF41),
+                        tint = TerminalGreen,
                         modifier = Modifier.size(18.dp),
                         contentDescription = null
                     )

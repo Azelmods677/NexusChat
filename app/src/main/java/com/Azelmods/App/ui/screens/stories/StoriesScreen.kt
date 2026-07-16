@@ -312,12 +312,12 @@ fun StoryItem(
                     drawArc(
                         brush = Brush.sweepGradient(
                             listOf(
-                                Color(0xFF7B5CFA),
-                                Color(0xFF00D4FF),
-                                Color(0xFFFC5C7D),
-                                Color(0xFF00E676),
-                                Color(0xFFFFD700),
-                                Color(0xFF7B5CFA)
+                                PurpleBright,
+                                CyanAccent,
+                                RosePink,
+                                NeonGreen,
+                                GoldPremium,
+                                PurpleBright
                             )
                         ),
                         startAngle = 0f,
