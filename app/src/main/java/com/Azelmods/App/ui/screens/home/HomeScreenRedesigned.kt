@@ -47,6 +47,15 @@ import androidx.compose.ui.layout.ContentScale
 import com.Azelmods.App.ui.components.VideoBackgroundPlayer
 import com.Azelmods.App.ui.theme.parseHexColor
 import com.Azelmods.App.ui.theme.linearGradientBrush
+import com.Azelmods.App.ui.theme.Pink
+import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.PurpleBright
+import com.Azelmods.App.ui.theme.CyanAccent
+import com.Azelmods.App.ui.theme.EmeraldGreen
+import com.Azelmods.App.ui.theme.NeonGreen
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkSurface
+import com.Azelmods.App.ui.theme.RosePink
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -302,7 +311,7 @@ fun HomeScreenRedesigned(
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
-                containerColor = Color(0xFF1A1A2E).copy(alpha = 0.95f)
+                containerColor = DarkSurface.copy(alpha = 0.95f)
             ) {
                 Column(
                     modifier = Modifier
@@ -336,7 +345,7 @@ fun HomeScreenRedesigned(
                     ChatActionItem(
                         icon = Icons.Default.Delete,
                         text = "Delete",
-                        textColor = Color(0xFFEF4444),
+                        textColor = ErrorRed,
                         onClick = {
                             viewModel.deleteChat(chat.chatId)
                             showBottomSheet = false
@@ -395,8 +404,8 @@ fun ChatRow(
                                     Brush.sweepGradient(
                                         listOf(
                                             themeColor,
-                                            Color(0xFF00BFA6),
-                                            Color(0xFFFF6B9D),
+                                            Teal,
+                                            Pink,
                                             themeColor
                                         )
                                     ),
@@ -453,7 +462,7 @@ fun ChatRow(
                                     .size(16.dp)
                                     .scale(scale)
                                     .background(
-                                        Color(0xFF10B981).copy(alpha = 0.3f),
+                                        EmeraldGreen.copy(alpha = 0.3f),
                                         CircleShape
                                     )
                             )
@@ -462,7 +471,7 @@ fun ChatRow(
                                 modifier = Modifier
                                     .size(12.dp)
                                     .align(Alignment.Center)
-                                    .background(Color(0xFF10B981), CircleShape)
+                                    .background(EmeraldGreen, CircleShape)
                                     .padding(2.dp)
                             ) {
                                 Box(
@@ -543,7 +552,7 @@ fun ChatRow(
                             // Typing indicator with animation
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF00BFA6).copy(alpha = 0.15f)
+                                color = Teal.copy(alpha = 0.15f)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -551,7 +560,7 @@ fun ChatRow(
                                 ) {
                                     Text(
                                         text = "typing",
-                                        color = Color(0xFF00BFA6),
+                                        color = Teal,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -567,7 +576,7 @@ fun ChatRow(
                                 if (chat.lastMessageSenderId == currentUserId) {
                                     Text(
                                         text = "✓✓",
-                                        color = Color(0xFF00BFA6),
+                                        color = Teal,
                                         fontSize = 13.sp,
                                         modifier = Modifier.padding(end = 4.dp)
                                     )
@@ -644,7 +653,7 @@ fun TypingDotsSmall() {
             
             Text(
                 text = ".",
-                color = Color(0xFF00BFA6).copy(alpha = alpha),
+                color = Teal.copy(alpha = alpha),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -780,10 +789,10 @@ fun DemoChatCard(
             drawRoundRect(
                 brush = Brush.sweepGradient(
                     listOf(
-                        Color(0xFF7B5CFA).copy(alpha = borderGlow * 0.7f),
-                        Color(0xFF00D4FF).copy(alpha = borderGlow * 0.4f),
-                        Color(0xFFFC5C7D).copy(alpha = borderGlow * 0.7f),
-                        Color(0xFF7B5CFA).copy(alpha = borderGlow * 0.7f)
+                        PurpleBright.copy(alpha = borderGlow * 0.7f),
+                        CyanAccent.copy(alpha = borderGlow * 0.4f),
+                        RosePink.copy(alpha = borderGlow * 0.7f),
+                        PurpleBright.copy(alpha = borderGlow * 0.7f)
                     ),
                     center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
                 ),
@@ -818,8 +827,8 @@ fun DemoChatCard(
                             .background(
                                 Brush.linearGradient(
                                     listOf(
-                                        Color(0xFF7B5CFA),
-                                        Color(0xFF00D4FF)
+                                        PurpleBright,
+                                        CyanAccent
                                     )
                                 ),
                                 CircleShape
@@ -858,13 +867,13 @@ fun DemoChatCard(
                 // DEMO badge
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFF00E676).copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, Color(0xFF00E676))
+                    color = NeonGreen.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, NeonGreen)
                 ) {
                     Text(
                         "DEMO",
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        color = Color(0xFF00E676),
+                        color = NeonGreen,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )

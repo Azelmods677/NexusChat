@@ -19,6 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.Azelmods.App.ui.utils.UserProfileHelper
+import com.Azelmods.App.ui.theme.GoldPremium
+import com.Azelmods.App.ui.theme.Pink
+import com.Azelmods.App.ui.theme.CyanAccent
+import com.Azelmods.App.ui.theme.NeonGreen
 
 @Composable
 fun UserAvatar(
@@ -35,8 +39,8 @@ fun UserAvatar(
     val avatarColor = remember(name, backgroundColor) {
         backgroundColor ?: run {
             val palette = listOf(
-                Color(0xFF7C6FE0), Color(0xFF00D4FF), Color(0xFFFF6B9D),
-                Color(0xFF00E676), Color(0xFFFFD700), Color(0xFFFF8A65),
+                Color(0xFF7C6FE0), CyanAccent, Pink,
+                NeonGreen, GoldPremium, Color(0xFFFF8A65),
                 Color(0xFF4FC3F7), Color(0xFFCE93D8)
             )
             palette[(name.hashCode() and 0x7FFFFFFF) % palette.size]

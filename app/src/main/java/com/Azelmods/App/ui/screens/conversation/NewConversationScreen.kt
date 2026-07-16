@@ -25,6 +25,13 @@ import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.navigation.Screen
 import kotlinx.coroutines.launch
+import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.EmeraldGreen
+import com.Azelmods.App.ui.theme.NeonGreen
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkBorder
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,12 +64,12 @@ fun NewConversationScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         Column(
             modifier = Modifier
@@ -86,8 +93,8 @@ fun NewConversationScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color(0xFF1A1A2E),
-                    unfocusedContainerColor = Color(0xFF1A1A2E),
+                    focusedContainerColor = DarkSurface,
+                    unfocusedContainerColor = DarkSurface,
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent,
                     cursorColor = MaterialTheme.colorScheme.primary
@@ -121,7 +128,7 @@ fun NewConversationScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .safeClickable { viewModel.createDemoChat(navController) },
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF1A1A2E),
+                color = DarkSurface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.4f))
             ) {
                 Row(
@@ -159,12 +166,12 @@ fun NewConversationScreen(
                     
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF00E676).copy(0.15f)
+                        color = NeonGreen.copy(0.15f)
                     ) {
                         Text(
                             "DEMO",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = Color(0xFF00E676),
+                            color = NeonGreen,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -246,7 +253,7 @@ fun NewConversationScreen(
     if (showAddContactSheet) {
         ModalBottomSheet(
             onDismissRequest = { showAddContactSheet = false },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         ) {
             AddContactSheet(
                 onDismiss = { showAddContactSheet = false },
@@ -273,7 +280,7 @@ fun NewConversationScreen(
     if (showNewGroupSheet) {
         ModalBottomSheet(
             onDismissRequest = { showNewGroupSheet = false },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         ) {
             NewGroupSheet(
                 contacts = state.contacts,
@@ -304,7 +311,7 @@ fun RowScope.QuickActionCard(
             .weight(1f)
             .safeClickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Column(
             modifier = Modifier
@@ -365,7 +372,7 @@ fun ContactRow(
                 )
                 Text(
                     text = contact.username,
-                    color = Color(0xFF00BFA6),
+                    color = Teal,
                     fontSize = 13.sp
                 )
             }
@@ -374,7 +381,7 @@ fun ContactRow(
                 Box(
                     modifier = Modifier
                         .size(10.dp)
-                        .background(Color(0xFF10B981), CircleShape)
+                        .background(EmeraldGreen, CircleShape)
                 )
             }
         }
@@ -422,7 +429,7 @@ fun AddContactSheet(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = Color(0xFF3D3D5C)
+                unfocusedBorderColor = DarkBorder
             ),
             isError = errorMessage != null
         )
@@ -431,7 +438,7 @@ fun AddContactSheet(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = error,
-                color = Color(0xFFEF4444),
+                color = ErrorRed,
                 fontSize = 12.sp
             )
         }
@@ -621,7 +628,7 @@ fun NewGroupSheet(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color(0xFF3D3D5C)
+                    unfocusedBorderColor = DarkBorder
                 )
             )
             
