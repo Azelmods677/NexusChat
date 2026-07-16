@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.Azelmods.App.ui.theme.DarkSurface
 
 data class StickerPack(
     val id: String,
@@ -78,7 +79,7 @@ fun StickerPicker(
         modifier = modifier
             .fillMaxWidth()
             .height(400.dp),
-        color = Color(0xFF1A1A2E),
+        color = DarkSurface,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Column(
@@ -192,7 +193,7 @@ fun StickerPicker(
         Dialog(onDismissRequest = { previewSticker = null }) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF1A1A2E)
+                color = DarkSurface
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),

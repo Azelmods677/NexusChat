@@ -36,6 +36,9 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.Azelmods.App.data.model.Message
+import com.Azelmods.App.ui.theme.DarkElevated
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * Media gallery screen showing all photos/videos in a chat.
@@ -74,13 +77,13 @@ fun MediaGalleryScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E),
+                    containerColor = DarkSurface,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         if (mediaMessages.isEmpty()) {
             Box(
@@ -151,7 +154,7 @@ private fun MediaGridItem(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF2D2D44)),
+                        .background(DarkElevated),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(

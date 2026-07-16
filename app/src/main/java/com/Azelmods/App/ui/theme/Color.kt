@@ -35,3 +35,24 @@ val StoryGradient = listOf(
     Color(0xFF00BFA6),  // Teal
     Color(0xFF7C3AED)   // Purple
 )
+
+// ── Tokens agregados al centralizar los Color(0xFF…) hardcodeados (Fase 4) ──
+// Regla del refactor: cada token conserva EXACTAMENTE el hex que reemplaza,
+// así la migración es un cambio de arquitectura puro, sin regresión visual.
+// La consolidación de matices casi-iguales (p.ej. ErrorRed vs Error) es un
+// segundo paso deliberadamente separado.
+val DarkElevated = Color(0xFF2D2D44)    // Superficie elevada (cards sobre cards)
+val DarkBorder = Color(0xFF3D3D5C)      // Bordes de inputs y divisores
+val ErrorRed = Color(0xFFEF4444)        // Rojo de error usado por las pantallas
+val AmberAccent = Color(0xFFF59E0B)     // Ámbar para warnings suaves/destacados
+val NeonGreen = Color(0xFF00E676)       // Verde neón (badges, estado online)
+val EmeraldGreen = Color(0xFF10B981)    // Verde esmeralda (indicadores online)
+val CyanAccent = Color(0xFF00D4FF)      // Cyan eléctrico (acentos secundarios)
+val PurpleLight = Color(0xFF9B75FF)     // Violeta claro (acentos/gradientes)
+val PurpleBright = Color(0xFF7B5CFA)    // Violeta brillante (gradientes)
+val TerminalGreen = Color(0xFF00FF41)   // Verde fósforo (pantalla de terminal)
+val TerminalBlack = Color(0xFF0A0A0A)   // Fondo casi negro (terminal/editor)
+val GoldPremium = Color(0xFFFFD700)     // Dorado premium
+val BlueAccent = Color(0xFF3B82F6)      // Azul (documentos, acciones secundarias)
+val DarkBubbleDeep = Color(0xFF1E1E2E)  // Gradiente oscuro: extremo profundo
+val DarkBubbleLight = Color(0xFF2A2A3E) // Gradiente oscuro: extremo claro

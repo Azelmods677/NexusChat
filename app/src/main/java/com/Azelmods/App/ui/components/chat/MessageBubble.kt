@@ -35,6 +35,12 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
+import com.Azelmods.App.ui.theme.PurpleLight
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkElevated
+import com.Azelmods.App.ui.theme.DarkSurface
+import com.Azelmods.App.ui.theme.DarkBubbleLight
+import com.Azelmods.App.ui.theme.DarkBubbleDeep
 
 /**
  * MessageBubble — Componente de burbuja de mensaje premium.
@@ -114,7 +120,7 @@ fun MessageBubble(
                     .widthIn(max = 280.dp)
                     .padding(vertical = 4.dp),
                 shape = RoundedCornerShape(18.dp),
-                color = Color(0xFF2D2D44).copy(alpha = 0.5f)
+                color = DarkElevated.copy(alpha = 0.5f)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -220,7 +226,7 @@ fun MessageBubble(
                         .background(
                             when {
                                 message.isViewOnce && hasViewed && !isOwnMessage -> Brush.sweepGradient(
-                                    listOf(Color(0xFF1A1A2E).copy(alpha = 0.8f))
+                                    listOf(DarkSurface.copy(alpha = 0.8f))
                                 )
                                 isOwnMessage -> Brush.linearGradient(
                                     colors = listOf(
@@ -232,7 +238,7 @@ fun MessageBubble(
                                     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                                 )
                                 else -> Brush.linearGradient(
-                                    listOf(Color(0xFF2A2A3E), Color(0xFF1E1E2E))
+                                    listOf(DarkBubbleLight, DarkBubbleDeep)
                                 )
                             }
                         )
@@ -415,7 +421,7 @@ fun MessageBubble(
                                     Icon(
                                         if (message.isViewOnce) Icons.Default.VisibilityOff else Icons.Default.Timer,
                                         contentDescription = null,
-                                        tint = if (message.isViewOnce && (currentUserId in message.viewedBy) && !isOwnMessage) Color.Gray else Color(0xFF9B75FF),
+                                        tint = if (message.isViewOnce && (currentUserId in message.viewedBy) && !isOwnMessage) Color.Gray else PurpleLight,
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -426,7 +432,7 @@ fun MessageBubble(
                                             remainingSeconds > 0 -> "🕐 ${formatDuration(remainingSeconds)}"
                                             else -> "🕐 Expirando..."
                                         },
-                                        color = if (message.isViewOnce && hasViewed && !isOwnMessage) Color.Gray else Color(0xFF9B75FF).copy(alpha = 0.8f),
+                                        color = if (message.isViewOnce && hasViewed && !isOwnMessage) Color.Gray else PurpleLight.copy(alpha = 0.8f),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -440,7 +446,7 @@ fun MessageBubble(
                                             .width(40.dp)
                                             .height(3.dp)
                                             .background(
-                                                Color(0xFF2D2D44),
+                                                DarkElevated,
                                                 RoundedCornerShape(2.dp)
                                             )
                                     ) {
@@ -449,9 +455,9 @@ fun MessageBubble(
                                                 .fillMaxWidth(fraction = progress.coerceIn(0f, 1f))
                                                 .fillMaxHeight()
                                                 .background(
-                                                    if (progress > 0.5f) Color(0xFF9B75FF)
+                                                    if (progress > 0.5f) PurpleLight
                                                     else if (progress > 0.2f) Color(0xFFFF8C00)
-                                                    else Color(0xFFEF4444),
+                                                    else ErrorRed,
                                                     RoundedCornerShape(2.dp)
                                                 )
                                         )
@@ -537,7 +543,7 @@ fun MessageBubble(
                                     .fillMaxWidth()
                                     .height(100.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFF2D2D44).copy(alpha = 0.5f)),
+                                    .background(DarkElevated.copy(alpha = 0.5f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -565,20 +571,20 @@ fun MessageBubble(
                                     .fillMaxWidth()
                                     .height(200.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFF2D2D44).copy(alpha = 0.7f)),
+                                    .background(DarkElevated.copy(alpha = 0.7f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(
                                         Icons.Default.VisibilityOff,
                                         contentDescription = null,
-                                        tint = Color(0xFF9B75FF),
+                                        tint = PurpleLight,
                                         modifier = Modifier.size(48.dp)
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         text = "Mensaje temporal\nToca para ver",
-                                        color = Color(0xFF9B75FF),
+                                        color = PurpleLight,
                                         fontSize = 14.sp,
                                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                     )
@@ -628,7 +634,7 @@ fun MessageBubble(
             ) {
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFF1A1A2E),
+                    color = DarkSurface,
                     shadowElevation = 8.dp,
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
@@ -656,7 +662,7 @@ fun MessageBubble(
                                         showReactionPicker = false
                                     },
                                 shape = CircleShape,
-                                color = Color(0xFF2D2D44)
+                                color = DarkElevated
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Text(text = emoji, fontSize = 20.sp)
@@ -685,7 +691,7 @@ fun MessageBubble(
 
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFF2D2D44).copy(alpha = 0.8f),
+                        color = DarkElevated.copy(alpha = 0.8f),
                         shadowElevation = 2.dp,
                         modifier = Modifier
                             .scale(animScale.value)
@@ -708,7 +714,7 @@ fun MessageBubble(
                 Icon(
                     if (message.isViewOnce) Icons.Default.VisibilityOff else Icons.Default.Timer,
                     contentDescription = null,
-                    tint = Color(0xFF9B75FF).copy(alpha = 0.5f),
+                    tint = PurpleLight.copy(alpha = 0.5f),
                     modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(3.dp))
@@ -718,7 +724,7 @@ fun MessageBubble(
                     } else {
                         if ((currentUserId in message.viewedBy) && message.isViewOnce) "Visto una vez" else "Auto-destruible"
                     },
-                    color = Color(0xFF9B75FF).copy(alpha = 0.4f),
+                    color = PurpleLight.copy(alpha = 0.4f),
                     fontSize = 10.sp,
                     fontStyle = FontStyle.Italic
                 )
@@ -729,7 +735,7 @@ fun MessageBubble(
         if (showMessageOptions) {
             AlertDialog(
                 onDismissRequest = { showMessageOptions = false },
-                containerColor = Color(0xFF1A1A2E),
+                containerColor = DarkSurface,
                 title = { Text("Opciones del mensaje", color = Color.White) },
                 text = {
                     Column {
@@ -746,7 +752,7 @@ fun MessageBubble(
                                     horizontalArrangement = Arrangement.Start,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Translate, null, tint = Color(0xFF9B75FF))
+                                    Icon(Icons.Default.Translate, null, tint = PurpleLight)
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text("Traducir mensaje", color = Color.White)
                                 }
@@ -804,9 +810,9 @@ fun MessageBubble(
                                     horizontalArrangement = Arrangement.Start,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Delete, null, tint = Color(0xFFEF4444))
+                                    Icon(Icons.Default.Delete, null, tint = ErrorRed)
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Eliminar para todos", color = Color(0xFFEF4444))
+                                    Text("Eliminar para todos", color = ErrorRed)
                                 }
                             }
                         }
@@ -824,7 +830,7 @@ fun MessageBubble(
         if (showDeleteConfirmation) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirmation = false },
-                containerColor = Color(0xFF1A1A2E),
+                containerColor = DarkSurface,
                 title = { Text("¿Eliminar para todos?", color = Color.White) },
                 text = {
                     Text(
@@ -837,7 +843,7 @@ fun MessageBubble(
                         showDeleteConfirmation = false
                         onDeleteClick?.invoke(true)
                     }) {
-                        Text("Eliminar", color = Color(0xFFEF4444))
+                        Text("Eliminar", color = ErrorRed)
                     }
                 },
                 dismissButton = {
