@@ -9,27 +9,44 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Resultado de una traducción exitosa.
+ *
+ * @property text          El texto traducido.
+ * @property wasTruncated  true si el original superaba [TranslationService.MAX_CHARS]
+ *                         y solo se tradujo el prefijo. Antes esto pasaba en silencio
+ *                         y el usuario no sabía que le faltaba parte del mensaje.
+ * @property remainingWords Palabras estimadas restantes de la cuota diaria local.
+ */
+data class Translation(
+    val text: String,
+    val wasTruncated: Boolean,
+    val remainingWords: Int
+)
+
+/**
  * 🌐 TranslationService — automatic message translation.
  *
  * Uses the free MyMemory API (no API key required for basic usage,
  * ~1000 words/day). All network work runs on [Dispatchers.IO].
  */
 @Singleton
-class TranslationService @Inject constructor() {
+class TranslationService @Inject constructor(
+    private val quotaTracker: TranslationQuotaTracker
+) {
 
     private val baseUrl = "https://api.mymemory.translated.net/get"
 
     /**
      * Translates [text] into [targetLang]. Use "auto" for [sourceLang] to let
      * the service infer the source language.
-     * 
+     *
      * MULTI-LANGUAGE FIX: Mejora la detección y soporte para todos los idiomas soportados.
      */
     suspend fun translate(
         text: String,
         targetLang: String = "es",
         sourceLang: String = "auto"
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<Translation> = withContext(Dispatchers.IO) {
         try {
             if (text.isBlank()) {
                 android.util.Log.w("TranslationService", "🌐 Empty text provided")
@@ -47,14 +64,18 @@ class TranslationService @Inject constructor() {
             
             android.util.Log.d("TranslationService", "🌐 Translating text: '${text.take(50)}...' to: $normalizedTarget (from: $normalizedSource)")
             
-            // Limitar a 500 caracteres para la API gratuita
-            val textToTranslate = text.take(500)
+            // Limitar a MAX_CHARS para la API gratuita. El flag viaja en el resultado
+            // para que la UI avise en lugar de truncar en silencio.
+            val wasTruncated = text.length > MAX_CHARS
+            val textToTranslate = text.take(MAX_CHARS)
             val encoded = URLEncoder.encode(textToTranslate, "UTF-8")
-            
+
             // Si el texto ya está en el idioma objetivo explícitamente, no traducir
             if (normalizedSource != "auto" && normalizedSource.equals(normalizedTarget, ignoreCase = true)) {
                 android.util.Log.d("TranslationService", "🌐 Text already in target language")
-                return@withContext Result.success(text)
+                return@withContext Result.success(
+                    Translation(text, wasTruncated = false, remainingWords = quotaTracker.remainingWordsToday())
+                )
             }
             
             // MyMemory usa "source|target" para pares explícitos
@@ -94,19 +115,23 @@ class TranslationService @Inject constructor() {
                 android.util.Log.d("TranslationService", "🌐 Success: '$textToTranslate' -> '$translated'")
 
                 // Sometimes the API puts the quota warning directly in the translated text with a 200 status
-                if (translated.startsWith("MYMEMORY WARNING", ignoreCase = true) || 
+                if (translated.startsWith("MYMEMORY WARNING", ignoreCase = true) ||
                     translated.contains("LIMIT EXCEEDED", ignoreCase = true)) {
                     android.util.Log.w("TranslationService", "🌐 Quota limit reached")
                     return@withContext Result.failure(Exception("Límite diario de traducciones agotado. Intenta de nuevo mañana."))
                 }
-                
+
+                // La request consumió cuota real: registrar las palabras enviadas
+                // en el contador local para poder avisar ANTES de que la API falle.
+                val remainingWords = quotaTracker.recordUsage(textToTranslate)
+
                 // Si la traducción es idéntica, puede que ya esté en el idioma correcto
                 if (translated.equals(textToTranslate, ignoreCase = true)) {
                     android.util.Log.d("TranslationService", "🌐 Translation identical to original - text may already be in target language")
-                    return@withContext Result.success(text)
+                    return@withContext Result.success(Translation(text, wasTruncated = false, remainingWords = remainingWords))
                 }
 
-                return@withContext Result.success(translated)
+                return@withContext Result.success(Translation(translated, wasTruncated = wasTruncated, remainingWords = remainingWords))
             } catch (e: org.json.JSONException) {
                 android.util.Log.e("TranslationService", "🌐 JSON parsing error", e)
                 return@withContext Result.failure(Exception("Error al procesar respuesta del traductor"))
@@ -212,6 +237,9 @@ class TranslationService @Inject constructor() {
     }
 
     companion object {
+        /** Máximo de caracteres por request de la API gratuita de MyMemory. */
+        const val MAX_CHARS = 500
+
         val SUPPORTED_LANGUAGES = mapOf(
             "Español" to "es",
             "English" to "en",
