@@ -23,6 +23,7 @@ import androidx.navigation.NavController
 import com.Azelmods.App.data.model.User
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.navigation.Screen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,6 +37,7 @@ fun NewConversationScreen(
     var showAddContactSheet by remember { mutableStateOf(false) }
     var showNewGroupSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Surface state.error so tapping a contact never goes without a response.
     LaunchedEffect(state.error) {
@@ -215,11 +217,14 @@ fun NewConversationScreen(
                         items(
                             items = state.filteredContacts,
                             key = { contact ->
-                                // 🔥 FIX: Use composite key to avoid duplicates
+                                // CAUSA RAÍZ del crash: LazyColumn exige keys únicas; con datos
+                                // duplicados de Firebase (mismo uid dos veces) Compose crasheaba
+                                // con "Key was already used". La lista ya llega desduplicada
+                                // (distinctBy { it.uid } en el ViewModel); este fallback solo
+                                // cubre UIDs vacíos por datos corruptos.
                                 if (contact.uid.isNotBlank()) {
                                     contact.uid
                                 } else {
-                                    // Fallback for invalid/empty UIDs
                                     "contact_${contact.email?.hashCode() ?: contact.hashCode()}"
                                 }
                             }
@@ -245,9 +250,18 @@ fun NewConversationScreen(
         ) {
             AddContactSheet(
                 onDismiss = { showAddContactSheet = false },
-                onSuccess = {
+                onSuccess = { contactName ->
                     showAddContactSheet = false
-                    // Show success snackbar
+                    // BUG ORIGINAL: el comentario "// Show success snackbar" nunca se implementó,
+                    // así que el sheet se cerraba sin ningún feedback y el usuario no sabía
+                    // si la acción funcionó. Ahora se confirma vía snackbar mientras
+                    // startConversation resuelve la navegación al chat en segundo plano.
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Contacto encontrado: $contactName — abriendo chat…",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 },
                 viewModel = viewModel,
                 navController = navController
@@ -264,9 +278,13 @@ fun NewConversationScreen(
             NewGroupSheet(
                 contacts = state.contacts,
                 onDismiss = { showNewGroupSheet = false },
-                onCreateGroup = { selectedContacts, groupName ->
+                onGroupCreated = { groupId ->
                     showNewGroupSheet = false
-                    // Navigate to group chat
+                    // BUG ORIGINAL: el grupo se creaba en Firebase pero el comentario
+                    // "// Navigate to group chat" nunca se implementó: el usuario quedaba
+                    // en la misma pantalla sin saber si el grupo existía. Los grupos viven
+                    // en /chats/{groupId}, así que la ruta de chat normal los abre.
+                    navController.navigate(Screen.Chat.createRoute(groupId))
                 },
                 viewModel = viewModel
             )
@@ -366,7 +384,7 @@ fun ContactRow(
 @Composable
 fun AddContactSheet(
     onDismiss: () -> Unit,
-    onSuccess: () -> Unit,
+    onSuccess: (contactName: String) -> Unit,
     viewModel: NewConversationViewModel,
     navController: NavController
 ) {
@@ -455,8 +473,9 @@ fun AddContactSheet(
                     
                     if (user != null) {
                         val userId = user["uid"] as? String ?: return@launch
+                        val name = user["name"] as? String ?: username
                         viewModel.startConversation(userId, navController)
-                        onSuccess()
+                        onSuccess(name)
                     } else {
                         errorMessage = "Could not find user. Check the username."
                     }
@@ -489,7 +508,7 @@ fun AddContactSheet(
 fun NewGroupSheet(
     contacts: List<User>,
     onDismiss: () -> Unit,
-    onCreateGroup: (List<User>, String) -> Unit,
+    onGroupCreated: (groupId: String) -> Unit,
     viewModel: NewConversationViewModel
 ) {
     val scope = rememberCoroutineScope()
@@ -529,7 +548,9 @@ fun NewGroupSheet(
                 items(
                     items = contacts,
                     key = { contact ->
-                        // 🔥 FIX: Add unique key for group creation contacts list
+                        // Misma causa raíz que la lista de contactos: keys duplicadas
+                        // crasheaban esta LazyColumn. Lista desduplicada en el ViewModel
+                        // (distinctBy { it.uid }); fallback solo para UIDs vacíos.
                         if (contact.uid.isNotBlank()) {
                             contact.uid
                         } else {
@@ -613,8 +634,7 @@ fun NewGroupSheet(
                         val groupId = viewModel.createGroup(groupName, selectedContacts.toList())
                         isCreating = false
                         if (groupId != null) {
-                            val selected = contacts.filter { selectedContacts.contains(it.uid) }
-                            onCreateGroup(selected, groupName)
+                            onGroupCreated(groupId)
                         }
                     }
                 },
