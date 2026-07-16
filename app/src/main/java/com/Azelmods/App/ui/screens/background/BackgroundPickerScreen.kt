@@ -44,6 +44,8 @@ import com.Azelmods.App.ui.theme.linearGradientBrush
 import com.Azelmods.App.ui.theme.parseHexColor
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
+import com.Azelmods.App.ui.theme.TerminalBlack
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * Background picker screen - Enhanced Chat Wallpaper
@@ -110,7 +112,7 @@ fun BackgroundPickerScreen(
                 )
             )
         },
-        containerColor = Color(0xFF0A0A0A)
+        containerColor = TerminalBlack
     ) { padding ->
         Column(
             modifier = Modifier
@@ -167,7 +169,7 @@ fun BackgroundPickerScreen(
                     // Received message bubble
                     Surface(
                         shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
-                        color = Color(0xFF1A1A2E).copy(alpha = 0.85f),
+                        color = DarkSurface.copy(alpha = 0.85f),
                         modifier = Modifier.widthIn(max = 220.dp)
                     ) {
                         Column(modifier = Modifier.padding(10.dp, 8.dp)) {
@@ -442,7 +444,7 @@ private fun BackgroundPreview(config: BackgroundConfig) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF0A0A0A))
+                        .background(TerminalBlack)
                 )
             }
         }

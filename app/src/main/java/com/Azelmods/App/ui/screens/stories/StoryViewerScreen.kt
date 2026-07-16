@@ -42,6 +42,8 @@ import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
+import com.Azelmods.App.ui.theme.Pink
+import com.Azelmods.App.ui.theme.Purple
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -408,9 +410,9 @@ fun StoryViewerScreen(
                                 Brush.radialGradient(listOf(it, Color.Black))
                             } ?: Brush.linearGradient(
                                 listOf(
-                                    Color(0xFF7C3AED),
-                                    Color(0xFFFF6B9D),
-                                    Color(0xFF0F0F1A)
+                                    Purple,
+                                    Pink,
+                                    DarkBackground
                                 )
                             )
                         ),

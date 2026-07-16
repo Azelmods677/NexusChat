@@ -17,6 +17,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.Azelmods.App.ui.theme.TerminalBlack
 
 /**
  * Reusable video background player component
@@ -33,7 +34,7 @@ import androidx.media3.ui.PlayerView
 fun VideoBackgroundPlayer(
     videoUri: String,
     modifier: Modifier = Modifier,
-    fallbackColor: Color = Color(0xFF0A0A0A)
+    fallbackColor: Color = TerminalBlack
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current

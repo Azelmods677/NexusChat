@@ -35,6 +35,8 @@ import com.Azelmods.App.ui.theme.DarkSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.Azelmods.App.ui.theme.Success
+import com.Azelmods.App.ui.theme.DarkElevated
 
 private const val TAG = "TorBrowser"
 
@@ -210,7 +212,7 @@ fun TorBrowserScreenNew(
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp),
                 shape = RoundedCornerShape(8.dp),
-                color = Color(0xFF1A1A2E)
+                color = DarkSurface
             ) {
                 Row(
                     modifier = Modifier
@@ -223,7 +225,7 @@ fun TorBrowserScreenNew(
                         imageVector = if (proxyEnabled) Icons.Default.Shield
                                        else Icons.Default.Wifi,
                         contentDescription = null,
-                        tint = if (proxyEnabled) Color(0xFF00FF00) else Color(0xFF4CAF50),
+                        tint = if (proxyEnabled) Color(0xFF00FF00) else Success,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(
@@ -366,8 +368,8 @@ fun TorBrowserScreenNew(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedContainerColor = Color(0xFF2D2D44),
-                            unfocusedContainerColor = Color(0xFF2D2D44),
+                            focusedContainerColor = DarkElevated,
+                            unfocusedContainerColor = DarkElevated,
                             focusedBorderColor = MaterialTheme.colorScheme.primary,
                             unfocusedBorderColor = Color.Transparent
                         ),
