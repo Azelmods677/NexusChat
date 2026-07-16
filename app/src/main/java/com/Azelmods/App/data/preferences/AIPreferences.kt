@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
-import com.Azelmods.App.data.manager.AIManager
+import com.Azelmods.App.data.manager.AIProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -53,10 +53,10 @@ class AIPreferences @Inject constructor(
     // ═══════════════════════════════════════════════════════════════════
     
     val aiProvider: Flow<String> = context.aiDataStore.data.map { preferences ->
-        preferences[AI_PROVIDER] ?: AIManager.AIProvider.OLLAMA_CLOUD.name
+        preferences[AI_PROVIDER] ?: AIProvider.OLLAMA_CLOUD.name
     }
     
-    suspend fun setAIProvider(provider: AIManager.AIProvider) {
+    suspend fun setAIProvider(provider: AIProvider) {
         context.aiDataStore.edit { preferences ->
             preferences[AI_PROVIDER] = provider.name
         }
@@ -280,7 +280,7 @@ class AIPreferences @Inject constructor(
      */
     fun getAllSettings(): Flow<Map<String, Any>> = context.aiDataStore.data.map { preferences ->
         mapOf(
-            "ai_provider" to (preferences[AI_PROVIDER] ?: AIManager.AIProvider.OLLAMA_CLOUD.name),
+            "ai_provider" to (preferences[AI_PROVIDER] ?: AIProvider.OLLAMA_CLOUD.name),
             "ai_model" to (preferences[AI_MODEL] ?: com.Azelmods.App.data.api.AzelAIApiService.DEEPSEEK_R1_70B),
             "temperature" to (preferences[TEMPERATURE] ?: 0.9),
             "max_tokens" to (preferences[MAX_TOKENS] ?: 8192),

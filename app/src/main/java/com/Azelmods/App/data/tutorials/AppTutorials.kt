@@ -165,7 +165,6 @@ Sin necesidad de hardware local. Modelos disponibles:
 • deepseek-r1:70b — Razonamiento profundo
 • gpt-oss:120b-cloud — Modelo insignia
 • llama3:70b — Propósito general
-• dolphin-mixtral — Sin censura
 • codellama:70b — Programación
 
 **Ollama Local (alternativa):**
@@ -184,9 +183,9 @@ Para usuarios con hardware potente que prefieren privacidad total.
 
 ## Categorías de Prompts
 
-• 🔓 Exploits • 💻 Hacking • 🐍 Python • ⚡ JavaScript
-• 🔐 Criptografía • 🌐 Redes • 🛡️ Seguridad • 📱 Android
-• 🐧 Linux • 🎯 OSINT • 🕵️ Privacidad • 🤖 Prompts de IA
+• 🐍 Python • ⚡ JavaScript • 📱 Android • 🐧 Linux
+• 🔐 Criptografía • 🌐 Redes • 🛡️ Seguridad defensiva
+• ✍️ Redacción • 🌎 Traducción • 🤖 Prompts de IA
 
 ## Configuración Local (Opcional)
 
@@ -199,7 +198,7 @@ Solo si quieres usar Ollama local en lugar de la nube:
 
 ---
 
-⚠️ Las respuestas de IA no tienen censura — úsalas con responsabilidad.
+ℹ️ Usa la IA de forma responsable y conforme a las leyes aplicables.
 
 ℹ️ El modo Cloud está configurado por defecto y no requiere instalación adicional.
     """.trimIndent()
@@ -459,7 +458,7 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 **💬 Mensajería:** Texto, fotos, videos, voz, E2EE
 **📸 Stories:** Contenido temporal de 24h con emojis draggables
 **📞 Llamadas:** Audio y video HD con WebRTC
-**🤖 Azel IA:** Asistente inteligente sin censura
+**🤖 Azel IA:** Asistente inteligente para programación, redacción y análisis
 **🔒 Seguridad:** Cifrado Signal, bloqueo biométrico, Tor/Orbot
 **🎨 Personalización:** 15 colores de acento, wallpapers, temas
 

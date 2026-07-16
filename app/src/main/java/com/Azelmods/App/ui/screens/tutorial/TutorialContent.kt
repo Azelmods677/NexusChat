@@ -82,7 +82,7 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Asistente Inteligente",
-                    content = "Azel IA es un asistente sin censura para:\n• Programación avanzada\n• Hacking ético\n• Exploits y seguridad\n• Consultas técnicas\n• Análisis de código"
+                    content = "Azel IA es un asistente inteligente para:\n• Programación y revisión de código\n• Redacción, resumen y traducción\n• Explicación de conceptos técnicos\n• Buenas prácticas de seguridad defensiva\n• Consultas y análisis de información"
                 ),
                 TutorialSection(
                     title = "Modo Cloud (Recomendado)",
@@ -94,7 +94,7 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = "Categorías Disponibles",
-                    content = "• 🔓 Exploits\n• 💻 Hacking\n• 🐍 Python\n• ⚡ JavaScript\n• 🔐 Criptografía\n• 🌐 Redes\n• 🛡️ Seguridad\n• 📱 Android\n• 🐧 Linux"
+                    content = "• 🐍 Python\n• ⚡ JavaScript\n• 📱 Android\n• 🐧 Linux\n• 🔐 Criptografía\n• 🌐 Redes\n• 🛡️ Seguridad defensiva\n• ✍️ Redacción\n• 🌎 Traducción"
                 )
             )
         ),
@@ -205,7 +205,7 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = "Azel IA - Asistente Inteligente",
-                    content = "IA sin censura integrada:\n• Chat sin restricciones\n• Conocimiento técnico avanzado\n• Análisis de código y vulnerabilidades\n• Streaming de respuestas en tiempo real\n\nAccede desde el menú 'IA'"
+                    content = "Asistente de IA integrado:\n• Chat con respuestas en tiempo real\n• Conocimiento técnico general\n• Ayuda con código y buenas prácticas de seguridad\n• Streaming de respuestas en tiempo real\n\nAccede desde el menú 'IA'"
                 ),
                 TutorialSection(
                     title = "Orbot / Tor",

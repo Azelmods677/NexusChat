@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
  * Security Disclaimer Dialog
  * 
  * Displays legal disclaimer and requires user acceptance before
- * allowing access to security tools (Payload Generator)
+ * allowing access to advanced security tools.
  * 
  * Requirements: 25.1, 25.2, 25.3, 25.4, 25.5, 39.1, 39.2, 39.3, 39.4, 39.5
  */

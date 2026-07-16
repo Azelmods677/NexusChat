@@ -376,7 +376,7 @@ fun NavGraph(
             )
         }
         
-        // Azel IA - Chatbot sin censura
+        // Azel IA - Asistente de IA
         composable(Screen.AzelAI.route) {
             com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
                 onBack = { navController.popBackStack() }
