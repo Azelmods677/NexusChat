@@ -23,6 +23,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Azelmods.App.ui.theme.GoldPremium
+import com.Azelmods.App.ui.theme.EmeraldGreen
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkElevated
+import com.Azelmods.App.ui.theme.DarkBubbleLight
+import com.Azelmods.App.ui.theme.DarkBubbleDeep
+import com.Azelmods.App.ui.theme.BlueAccent
 
 /**
  * Modern Message Input Bar - Professional, animated, and unique design
@@ -80,8 +87,8 @@ fun ModernMessageInputBar(
                 .background(
                     Brush.linearGradient(
                         listOf(
-                            Color(0xFF1E1E2E),
-                            Color(0xFF2A2A3E)
+                            DarkBubbleDeep,
+                            DarkBubbleLight
                         )
                     ),
                     shape = RoundedCornerShape(28.dp)
@@ -115,7 +122,7 @@ fun ModernMessageInputBar(
                         icon = Icons.Default.EmojiEmotions,
                         contentDescription = "Emoji",
                         onClick = onEmojiClick,
-                        tint = Color(0xFFFFD700)
+                        tint = GoldPremium
                     )
                 }
                 
@@ -130,7 +137,7 @@ fun ModernMessageInputBar(
                             .weight(1f)
                             .heightIn(min = 40.dp, max = 120.dp)
                             .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFF2D2D44))
+                            .background(DarkElevated)
                             .padding(horizontal = 16.dp, vertical = 10.dp)
                     ) {
                         BasicTextField(
@@ -183,7 +190,7 @@ fun ModernMessageInputBar(
                             icon = Icons.AutoMirrored.Filled.StickyNote2,
                             contentDescription = "Stickers",
                             onClick = onStickerClick,
-                            tint = Color(0xFF10B981)
+                            tint = EmeraldGreen
                         )
                     }
                     
@@ -197,7 +204,7 @@ fun ModernMessageInputBar(
                             icon = Icons.Default.AttachFile,
                             contentDescription = "Attach",
                             onClick = onAttachmentClick,
-                            tint = Color(0xFF3B82F6)
+                            tint = BlueAccent
                         )
                     }
                     
@@ -342,7 +349,7 @@ private fun VoiceButton(
             .size(44.dp)
             .scale(scale),
         shape = CircleShape,
-        color = if (isRecording) Color(0xFFEF4444) else Color(0xFF3B82F6),
+        color = if (isRecording) ErrorRed else BlueAccent,
         shadowElevation = if (isRecording) 6.dp else 2.dp
     ) {
         Box(
@@ -378,7 +385,7 @@ private fun RecordingIndicator(
         modifier = modifier
             .height(40.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xFF2D2D44))
+            .background(DarkElevated)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -386,7 +393,7 @@ private fun RecordingIndicator(
         Box(
             modifier = Modifier
                 .size(12.dp)
-                .background(Color(0xFFEF4444).copy(alpha = alpha), CircleShape)
+                .background(ErrorRed.copy(alpha = alpha), CircleShape)
         )
         
         Text(
