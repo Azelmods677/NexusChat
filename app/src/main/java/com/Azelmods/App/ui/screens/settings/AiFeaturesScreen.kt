@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -29,13 +28,6 @@ fun AiFeaturesScreen(
     navController: NavController,
     aiKeyViewModel: AiKeyViewModel = hiltViewModel()
 ) {
-    var smartRepliesEnabled by remember { mutableStateOf(false) }
-    var autoTranslateEnabled by remember { mutableStateOf(false) }
-    var chatSummaryEnabled by remember { mutableStateOf(false) }
-    var toneSuggestionsEnabled by remember { mutableStateOf(false) }
-    var photoEnhancementEnabled by remember { mutableStateOf(false) }
-    var voiceTranscriptionEnabled by remember { mutableStateOf(false) }
-    
     var aiMessage by remember { mutableStateOf("") }
     var aiResponse by remember { mutableStateOf("") }
     
@@ -105,83 +97,20 @@ fun AiFeaturesScreen(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            
-            // Features
-            AiFeatureCard(
-                icon = Icons.Default.QuestionAnswer,
-                title = "Smart Replies",
-                description = "Get AI-suggested quick responses",
-                enabled = smartRepliesEnabled,
-                onToggle = { smartRepliesEnabled = it }
-            )
-            
-            // Smart replies preview
-            if (smartRepliesEnabled) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = "Suggested Replies:",
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Sure!", "Thanks!", "Got it").forEach { reply ->
-                            SuggestionChip(
-                                onClick = { },
-                                label = { Text(reply) }
-                            )
-                        }
-                    }
-                }
-            }
-            
-            AiFeatureCard(
-                icon = Icons.Default.Translate,
-                title = "Auto-Translate",
-                description = "Automatically translate incoming messages",
-                enabled = autoTranslateEnabled,
-                onToggle = { autoTranslateEnabled = it }
-            )
-            
-            AiFeatureCard(
-                icon = Icons.Default.Summarize,
-                title = "Chat Summary",
-                description = "Summarize long conversations",
-                enabled = chatSummaryEnabled,
-                onToggle = { chatSummaryEnabled = it }
-            )
-            
-            AiFeatureCard(
-                icon = Icons.Default.EmojiEmotions,
-                title = "Tone Suggestions",
-                description = "Adjust message tone (Formal, Casual, Friendly)",
-                enabled = toneSuggestionsEnabled,
-                onToggle = { toneSuggestionsEnabled = it }
-            )
-            
-            AiFeatureCard(
-                icon = Icons.Default.PhotoCamera,
-                title = "AI Photo Enhancement",
-                description = "Enhance shared photos automatically",
-                enabled = photoEnhancementEnabled,
-                onToggle = { photoEnhancementEnabled = it }
-            )
-            
-            AiFeatureCard(
-                icon = Icons.Default.Mic,
-                title = "Voice Transcription",
-                description = "Transcribe voice messages to text",
-                enabled = voiceTranscriptionEnabled,
-                onToggle = { voiceTranscriptionEnabled = it }
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
+
+            // TODO(features-ia): acá vivían 6 toggles (Smart Replies, Auto-Translate,
+            // Chat Summary, Tone Suggestions, Photo Enhancement, Voice Transcription)
+            // y chips de respuestas sugeridas que eran PURAMENTE decorativos:
+            // estado local con remember { mutableStateOf(false) } sin persistencia
+            // (se reseteaban al salir) y sin ningún efecto sobre la app.
+            // Se ocultan hasta que exista la implementación real. Para revivir cada uno hace falta:
+            //   1. Persistencia del toggle (DataStore vía un AiPreferencesRepository).
+            //   2. Lógica real detrás: Smart Replies/Summary/Tone → llamada a Gemini con
+            //      la API key del usuario (AiKeyStore); Auto-Translate → integrar
+            //      TranslationService al flujo de mensajes entrantes en ChatViewModel;
+            //      Voice Transcription → SpeechRecognizer o API externa.
+            //   3. Consumir el estado desde ChatScreen/ChatViewModel, no solo desde Settings.
+            // La UI previa está en el historial de git (AiFeatureCard + SuggestionChips).
             
             // 🔑 API Key de Gemini
             GeminiApiKeySection(viewModel = aiKeyViewModel)
@@ -339,67 +268,6 @@ fun AiFeaturesScreen(
             }
             
             Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
-
-@Composable
-fun AiFeatureCard(
-    icon: ImageVector,
-    title: String,
-    description: String,
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        color = DarkSurface,
-        shape = MaterialTheme.shapes.medium
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), MaterialTheme.shapes.medium),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = description,
-                    color = Color.Gray,
-                    fontSize = 14.sp
-                )
-            }
-            
-            Switch(
-                checked = enabled,
-                onCheckedChange = onToggle,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                )
-            )
         }
     }
 }
