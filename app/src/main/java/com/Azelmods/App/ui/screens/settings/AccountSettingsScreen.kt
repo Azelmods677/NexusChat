@@ -90,11 +90,11 @@ fun AccountSettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -113,7 +113,7 @@ fun AccountSettingsScreen(
                             android.util.Log.e("AccountSettingsScreen", "Navigation error: ${e.message}")
                         }
                     },
-                color = Color(0xFF1A1A2E)
+                color = DarkSurface
             ) {
                 Row(
                     modifier = Modifier
@@ -181,7 +181,7 @@ fun AccountSettingsScreen(
                     .padding(horizontal = 24.dp, vertical = 8.dp)
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E))
+            HorizontalDivider(color = DarkSurface)
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -217,7 +217,7 @@ fun AccountSettingsScreen(
                 }
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E))
+            HorizontalDivider(color = DarkSurface)
             
             // Danger zone
             Spacer(modifier = Modifier.height(24.dp))
@@ -300,7 +300,7 @@ fun AccountSettingsScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 
@@ -339,7 +339,7 @@ fun AccountSettingsScreen(
                     )
                     if (accountActionState is SettingsViewModel.AccountActionState.Error) {
                         val err = (accountActionState as SettingsViewModel.AccountActionState.Error).message
-                        Text(err, color = Color(0xFFEF4444), fontSize = 12.sp)
+                        Text(err, color = ErrorRed, fontSize = 12.sp)
                     }
                 }
             },
@@ -365,7 +365,7 @@ fun AccountSettingsScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 
@@ -373,7 +373,7 @@ fun AccountSettingsScreen(
     if (showDeleteAccountDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAccountDialog = false },
-            title = { Text("Delete Account", color = Color(0xFFEF4444)) },
+            title = { Text("Delete Account", color = ErrorRed) },
             text = {
                 Column {
                     Text(
@@ -393,13 +393,13 @@ fun AccountSettingsScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color(0xFFEF4444),
+                            focusedBorderColor = ErrorRed,
                             unfocusedBorderColor = Color.Gray
                         )
                     )
                     if (accountActionState is SettingsViewModel.AccountActionState.Error) {
                         val err = (accountActionState as SettingsViewModel.AccountActionState.Error).message
-                        Text(err, color = Color(0xFFEF4444), fontSize = 12.sp)
+                        Text(err, color = ErrorRed, fontSize = 12.sp)
                     }
                 }
             },
@@ -416,7 +416,7 @@ fun AccountSettingsScreen(
                     if (accountActionState is SettingsViewModel.AccountActionState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
                     } else {
-                        Text("Delete", color = Color(0xFFEF4444))
+                        Text("Delete", color = ErrorRed)
                     }
                 }
             },
@@ -425,7 +425,7 @@ fun AccountSettingsScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 }

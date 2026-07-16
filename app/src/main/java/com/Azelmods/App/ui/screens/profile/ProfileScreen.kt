@@ -232,7 +232,7 @@ fun ProfileScreen(
                                         listOf(
                                             Color(0xFF00C9FF), 
                                             Color(0xFF92FE9D),
-                                            Color(0xFFFC5C7D), 
+                                            RosePink, 
                                             Color(0xFF6A3093)
                                         )
                                     )
@@ -320,10 +320,10 @@ fun ProfileScreen(
                         drawArc(
                             brush = Brush.sweepGradient(
                                 listOf(
-                                    Color(0xFF7B5CFA),
-                                    Color(0xFF00D4FF),
-                                    Color(0xFFFC5C7D),
-                                    Color(0xFF7B5CFA)
+                                    PurpleBright,
+                                    CyanAccent,
+                                    RosePink,
+                                    PurpleBright
                                 )
                             ),
                             startAngle = 0f,
