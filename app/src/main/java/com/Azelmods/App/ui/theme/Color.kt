@@ -56,3 +56,5 @@ val GoldPremium = Color(0xFFFFD700)     // Dorado premium
 val BlueAccent = Color(0xFF3B82F6)      // Azul (documentos, acciones secundarias)
 val DarkBubbleDeep = Color(0xFF1E1E2E)  // Gradiente oscuro: extremo profundo
 val DarkBubbleLight = Color(0xFF2A2A3E) // Gradiente oscuro: extremo claro
+val DarkDeep = Color(0xFF0D0D1A)        // Fondo profundo (fallback de video/wallpaper)
+val RosePink = Color(0xFFFC5C7D)        // Rosa intenso (gradientes de acento)
