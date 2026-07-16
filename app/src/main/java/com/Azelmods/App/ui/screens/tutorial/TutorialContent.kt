@@ -88,10 +88,9 @@ object TutorialContent {
                     title = "Modo Cloud (Recomendado)",
                     content = "Usa Ollama Cloud sin necesidad de hardware local:\n1. Ve a 'IA' en el menú\n2. Selecciona 'Azel IA'\n3. Elige una categoría o escribe tu pregunta\n4. Recibe respuestas en tiempo real"
                 ),
-                TutorialSection(
-                    title = "Modo Local (Opcional)",
-                    content = "Para usuarios con Ollama instalado:\n1. Instala Ollama en tu PC\n2. Descarga modelos (llama3, codellama, etc.)\n3. Inicia: ollama serve\n4. La app se conecta automáticamente"
-                ),
+                // Sección "Modo Local (Opcional)" eliminada: describía OllamaApiService
+                // (localhost:11434), clase que ya no existe en el código. El tutorial
+                // prometía una feature que la app no puede cumplir.
                 TutorialSection(
                     title = "Categorías Disponibles",
                     content = "• 🐍 Python\n• ⚡ JavaScript\n• 📱 Android\n• 🐧 Linux\n• 🔐 Criptografía\n• 🌐 Redes\n• 🛡️ Seguridad defensiva\n• ✍️ Redacción\n• 🌎 Traducción"
