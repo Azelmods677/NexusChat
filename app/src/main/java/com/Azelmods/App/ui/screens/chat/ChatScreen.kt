@@ -132,6 +132,15 @@ fun ChatScreen(
         }
     }
 
+    // Avisos informativos de traducción (truncado a 500 chars / cuota diaria baja):
+    // la traducción sí ocurrió, pero el usuario debe saber sus límites.
+    LaunchedEffect(state.translationNotice) {
+        state.translationNotice?.let { notice ->
+            sendErrorSnackbar.showSnackbar(notice)
+            viewModel.clearTranslationNotice()
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(sendErrorSnackbar) },

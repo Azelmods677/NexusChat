@@ -48,6 +48,7 @@ data class ChatState(
     // ── Translation ──
     val translatingMessageIds: Set<String> = emptySet(), // IDs currently being translated
     val translationError: String? = null,
+    val translationNotice: String? = null,              // Aviso no-bloqueante (truncado / cuota baja)
     val translatedMessages: Map<String, String> = emptyMap() // messageId -> translated text
 )
 
@@ -76,6 +77,10 @@ class ChatViewModel @Inject constructor(
         const val DEMO_USER_NAME = "Azel Assistant"
         const val DEMO_USERNAME = "@azel"
         const val DEMO_BIO = "I'm here to help you explore AzelGram features!"
+
+        // Umbral (en palabras restantes) a partir del cual se avisa que la
+        // cuota diaria gratuita de traducción está por agotarse.
+        const val LOW_QUOTA_THRESHOLD = 150
     }
 
     /**
@@ -801,10 +806,23 @@ class ChatViewModel @Inject constructor(
                     java.util.Locale.getDefault().language.ifBlank { "es" }
                 } else prefLang
                 val result = translationService.translate(text, targetLang = targetLang)
-                result.onSuccess { translated ->
+                result.onSuccess { translation ->
+                    // Avisos preventivos: antes el truncado a 500 chars era silencioso y
+                    // el límite de cuota solo se descubría cuando la API ya fallaba.
+                    val notices = buildList {
+                        if (translation.wasTruncated) {
+                            add("Mensaje largo: solo se tradujeron los primeros " +
+                                "${com.Azelmods.App.data.translation.TranslationService.MAX_CHARS} caracteres.")
+                        }
+                        if (translation.remainingWords <= LOW_QUOTA_THRESHOLD) {
+                            add("Cuota gratuita de hoy casi agotada: quedan ~${translation.remainingWords} " +
+                                "palabras de ${com.Azelmods.App.data.translation.TranslationQuotaTracker.DAILY_WORD_LIMIT}.")
+                        }
+                    }
                     _state.value = _state.value.copy(
-                        translatedMessages = _state.value.translatedMessages + (messageId to translated),
-                        translatingMessageIds = _state.value.translatingMessageIds - messageId
+                        translatedMessages = _state.value.translatedMessages + (messageId to translation.text),
+                        translatingMessageIds = _state.value.translatingMessageIds - messageId,
+                        translationNotice = notices.joinToString(" ").ifBlank { null }
                     )
                 }.onFailure { e ->
                     _state.value = _state.value.copy(
@@ -823,6 +841,10 @@ class ChatViewModel @Inject constructor(
     
     fun clearTranslationError() {
         _state.value = _state.value.copy(translationError = null)
+    }
+
+    fun clearTranslationNotice() {
+        _state.value = _state.value.copy(translationNotice = null)
     }
     
     /**
