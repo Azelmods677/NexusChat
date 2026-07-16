@@ -34,6 +34,9 @@ import com.Azelmods.App.data.preferences.MessageStyle
 import com.Azelmods.App.data.preferences.ThemePreferences
 import com.Azelmods.App.data.preferences.ThemePreset
 import com.Azelmods.App.data.preferences.UserPreferences
+import com.Azelmods.App.ui.theme.DarkElevated
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * Screen for customizing app theme and colors.
@@ -103,13 +106,13 @@ fun ThemeCustomizationScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E),
+                    containerColor = DarkSurface,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -244,7 +247,7 @@ fun ThemeCustomizationScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF1A1A2E)
+                        containerColor = DarkSurface
                     )
                 ) {
                     Row(
@@ -279,7 +282,7 @@ private fun ThemePresetCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF2D2D44) else Color(0xFF1A1A2E)
+            containerColor = if (isSelected) DarkElevated else DarkSurface
         ),
         border = if (isSelected) {
             androidx.compose.foundation.BorderStroke(2.dp, preset.primaryColor)
@@ -346,7 +349,7 @@ private fun BackgroundOption(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF2D2D44) else Color(0xFF1A1A2E)
+            containerColor = if (isSelected) DarkElevated else DarkSurface
         )
     ) {
         Column(
@@ -415,7 +418,7 @@ private fun MessageStyleOption(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Color(0xFF2D2D44) else Color(0xFF1A1A2E)
+            containerColor = if (isSelected) DarkElevated else DarkSurface
         )
     ) {
         Row(
@@ -482,7 +485,7 @@ private fun TabOrderItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     ) {
         Row(

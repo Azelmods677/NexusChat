@@ -28,6 +28,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,11 +67,11 @@ fun WallpaperScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -93,7 +95,7 @@ fun WallpaperScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(220.dp),
-                    color = Color(0xFF1A1A2E)
+                    color = DarkSurface
                 ) {
                     Box {
                         // Real AppBackground preview
@@ -112,7 +114,7 @@ fun WallpaperScreen(
                             // Received message
                             Surface(
                                 shape = RoundedCornerShape(16.dp, 16.dp, 16.dp, 4.dp),
-                                color = Color(0xFF1A1A2E).copy(alpha = 0.8f),
+                                color = DarkSurface.copy(alpha = 0.8f),
                                 modifier = Modifier.widthIn(max = 250.dp)
                             ) {
                                 Text(
@@ -287,7 +289,7 @@ fun WallpaperOption(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color(0xFF1A1A2E),
+        color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else DarkSurface,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)

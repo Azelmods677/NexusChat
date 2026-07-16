@@ -58,11 +58,11 @@ fun PrivacySecurityScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -110,7 +110,7 @@ fun PrivacySecurityScreen(
                 onClick = { showBlockedUsersDialog = true }
             )
 
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
 
             // Security section
             Text(
@@ -143,7 +143,7 @@ fun PrivacySecurityScreen(
                 onClick = { navController.navigate(Screen.Security.route) }
             )
 
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
 
             // Data section
             Text(
@@ -183,7 +183,7 @@ fun PrivacySecurityScreen(
                     } else {
                         blockedUsers.forEach { user ->
                             Text(user, color = Color.White)
-                            HorizontalDivider(color = Color(0xFF1A1A2E))
+                            HorizontalDivider(color = DarkSurface)
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
@@ -195,7 +195,7 @@ fun PrivacySecurityScreen(
                     Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 
@@ -217,7 +217,7 @@ fun PrivacySecurityScreen(
                     Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 
@@ -231,7 +231,7 @@ fun PrivacySecurityScreen(
                     if (isLoadingData) {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     } else if (dataExportResult != null) {
-                        Text("Data exported!", color = Color(0xFF00FF41))
+                        Text("Data exported!", color = TerminalGreen)
                         Text(dataExportResult ?: "", color = Color.Gray, fontSize = 12.sp)
                     } else {
                         Text("Export your profile data, chats, and settings as JSON.", color = Color.Gray)
@@ -274,7 +274,7 @@ fun PrivacySecurityScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 
@@ -282,7 +282,7 @@ fun PrivacySecurityScreen(
     if (showDeleteDataDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDataDialog = false },
-            title = { Text("Delete My Data", color = Color(0xFFEF4444)) },
+            title = { Text("Delete My Data", color = ErrorRed) },
             text = {
                 Column {
                     Text(
@@ -299,7 +299,7 @@ fun PrivacySecurityScreen(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color(0xFFEF4444),
+                            focusedBorderColor = ErrorRed,
                             unfocusedBorderColor = Color.Gray
                         )
                     )
@@ -327,7 +327,7 @@ fun PrivacySecurityScreen(
                     },
                     enabled = deleteDataConfirm == "DELETE"
                 ) {
-                    Text("Delete", color = Color(0xFFEF4444))
+                    Text("Delete", color = ErrorRed)
                 }
             },
             dismissButton = {
@@ -335,7 +335,7 @@ fun PrivacySecurityScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 }

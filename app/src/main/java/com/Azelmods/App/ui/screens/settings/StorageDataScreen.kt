@@ -72,11 +72,11 @@ fun StorageDataScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -99,7 +99,7 @@ fun StorageDataScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             ) {
                 Column(
@@ -129,14 +129,14 @@ fun StorageDataScreen(
                             .fillMaxWidth()
                             .height(8.dp),
                         color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color(0xFF2D2D44)
+                        trackColor = DarkElevated
                     )
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
                         text = "Disponible: ${formatBytes(availableStorage)}",
-                        color = Color(0xFF00E676),
+                        color = NeonGreen,
                         fontSize = 12.sp
                     )
                 }
@@ -152,7 +152,7 @@ fun StorageDataScreen(
                 }
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
             
             // Auto-download
             Text(
@@ -187,7 +187,7 @@ fun StorageDataScreen(
                 onCheckedChange = { viewModel.setAutoDownloadFiles(it) }
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
             
             // Network usage
             Text(
@@ -236,7 +236,7 @@ fun StorageDataScreen(
                     Text("Close", color = MaterialTheme.colorScheme.primary)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 }

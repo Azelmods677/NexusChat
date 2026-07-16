@@ -35,6 +35,17 @@ import com.Azelmods.App.ui.components.FullScreenImageViewer
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import com.google.firebase.auth.FirebaseAuth
+import com.Azelmods.App.ui.theme.RosePink
+import com.Azelmods.App.ui.theme.BlueAccent
+import com.Azelmods.App.ui.theme.GoldPremium
+import com.Azelmods.App.ui.theme.Pink
+import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.PurpleBright
+import com.Azelmods.App.ui.theme.CyanAccent
+import com.Azelmods.App.ui.theme.EmeraldGreen
+import com.Azelmods.App.ui.theme.NeonGreen
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * ProfileViewerScreen - Fullscreen profile viewer like Stories
@@ -106,8 +117,8 @@ fun ProfileViewerScreen(
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF1A1A2E),
-                            Color(0xFF0F0F1A),
+                            DarkSurface,
+                            DarkBackground,
                             themeColor.copy(alpha = 0.3f)
                         ),
                         start = Offset(0f, 0f),
@@ -180,7 +191,7 @@ fun ProfileViewerScreen(
                 // Online status with animated dot
                 Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-                    color = if (user?.isOnline == true) Color(0xFF10B981) else Color.Gray.copy(alpha = 0.5f)
+                    color = if (user?.isOnline == true) EmeraldGreen else Color.Gray.copy(alpha = 0.5f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -229,7 +240,7 @@ fun ProfileViewerScreen(
                     StatItem("Miembro desde", 
                         java.text.SimpleDateFormat("MMM yyyy", java.util.Locale.getDefault())
                             .format(java.util.Date(user?.createdAt ?: System.currentTimeMillis())),
-                        Color(0xFFFF6B9D)
+                        Pink
                     )
                 }
                 
@@ -275,7 +286,7 @@ fun ProfileViewerScreen(
                                     navController.navigate("active_call/$userId/audio")
                                 } catch (e: Exception) { }
                             },
-                            containerColor = Color(0xFF10B981),
+                            containerColor = EmeraldGreen,
                             contentColor = Color.White
                         ) {
                             Icon(Icons.Default.Phone, "Llamar", modifier = Modifier.size(24.dp))
@@ -288,7 +299,7 @@ fun ProfileViewerScreen(
                                     navController.navigate("active_call/$userId/video")
                                 } catch (e: Exception) { }
                             },
-                            containerColor = Color(0xFF3B82F6),
+                            containerColor = BlueAccent,
                             contentColor = Color.White
                         ) {
                             Icon(Icons.Default.Videocam, "Video", modifier = Modifier.size(24.dp))
@@ -375,7 +386,7 @@ fun AnimatedFullscreenAvatar(
     name: String,
     photoUrl: String?,
     themeColor: Color = MaterialTheme.colorScheme.primary,
-    themeSecondaryColor: Color = Color(0xFF00BFA6),
+    themeSecondaryColor: Color = Teal,
     onClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "avatar")
@@ -412,12 +423,12 @@ fun AnimatedFullscreenAvatar(
             drawArc(
                 brush = Brush.sweepGradient(
                     listOf(
-                        Color(0xFF7B5CFA),
-                        Color(0xFF00D4FF),
-                        Color(0xFFFC5C7D),
-                        Color(0xFF00E676),
-                        Color(0xFFFFD700),
-                        Color(0xFF7B5CFA)
+                        PurpleBright,
+                        CyanAccent,
+                        RosePink,
+                        NeonGreen,
+                        GoldPremium,
+                        PurpleBright
                     )
                 ),
                 startAngle = 0f,
