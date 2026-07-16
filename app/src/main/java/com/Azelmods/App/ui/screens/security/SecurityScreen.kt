@@ -181,7 +181,7 @@ fun SecurityScreen(
             // ── Terminal ───────────────────────────────────────────
             SecurityFeatureCard(
                 title = "Terminal",
-                description = "Comandos avanzados del sistema con interfaz hacker",
+                description = "Consola de comandos del sistema para usuarios avanzados",
                 icon = Icons.Default.Terminal,
                 isActive = false,
                 onClick = { navController.navigate("terminal") }

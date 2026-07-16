@@ -40,7 +40,6 @@
    - [Biometría y App Lock](#biometría-y-app-lock)
    - [Enrutamiento Anónimo (Tor/Orbot)](#enrutamiento-anónimo-tororbot)
 6. [Motor de Inteligencia Artificial (Azel AI)](#-motor-de-inteligencia-artificial-azel-ai)
-   - [Ingeniería de Prompts y Bypass Levels](#ingeniería-de-prompts-y-bypass-levels)
    - [Streaming (Server-Sent Events)](#streaming-server-sent-events)
 7. [Ecosistema para Desarrolladores](#-ecosistema-para-desarrolladores)
    - [Sora Code Editor Integrado](#sora-code-editor-integrado)
@@ -220,9 +219,6 @@ El `ProxyManager.kt` configura el proxy a nivel de sistema web (Webkit API) para
 ## 🤖 Motor de Inteligencia Artificial (Azel AI)
 
 El bot no es un simple webhook. Implementa el SDK oficial de **Google Gemini** de forma nativa en la capa `data/ai`.
-
-### Ingeniería de Prompts y Bypass Levels
-Para casos de investigación, la IA cuenta con un objeto `UncensoredPrompts.kt` que emula escenarios académicos, ficción o forenses para superar bloqueos éticos genéricos en consultas técnicas (hacking ético, pentesting).
 
 ### Streaming (Server-Sent Events)
 En lugar de esperar 10 segundos por una respuesta pesada, usamos `generateContentStream()`. La UI reacciona a cada fragmento (`Chunk`) de texto en tiempo real simulando la escritura humana.

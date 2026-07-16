@@ -526,7 +526,17 @@ fun NewGroupSheet(
                     .fillMaxWidth()
                     .height(300.dp)
             ) {
-                items(contacts) { contact ->
+                items(
+                    items = contacts,
+                    key = { contact ->
+                        // 🔥 FIX: Add unique key for group creation contacts list
+                        if (contact.uid.isNotBlank()) {
+                            contact.uid
+                        } else {
+                            "group_contact_${contact.email?.hashCode() ?: contact.hashCode()}"
+                        }
+                    }
+                ) { contact ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
