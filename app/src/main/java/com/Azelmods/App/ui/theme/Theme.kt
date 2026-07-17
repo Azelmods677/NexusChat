@@ -97,15 +97,23 @@ fun NexusChatTheme(
     // Get user's font size preference
     val fontSizeName by userPreferences?.fontSize?.collectAsState() ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("Medium") }
     val typography = getTypographyForSize(fontSizeName)
-    
+
+    // Dark mode preference (en caliente).
+    // FIX: antes NexusChatTheme ignoraba la preferencia y usaba siempre
+    // isSystemInDarkTheme(), por lo que el switch "Dark Mode" de AppearanceScreen
+    // no tenía efecto real (era un toggle decorativo). Ahora, si hay UserPreferences,
+    // la preferencia del usuario manda y el cambio recompone el árbol al instante.
+    val darkModeEnabled by userPreferences?.darkModeEnabled?.collectAsState()
+        ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(darkTheme) }
+
     val colorScheme = when {
         // Dynamic color for Android 12+ (Material You) - only if explicitly enabled
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (darkModeEnabled) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         // Use custom dark/light theme with user's accent color
-        darkTheme -> createDarkColorScheme(accentColor)
+        darkModeEnabled -> createDarkColorScheme(accentColor)
         else -> createLightColorScheme(accentColor)
     }
 
