@@ -1,6 +1,8 @@
 package com.Azelmods.App.di
 
+import android.content.Context
 import com.Azelmods.App.data.firebase.FirebaseManager
+import com.Azelmods.App.data.firebase.FirebasePersistenceGuard
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.messaging.FirebaseMessaging
@@ -8,6 +10,7 @@ import com.google.firebase.storage.FirebaseStorage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
@@ -23,29 +26,16 @@ object FirebaseModule {
     
     @Provides
     @Singleton
-    fun provideFirebaseDatabase(): FirebaseDatabase {
+    fun provideFirebaseDatabase(
+        @ApplicationContext context: Context
+    ): FirebaseDatabase {
         val database = FirebaseDatabase.getInstance()
-        // Punto ÚNICO donde se habilita la persistencia offline de Firebase.
-        // Debe ejecutarse antes de cualquier otro uso de la instancia; gracias a
-        // la inyección temprana de Hilt (DemoAccountManager inyecta FirebaseDatabase
-        // durante Application.onCreate), este provider corre primero. Aun así lo
-        // envolvemos en try/catch: si algún path llamara a FirebaseDatabase.getInstance()
-        // y usara una referencia ANTES que este provider, setPersistenceEnabled()
-        // lanzaría DatabaseException; preferimos loguear y seguir (sin cache offline)
-        // antes que un crash duro en el arranque.
-        try {
-            database.setPersistenceEnabled(true)
-            // Cap del archivo SQLite de persistencia (SqlPersistenceStorageEngine).
-            // Evita crecimiento sin límite del cache que presiona las escrituras
-            // (saveUserOverwrite) y reduce la superficie de fallos de disco.
-            database.setPersistenceCacheSizeBytes(20L * 1024 * 1024) // 20 MB
-        } catch (e: Exception) {
-            android.util.Log.e(
-                "FirebaseModule",
-                "No se pudo habilitar la persistencia offline (¿uso previo de FirebaseDatabase?)",
-                e
-            )
-        }
+        // Punto ÚNICO y más temprano donde se toca la persistencia offline.
+        // El guard activa la persistencia con arranque seguro: si el arranque
+        // anterior crasheó con la persistencia activa (SqlPersistenceStorageEngine),
+        // entra en modo seguro, no la activa y purga escrituras pendientes
+        // envenenadas, evitando el bucle de crashes al entrar a la app.
+        FirebasePersistenceGuard.enable(context, database)
         return database
     }
     
