@@ -55,23 +55,30 @@ class TranslationService @Inject constructor(
             
             // Normalizar códigos de idioma
             val normalizedTarget = normalizeLanguageCode(targetLang)
-            // ✅ FIX: MyMemory API usa "auto" no "autodetect"
-            val normalizedSource = if (sourceLang == "auto" || sourceLang.isBlank()) {
-                "auto"
+            // CAUSA RAÍZ (fix): MyMemory NO soporta "auto" como idioma origen. Con
+            // langpair="auto|es" devuelve 403 ("'AUTO' IS AN INVALID SOURCE LANGUAGE")
+            // y la traducción fallaba SIEMPRE, porque ChatViewModel siempre llama con
+            // sourceLang="auto". Detectamos el idioma localmente y enviamos un código
+            // ISO de 2 letras válido en su lugar.
+            val wasAutoSource = sourceLang == "auto" || sourceLang.isBlank()
+            val normalizedSource = if (wasAutoSource) {
+                detectLanguageHeuristic(text)
             } else {
                 normalizeLanguageCode(sourceLang)
             }
-            
-            android.util.Log.d("TranslationService", "🌐 Translating text: '${text.take(50)}...' to: $normalizedTarget (from: $normalizedSource)")
-            
+
+            android.util.Log.d("TranslationService", "🌐 Translating text: '${text.take(50)}...' to: $normalizedTarget (from: $normalizedSource${if (wasAutoSource) " auto-detected" else ""})")
+
             // Limitar a MAX_CHARS para la API gratuita. El flag viaja en el resultado
             // para que la UI avise en lugar de truncar en silencio.
             val wasTruncated = text.length > MAX_CHARS
             val textToTranslate = text.take(MAX_CHARS)
             val encoded = URLEncoder.encode(textToTranslate, "UTF-8")
 
-            // Si el texto ya está en el idioma objetivo explícitamente, no traducir
-            if (normalizedSource != "auto" && normalizedSource.equals(normalizedTarget, ignoreCase = true)) {
+            // Solo cortocircuitamos si el ORIGEN fue explícito y coincide con el destino.
+            // Si el origen fue auto-detectado (la heurística puede equivocarse), dejamos
+            // que la API traduzca en vez de asumir que ya está en el idioma correcto.
+            if (!wasAutoSource && normalizedSource.equals(normalizedTarget, ignoreCase = true)) {
                 android.util.Log.d("TranslationService", "🌐 Text already in target language")
                 return@withContext Result.success(
                     Translation(text, wasTruncated = false, remainingWords = quotaTracker.remainingWordsToday())
