@@ -106,6 +106,8 @@ class LoginViewModel @Inject constructor(
                     // Call GoogleLoginUseCase to authenticate with Firebase
                     when (val loginResult = googleLoginUseCase(idToken)) {
                         is Resource.Success -> {
+                            // Guardar el token FCM para poder recibir push de mensajes y llamadas.
+                            runCatching { com.Azelmods.App.utils.FCMTokenManager.saveFCMToken() }
                             _state.value = _state.value.copy(
                                 isLoading = false,
                                 isSuccess = true
@@ -186,6 +188,8 @@ class LoginViewModel @Inject constructor(
             
             when (val result = loginUseCase(currentState.email, currentState.password)) {
                 is Resource.Success -> {
+                    // Guardar el token FCM para poder recibir push de mensajes y llamadas.
+                    runCatching { com.Azelmods.App.utils.FCMTokenManager.saveFCMToken() }
                     _state.value = _state.value.copy(
                         isLoading = false,
                         isSuccess = true

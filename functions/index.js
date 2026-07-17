@@ -223,8 +223,12 @@ exports.onCallEnded = functions.database
         const before = change.before.val();
         const after = change.after.val();
 
-        // Solo notificar si la llamada pasó a estado ENDED sin responder
-        if (before?.status !== "RINGING" || after?.status !== "ENDED") return null;
+        // Solo notificar si la llamada pasó a estado ENDED sin responder.
+        // El cliente usa "CALLING" (y a veces "RINGING") mientras suena; antes
+        // solo se comprobaba "RINGING", por lo que la notificación de llamada
+        // perdida nunca se enviaba.
+        const wasRinging = before?.status === "CALLING" || before?.status === "RINGING";
+        if (!wasRinging || after?.status !== "ENDED") return null;
 
         const callerId = after.callerId;
         const receiverId = after.receiverId;
