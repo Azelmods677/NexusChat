@@ -21,6 +21,7 @@ import com.Azelmods.App.data.model.BackgroundConfig
 import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.ui.theme.linearGradientBrush
 import com.Azelmods.App.ui.theme.parseHexColor
+import com.Azelmods.App.ui.theme.TerminalBlack
 
 /**
  * App-wide background component
@@ -57,7 +58,7 @@ fun AppBackground(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF0A0A0A))
+                            .background(TerminalBlack)
                     )
                 }
                 
@@ -85,14 +86,14 @@ fun AppBackground(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color(0xFF0A0A0A))
+                                        .background(TerminalBlack)
                                 )
                             },
                             error = {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(Color(0xFF0A0A0A))
+                                        .background(TerminalBlack)
                                 )
                             }
                         )
@@ -104,7 +105,7 @@ fun AppBackground(
                         VideoBackgroundPlayer(
                             videoUri = uri,
                             modifier = Modifier.fillMaxSize(),
-                            fallbackColor = Color(0xFF0A0A0A)
+                            fallbackColor = TerminalBlack
                         )
                     }
                 }
@@ -128,7 +129,7 @@ fun AppBackground(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF0A0A0A))
+                            .background(TerminalBlack)
                     )
                 }
             }

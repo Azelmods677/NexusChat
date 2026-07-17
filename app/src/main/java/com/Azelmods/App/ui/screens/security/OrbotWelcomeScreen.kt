@@ -235,6 +235,9 @@ fun OrbotWelcomeScreen(
                 }
 
                 OrbotStatus.ACTIVE -> {
+                    // onClick vacío INTENCIONAL: con enabled = false este "botón" actúa como
+                    // badge de estado (conectado) y nunca recibe clicks. Se reutiliza
+                    // OrbotActionButton solo por consistencia visual con los otros estados.
                     OrbotActionButton(
                         icon = Icons.Default.Verified,
                         text = "¡Conectado a Tor!",

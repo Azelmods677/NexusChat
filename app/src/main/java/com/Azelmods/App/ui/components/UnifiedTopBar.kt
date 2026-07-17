@@ -34,6 +34,7 @@ import coil3.compose.AsyncImage
 import com.Azelmods.App.ui.theme.DarkSurface
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.Azelmods.App.ui.theme.CyanAccent
 
 /**
  * ───────────────────────────────────────────────────────────────────────────
@@ -212,7 +213,7 @@ fun UnifiedTopBar(
                                                 brush = Brush.sweepGradient(
                                                     listOf(
                                                         ringAccent,
-                                                        Color(0xFF00D4FF),
+                                                        CyanAccent,
                                                         ringAccent
                                                     )
                                                 ),

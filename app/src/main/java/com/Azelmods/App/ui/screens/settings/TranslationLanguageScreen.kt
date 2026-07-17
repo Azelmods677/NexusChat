@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.theme.DarkSurface
+import com.Azelmods.App.ui.theme.DarkBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,7 @@ fun TranslationLanguageScreen(
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -107,7 +108,7 @@ fun TranslationLanguageScreen(
                     )
                 }
                 HorizontalDivider(
-                    color = Color(0xFF1A1A2E),
+                    color = DarkSurface,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }

@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.Azelmods.App.ui.theme.DarkDeep
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,11 +57,11 @@ fun FontSizeScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0D0D1A)
+        containerColor = DarkDeep
     ) { padding ->
         Column(
             modifier = Modifier
@@ -71,7 +73,7 @@ fun FontSizeScreen(navController: NavController) {
             // Preview
             Surface(
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF1A1A2E),
+                color = DarkSurface,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(Modifier.padding(16.dp)) {
@@ -108,7 +110,7 @@ fun FontSizeScreen(navController: NavController) {
                     color = if (selectedSize == key)
                         MaterialTheme.colorScheme.primary.copy(0.2f)
                     else 
-                        Color(0xFF1A1A2E),
+                        DarkSurface,
                     border = BorderStroke(
                         if (selectedSize == key) 1.dp else 0.dp,
                         MaterialTheme.colorScheme.primary

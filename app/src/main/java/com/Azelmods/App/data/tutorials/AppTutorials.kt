@@ -154,9 +154,9 @@ Estos colores se aplican a toda la interfaz automáticamente.
 
 ## Arquitectura 2026
 
-Dos motores de IA disponibles:
+Motor de IA en la nube:
 
-**Ollama Cloud (recomendado):**
+**Ollama Cloud:**
 ```
 App → AzelAIApiService → Ollama Cloud API (servidores remotos)
 ```
@@ -167,19 +167,11 @@ Sin necesidad de hardware local. Modelos disponibles:
 • llama3:70b — Propósito general
 • codellama:70b — Programación
 
-**Ollama Local (alternativa):**
-```
-App → OllamaApiService → Ollama Server (localhost:11434)
-```
-
-Para usuarios con hardware potente que prefieren privacidad total.
-
 ## Cómo Usar Azel IA
 
 1. Ve a la pestaña "IA" desde el menú principal
-2. Selecciona modo Cloud (automático) o Local (requiere Ollama instalado)
-3. Elige un prompt predefinido o escribe tu consulta
-4. Recibe respuestas en tiempo real con streaming
+2. Elige un prompt predefinido o escribe tu consulta
+3. Recibe respuestas en tiempo real con streaming
 
 ## Categorías de Prompts
 
@@ -187,21 +179,14 @@ Para usuarios con hardware potente que prefieren privacidad total.
 • 🔐 Criptografía • 🌐 Redes • 🛡️ Seguridad defensiva
 • ✍️ Redacción • 🌎 Traducción • 🤖 Prompts de IA
 
-## Configuración Local (Opcional)
-
-Solo si quieres usar Ollama local en lugar de la nube:
-
-1. Instala Ollama: `curl https://ollama.ai/install.sh | sh`
-2. Descarga modelos: `ollama pull llama3`
-3. Inicia servidor: `ollama serve`
-4. La app se conecta automáticamente a localhost:11434
-
 ---
 
 ℹ️ Usa la IA de forma responsable y conforme a las leyes aplicables.
 
 ℹ️ El modo Cloud está configurado por defecto y no requiere instalación adicional.
     """.trimIndent()
+    // Nota: las secciones "Ollama Local" / "Configuración Local" se eliminaron porque
+    // documentaban OllamaApiService (localhost:11434), clase ya borrada del proyecto.
 
     // ═══════════════════════════════════════════════════════════════
     // SECURITY & PRIVACY 2026

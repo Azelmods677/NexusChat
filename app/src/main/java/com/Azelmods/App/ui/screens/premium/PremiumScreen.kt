@@ -27,6 +27,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.components.safeClickable
+import com.Azelmods.App.ui.theme.AmberAccent
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,11 +50,11 @@ fun PremiumScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -104,7 +108,7 @@ fun PremiumScreen(
                         price = "$39.99",
                         period = "/year",
                         badge = "Save 33%",
-                        badgeColor = Color(0xFFF59E0B),
+                        badgeColor = AmberAccent,
                         isSelected = selectedPlan == 1,
                         onClick = { selectedPlan = 1 },
                         modifier = Modifier.weight(1f)
@@ -115,7 +119,7 @@ fun PremiumScreen(
                         price = "$99.99",
                         period = "once",
                         badge = "Best Value",
-                        badgeColor = Color(0xFFEF4444),
+                        badgeColor = ErrorRed,
                         isSelected = selectedPlan == 2,
                         onClick = { selectedPlan = 2 },
                         modifier = Modifier.weight(1f)
@@ -222,7 +226,7 @@ fun PremiumScreen(
                         .scale(scale)
                         .background(
                             Brush.linearGradient(
-                                listOf(Color(0xFFF59E0B), Color(0xFFEF4444))
+                                listOf(AmberAccent, ErrorRed)
                             ),
                             RoundedCornerShape(16.dp)
                         )
@@ -269,7 +273,7 @@ fun PremiumCrownIcon() {
             modifier = Modifier
                 .size(80.dp)
                 .blur(16.dp)
-                .background(Color(0xFFF59E0B), RoundedCornerShape(20.dp))
+                .background(AmberAccent, RoundedCornerShape(20.dp))
         )
         
         // Icon with shimmer
@@ -284,9 +288,9 @@ fun PremiumCrownIcon() {
                 modifier = Modifier.background(
                     Brush.linearGradient(
                         listOf(
-                            Color(0xFFF59E0B),
-                            Color(0xFFEF4444),
-                            Color(0xFFF59E0B)
+                            AmberAccent,
+                            ErrorRed,
+                            AmberAccent
                         ),
                         start = Offset(shimmerOffset, 0f),
                         end = Offset(shimmerOffset + 200f, 0f)
@@ -311,7 +315,7 @@ fun PlanCard(
     price: String,
     period: String,
     badge: String? = null,
-    badgeColor: Color = Color(0xFFF59E0B),
+    badgeColor: Color = AmberAccent,
     isSelected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -324,7 +328,7 @@ fun PlanCard(
                 if (isSelected) {
                     Modifier.border(
                         width = 2.dp,
-                        color = Color(0xFFF59E0B),
+                        color = AmberAccent,
                         shape = RoundedCornerShape(16.dp)
                     )
                 } else {
@@ -336,7 +340,7 @@ fun PlanCard(
                 }
             ),
         shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) Color(0xFFF59E0B).copy(alpha = 0.1f) else Color(0xFF1A1A2E)
+        color = if (isSelected) AmberAccent.copy(alpha = 0.1f) else DarkSurface
     ) {
         Box {
             Column(
@@ -400,7 +404,7 @@ fun BenefitItem(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Row(
             modifier = Modifier
@@ -416,7 +420,7 @@ fun BenefitItem(
                 Box(
                     modifier = Modifier.background(
                         Brush.linearGradient(
-                            listOf(Color(0xFFF59E0B), Color(0xFFEF4444))
+                            listOf(AmberAccent, ErrorRed)
                         )
                     ),
                     contentAlignment = Alignment.Center
@@ -449,7 +453,7 @@ fun BenefitItem(
             Icon(
                 Icons.Default.Check,
                 contentDescription = null,
-                tint = Color(0xFFF59E0B),
+                tint = AmberAccent,
                 modifier = Modifier.size(20.dp)
             )
         }

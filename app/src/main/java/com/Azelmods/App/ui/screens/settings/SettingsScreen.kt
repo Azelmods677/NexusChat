@@ -112,7 +112,7 @@ fun SettingsScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
                 shape = RoundedCornerShape(20.dp),
-                color = Color(0xFF1A1A2E),
+                color = DarkSurface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f))
             ) {
                 Row(
@@ -148,9 +148,9 @@ fun SettingsScreen(
                             drawArc(
                                 brush = Brush.sweepGradient(
                                     listOf(
-                                        Color(0xFF7B5CFA), 
-                                        Color(0xFF00D4FF),
-                                        Color(0xFF7B5CFA)
+                                        PurpleBright, 
+                                        CyanAccent,
+                                        PurpleBright
                                     )
                                 ),
                                 startAngle = 0f,
@@ -216,13 +216,13 @@ fun SettingsScreen(
                             Box(
                                 modifier = Modifier
                                     .size(7.dp)
-                                    .background(Color(0xFF00E676), CircleShape)
+                                    .background(NeonGreen, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "En línea",
                                 fontSize = 11.sp,
-                                color = Color(0xFF00E676)
+                                color = NeonGreen
                             )
                         }
                     }
@@ -263,7 +263,7 @@ fun SettingsScreen(
                     Icon(
                         Icons.Default.Star,
                         contentDescription = null,
-                        tint = Color(0xFFFFD700),
+                        tint = GoldPremium,
                         modifier = Modifier.size(32.dp)
                     )
                     

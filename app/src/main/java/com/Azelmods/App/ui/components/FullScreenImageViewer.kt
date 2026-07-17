@@ -39,6 +39,8 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.abs
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @Suppress("USELESS_IS_CHECK")
 /**
@@ -347,7 +349,7 @@ private fun FullScreenImageContent(
                         DropdownMenu(
                             expanded = showOptionsMenu,
                             onDismissRequest = { showOptionsMenu = false },
-                            containerColor = Color(0xFF1A1A2E)
+                            containerColor = DarkSurface
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Save to device", color = Color.White) },
@@ -462,7 +464,7 @@ private fun FullScreenImageContent(
                     ImageViewerAction(
                         icon = Icons.Default.Delete,
                         label = "Eliminar",
-                        color = Color(0xFFEF4444),
+                        color = ErrorRed,
                         onClick = {
                             android.widget.Toast.makeText(
                                 context,

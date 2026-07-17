@@ -17,6 +17,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Azelmods.App.ui.theme.Pink
+import com.Azelmods.App.ui.theme.Purple
+import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkSurface
+import com.Azelmods.App.ui.theme.Info
+import com.Azelmods.App.ui.theme.Success
 
 enum class AttachmentType {
     GALLERY,
@@ -39,7 +46,7 @@ fun AttachmentBottomSheet(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight(),
-        color = Color(0xFF1A1A2E),
+        color = DarkSurface,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     ) {
         Column(
@@ -76,7 +83,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.PhotoLibrary,
                     label = "Galería",
-                    color = Color(0xFF7C3AED),
+                    color = Purple,
                     onClick = {
                         onAttachmentSelected(AttachmentType.GALLERY)
                         onDismiss()
@@ -86,7 +93,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.CameraAlt,
                     label = "Cámara",
-                    color = Color(0xFFFF6B9D),
+                    color = Pink,
                     onClick = {
                         onAttachmentSelected(AttachmentType.CAMERA)
                         onDismiss()
@@ -96,7 +103,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.Description,
                     label = "Documento",
-                    color = Color(0xFF00BFA6),
+                    color = Teal,
                     onClick = {
                         onAttachmentSelected(AttachmentType.DOCUMENT)
                         onDismiss()
@@ -113,7 +120,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.Videocam,
                     label = "Video",
-                    color = Color(0xFFEF4444),
+                    color = ErrorRed,
                     onClick = {
                         onAttachmentSelected(AttachmentType.VIDEO)
                         onDismiss()
@@ -133,7 +140,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.LocationOn,
                     label = "Ubicación",
-                    color = Color(0xFF4CAF50),
+                    color = Success,
                     onClick = {
                         onAttachmentSelected(AttachmentType.LOCATION)
                         onDismiss()
@@ -143,7 +150,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.Person,
                     label = "Contacto",
-                    color = Color(0xFF2196F3),
+                    color = Info,
                     onClick = {
                         onAttachmentSelected(AttachmentType.CONTACT)
                         onDismiss()

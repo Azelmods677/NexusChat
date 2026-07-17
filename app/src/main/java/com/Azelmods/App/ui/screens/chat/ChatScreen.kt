@@ -67,6 +67,14 @@ import com.Azelmods.App.utils.PermissionHelper
 import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
+import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.PurpleLight
+import com.Azelmods.App.ui.theme.EmeraldGreen
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkElevated
+import com.Azelmods.App.ui.theme.DarkSurfaceVariant
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -129,6 +137,15 @@ fun ChatScreen(
         state.translationError?.let { err ->
             sendErrorSnackbar.showSnackbar(err)
             viewModel.clearTranslationError()
+        }
+    }
+
+    // Avisos informativos de traducción (truncado a 500 chars / cuota diaria baja):
+    // la traducción sí ocurrió, pero el usuario debe saber sus límites.
+    LaunchedEffect(state.translationNotice) {
+        state.translationNotice?.let { notice ->
+            sendErrorSnackbar.showSnackbar(notice)
+            viewModel.clearTranslationNotice()
         }
     }
 
@@ -385,7 +402,7 @@ fun ChatScreen(
                         state.editingMessage?.let { message ->
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
-                                color = Color(0xFF1A1A2E)
+                                color = DarkSurface
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -397,7 +414,7 @@ fun ChatScreen(
                                         modifier = Modifier
                                             .width(3.dp)
                                             .height(40.dp)
-                                            .background(Color(0xFF00BFA6))
+                                            .background(Teal)
                                     )
                                     
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -405,7 +422,7 @@ fun ChatScreen(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = "Editar mensaje",
-                                            color = Color(0xFF00BFA6),
+                                            color = Teal,
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.Bold
                                         )
@@ -462,7 +479,7 @@ fun ChatScreen(
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
-                modifier = Modifier.background(Color(0xFF1A1A2E))
+                modifier = Modifier.background(DarkSurface)
             ) {
                 DropdownMenuItem(
                     text = { Text("View Profile", color = Color.White) },
@@ -496,9 +513,9 @@ fun ChatScreen(
                     leadingIcon = { Icon(Icons.Default.NotificationsOff, null, tint = Color.White) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Clear Chat", color = Color(0xFFEF4444)) },
+                    text = { Text("Clear Chat", color = ErrorRed) },
                     onClick = { showMenu = false },
-                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color(0xFFEF4444)) }
+                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = ErrorRed) }
                 )
             }
         }
@@ -541,8 +558,8 @@ fun ChatTopBar(
     }
     
     val statusColor = when {
-        isTyping -> Color(0xFF00BFA6)
-        contact?.isOnline == true -> Color(0xFF10B981)
+        isTyping -> Teal
+        contact?.isOnline == true -> EmeraldGreen
         else -> Color.Gray
     }
     
@@ -576,7 +593,7 @@ fun ChatTopBar(
                 onClick = onMoreClick
             )
         },
-        backgroundColor = Color(0xFF1A1A2E),
+        backgroundColor = DarkSurface,
         contentColor = Color.White
     )
 }
@@ -601,7 +618,7 @@ fun TypingDots() {
             
             Text(
                 text = ".",
-                color = Color(0xFF00BFA6).copy(alpha = alpha),
+                color = Teal.copy(alpha = alpha),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -617,7 +634,7 @@ fun TypingIndicator() {
     ) {
         Surface(
             shape = RoundedCornerShape(18.dp),
-            color = Color(0xFF2D2D44),
+            color = DarkElevated,
             modifier = Modifier.padding(8.dp)
         ) {
             Row(
@@ -657,7 +674,7 @@ fun ReplyPreviewBar(
     
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Row(
             modifier = Modifier
@@ -719,7 +736,7 @@ fun EphemeralDurationPicker(
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 4.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1A1A2E),
+        color = DarkSurface,
         shadowElevation = 8.dp
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
@@ -744,7 +761,7 @@ fun EphemeralDurationPicker(
                     ) {
                         Text(
                             text = label,
-                            color = if (isSelected) Color(0xFF9B75FF) else Color.White,
+                            color = if (isSelected) PurpleLight else Color.White,
                             fontSize = 14.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
@@ -752,7 +769,7 @@ fun EphemeralDurationPicker(
                             Icon(
                                 Icons.Default.Check,
                                 contentDescription = null,
-                                tint = Color(0xFF9B75FF),
+                                tint = PurpleLight,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -951,7 +968,7 @@ fun ChatInputArea(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFF1A1A2E))
+            .background(DarkSurface)
     ) {
         // Sticker Picker - NEW
         AnimatedVisibility(
@@ -1146,7 +1163,7 @@ fun ChatInputArea(
                         Icon(
                             Icons.Default.Timer,
                             contentDescription = null,
-                            tint = Color(0xFF9B75FF),
+                            tint = PurpleLight,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -1164,7 +1181,7 @@ fun ChatInputArea(
                                            else -> "${ephemeralDuration}s"
                                        }
                                    }",
-                            color = Color(0xFF9B75FF),
+                            color = PurpleLight,
                             fontSize = 13.sp
                         )
                     }
@@ -1173,7 +1190,7 @@ fun ChatInputArea(
                         TextButton(onClick = onToggleEphemeralPicker) {
                             Text(
                                 if (ephemeralDuration == 0L) "Cambiar tiempo" else "Cambiar",
-                                color = Color(0xFF9B75FF).copy(alpha = 0.7f),
+                                color = PurpleLight.copy(alpha = 0.7f),
                                 fontSize = 12.sp
                             )
                         }
@@ -1202,8 +1219,8 @@ fun ChatInputArea(
                     .background(
                         Brush.verticalGradient(
                             listOf(
-                                Color(0xFF1A1A2E).copy(alpha = 0.95f),
-                                Color(0xFF0F0F1A).copy(alpha = 0.98f)
+                                DarkSurface.copy(alpha = 0.95f),
+                                DarkBackground.copy(alpha = 0.98f)
                             )
                         )
                     )
@@ -1234,9 +1251,9 @@ fun ChatInputArea(
                             },
                         shape = CircleShape,
                         color = if (isEphemeralMode) {
-                            Color(0xFF9B75FF).copy(alpha = 0.2f)
+                            PurpleLight.copy(alpha = 0.2f)
                         } else {
-                            Color(0xFF2D2D44).copy(alpha = 0.6f)
+                            DarkElevated.copy(alpha = 0.6f)
                         },
                         shadowElevation = if (isEphemeralMode) 6.dp else 2.dp
                     ) {
@@ -1249,7 +1266,7 @@ fun ChatInputArea(
                                         Modifier.background(
                                             Brush.radialGradient(
                                                 listOf(
-                                                    Color(0xFF9B75FF).copy(alpha = 0.2f),
+                                                    PurpleLight.copy(alpha = 0.2f),
                                                     Color.Transparent
                                                 )
                                             )
@@ -1260,7 +1277,7 @@ fun ChatInputArea(
                             Icon(
                                 Icons.Default.Timer,
                                 contentDescription = "Temporal",
-                                tint = if (isEphemeralMode) Color(0xFF9B75FF) else Color.Gray,
+                                tint = if (isEphemeralMode) PurpleLight else Color.Gray,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -1296,7 +1313,7 @@ fun ChatInputArea(
                         color = if (showEmojiPicker) {
                             themeColor.copy(alpha = 0.15f)
                         } else {
-                            Color(0xFF2D2D44).copy(alpha = 0.6f)
+                            DarkElevated.copy(alpha = 0.6f)
                         },
                         shadowElevation = if (showEmojiPicker) 6.dp else 2.dp
                     ) {
@@ -1349,7 +1366,7 @@ fun ChatInputArea(
                         color = if (showStickerPicker) {
                             themeSecondaryColor.copy(alpha = 0.15f)
                         } else {
-                            Color(0xFF2D2D44).copy(alpha = 0.6f)
+                            DarkElevated.copy(alpha = 0.6f)
                         },
                         shadowElevation = if (showStickerPicker) 6.dp else 2.dp
                     ) {
@@ -1425,7 +1442,7 @@ fun ChatInputArea(
                                 .fillMaxSize()
                                 .padding(if (inputFocused) 2.dp else 0.dp),
                             shape = RoundedCornerShape(24.dp),
-                            color = Color(0xFF1A1A2E),
+                            color = DarkSurface,
                             shadowElevation = if (inputFocused) 4.dp else 2.dp
                         ) {
                             Row(
@@ -1618,8 +1635,8 @@ fun ChatInputArea(
                                         .background(
                                             Brush.linearGradient(
                                                 listOf(
-                                                    Color(0xFF2D2D44),
-                                                    Color(0xFF252538)
+                                                    DarkElevated,
+                                                    DarkSurfaceVariant
                                                 )
                                             )
                                         )
@@ -1666,7 +1683,7 @@ fun RecordingUI(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Row(
             modifier = Modifier
@@ -1679,7 +1696,7 @@ fun RecordingUI(
                 Icon(
                     Icons.Default.Close,
                     contentDescription = "Cancel",
-                    tint = Color(0xFFEF4444),
+                    tint = ErrorRed,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -1706,7 +1723,7 @@ fun RecordingUI(
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .background(Color(0xFFEF4444).copy(alpha = alpha), CircleShape)
+                        .background(ErrorRed.copy(alpha = alpha), CircleShape)
                 )
                 
                 Spacer(modifier = Modifier.width(12.dp))

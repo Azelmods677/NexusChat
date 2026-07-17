@@ -32,6 +32,8 @@ import androidx.navigation.NavController
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import java.text.DecimalFormat
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +58,11 @@ fun DeviceInfoScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -179,7 +181,7 @@ fun BatteryCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF1A1A2E),
+        color = DarkSurface,
         shadowElevation = 8.dp
     ) {
         Box {
@@ -268,7 +270,7 @@ fun DeviceInfoCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Row(
             modifier = Modifier

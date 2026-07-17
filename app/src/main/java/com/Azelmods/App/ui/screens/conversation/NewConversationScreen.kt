@@ -23,7 +23,15 @@ import androidx.navigation.NavController
 import com.Azelmods.App.data.model.User
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.navigation.Screen
 import kotlinx.coroutines.launch
+import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.EmeraldGreen
+import com.Azelmods.App.ui.theme.NeonGreen
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkBorder
+import com.Azelmods.App.ui.theme.DarkBackground
+import com.Azelmods.App.ui.theme.DarkSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +44,7 @@ fun NewConversationScreen(
     var showAddContactSheet by remember { mutableStateOf(false) }
     var showNewGroupSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Surface state.error so tapping a contact never goes without a response.
     LaunchedEffect(state.error) {
@@ -55,12 +64,12 @@ fun NewConversationScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         Column(
             modifier = Modifier
@@ -84,8 +93,8 @@ fun NewConversationScreen(
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedContainerColor = Color(0xFF1A1A2E),
-                    unfocusedContainerColor = Color(0xFF1A1A2E),
+                    focusedContainerColor = DarkSurface,
+                    unfocusedContainerColor = DarkSurface,
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent,
                     cursorColor = MaterialTheme.colorScheme.primary
@@ -119,7 +128,7 @@ fun NewConversationScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .safeClickable { viewModel.createDemoChat(navController) },
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF1A1A2E),
+                color = DarkSurface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.4f))
             ) {
                 Row(
@@ -157,12 +166,12 @@ fun NewConversationScreen(
                     
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF00E676).copy(0.15f)
+                        color = NeonGreen.copy(0.15f)
                     ) {
                         Text(
                             "DEMO",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = Color(0xFF00E676),
+                            color = NeonGreen,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -215,11 +224,14 @@ fun NewConversationScreen(
                         items(
                             items = state.filteredContacts,
                             key = { contact ->
-                                // 🔥 FIX: Use composite key to avoid duplicates
+                                // CAUSA RAÍZ del crash: LazyColumn exige keys únicas; con datos
+                                // duplicados de Firebase (mismo uid dos veces) Compose crasheaba
+                                // con "Key was already used". La lista ya llega desduplicada
+                                // (distinctBy { it.uid } en el ViewModel); este fallback solo
+                                // cubre UIDs vacíos por datos corruptos.
                                 if (contact.uid.isNotBlank()) {
                                     contact.uid
                                 } else {
-                                    // Fallback for invalid/empty UIDs
                                     "contact_${contact.email?.hashCode() ?: contact.hashCode()}"
                                 }
                             }
@@ -241,13 +253,22 @@ fun NewConversationScreen(
     if (showAddContactSheet) {
         ModalBottomSheet(
             onDismissRequest = { showAddContactSheet = false },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         ) {
             AddContactSheet(
                 onDismiss = { showAddContactSheet = false },
-                onSuccess = {
+                onSuccess = { contactName ->
                     showAddContactSheet = false
-                    // Show success snackbar
+                    // BUG ORIGINAL: el comentario "// Show success snackbar" nunca se implementó,
+                    // así que el sheet se cerraba sin ningún feedback y el usuario no sabía
+                    // si la acción funcionó. Ahora se confirma vía snackbar mientras
+                    // startConversation resuelve la navegación al chat en segundo plano.
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            message = "Contacto encontrado: $contactName — abriendo chat…",
+                            duration = SnackbarDuration.Short
+                        )
+                    }
                 },
                 viewModel = viewModel,
                 navController = navController
@@ -259,14 +280,18 @@ fun NewConversationScreen(
     if (showNewGroupSheet) {
         ModalBottomSheet(
             onDismissRequest = { showNewGroupSheet = false },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         ) {
             NewGroupSheet(
                 contacts = state.contacts,
                 onDismiss = { showNewGroupSheet = false },
-                onCreateGroup = { selectedContacts, groupName ->
+                onGroupCreated = { groupId ->
                     showNewGroupSheet = false
-                    // Navigate to group chat
+                    // BUG ORIGINAL: el grupo se creaba en Firebase pero el comentario
+                    // "// Navigate to group chat" nunca se implementó: el usuario quedaba
+                    // en la misma pantalla sin saber si el grupo existía. Los grupos viven
+                    // en /chats/{groupId}, así que la ruta de chat normal los abre.
+                    navController.navigate(Screen.Chat.createRoute(groupId))
                 },
                 viewModel = viewModel
             )
@@ -286,7 +311,7 @@ fun RowScope.QuickActionCard(
             .weight(1f)
             .safeClickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Column(
             modifier = Modifier
@@ -347,7 +372,7 @@ fun ContactRow(
                 )
                 Text(
                     text = contact.username,
-                    color = Color(0xFF00BFA6),
+                    color = Teal,
                     fontSize = 13.sp
                 )
             }
@@ -356,7 +381,7 @@ fun ContactRow(
                 Box(
                     modifier = Modifier
                         .size(10.dp)
-                        .background(Color(0xFF10B981), CircleShape)
+                        .background(EmeraldGreen, CircleShape)
                 )
             }
         }
@@ -366,7 +391,7 @@ fun ContactRow(
 @Composable
 fun AddContactSheet(
     onDismiss: () -> Unit,
-    onSuccess: () -> Unit,
+    onSuccess: (contactName: String) -> Unit,
     viewModel: NewConversationViewModel,
     navController: NavController
 ) {
@@ -404,7 +429,7 @@ fun AddContactSheet(
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = Color(0xFF3D3D5C)
+                unfocusedBorderColor = DarkBorder
             ),
             isError = errorMessage != null
         )
@@ -413,7 +438,7 @@ fun AddContactSheet(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = error,
-                color = Color(0xFFEF4444),
+                color = ErrorRed,
                 fontSize = 12.sp
             )
         }
@@ -455,8 +480,9 @@ fun AddContactSheet(
                     
                     if (user != null) {
                         val userId = user["uid"] as? String ?: return@launch
+                        val name = user["name"] as? String ?: username
                         viewModel.startConversation(userId, navController)
-                        onSuccess()
+                        onSuccess(name)
                     } else {
                         errorMessage = "Could not find user. Check the username."
                     }
@@ -489,7 +515,7 @@ fun AddContactSheet(
 fun NewGroupSheet(
     contacts: List<User>,
     onDismiss: () -> Unit,
-    onCreateGroup: (List<User>, String) -> Unit,
+    onGroupCreated: (groupId: String) -> Unit,
     viewModel: NewConversationViewModel
 ) {
     val scope = rememberCoroutineScope()
@@ -529,7 +555,9 @@ fun NewGroupSheet(
                 items(
                     items = contacts,
                     key = { contact ->
-                        // 🔥 FIX: Add unique key for group creation contacts list
+                        // Misma causa raíz que la lista de contactos: keys duplicadas
+                        // crasheaban esta LazyColumn. Lista desduplicada en el ViewModel
+                        // (distinctBy { it.uid }); fallback solo para UIDs vacíos.
                         if (contact.uid.isNotBlank()) {
                             contact.uid
                         } else {
@@ -600,7 +628,7 @@ fun NewGroupSheet(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = Color(0xFF3D3D5C)
+                    unfocusedBorderColor = DarkBorder
                 )
             )
             
@@ -613,8 +641,7 @@ fun NewGroupSheet(
                         val groupId = viewModel.createGroup(groupName, selectedContacts.toList())
                         isCreating = false
                         if (groupId != null) {
-                            val selected = contacts.filter { selectedContacts.contains(it.uid) }
-                            onCreateGroup(selected, groupName)
+                            onGroupCreated(groupId)
                         }
                     }
                 },

@@ -98,10 +98,17 @@ class NewConversationViewModel @Inject constructor(
                         }
                     }
 
-                    android.util.Log.d("NewConversation", "Loaded ${users.size} users")
+                    // CAUSA RAÍZ del crash "New Chat": las dos LazyColumn de la pantalla usan
+                    // key = uid. Si Firebase devuelve el mismo UID dos veces (nodo duplicado o
+                    // usuario actual repetido), Compose lanza IllegalArgumentException
+                    // ("Key was already used"). Se desduplica AQUÍ, en la fuente de datos,
+                    // para que ninguna UI que consuma esta lista pueda repetir keys.
+                    val uniqueUsers = users.distinctBy { it.uid }
+
+                    android.util.Log.d("NewConversation", "Loaded ${uniqueUsers.size} users (${users.size - uniqueUsers.size} duplicados descartados)")
                     _state.value = _state.value.copy(
-                        contacts = users,
-                        filteredContacts = users,
+                        contacts = uniqueUsers,
+                        filteredContacts = uniqueUsers,
                         isLoading = false
                     )
                 }.onFailure { exception ->

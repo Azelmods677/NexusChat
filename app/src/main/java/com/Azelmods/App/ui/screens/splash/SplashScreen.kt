@@ -20,6 +20,7 @@ import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.Pink
 import com.Azelmods.App.ui.theme.Purple
 import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.DarkBackground
 
 @Composable
 fun SplashScreen(
@@ -99,7 +100,7 @@ fun SplashScreen(
                 Brush.verticalGradient(
                     colors = listOf(
                         Purple.copy(alpha = 0.3f),
-                        Color(0xFF0F0F1A)
+                        DarkBackground
                     )
                 )
             ),

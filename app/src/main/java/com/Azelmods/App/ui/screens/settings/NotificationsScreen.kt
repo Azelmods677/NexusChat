@@ -65,11 +65,11 @@ fun NotificationsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -85,7 +85,7 @@ fun NotificationsScreen(
                 onCheckedChange = { viewModel.setNotificationsEnabled(it) }
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E))
+            HorizontalDivider(color = DarkSurface)
             
             SettingsSwitchItem(
                 title = "Sound",
@@ -118,7 +118,7 @@ fun NotificationsScreen(
                 onCheckedChange = { viewModel.setVibrationEnabled(it) }
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
             
             SettingsSwitchItem(
                 title = "Message Preview",

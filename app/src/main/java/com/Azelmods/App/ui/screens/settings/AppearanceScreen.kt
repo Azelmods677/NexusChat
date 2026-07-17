@@ -54,11 +54,11 @@ fun AppearanceScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -82,7 +82,7 @@ fun AppearanceScreen(
                 onCheckedChange = { viewModel.setDarkModeEnabled(it) }
             )
             
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
             
             Text(
                 text = "Accent Color",
@@ -126,7 +126,7 @@ fun AppearanceScreen(
                 }
             }
             
-            HorizontalDivider(color = Color(0xFF1A1A2E), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
             
             Text(
                 text = "Display",
