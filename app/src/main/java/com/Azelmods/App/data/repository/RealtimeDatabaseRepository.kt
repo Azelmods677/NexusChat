@@ -465,10 +465,17 @@ class RealtimeDatabaseRepository @Inject constructor(
         database.child("users").child(userId).child("profilePhotoUrl").setValue(photoUrl).await()
     }
 
-    suspend fun createStory(mediaUrl: String, mediaType: String, isVideo: Boolean, caption: String? = null): String {
+    suspend fun createStory(
+        mediaUrl: String,
+        mediaType: String,
+        isVideo: Boolean,
+        caption: String? = null,
+        text: String? = null,
+        backgroundColor: String? = null
+    ): String {
         val userId = auth.currentUser?.uid ?: throw Exception("Not logged in")
         val storyId = database.child("stories").child(userId).push().key ?: ""
-        
+
         // Usar el mediaType que se pasa como parámetro directamente
         // Esto permite TEXT, IMAGE, VIDEO correctamente
         val storyData = mutableMapOf<String, Any>(
@@ -481,6 +488,15 @@ class RealtimeDatabaseRepository @Inject constructor(
         )
         if (!caption.isNullOrBlank()) {
             storyData["caption"] = caption
+        }
+        // FIX historias de TEXTO: el visor lee los campos `text` y `backgroundColor`,
+        // pero antes createTextStory metía el texto en `mediaUrl` y descartaba el color,
+        // por lo que las historias de texto salían en blanco. Ahora se persisten bien.
+        if (!text.isNullOrBlank()) {
+            storyData["text"] = text
+        }
+        if (!backgroundColor.isNullOrBlank()) {
+            storyData["backgroundColor"] = backgroundColor
         }
         database.child("stories").child(userId).child(storyId).setValue(storyData).await()
         return storyId

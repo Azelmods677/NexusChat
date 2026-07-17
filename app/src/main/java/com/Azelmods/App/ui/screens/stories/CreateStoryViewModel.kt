@@ -249,11 +249,15 @@ class CreateStoryViewModel @Inject constructor(
                     return@launch
                 }
                 
-                // TEXT stories skip Storage entirely
+                // TEXT stories skip Storage entirely. Se persisten los campos
+                // `text` y `backgroundColor` que el visor realmente lee (antes se
+                // metía el texto en mediaUrl y se descartaba el color → texto en blanco).
                 databaseRepository.createStory(
-                    mediaUrl = text, // Reusing mediaUrl field for text content for now as a workaround
+                    mediaUrl = text,
                     mediaType = "TEXT",
-                    isVideo = false
+                    isVideo = false,
+                    text = text,
+                    backgroundColor = backgroundColor
                 )
 
                 _state.value = _state.value.copy(
