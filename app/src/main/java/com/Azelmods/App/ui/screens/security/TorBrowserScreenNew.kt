@@ -28,8 +28,6 @@ import androidx.navigation.NavController
 import com.Azelmods.App.data.security.tor.OrbotDetector
 import com.Azelmods.App.data.security.tor.ProxyManager
 import com.Azelmods.App.data.security.tor.ProxyResult
-import java.net.InetSocketAddress
-import java.net.Socket
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
 import kotlinx.coroutines.Dispatchers
@@ -39,10 +37,6 @@ import com.Azelmods.App.ui.theme.Success
 import com.Azelmods.App.ui.theme.DarkElevated
 
 private const val TAG = "TorBrowser"
-
-/** Tiempo mÃ¡ximo de espera para conectar al proxy de Orbot */
-/** Tiempo máximo de espera para conectar al proxy de Orbot */
-private const val PROXY_CONNECT_TIMEOUT_MS = 2000
 
 /** URL inicial por defecto (NO depende de Tor) */
 private const val DEFAULT_HOMEPAGE = "https://duckduckgo.com"
@@ -90,24 +84,31 @@ fun TorBrowserScreenNew(
     var proxyEnabled by remember { mutableStateOf(false) }
     var browsingMode by remember { mutableStateOf("directo") } // "directo" | "tor"
     var isWebViewReady by remember { mutableStateOf(false) }
+    // Se incrementa desde "Recargar" para re-detectar Orbot sin salir de la pantalla
+    // (p. ej. si el usuario arranca Orbot DESPUÉS de abrir el navegador).
+    var recheckTrigger by remember { mutableStateOf(0) }
 
     // Handler del MainThread para actualizar el estado de UI desde el callback del proxy,
     // que WebView invoca en el executor de larga vida de ProxyManager (hilo de background).
     val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
 
-    // ── PASO 1: Cargar URL inicial inmediatamente + proxy async ──
+    // ── PASO 1: Cargar la URL inicial (clearnet, sin depender de Tor) una sola vez ──
     LaunchedEffect(isWebViewReady) {
         if (!isWebViewReady) return@LaunchedEffect
-
-        // Cargar página SIEMPRE, sin depender del proxy
         try {
             webView?.loadUrl(DEFAULT_HOMEPAGE)
             Log.d(TAG, "✓ URL inicial cargada: $DEFAULT_HOMEPAGE")
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error cargando URL inicial", e)
         }
+    }
 
-        // Configurar proxy de forma asíncrona (no bloquea la carga)
+    // ── PASO 2: Detectar Orbot y aplicar el proxy de forma asíncrona ──
+    // Se vuelve a ejecutar cuando cambia [recheckTrigger] (botón Recargar), así el
+    // usuario puede arrancar Orbot y activarlo sin salir del navegador.
+    LaunchedEffect(isWebViewReady, recheckTrigger) {
+        if (!isWebViewReady) return@LaunchedEffect
+
         try {
             kotlinx.coroutines.delay(500)
 
@@ -115,6 +116,7 @@ fun TorBrowserScreenNew(
             var proxyRule: String? = null
             withContext(Dispatchers.IO) {
                 try {
+                    // I/O de red SIEMPRE en Dispatchers.IO (nunca en el hilo principal).
                     val hasHttp = OrbotDetector.isHttpProxyAvailable()
                     val hasSocks = OrbotDetector.isSocksProxyAvailable()
                     proxyRule = when {
@@ -142,7 +144,8 @@ fun TorBrowserScreenNew(
                     // Recargar la página con proxy activo
                     webView?.reload()
                 }
-            } else {
+            } else if (recheckTrigger == 0) {
+                // Solo avisamos una vez al abrir; no molestamos en cada recarga.
                 Log.d(TAG, "🌐 Proxy Tor no disponible — modo directo")
                 scope.launch {
                     snackbarHostState.showSnackbar(
@@ -391,7 +394,14 @@ fun TorBrowserScreenNew(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
                         onClick = {
-                            if (isLoading) webView?.stopLoading() else webView?.reload()
+                            if (isLoading) {
+                                webView?.stopLoading()
+                            } else {
+                                // Recargar y volver a detectar Orbot (por si el usuario
+                                // acaba de arrancarlo) sin salir del navegador.
+                                if (!proxyEnabled) recheckTrigger++
+                                webView?.reload()
+                            }
                         }
                     ) {
                         Box(contentAlignment = Alignment.Center) {
@@ -465,23 +475,6 @@ private const val ORBOT_SOCKS_PORT = 9050
 // ─────────────────────────────────────────────────────────────────────────────
 //  PROXY CONFIG — AndroidX WebKit oficial API
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Verifica que el puerto del proxy HTTP de Orbot esté realmente aceptando conexiones.
- * Esto evita configurar un proxy que no funciona y causaría errores 404.
- */
-private fun verifyProxyPort(host: String, port: Int): Boolean {
-    return try {
-        Socket().use { socket ->
-            socket.connect(InetSocketAddress(host, port), PROXY_CONNECT_TIMEOUT_MS)
-            Log.d(TAG, "✓ Puerto $host:$port verificada — acepta conexiones")
-            true
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "✗ Puerto $host:$port no responde: ${e.message}")
-        false
-    }
-}
 
 /**
  * Configura el proxy de Orbot a nivel de WebView delegando en [ProxyManager].
@@ -845,9 +838,14 @@ private fun WebView.setupWebView(
                     val isOnionUrl = url.contains(".onion")
                     
                     if (isOnionUrl) {
-                        // Verificar si Tor está activo
-                        val torActive = proxyEnabled() || OrbotDetector.isSocksProxyAvailable() || OrbotDetector.isHttpProxyAvailable()
-                        
+                        // CAUSA RAÍZ DEL CRASH: shouldOverrideUrlLoading corre en el hilo
+                        // principal (UI). Llamar aquí a OrbotDetector.isSocksProxyAvailable()/
+                        // isHttpProxyAvailable() hacía un Socket.connect BLOQUEANTE en el hilo
+                        // principal → android.os.NetworkOnMainThreadException → la app crasheaba
+                        // al tocar un enlace .onion sin Tor activo. Usamos únicamente el estado
+                        // proxyEnabled, que ya se detectó de forma asíncrona en el LaunchedEffect.
+                        val torActive = proxyEnabled()
+
                         if (!torActive) {
                             // Tor NO está activo - mostrar página de ayuda
                             Log.w(TAG, "⚠️ Intento de cargar .onion sin Tor activo: $url")
