@@ -97,6 +97,16 @@ class MainActivity : ComponentActivity() {
                 
                 // ── Runtime permission: POST_NOTIFICATIONS (Android 13+) ──
                 val context = LocalContext.current
+
+                // Arranque seguro de la persistencia de Firebase: si la app
+                // sobrevive la ventana de arranque sin crashear, marcamos el
+                // inicio como sano para que el próximo arranque active la
+                // persistencia con normalidad (ver FirebasePersistenceGuard).
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(6000)
+                    com.Azelmods.App.data.firebase.FirebasePersistenceGuard.markHealthy(context)
+                }
+
                 val notificationPermissionLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.RequestPermission()
                 ) { isGranted ->
