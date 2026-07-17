@@ -10,7 +10,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
+import java.util.concurrent.TimeUnit
 
 data class TerminalEntry(
     val id: String = "",
@@ -41,22 +43,38 @@ class TerminalRepository {
     // Execute command without root (ProcessBuilder)
     suspend fun executeShell(command: String): String =
         withContext(Dispatchers.IO) {
+            var process: Process? = null
             try {
-                val process = ProcessBuilder("/system/bin/sh", "-c", command)
-                    .redirectErrorStream(true)
-                    .start()
-                
-                val output = StringBuilder()
-                process.inputStream.bufferedReader().forEachLine {
-                    output.appendLine(it)
+                // runInterruptible: si la corrutina se cancela (el usuario navega
+                // fuera de la pantalla mientras el comando corre), las llamadas
+                // bloqueantes (forEachLine / waitFor) se interrumpen con
+                // InterruptedException y caemos al finally que destruye el proceso.
+                runInterruptible {
+                    val p = ProcessBuilder("/system/bin/sh", "-c", command)
+                        .redirectErrorStream(true)
+                        .start()
+                    process = p
+
+                    val output = StringBuilder()
+                    p.inputStream.bufferedReader().forEachLine {
+                        output.appendLine(it)
+                    }
+
+                    // Evita procesos colgados indefinidamente si el comando no termina.
+                    if (!p.waitFor(30, TimeUnit.SECONDS)) {
+                        return@runInterruptible "Error: el comando excedió el tiempo límite (30s)"
+                    }
+                    output.toString().ifBlank { "[Sin salida]" }
                 }
-                
-                process.waitFor()
-                output.toString().ifBlank { "[Sin salida]" }
             } catch (e: SecurityException) {
                 "Error: Permiso denegado - ${e.message}"
             } catch (e: Exception) {
                 "Error: ${e.message}"
+            } finally {
+                // CAUSA RAÍZ (fix): antes no se destruía el proceso al cancelar,
+                // dejando procesos zombis del shell corriendo en background si el
+                // usuario salía de la Terminal a mitad de un comando.
+                process?.destroy()
             }
         }
     
