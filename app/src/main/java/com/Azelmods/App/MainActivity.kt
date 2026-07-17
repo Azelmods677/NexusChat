@@ -91,7 +91,18 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             runCatching { databaseRepository.updatePresence(isOnline = true) }
         }
-        
+
+        // ✅ Guardar/actualizar el token FCM del usuario actual.
+        // CAUSA RAÍZ (fix): NADIE llamaba a saveFCMToken(), así que
+        // users/$uid/fcmTokens quedaba vacío y la Cloud Function no podía enviar
+        // push de mensajes NI de llamadas entrantes → las llamadas no "sonaban"
+        // en el otro dispositivo y las notificaciones de mensajes no llegaban.
+        lifecycleScope.launch {
+            if (com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null) {
+                runCatching { com.Azelmods.App.utils.FCMTokenManager.saveFCMToken() }
+            }
+        }
+
         setContent {
             NexusChatTheme(userPreferences = userPreferences) {
                 

@@ -506,8 +506,24 @@ class CallViewModel @Inject constructor(
      * Toggle speaker on/off
      */
     fun toggleSpeaker() {
-        _isSpeakerOn.value = !_isSpeakerOn.value
-        // TODO: Implement audio routing
+        val newState = !_isSpeakerOn.value
+        _isSpeakerOn.value = newState
+        // Enrutamiento de audio real (antes el botón de altavoz no hacía nada).
+        // minSdk 31 → API de dispositivos de comunicación.
+        try {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            am.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+            if (newState) {
+                val speaker = am.availableCommunicationDevices.firstOrNull {
+                    it.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                }
+                if (speaker != null) am.setCommunicationDevice(speaker)
+            } else {
+                am.clearCommunicationDevice()
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("CallViewModel", "No se pudo cambiar el altavoz: ${e.message}")
+        }
     }
     
     private fun startCallService(callId: String, callType: CallType, contactName: String) {
