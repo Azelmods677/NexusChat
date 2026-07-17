@@ -41,6 +41,7 @@ import com.Azelmods.App.ui.screens.stories.StoriesScreen
 import kotlinx.coroutines.launch
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil3.compose.AsyncImage
+import com.Azelmods.App.ui.theme.DarkDeep
 
 data class TabItem(
     val route: String,
@@ -204,7 +205,7 @@ fun MainScreen(
                         VideoBackgroundPlayer(
                             videoUri = uri,
                             modifier = Modifier.fillMaxSize(),
-                            fallbackColor = Color(0xFF0D0D1A)
+                            fallbackColor = DarkDeep
                         )
                     }
                 }
@@ -230,7 +231,7 @@ fun MainScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFF0D0D1A))
+                                .background(DarkDeep)
                         )
                     }
                 }
@@ -239,7 +240,7 @@ fun MainScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color(0xFF0D0D1A))
+                            .background(DarkDeep)
                     )
                 }
             }

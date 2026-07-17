@@ -14,6 +14,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.Azelmods.App.ui.theme.DarkBackground
 
 /**
  * Video wallpaper component for chat background.
@@ -39,7 +40,7 @@ fun VideoWallpaper(
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color(0xFF0F0F1A))
+                .background(DarkBackground)
         )
         return
     }

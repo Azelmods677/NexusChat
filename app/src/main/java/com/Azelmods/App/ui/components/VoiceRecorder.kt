@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import java.io.File
+import com.Azelmods.App.ui.theme.ErrorRed
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * Voice recorder component with waveform visualization.
@@ -45,7 +47,7 @@ fun VoiceRecorderUI(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp),
-        color = Color(0xFF1A1A2E)
+        color = DarkSurface
     ) {
         Row(
             modifier = Modifier
@@ -58,7 +60,7 @@ fun VoiceRecorderUI(
                 Icon(
                     Icons.Default.Close,
                     contentDescription = "Cancel",
-                    tint = Color(0xFFEF4444),
+                    tint = ErrorRed,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -85,7 +87,7 @@ fun VoiceRecorderUI(
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .background(Color(0xFFEF4444).copy(alpha = alpha), CircleShape)
+                        .background(ErrorRed.copy(alpha = alpha), CircleShape)
                 )
                 
                 Spacer(modifier = Modifier.width(12.dp))

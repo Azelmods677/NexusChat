@@ -236,7 +236,7 @@ fun CodeEditorScreen(
                 actions = {
                     if (!showFileList && currentFile != null) {
                         IconButton(onClick = { viewModel.saveFile(editorContent) }) {
-                            Icon(Icons.Default.Save, null, tint = Color(0xFF00FF41))
+                            Icon(Icons.Default.Save, null, tint = TerminalGreen)
                         }
                         IconButton(
                             onClick = {
@@ -252,7 +252,7 @@ fun CodeEditorScreen(
                                     color = Color.White
                                 )
                             } else {
-                                Icon(Icons.Default.PlayArrow, null, tint = Color(0xFF00FF41))
+                                Icon(Icons.Default.PlayArrow, null, tint = TerminalGreen)
                             }
                         }
                     }
@@ -261,12 +261,12 @@ fun CodeEditorScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = DarkSurface
                 )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFF0F0F1A)
+        containerColor = DarkBackground
     ) { padding ->
         if (showFileList) {
             // File list
@@ -309,7 +309,7 @@ fun CodeEditorScreen(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFF1A1A2E),
+                            color = DarkSurface,
                             border = BorderStroke(
                                 1.dp,
                                 if (currentFile?.id == file.id) MaterialTheme.colorScheme.primary else Color.Transparent
@@ -367,7 +367,7 @@ fun CodeEditorScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    color = Color(0xFF1A1A2E)
+                    color = DarkSurface
                 ) {
                     BasicTextField(
                         value = editorContent,
@@ -377,12 +377,12 @@ fun CodeEditorScreen(
                             .padding(12.dp)
                             .verticalScroll(rememberScrollState()),
                         textStyle = TextStyle(
-                            color = Color(0xFF00FF41),
+                            color = TerminalGreen,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 14.sp,
                             lineHeight = 20.sp
                         ),
-                        cursorBrush = SolidColor(Color(0xFF00FF41))
+                        cursorBrush = SolidColor(TerminalGreen)
                     )
                 }
 
@@ -392,7 +392,7 @@ fun CodeEditorScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 200.dp),
-                        color = Color(0xFF0A0A0A)
+                        color = TerminalBlack
                     ) {
                         Column(
                             modifier = Modifier
@@ -497,7 +497,7 @@ fun CodeEditorScreen(
                     Text("Cancel", color = Color.Gray)
                 }
             },
-            containerColor = Color(0xFF1A1A2E)
+            containerColor = DarkSurface
         )
     }
 }

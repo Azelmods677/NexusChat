@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Azelmods.App.ui.theme.DarkElevated
+import com.Azelmods.App.ui.theme.DarkSurface
 
 /**
  * 😀 COMPLETE EMOJI PICKER
@@ -210,12 +212,12 @@ fun CompleteEmojiPicker(
         modifier = modifier
             .fillMaxWidth()
             .height(350.dp)
-            .background(Color(0xFF1A1A2E))
+            .background(DarkSurface)
     ) {
         // Category tabs
         ScrollableTabRow(
             selectedTabIndex = selectedCategory,
-            containerColor = Color(0xFF1A1A2E),
+            containerColor = DarkSurface,
             contentColor = MaterialTheme.colorScheme.primary,
             edgePadding = 8.dp
         ) {
@@ -241,7 +243,7 @@ fun CompleteEmojiPicker(
             }
         }
         
-        HorizontalDivider(color = Color(0xFF2D2D44))
+        HorizontalDivider(color = DarkElevated)
         
         // Emoji grid
         LazyVerticalGrid(
