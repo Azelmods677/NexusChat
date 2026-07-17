@@ -221,10 +221,10 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
      */
     fun onJsResult(result: String, error: String?) {
         _isRunning.value = false
-        _output.value = if (error != null) {
-            "❌ Error:\n$error\n\n$result"
-        } else {
-            "🟨 JavaScript Output:\n$result"
+        _output.value = when {
+            error != null -> "❌ Error:\n$error" + if (result.isNotBlank()) "\n\n$result" else ""
+            result.isBlank() -> "🟨 JavaScript ejecutado (sin salida de consola)"
+            else -> "🟨 JavaScript Output:\n$result"
         }
         _jsToExecute.value = null
     }

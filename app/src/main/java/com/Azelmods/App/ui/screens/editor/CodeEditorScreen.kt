@@ -198,7 +198,10 @@ fun CodeEditorScreen(
         """.trimIndent()
 
         webViewRef.value?.evaluateJavascript(wrappedCode) { result ->
-            val cleanResult = result?.trim('"') ?: ""
+            // No mostrar los centinelas internos ni "null" como si fueran salida real.
+            val cleanResult = result?.trim('"')?.takeIf {
+                it != "__NEXUS_DONE__" && it != "__NEXUS_ERROR__" && it != "null"
+            } ?: ""
             viewModel.onJsResult(
                 if (jsOutput.isBlank()) cleanResult else jsOutput,
                 jsError
