@@ -6,6 +6,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.Query
 import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -35,25 +36,41 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
     private val _jsToExecute = MutableStateFlow<String?>(null)
     val jsToExecute: StateFlow<String?> = _jsToExecute.asStateFlow()
     
+    // Referencia + listener del historial de archivos, para poder removerlo en
+    // onCleared() y no fugar el listener (antes se registraba y nunca se quitaba).
+    private var filesQuery: Query? = null
+    private var filesListener: ValueEventListener? = null
+
     init {
         loadFiles()
     }
-    
+
     // Load files from Firebase in real-time
     private fun loadFiles() {
         viewModelScope.launch {
             val ref = db.getReference("codeFiles/$uid")
                 .orderByChild("timestamp")
-            ref.addValueEventListener(object : ValueEventListener {
+            val listener = object : ValueEventListener {
                 override fun onDataChange(snap: DataSnapshot) {
                     _files.value = snap.children
                         .mapNotNull { it.getValue(CodeFile::class.java) }
                         .sortedByDescending { it.timestamp }
                 }
-                
+
                 override fun onCancelled(e: DatabaseError) {}
-            })
+            }
+            ref.addValueEventListener(listener)
+            filesQuery = ref
+            filesListener = listener
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Evita la fuga del listener de Firebase cuando se cierra la pantalla.
+        filesListener?.let { filesQuery?.removeEventListener(it) }
+        filesListener = null
+        filesQuery = null
     }
     
     // Create new file
