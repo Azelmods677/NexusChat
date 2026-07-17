@@ -35,7 +35,10 @@ import androidx.navigation.NavController
 import com.Azelmods.App.data.security.tor.OrbotDetector
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 🌐 OrbotWelcomeScreen — Pantalla de bienvenida que guía al usuario
@@ -52,20 +55,26 @@ fun OrbotWelcomeScreen(
     navController: NavController
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     var orbotStatus by remember { mutableStateOf(OrbotStatus.CHECKING) }
 
-    // Auto-detect Orbot status on launch and every 3 seconds
+    // Auto-detect Orbot status on launch and every 3 seconds.
+    // CAUSA RAÍZ DEL CRASH: isTorAvailable() hace Socket.connect (I/O de red) y el
+    // bloque de LaunchedEffect corre en el hilo principal → NetworkOnMainThreadException.
+    // La detección se mueve a Dispatchers.IO; el estado se asigna en el hilo principal.
     LaunchedEffect(Unit) {
         while (true) {
-            val installed = OrbotDetector.isOrbotInstalled(context)
-            val active = OrbotDetector.isTorAvailable()
-
-            orbotStatus = when {
-                !installed -> OrbotStatus.NOT_INSTALLED
-                !active -> OrbotStatus.INACTIVE
-                else -> OrbotStatus.ACTIVE
+            val status = withContext(Dispatchers.IO) {
+                val installed = OrbotDetector.isOrbotInstalled(context)
+                val active = OrbotDetector.isTorAvailable()
+                when {
+                    !installed -> OrbotStatus.NOT_INSTALLED
+                    !active -> OrbotStatus.INACTIVE
+                    else -> OrbotStatus.ACTIVE
+                }
             }
+            orbotStatus = status
             delay(3000)
         }
     }
@@ -292,13 +301,20 @@ fun OrbotWelcomeScreen(
             // ── Refresh button ───────────────────────────────────────────
             TextButton(
                 onClick = {
+                    // La detección hace I/O de red: se lanza en Dispatchers.IO para
+                    // no bloquear ni crashear el hilo principal.
                     orbotStatus = OrbotStatus.CHECKING
-                    val installed = OrbotDetector.isOrbotInstalled(context)
-                    val active = OrbotDetector.isTorAvailable()
-                    orbotStatus = when {
-                        !installed -> OrbotStatus.NOT_INSTALLED
-                        !active -> OrbotStatus.INACTIVE
-                        else -> OrbotStatus.ACTIVE
+                    scope.launch {
+                        val status = withContext(Dispatchers.IO) {
+                            val installed = OrbotDetector.isOrbotInstalled(context)
+                            val active = OrbotDetector.isTorAvailable()
+                            when {
+                                !installed -> OrbotStatus.NOT_INSTALLED
+                                !active -> OrbotStatus.INACTIVE
+                                else -> OrbotStatus.ACTIVE
+                            }
+                        }
+                        orbotStatus = status
                     }
                 }
             ) {
