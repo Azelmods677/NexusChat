@@ -25,7 +25,27 @@ object FirebaseModule {
     @Singleton
     fun provideFirebaseDatabase(): FirebaseDatabase {
         val database = FirebaseDatabase.getInstance()
-        database.setPersistenceEnabled(true)
+        // Punto ÚNICO donde se habilita la persistencia offline de Firebase.
+        // Debe ejecutarse antes de cualquier otro uso de la instancia; gracias a
+        // la inyección temprana de Hilt (DemoAccountManager inyecta FirebaseDatabase
+        // durante Application.onCreate), este provider corre primero. Aun así lo
+        // envolvemos en try/catch: si algún path llamara a FirebaseDatabase.getInstance()
+        // y usara una referencia ANTES que este provider, setPersistenceEnabled()
+        // lanzaría DatabaseException; preferimos loguear y seguir (sin cache offline)
+        // antes que un crash duro en el arranque.
+        try {
+            database.setPersistenceEnabled(true)
+            // Cap del archivo SQLite de persistencia (SqlPersistenceStorageEngine).
+            // Evita crecimiento sin límite del cache que presiona las escrituras
+            // (saveUserOverwrite) y reduce la superficie de fallos de disco.
+            database.setPersistenceCacheSizeBytes(20L * 1024 * 1024) // 20 MB
+        } catch (e: Exception) {
+            android.util.Log.e(
+                "FirebaseModule",
+                "No se pudo habilitar la persistencia offline (¿uso previo de FirebaseDatabase?)",
+                e
+            )
+        }
         return database
     }
     

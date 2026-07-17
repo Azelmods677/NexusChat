@@ -66,12 +66,18 @@ class FirebaseProxyConfigurator @Inject constructor(
 
         try {
             // FirebaseDatabase: forzar reconexión para que pase por
-            // el nuevo ProxySelector (ya instalado por TorService)
+            // el nuevo ProxySelector (ya instalado por TorService).
+            //
+            // CAUSA RAÍZ (fix): NO se puede volver a llamar a
+            // setPersistenceEnabled()/setPersistenceCacheSizeBytes() aquí.
+            // Firebase lanza DatabaseException ("Calls to setPersistenceEnabled()
+            // must be made before any other usage of a FirebaseDatabase instance")
+            // porque en este punto la base ya se usó (usuario logueado, chats
+            // cargados). La excepción abortaba el método ANTES de goOnline(),
+            // dejando Firebase OFFLINE de forma permanente tras activar Tor
+            // (los mensajes dejaban de sincronizar). La persistencia se habilita
+            // una sola vez y temprano en FirebaseModule.provideFirebaseDatabase().
             database.goOffline()
-
-            // Reajustar persistencia (ya activa, pero reconfirmamos)
-            database.setPersistenceEnabled(true)
-            database.setPersistenceCacheSizeBytes(10L * 1024 * 1024) // 10 MB
 
             // Reconectar — ahora pasará por TorProxySelector
             database.goOnline()
@@ -95,9 +101,10 @@ class FirebaseProxyConfigurator @Inject constructor(
         isTorActive = false
 
         try {
+            // Ver nota en enableTorMode(): NO volver a llamar a
+            // setPersistenceEnabled() aquí (lanza DatabaseException tras el
+            // primer uso y abortaba goOnline(), dejando la base offline).
             database.goOffline()
-            // Restaurar persistencia normal
-            database.setPersistenceEnabled(true)
             database.goOnline()
 
             Log.d(TAG, "✅ Firebase Database reconectado para red directa")

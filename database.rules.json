@@ -55,13 +55,6 @@
             ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
             ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
           }
-        },
-        
-        "typing": {
-          "$userId": {
-            ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-            ".write": "auth != null && auth.uid === $userId"
-          }
         }
       }
     },
@@ -105,11 +98,68 @@
         ".read": "auth != null && auth.uid === $userId",
         "$requestId": {
           ".write": "auth != null && (
-            !data.exists() || 
-            auth.uid === $userId || 
+            !data.exists() ||
+            auth.uid === $userId ||
             data.child('from').val() === auth.uid
           )"
         }
+      }
+    },
+
+    "chat_settings": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "typing": {
+      "$chatId": {
+        "$userId": {
+          ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+          ".write": "auth != null && auth.uid === $userId"
+        }
+      }
+    },
+
+    "groups": {
+      "$groupId": {
+        ".read": "auth != null && root.child('groups').child($groupId).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (
+          !data.exists() ||
+          root.child('groups').child($groupId).child('members').child(auth.uid).exists()
+        )"
+      }
+    },
+
+    "group_settings": {
+      "$groupId": {
+        ".read": "auth != null && root.child('groups').child($groupId).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (
+          !data.exists() ||
+          root.child('groups').child($groupId).child('members').child(auth.uid).exists()
+        )"
+      }
+    },
+
+    "codeFiles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "terminal": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "aiChats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     }
   }
