@@ -1,49 +1,41 @@
 package com.Azelmods.App.domain.usecase
 
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
+import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
  * Use case for adding emoji reactions to stories.
- * 
+ *
  * Features:
  * - Quick emoji reaction while viewing story
- * - Stores reaction in story reactions node
- * - One reaction per user per story
+ * - Stores reaction in stories_reactions/{ownerId}/{storyId}/{uid}
+ * - One reaction per user per story (reacting again replaces the emoji)
+ *
+ * La versión anterior escribía en stories/{storyId}/reactions — ruta que no
+ * existe en el esquema real (stories/{ownerId}/{storyId}) y que las reglas de
+ * seguridad rechazan para cualquier usuario distinto del dueño. Ahora delega
+ * en el repositorio, que usa el nodo stories_reactions con reglas propias.
  */
 class AddStoryReactionUseCase @Inject constructor(
-    private val auth: FirebaseAuth,
-    private val database: FirebaseDatabase
+    private val repository: RealtimeDatabaseRepository
 ) {
     /**
-     * Adds an emoji reaction to a story
-     * 
+     * Adds an emoji reaction to a story.
+     *
+     * @param storyOwnerId The story author's user ID
      * @param storyId The story ID to react to
      * @param emoji The emoji reaction
      * @return Result with success or error
      */
-    suspend operator fun invoke(storyId: String, emoji: String): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend operator fun invoke(
+        storyOwnerId: String,
+        storyId: String,
+        emoji: String
+    ): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val userId = auth.currentUser?.uid ?: return@withContext Result.failure(
-                Exception("User not authenticated")
-            )
-            
-            // Store reaction in stories/{storyId}/reactions/{userId}
-            database.getReference("stories")
-                .child(storyId)
-                .child("reactions")
-                .child(userId)
-                .setValue(
-                    mapOf(
-                        "emoji" to emoji,
-                        "timestamp" to System.currentTimeMillis()
-                    )
-                ).await()
-            
+            repository.addStoryReaction(storyOwnerId, storyId, emoji)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

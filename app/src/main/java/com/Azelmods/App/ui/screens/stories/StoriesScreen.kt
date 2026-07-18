@@ -175,6 +175,18 @@ fun YourStoryItem(
 ) {
     val context = LocalContext.current
 
+    // Slow, calm rotation so the "add your story" ring feels inviting.
+    val infiniteTransition = rememberInfiniteTransition(label = "your_story_ring")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(6000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "your_ring_rotation"
+    )
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -190,6 +202,7 @@ fun YourStoryItem(
             Box(
                 modifier = Modifier
                     .size(68.dp)
+                    .graphicsLayer { rotationZ = rotation }
                     .clip(CircleShape)
                     .background(
                         Brush.sweepGradient(
@@ -285,10 +298,20 @@ fun StoryItem(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
+            animation = tween(4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "ring_rotation"
+    )
+    // Subtle "breathing" pulse so unread rings feel alive (premium detail).
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ring_pulse"
     )
 
     Column(
@@ -307,7 +330,11 @@ fun StoryItem(
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier
                         .size(68.dp)
-                        .rotate(rotation)
+                        .graphicsLayer {
+                            rotationZ = rotation
+                            scaleX = pulse
+                            scaleY = pulse
+                        }
                 ) {
                     drawArc(
                         brush = Brush.sweepGradient(
@@ -317,6 +344,7 @@ fun StoryItem(
                                 RosePink,
                                 NeonGreen,
                                 GoldPremium,
+                                CyanAccent,
                                 PurpleBright
                             )
                         ),
@@ -324,7 +352,7 @@ fun StoryItem(
                         sweepAngle = 360f,
                         useCenter = false,
                         style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 3.dp.toPx(),
+                            width = 3.5.dp.toPx(),
                             cap = androidx.compose.ui.graphics.StrokeCap.Round
                         )
                     )

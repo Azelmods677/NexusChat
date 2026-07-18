@@ -214,6 +214,79 @@ exports.onStoryCreate = functions.database
     });
 
 /**
+ * 🆕 onStoryReaction — Push al autor cuando alguien reacciona a su historia.
+ * Ruta: stories_reactions/{ownerId}/{storyId}/{reactorId} = { emoji, timestamp }
+ * onCreate: solo la primera reacción de cada usuario notifica (cambiar el
+ * emoji sobrescribe el nodo y no dispara onCreate → sin spam).
+ */
+exports.onStoryReaction = functions.database
+    .ref("/stories_reactions/{ownerId}/{storyId}/{reactorId}")
+    .onCreate(async (snapshot, context) => {
+        const { ownerId, storyId, reactorId } = context.params;
+        const emoji = (snapshot.val() || {}).emoji || "❤️";
+
+        if (ownerId === reactorId) return null; // reacción propia: sin push
+
+        // Nombre de quien reacciona
+        let reactorName = "Alguien";
+        try {
+            const nameSnap = await db.ref(`/users/${reactorId}/displayName`).once("value");
+            reactorName = nameSnap.val() || reactorName;
+        } catch (e) {
+            console.warn("⚠️ Could not fetch reactor name:", e);
+        }
+
+        // Tokens FCM del autor de la historia
+        let fcmTokens = [];
+        try {
+            const tokensSnapshot = await db.ref(`/users/${ownerId}/fcmTokens`).once("value");
+            const tokensData = tokensSnapshot.val();
+            if (tokensData) {
+                fcmTokens = Object.values(tokensData).filter((t) => typeof t === "string");
+            }
+        } catch (e) {
+            console.error("❌ Error reading FCM tokens:", e);
+        }
+        if (fcmTokens.length === 0) {
+            console.log(`⚠️ No FCM tokens for story owner ${ownerId}`);
+            return null;
+        }
+
+        const body = `${reactorName} reaccionó ${emoji} a tu historia`;
+        const results = await Promise.allSettled(
+            fcmTokens.map((token) =>
+                admin.messaging().send({
+                    token: token,
+                    notification: {
+                        title: "Tu historia",
+                        body: body,
+                    },
+                    data: {
+                        type: "story_reaction",
+                        storyId: storyId,
+                        reactorId: reactorId,
+                        emoji: emoji,
+                    },
+                    android: {
+                        priority: "high",
+                        notification: {
+                            channelId: "nexus_messages",
+                            icon: "ic_notification",
+                            color: "#7B5CFA",
+                            sound: "default",
+                        },
+                    },
+                })
+            )
+        );
+
+        const successCount = results.filter((r) => r.status === "fulfilled").length;
+        const failCount = results.filter((r) => r.status === "rejected").length;
+        console.log(`✅ Story-reaction push: ${successCount} success, ${failCount} failed`);
+        return { successCount, failCount };
+    });
+
+/**
  * 🆕 onCallEnded — Notifica llamadas perdidas.
  */
 exports.onCallEnded = functions.database
@@ -385,4 +458,71 @@ exports.onCallCreate = functions.database
         console.log(`✅ Incoming-call push sent: ${successCount} success, ${failCount} failed`);
 
         return { successCount, failCount };
+    });
+
+/**
+ * 🧹 cleanupExpiredStories — Función programada que elimina las historias que ya
+ * superaron su ventana de 24 h. Completa la "expiración" de Stories: el cliente
+ * ya las ocultaba al leer, pero sin esto los nodos y archivos se acumulaban para
+ * siempre. Borra el nodo en Realtime Database, su nodo de vistas y, si tenía
+ * media (imagen/video), también el archivo en Storage.
+ *
+ * Frecuencia: cada 6 horas. Requiere plan Blaze (Cloud Scheduler).
+ */
+exports.cleanupExpiredStories = functions.pubsub
+    .schedule("every 6 hours")
+    .onRun(async () => {
+        const MAX_AGE_MS = 24 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        const storiesSnap = await db.ref("stories").once("value");
+        if (!storiesSnap.exists()) {
+            console.log("🧹 cleanupExpiredStories: no hay historias.");
+            return null;
+        }
+
+        const dbUpdates = {};
+        const storageUrls = [];
+        let expiredCount = 0;
+
+        storiesSnap.forEach((userNode) => {
+            const userId = userNode.key;
+            userNode.forEach((storyNode) => {
+                const story = storyNode.val() || {};
+                const ts = typeof story.timestamp === "number" ? story.timestamp : 0;
+                if (now - ts >= MAX_AGE_MS) {
+                    expiredCount++;
+                    dbUpdates[`stories/${userId}/${storyNode.key}`] = null;
+                    dbUpdates[`stories_views/${storyNode.key}`] = null;
+                    if (typeof story.mediaUrl === "string" && story.mediaUrl.startsWith("http")) {
+                        storageUrls.push(story.mediaUrl);
+                    }
+                }
+            });
+        });
+
+        if (expiredCount === 0) {
+            console.log("🧹 cleanupExpiredStories: nada que borrar.");
+            return null;
+        }
+
+        // 1. Borra los nodos de Database en una sola escritura atómica.
+        await db.ref().update(dbUpdates);
+
+        // 2. Borra los archivos de Storage (best-effort; los errores no bloquean).
+        const bucket = admin.storage().bucket();
+        await Promise.all(storageUrls.map(async (url) => {
+            try {
+                const match = url.match(/\/o\/([^?]+)/);
+                if (match) {
+                    const objectPath = decodeURIComponent(match[1]);
+                    await bucket.file(objectPath).delete();
+                }
+            } catch (e) {
+                console.warn(`No se pudo borrar de Storage: ${url} — ${e.message}`);
+            }
+        }));
+
+        console.log(`🧹 cleanupExpiredStories: ${expiredCount} historias expiradas eliminadas.`);
+        return null;
     });
