@@ -418,7 +418,7 @@ class ChatViewModel @Inject constructor(
                                 senderName = data["senderName"] as? String ?: "",
                                 content = content,
                                 timestamp = timestampVal,
-                                status = MessageStatus.SENT,
+                                status = parseMessageStatus(data["status"]),
                                 replyTo = data["replyTo"] as? String,
                                 reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
                                 mediaUrl = data["mediaUrl"] as? String,
@@ -452,6 +452,13 @@ class ChatViewModel @Inject constructor(
                             earliestMessageId = earliestId,
                             hasMoreMessages = true
                         )
+
+                        // Recibos de lectura: marca los mensajes entrantes como
+                        // "read" mientras el chat está abierto. Solo escribe deltas,
+                        // así que no genera bucles de re-emisión.
+                        viewModelScope.launch(Dispatchers.IO) {
+                            runCatching { databaseRepository.markMessagesAsRead(chatId) }
+                        }
                     }
                   } catch (ex: Exception) {
                     // El Flow de mensajes puede cerrarse con excepción (p. ej. permiso
@@ -476,6 +483,16 @@ class ChatViewModel @Inject constructor(
         if (currentChatId.isNotBlank()) {
             loadChat(currentChatId)
         }
+    }
+
+    /** Convierte el status almacenado (String) al enum MessageStatus para la UI de recibos. */
+    private fun parseMessageStatus(raw: Any?): MessageStatus = when ((raw as? String)?.lowercase()) {
+        "sending" -> MessageStatus.SENDING
+        "sent" -> MessageStatus.SENT
+        "delivered" -> MessageStatus.DELIVERED
+        "read" -> MessageStatus.READ
+        "failed" -> MessageStatus.FAILED
+        else -> MessageStatus.SENT
     }
 
     /**
@@ -1012,7 +1029,7 @@ class ChatViewModel @Inject constructor(
                         senderName = data["senderName"] as? String ?: "",
                         content = content,
                         timestamp = timestampVal,
-                        status = MessageStatus.SENT,
+                        status = parseMessageStatus(data["status"]),
                         replyTo = data["replyTo"] as? String,
                         reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
                         mediaUrl = data["mediaUrl"] as? String,

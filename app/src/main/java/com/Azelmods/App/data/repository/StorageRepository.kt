@@ -16,8 +16,20 @@ import kotlin.coroutines.suspendCoroutine
 class StorageRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    
+
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+
+    /**
+     * Tamaño en bytes de un content:// URI (−1 si no se puede determinar).
+     * Permite validar límites antes de subir a Storage.
+     */
+    fun getFileSizeBytes(uri: Uri): Long {
+        return try {
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: -1L
+        } catch (e: Exception) {
+            -1L
+        }
+    }
     
     /**
      * Upload image to Firebase Storage
@@ -124,6 +136,44 @@ class StorageRepository @Inject constructor(
         }
     }
     
+    /**
+     * Upload an app-wide background (image or video) for the current user.
+     * Pattern: user_backgrounds/{userId}/{timestamp}.{jpg|mp4}
+     *
+     * Used by the APP-scope wallpaper so the reference survives process death and
+     * permission revocation — a local content:// URI does not, which is why picking
+     * an image/video for the background "did not work" before.
+     */
+    suspend fun uploadUserBackground(uri: Uri, userId: String, isVideo: Boolean): String = suspendCoroutine { continuation ->
+        try {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+
+            val timestamp = System.currentTimeMillis()
+            val ext = if (isVideo) "mp4" else "jpg"
+            val fileRef = storage.reference.child("user_backgrounds/$userId/$timestamp.$ext")
+
+            fileRef.putFile(uri)
+                .addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                        continuation.resume(downloadUri.toString())
+                    }.addOnFailureListener { exception ->
+                        continuation.resumeWithException(exception)
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    continuation.resumeWithException(exception)
+                }
+        } catch (e: Exception) {
+            continuation.resumeWithException(e)
+        }
+    }
+
     /**
      * Upload story to Firebase Storage
      * Pattern: stories/{userId}/{timestamp}.jpg

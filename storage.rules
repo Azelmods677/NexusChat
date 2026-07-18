@@ -1,0 +1,61 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Reglas de Firebase Storage para Azelgram / NexusChat
+//
+// Sin estas reglas (o con las de "modo prueba" ya caducadas), TODAS las subidas
+// fallan con "permission denied": fotos y videos de chat, historias con media,
+// fotos de perfil/portada y fondos de chat con imagen/video.
+//
+// Copia y pega esto en:  Firebase Console → Storage → Rules → Publicar.
+// ─────────────────────────────────────────────────────────────────────────────
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Fotos de perfil y portada: solo el dueño escribe; cualquier autenticado lee.
+    // Rutas usadas por StorageRepository: user_photos/{userId}/profile.jpg y cover.jpg
+    match /user_photos/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 15 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Historias (imagen y video): solo el dueño escribe en su propia carpeta.
+    // Rutas: stories/{userId}/{timestamp}.jpg  y  stories/{userId}/{timestamp}.mp4
+    match /stories/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 100 * 1024 * 1024
+                   && request.resource.contentType.matches('(image|video|audio)/.*');
+    }
+
+    // Media de chats (imágenes, videos, audio, documentos y fondos de chat).
+    // Rutas: chats/{chatId}/images|videos|audio|documents/...
+    // El control de acceso real (quién es miembro del chat) vive en las reglas de
+    // Realtime Database; aquí se limita a usuarios autenticados y tamaño máximo.
+    match /chats/{chatId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 100 * 1024 * 1024;
+    }
+
+    // Fondos de pantalla a nivel app (wallpaper personal del usuario).
+    // Ruta: user_backgrounds/{userId}/{timestamp}.jpg|mp4
+    match /user_backgrounds/{userId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.auth.uid == userId
+                   && request.resource.size < 100 * 1024 * 1024
+                   && request.resource.contentType.matches('(image|video)/.*');
+    }
+
+    // Todo lo demás queda bloqueado por defecto.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
