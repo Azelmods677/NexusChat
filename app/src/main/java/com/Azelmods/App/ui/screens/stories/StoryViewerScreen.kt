@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +62,7 @@ fun StoryViewerScreen(
     var showReplySheet by remember { mutableStateOf(false) }
     var replyText by remember { mutableStateOf("") }
     var showViewersSheet by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     val currentUserId = remember { FirebaseAuth.getInstance().currentUser?.uid }
 
@@ -100,6 +102,22 @@ fun StoryViewerScreen(
         if (state.replySent) {
             snackbarHostState.showSnackbar("Reply sent!")
             viewModel.clearReplySent()
+        }
+    }
+
+    // ── Snackbar on reaction sent ────────────────────────────────────────────
+    LaunchedEffect(state.reactionSent) {
+        state.reactionSent?.let { emoji ->
+            snackbarHostState.showSnackbar("Reaccionaste $emoji")
+            viewModel.clearReactionSent()
+        }
+    }
+
+    // ── Close the viewer after deleting your own story ───────────────────────
+    LaunchedEffect(state.deleted) {
+        if (state.deleted) {
+            viewModel.clearDeleted()
+            navController.popBackStack()
         }
     }
 
@@ -600,6 +618,20 @@ fun StoryViewerScreen(
             // Snackbar floats just above the bar
             SnackbarHost(hostState = snackbarHostState)
 
+            // ── Quick emoji reactions (solo en historias ajenas) ─────────────
+            if (currentStory.userId != currentUserId) {
+                QuickReactionRow(
+                    selectedEmoji = state.myReactions[currentStory.storyId],
+                    onReact = { emoji ->
+                        viewModel.addReaction(
+                            storyOwnerId = currentStory.userId,
+                            storyId = currentStory.storyId,
+                            emoji = emoji
+                        )
+                    }
+                )
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -638,7 +670,7 @@ fun StoryViewerScreen(
                         )
                     }
                 } else {
-                    // ── Own story: viewers count ──────────────────────────────
+                    // ── Own story: viewers count + delete ─────────────────────
                     Spacer(modifier = Modifier.weight(1f))
                     TextButton(
                         onClick = {
@@ -651,6 +683,18 @@ fun StoryViewerScreen(
                             color = Color.White,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            isPaused = true
+                            showDeleteDialog = true
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar historia",
+                            tint = Color.White
                         )
                     }
                 }
@@ -827,6 +871,8 @@ fun StoryViewerScreen(
                                 ?: viewer["uid"] as? String
                                 ?: "AnÃ³nimo"
                             val viewerPhoto = viewer["photoUrl"] as? String
+                            val viewerUid = viewer["uid"] as? String
+                            val viewerReaction = viewerUid?.let { state.reactions[it] }
 
                             Row(
                                 modifier = Modifier
@@ -844,8 +890,12 @@ fun StoryViewerScreen(
                                     text = viewerName,
                                     color = Color.White,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                if (viewerReaction != null) {
+                                    Text(text = viewerReaction, fontSize = 22.sp)
+                                }
                             }
                         }
                     }
@@ -853,6 +903,100 @@ fun StoryViewerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // DELETE CONFIRMATION DIALOG (own story)
+    // ────────────────────────────────────────────────────────────────────────
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteDialog = false
+                isPaused = false
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Eliminar historia") },
+            text = {
+                Text("¿Seguro que quieres eliminar esta historia? Esta acción no se puede deshacer.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteStory(currentStory)
+                    }
+                ) {
+                    Text(
+                        text = "Eliminar",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        isPaused = false
+                    }
+                ) {
+                    Text("Cancelar")
+                }
+            },
+            containerColor = DarkSurface
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Quick reactions
+// ─────────────────────────────────────────────────────────────────────────────
+
+private val QuickReactionEmojis = listOf("❤️", "😂", "😮", "😢", "🔥", "👍")
+
+@Composable
+private fun QuickReactionRow(
+    selectedEmoji: String?,
+    onReact: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        QuickReactionEmojis.forEach { emoji ->
+            val isSelected = emoji == selectedEmoji
+            val scale by animateFloatAsState(
+                targetValue = if (isSelected) 1.25f else 1f,
+                animationSpec = spring(dampingRatio = 0.45f, stiffness = 400f),
+                label = "reaction_scale"
+            )
+            Text(
+                text = emoji,
+                fontSize = 26.sp,
+                modifier = Modifier
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected) Color.White.copy(alpha = 0.22f)
+                        else Color.Transparent
+                    )
+                    .clickable { onReact(emoji) }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
         }
     }
 }

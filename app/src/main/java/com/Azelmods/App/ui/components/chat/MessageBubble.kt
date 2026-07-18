@@ -259,6 +259,12 @@ fun MessageBubble(
                     )
 
                     Column {
+                        // ── Cita de historia (mensaje enviado como respuesta a una story) ──
+                        if (message.replyTo?.startsWith("story:") == true) {
+                            StoryReplyQuote(isOwnMessage = isOwnMessage)
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+
                         // ── Media content ──
                         when (message.mediaType) {
                             "IMAGE" -> {
@@ -880,5 +886,50 @@ private fun formatDuration(seconds: Long): String {
         seconds >= 3600 -> "${seconds / 3600}h"
         seconds >= 60 -> "${seconds / 60}m"
         else -> "${seconds}s"
+    }
+}
+
+/**
+ * Cita compacta que se muestra dentro de la burbuja cuando el mensaje es una
+ * respuesta a una historia (replyTo = "story:{storyId}"). La historia puede
+ * haber expirado (24 h), por eso la cita es autónoma y no intenta cargar el
+ * media original.
+ */
+@Composable
+private fun StoryReplyQuote(isOwnMessage: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(
+                if (isOwnMessage) Color.Black.copy(alpha = 0.18f)
+                else Color.White.copy(alpha = 0.08f)
+            )
+            .height(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(Color.White.copy(alpha = 0.85f))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = "📖", fontSize = 18.sp)
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+            Text(
+                text = "Historia",
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Respuesta a una historia",
+                color = Color.White.copy(alpha = 0.7f),
+                fontSize = 11.sp
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
     }
 }

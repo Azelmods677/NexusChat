@@ -111,29 +111,30 @@ class StoriesViewModel @Inject constructor(
                                 else -> 0L
                             }
 
-                            // Views can be a Map<uid, true> or a plain List
-                            val viewsList: List<String> = when (val v = storyMap["views"]) {
-                                is Map<*, *> -> v.keys.mapNotNull { it as? String }
-                                is List<*> -> v.mapNotNull { it as? String }
-                                else -> emptyList()
-                            }
+                            // Estado "visto" REAL: se lee de stories_views/{storyId}.
+                            // El nodo de la historia nunca guarda las vistas (las reglas
+                            // solo dejan escribir ahí al dueño), por eso antes isViewed
+                            // salía siempre en false y el anillo nunca cambiaba de color.
+                            val storyId = storyMap["storyId"] as? String ?: ""
+                            val viewerIds: List<String> = runCatching {
+                                repository.getStoryViewerIds(storyId)
+                            }.getOrNull() ?: emptyList()
 
                             allStories.add(
                                 StoryItemData(
-                                    storyId = storyMap["storyId"] as? String ?: "",
+                                    storyId = storyId,
                                     userId = userId,
                                     userName = userName,
                                     userPhotoUrl = userPhotoUrl,
                                     type = storyMap["type"] as? String ?: storyMap["mediaType"] as? String ?: "IMAGE",
                                     mediaUrl = storyMap["mediaUrl"] as? String,
                                     text = storyMap["text"] as? String,
-
                                     caption = storyMap["caption"] as? String,
                                     backgroundColor = storyMap["backgroundColor"] as? String,
                                     timestamp = timestamp,
                                     expiresAt = expiresAt,
-                                    views = viewsList,
-                                    isViewed = viewsList.contains(currentUserId)
+                                    views = viewerIds,
+                                    isViewed = viewerIds.contains(currentUserId)
                                 )
                             )
                         } catch (e: Exception) {

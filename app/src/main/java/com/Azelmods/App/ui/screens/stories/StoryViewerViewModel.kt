@@ -18,7 +18,14 @@ data class StoryViewerState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val replySent: Boolean = false,
-    val viewers: List<Map<String, Any>> = emptyList()
+    val viewers: List<Map<String, Any>> = emptyList(),
+    val deleted: Boolean = false,
+    /** Emoji recién enviado (feedback en snackbar); null cuando no hay pendiente. */
+    val reactionSent: String? = null,
+    /** Reacciones propias de esta sesión: storyId → emoji (resalta el elegido). */
+    val myReactions: Map<String, String> = emptyMap(),
+    /** Reacciones de la historia propia abierta en el sheet: uid → emoji. */
+    val reactions: Map<String, String> = emptyMap()
 )
 
 @HiltViewModel
@@ -72,16 +79,17 @@ class StoryViewerViewModel @Inject constructor(
                             else -> 0L
                         }
 
-                        // Views can be a Map<uid, true> or a plain List
-                        val viewsList: List<String> = when (val v = storyMap["views"]) {
-                            is Map<*, *> -> v.keys.mapNotNull { it as? String }
-                            is List<*> -> v.mapNotNull { it as? String }
-                            else -> emptyList()
-                        }
+                        // Vistas REALES desde stories_views/{storyId}: alimenta el
+                        // conteo "👁 N" del dueño y el estado visto/no visto. Antes se
+                        // leían de storyMap["views"] (nodo que nunca se llena) → 0/false.
+                        val storyId = storyMap["storyId"] as? String ?: ""
+                        val viewerIds: List<String> = runCatching {
+                            repository.getStoryViewerIds(storyId)
+                        }.getOrNull() ?: emptyList()
 
                         userStories.add(
                             StoryItemData(
-                                storyId = storyMap["storyId"] as? String ?: "",
+                                storyId = storyId,
                                 userId = storyUserId,
                                 userName = userName,
                                 userPhotoUrl = userPhotoUrl,
@@ -92,8 +100,8 @@ class StoryViewerViewModel @Inject constructor(
                                 backgroundColor = storyMap["backgroundColor"] as? String,
                                 timestamp = timestamp,
                                 expiresAt = expiresAt,
-                                views = viewsList,
-                                isViewed = viewsList.contains(currentUserId)
+                                views = viewerIds,
+                                isViewed = viewerIds.contains(currentUserId)
                             )
                         )
                     }
@@ -164,6 +172,30 @@ class StoryViewerViewModel @Inject constructor(
         _state.value = _state.value.copy(replySent = false)
     }
 
+    // ── Reactions ────────────────────────────────────────────────────────────
+
+    fun addReaction(storyOwnerId: String, storyId: String, emoji: String) {
+        if (emoji.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { repository.addStoryReaction(storyOwnerId, storyId, emoji) }
+                .onSuccess {
+                    _state.value = _state.value.copy(
+                        reactionSent = emoji,
+                        myReactions = _state.value.myReactions + (storyId to emoji)
+                    )
+                }
+                .onFailure {
+                    _state.value = _state.value.copy(
+                        error = "No se pudo enviar la reacción: ${it.message}"
+                    )
+                }
+        }
+    }
+
+    fun clearReactionSent() {
+        _state.value = _state.value.copy(reactionSent = null)
+    }
+
     // ── Viewers ──────────────────────────────────────────────────────────────
 
     fun loadViewers(storyId: String) {
@@ -175,6 +207,48 @@ class StoryViewerViewModel @Inject constructor(
                 .onFailure { e ->
                     android.util.Log.e("StoryViewerVM", "Failed to load viewers: ${e.message}", e)
                 }
+            // El sheet de viewers solo se abre sobre la historia propia, por lo
+            // que el dueño de las reacciones es siempre el usuario autenticado.
+            val ownerId = auth.currentUser?.uid ?: return@launch
+            runCatching { repository.getStoryReactions(ownerId, storyId) }
+                .onSuccess { reactions ->
+                    _state.value = _state.value.copy(reactions = reactions)
+                }
+                .onFailure { e ->
+                    android.util.Log.e("StoryViewerVM", "Failed to load reactions: ${e.message}", e)
+                }
         }
+    }
+
+    // ── Delete (own story) ─────────────────────────────────────────────────────
+
+    /**
+     * Elimina la historia indicada (solo si es del usuario actual; el repo lo
+     * valida y las reglas también). Actualiza la lista local de inmediato y
+     * marca `deleted = true` para que la pantalla cierre el visor.
+     */
+    fun deleteStory(story: StoryItemData) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                repository.deleteStory(story.storyId, story.userId, story.mediaUrl)
+            }.onSuccess {
+                val remaining = _state.value.stories.filterNot { it.storyId == story.storyId }
+                val newIndex = _state.value.currentIndex
+                    .coerceIn(0, (remaining.size - 1).coerceAtLeast(0))
+                _state.value = _state.value.copy(
+                    stories = remaining,
+                    currentIndex = newIndex,
+                    deleted = true
+                )
+            }.onFailure {
+                _state.value = _state.value.copy(
+                    error = it.message ?: "No se pudo eliminar la historia"
+                )
+            }
+        }
+    }
+
+    fun clearDeleted() {
+        _state.value = _state.value.copy(deleted = false)
     }
 }

@@ -927,14 +927,128 @@ class RealtimeDatabaseRepository @Inject constructor(
         database.child("stories_views").child(storyId).child(userId).setValue(ServerValue.TIMESTAMP).await()
     }
 
-    suspend fun sendStoryReply(storyId: String, recipientId: String, content: String) {
-        val chatId = if (auth.currentUser!!.uid < recipientId) "${auth.currentUser!!.uid}_$recipientId" else "${recipientId}_${auth.currentUser!!.uid}"
-        sendMessage(chatId, "Reaccionó a tu historia: $content")
+    /**
+     * Marca como leídos los mensajes ENTRANTES (no propios) de un chat que aún no
+     * estén en "read". Se invoca mientras el usuario tiene el chat abierto. Las
+     * reglas permiten a cualquier miembro del chat escribir en /messages, así que
+     * el receptor puede actualizar el status. Solo escribe los que cambian, para
+     * evitar writes y re-emisiones innecesarias.
+     */
+    suspend fun markMessagesAsRead(chatId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        if (chatId.isBlank()) return
+        val messagesRef = database.child("chats").child(chatId).child("messages")
+        val snapshot = messagesRef.get().await()
+        val updates = mutableMapOf<String, Any>()
+        for (child in snapshot.children) {
+            val map = child.value as? Map<*, *> ?: continue
+            val senderId = map["senderId"] as? String ?: continue
+            val status = map["status"] as? String
+            if (senderId != userId && status != "read") {
+                updates["${child.key}/status"] = "read"
+            }
+        }
+        if (updates.isNotEmpty()) {
+            messagesRef.updateChildren(updates).await()
+        }
     }
 
-    suspend fun getStoryViewers(storyId: String): List<Map<String, Any>> {
+    /**
+     * Responde a una historia: el mensaje llega al chat privado 1:1 con el autor
+     * (se crea si no existe, vía sendMessageInternal) con referencia a la
+     * historia en replyTo ("story:{storyId}") para que la UI muestre la cita.
+     *
+     * NOTA de firma: el destinatario va PRIMERO. La versión anterior recibía
+     * (storyId, recipientId, …) y el ViewModel pasaba (ownerId, storyId, …) →
+     * el chatId se construía con el storyId y la respuesta iba a un chat
+     * inexistente. Parámetros renombrados para que el compilador ataje esto.
+     */
+    suspend fun sendStoryReply(storyOwnerId: String, storyId: String, content: String) {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("No hay sesión activa")
+        if (storyOwnerId.isBlank() || storyOwnerId == currentUserId) return
+        val chatId = if (currentUserId < storyOwnerId) "${currentUserId}_$storyOwnerId"
+                     else "${storyOwnerId}_$currentUserId"
+        sendMessage(chatId, content, replyTo = "story:$storyId")
+    }
+
+    /**
+     * Reacción de emoji a una historia. Se guarda en
+     * stories_reactions/{ownerId}/{storyId}/{uid} = { emoji, timestamp } —
+     * espejo del patrón de stories_views (el nodo de la historia solo lo puede
+     * escribir el dueño según las rules, por eso las reacciones viven aparte).
+     * Una reacción por usuario: reaccionar de nuevo reemplaza el emoji.
+     */
+    suspend fun addStoryReaction(storyOwnerId: String, storyId: String, emoji: String) {
+        val userId = auth.currentUser?.uid ?: throw Exception("No hay sesión activa")
+        if (storyId.isBlank() || storyOwnerId.isBlank()) throw Exception("Historia inválida")
+        database.child("stories_reactions").child(storyOwnerId).child(storyId).child(userId)
+            .setValue(mapOf("emoji" to emoji, "timestamp" to ServerValue.TIMESTAMP))
+            .await()
+    }
+
+    /**
+     * Reacciones de una historia como mapa uid → emoji (para el sheet del autor
+     * y el contador). Resolver nombres/fotos es responsabilidad del caller
+     * (igual que getStoryViewers).
+     */
+    suspend fun getStoryReactions(storyOwnerId: String, storyId: String): Map<String, String> {
+        if (storyId.isBlank() || storyOwnerId.isBlank()) return emptyMap()
+        val snapshot = database.child("stories_reactions").child(storyOwnerId).child(storyId).get().await()
+        return snapshot.children.mapNotNull { child ->
+            val uid = child.key ?: return@mapNotNull null
+            val emoji = child.child("emoji").getValue(String::class.java) ?: return@mapNotNull null
+            uid to emoji
+        }.toMap()
+    }
+
+    /**
+     * UIDs que han visto una historia (claves de stories_views/{storyId}).
+     * Fuente de verdad para el estado "visto/no visto" y el conteo de vistas.
+     */
+    suspend fun getStoryViewerIds(storyId: String): List<String> {
+        if (storyId.isBlank()) return emptyList()
         val snapshot = database.child("stories_views").child(storyId).get().await()
-        return snapshot.children.mapNotNull { it.value as? Map<String, Any> }
+        return snapshot.children.mapNotNull { it.key }
+    }
+
+    /**
+     * Lista de espectadores con perfil (nombre + foto). Antes casteaba el
+     * timestamp de cada vista a Map<String, Any> y devolvía SIEMPRE lista vacía;
+     * ahora lee los UID (claves) y resuelve cada perfil con getUserById.
+     */
+    suspend fun getStoryViewers(storyId: String): List<Map<String, Any>> {
+        if (storyId.isBlank()) return emptyList()
+        val viewerIds = getStoryViewerIds(storyId)
+        return viewerIds.map { uid ->
+            val user = runCatching { getUserById(uid) }.getOrNull()
+            buildMap<String, Any> {
+                put("uid", uid)
+                (user?.get("displayName") as? String)?.let { put("displayName", it) }
+                (user?.get("username") as? String)?.let { put("username", it) }
+                (user?.get("name") as? String)?.let { put("name", it) }
+                (user?.get("photoUrl") as? String)?.let { put("photoUrl", it) }
+            }
+        }
+    }
+
+    /**
+     * Elimina una historia propia: borra el nodo en Realtime Database y, si es
+     * media (imagen/video), intenta borrar también el archivo en Storage
+     * (best-effort). Solo el dueño puede borrar (lo exigen las reglas y lo
+     * validamos aquí antes de tocar la red).
+     */
+    suspend fun deleteStory(storyId: String, ownerId: String, mediaUrl: String? = null) {
+        val userId = auth.currentUser?.uid ?: throw Exception("No hay sesión activa")
+        if (userId != ownerId) throw Exception("Solo puedes eliminar tus propias historias")
+        if (storyId.isBlank()) throw Exception("storyId vacío")
+
+        database.child("stories").child(ownerId).child(storyId).removeValue().await()
+
+        if (!mediaUrl.isNullOrBlank() && mediaUrl.startsWith("http")) {
+            runCatching {
+                FirebaseStorage.getInstance().getReferenceFromUrl(mediaUrl).delete().await()
+            }
+        }
     }
 
     suspend fun getChatMediaGallery(chatId: String): List<Map<String, Any>> {

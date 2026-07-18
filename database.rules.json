@@ -4,6 +4,7 @@
     ".write": false,
     
     "users": {
+      ".indexOn": ["username", "displayName"],
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid",
@@ -31,6 +32,7 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid",
         "$chatId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('chats').child($chatId).child('members').child(auth.uid).exists() || root.child('groups').child($chatId).child('members').child(auth.uid).exists())",
           ".validate": "newData.val() === true"
         }
       }
@@ -39,10 +41,7 @@
     "chats": {
       "$chatId": {
         ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && (
-          !data.exists() || 
-          root.child('chats').child($chatId).child('members').child(auth.uid).exists()
-        )",
+        ".write": "auth != null && (!data.exists() || root.child('chats').child($chatId).child('members').child(auth.uid).exists())",
         
         "members": {
           "$memberId": {
@@ -51,6 +50,7 @@
         },
         
         "messages": {
+          ".indexOn": ["timestamp"],
           "$messageId": {
             ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
             ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
@@ -60,6 +60,7 @@
     },
     
     "stories": {
+      ".read": "auth != null",
       "$userId": {
         ".read": "auth != null",
         "$storyId": {
@@ -77,18 +78,24 @@
         }
       }
     },
+
+    "stories_reactions": {
+      "$ownerId": {
+        "$storyId": {
+          ".read": "auth != null",
+          "$reactorId": {
+            ".write": "auth != null && auth.uid === $reactorId",
+            ".validate": "newData.hasChildren(['emoji', 'timestamp'])"
+          }
+        }
+      }
+    },
     
     "calls": {
+      ".indexOn": ["callerId", "receiverId"],
       "$callId": {
-        ".read": "auth != null && (
-          data.child('callerId').val() === auth.uid || 
-          data.child('receiverId').val() === auth.uid
-        )",
-        ".write": "auth != null && (
-          !data.exists() || 
-          data.child('callerId').val() === auth.uid || 
-          data.child('receiverId').val() === auth.uid
-        )",
+        ".read": "auth != null && (data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
+        ".write": "auth != null && (!data.exists() || data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
         ".validate": "newData.hasChildren(['callerId', 'receiverId', 'callType'])"
       }
     },
@@ -97,11 +104,7 @@
       "$userId": {
         ".read": "auth != null && auth.uid === $userId",
         "$requestId": {
-          ".write": "auth != null && (
-            !data.exists() ||
-            auth.uid === $userId ||
-            data.child('from').val() === auth.uid
-          )"
+          ".write": "auth != null && (!data.exists() || auth.uid === $userId || data.child('from').val() === auth.uid)"
         }
       }
     },
@@ -125,20 +128,14 @@
     "groups": {
       "$groupId": {
         ".read": "auth != null && root.child('groups').child($groupId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && (
-          !data.exists() ||
-          root.child('groups').child($groupId).child('members').child(auth.uid).exists()
-        )"
+        ".write": "auth != null && (!data.exists() || root.child('groups').child($groupId).child('members').child(auth.uid).exists())"
       }
     },
 
     "group_settings": {
       "$groupId": {
         ".read": "auth != null && root.child('groups').child($groupId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && (
-          !data.exists() ||
-          root.child('groups').child($groupId).child('members').child(auth.uid).exists()
-        )"
+        ".write": "auth != null && (!data.exists() || root.child('groups').child($groupId).child('members').child(auth.uid).exists())"
       }
     },
 
