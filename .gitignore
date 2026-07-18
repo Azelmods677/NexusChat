@@ -51,8 +51,6 @@ google-services.json
 # ───────────────────────────────────────────────
 ANALISIS_PROFUNDO_SOFTWARE.md
 
-# AI assistant workspace (specs, prompts) — never publish
-.kiro/
 .cursor/
 .idea/
 

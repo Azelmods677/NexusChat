@@ -397,7 +397,7 @@ fun CreateStoryScreen(
                     StoryCreationButton(
                         icon = Icons.Default.Videocam,
                         text = "Choose Video",
-                        gradient = listOf(Pink, Color(0xFFFF8E53)),
+                        gradient = NexusTokens.Gradient.Warm,
                         onClick = { 
                             if (PermissionHelper.hasMediaPermissions(context)) {
                                 videoPickerLauncher.launch("video/*")
@@ -412,7 +412,7 @@ fun CreateStoryScreen(
                     StoryCreationButton(
                         icon = Icons.Default.TextFields,
                         text = "Text Story",
-                        gradient = listOf(Teal, Color(0xFF00D9FF)),
+                        gradient = listOf(Teal, NexusTokens.Color.Secondary),
                         onClick = { 
                             selectedImageUri = Uri.parse("text_only")
                             showTextDialog = true
@@ -654,7 +654,7 @@ fun CreateStoryScreen(
                             ModernStoryEditOption(
                                 icon = Icons.Default.EmojiEmotions,
                                 label = "Sticker",
-                                color = Color(0xFFFFB020),
+                                color = NexusTokens.Color.Gold,
                                 onClick = { showStickerPicker = true }
                             )
                             ModernStoryEditOption(
@@ -854,11 +854,11 @@ fun CreateStoryScreen(
             var current by remember { mutableStateOf<DrawnStroke?>(null) }
             var color by remember { mutableStateOf(Pink) }
             val palette = listOf(
-                Color.White, Color.Black, Color(0xFF7C6FE0), Pink,
-                CyanAccent, NeonGreen, GoldPremium, Color(0xFFFF5252)
+                Color.White, Color.Black, NexusTokens.Color.Primary, Pink,
+                CyanAccent, NeonGreen, GoldPremium, NexusTokens.Color.Error
             )
 
-            Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D0D1E))) {
+            Box(modifier = Modifier.fillMaxSize().background(NexusTokens.Color.BgBase)) {
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier
                         .fillMaxSize()
@@ -911,7 +911,7 @@ fun CreateStoryScreen(
                             Icon(Icons.Default.Undo, "Deshacer", tint = Color.White)
                         }
                         IconButton(onClick = { strokes.clear() }) {
-                            Icon(Icons.Default.Delete, "Limpiar", tint = Color(0xFFFF5252))
+                            Icon(Icons.Default.Delete, "Limpiar", tint = NexusTokens.Color.Error)
                         }
                         TextButton(onClick = { showDrawMode = false }) {
                             Text("Listo", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
@@ -925,7 +925,7 @@ fun CreateStoryScreen(
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .navigationBarsPadding()
-                        .background(Color(0xFF141428))
+                        .background(NexusTokens.Color.BgSurface)
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
