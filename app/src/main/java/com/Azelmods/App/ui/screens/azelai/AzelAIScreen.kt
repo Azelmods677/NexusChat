@@ -31,18 +31,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.Azelmods.App.data.model.AIMessage
+import com.Azelmods.App.ui.theme.NexusTokens
 import kotlinx.coroutines.delay
 import java.util.*
 
 // ── Paleta  Premium (Onyx & Slate) ───────────────────
-private val BgDark = Color(0xFF0D0F12)       
-private val SurfaceDark = Color(0xFF1A1D21)  
-private val AzelPurple = Color(0xFFAB7FEF)   
-private val AzelBlue = Color(0xFF63B3ED)     
-private val TextPrimary = Color(0xFFE2E8F0)
-private val TextSecondary = Color(0xFF94A3B8)
-private val BorderColor = Color(0xFF2D3748)
-private val UserBubble = Color(0xFF2D3748)
+private val BgDark = NexusTokens.Color.BgBase       
+private val SurfaceDark = NexusTokens.Color.BgSurface  
+private val AzelPurple = NexusTokens.Color.PrimaryLight   
+private val AzelBlue = NexusTokens.Color.Secondary     
+private val TextPrimary = NexusTokens.Color.TextPrimary
+private val TextSecondary = NexusTokens.Color.TextSecondary
+private val BorderColor = NexusTokens.Color.GlassBorder
+private val UserBubble = NexusTokens.Color.BgElevated
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -230,7 +231,7 @@ fun AzelAITopBar(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier.size(7.dp).clip(CircleShape)
-                            .background(Color(0xFF48BB78)) // SIEMPRE VERDE
+                            .background(NexusTokens.Color.Online) // SIEMPRE VERDE
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
@@ -487,12 +488,12 @@ fun AzelAIInputBar(
 fun ErrorBanner(error: String, onClose: () -> Unit, onRetry: (() -> Unit)? = null) {
     Surface(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
-        color = Color(0xFF2D1212),
-        border = BorderStroke(1.dp, Color(0xFFF56565)),
+        color = NexusTokens.Color.Error.copy(alpha = 0.15f),
+        border = BorderStroke(1.dp, NexusTokens.Color.Error),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Info, null, tint = Color(0xFFF56565))
+            Icon(Icons.Default.Info, null, tint = NexusTokens.Color.Error)
             Text(error, color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f).padding(horizontal = 8.dp))
             if (onRetry != null) {
                 IconButton(onClick = onRetry) { Icon(Icons.Default.Refresh, "Reintentar", tint = Color.White.copy(0.8f)) }
@@ -510,8 +511,8 @@ fun AzelAIThinkingBubble(
     val progress = (elapsedMs.toFloat() / timeoutMs.toFloat()).coerceIn(0f, 1f)
     val timeoutColor = when {
         progress < 0.7f -> AzelPurple
-        progress < 0.9f -> Color(0xFFED8936) // Naranja cuando se acerca
-        else -> Color(0xFFF56565) // Rojo cuando está por expirar
+        progress < 0.9f -> NexusTokens.Color.Away // Naranja cuando se acerca
+        else -> NexusTokens.Color.Error // Rojo cuando está por expirar
     }
     val elapsedSeconds = elapsedMs / 1000
     
@@ -581,7 +582,7 @@ fun AzelConfirmDialog(title: String, desc: String, onConfirm: () -> Unit, onDism
         title = { Text(title, color = TextPrimary) },
         text = { Text(desc, color = TextSecondary) },
         confirmButton = {
-            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF56565))) {
+            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = NexusTokens.Color.Error)) {
                 Text("Confirmar")
             }
         },

@@ -230,10 +230,10 @@ fun ProfileScreen(
                                 .background(
                                     Brush.linearGradient(
                                         listOf(
-                                            Color(0xFF00C9FF), 
-                                            Color(0xFF92FE9D),
-                                            RosePink, 
-                                            Color(0xFF6A3093)
+                                            CyanAccent,
+                                            NeonGreen,
+                                            RosePink,
+                                            Purple
                                         )
                                     )
                                 )
