@@ -45,7 +45,10 @@ fun VideoWallpaper(
         return
     }
     
-    val exoPlayer = remember {
+    // remember(videoUri): si el usuario cambia el video de fondo con el chat
+    // abierto, DisposableEffect libera el player viejo — sin la key, remember
+    // seguiría devolviendo el player liberado y el fondo quedaba en negro.
+    val exoPlayer = remember(videoUri) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(videoUri))
             repeatMode = Player.REPEAT_MODE_ONE
