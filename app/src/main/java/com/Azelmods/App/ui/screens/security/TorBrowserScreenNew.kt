@@ -179,7 +179,7 @@ fun TorBrowserScreenNew(
                             imageVector = if (proxyEnabled) Icons.Default.Shield
                                           else Icons.Default.Public,
                             contentDescription = null,
-                            tint = if (proxyEnabled) Color(0xFF00FF00) else MaterialTheme.colorScheme.primary
+                            tint = if (proxyEnabled) Success else MaterialTheme.colorScheme.primary
                         )
                         Text(
                             text = if (proxyEnabled) "🧅 Navegador Tor" else "🌐 Navegador",
@@ -228,7 +228,7 @@ fun TorBrowserScreenNew(
                         imageVector = if (proxyEnabled) Icons.Default.Shield
                                        else Icons.Default.Wifi,
                         contentDescription = null,
-                        tint = if (proxyEnabled) Color(0xFF00FF00) else Success,
+                        tint = Success,
                         modifier = Modifier.size(14.dp)
                     )
                     Text(

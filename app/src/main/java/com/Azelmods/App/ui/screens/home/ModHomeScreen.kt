@@ -43,6 +43,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.Azelmods.App.ui.theme.TerminalBlack
 
 /**
@@ -232,7 +233,7 @@ fun ModHomeScreen(
                     .fillMaxWidth()
                     .height(200.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF111111)
+                color = NexusTokens.Color.BgDeep
             ) {
                 Box(
                     contentAlignment = Alignment.Center,
@@ -321,7 +322,7 @@ private fun StatCard(
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF111111),
+        color = NexusTokens.Color.BgDeep,
         border = androidx.compose.foundation.BorderStroke(
             width = 1.dp,
             color = themeColor.copy(alpha = 0.3f)

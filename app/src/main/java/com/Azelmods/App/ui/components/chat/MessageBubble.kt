@@ -35,6 +35,7 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.Azelmods.App.ui.theme.PurpleLight
 import com.Azelmods.App.ui.theme.ErrorRed
 import com.Azelmods.App.ui.theme.DarkElevated
@@ -462,7 +463,7 @@ fun MessageBubble(
                                                 .fillMaxHeight()
                                                 .background(
                                                     if (progress > 0.5f) PurpleLight
-                                                    else if (progress > 0.2f) Color(0xFFFF8C00)
+                                                    else if (progress > 0.2f) NexusTokens.Color.Away
                                                     else ErrorRed,
                                                     RoundedCornerShape(2.dp)
                                                 )

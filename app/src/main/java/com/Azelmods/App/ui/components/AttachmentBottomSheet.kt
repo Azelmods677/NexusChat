@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.Azelmods.App.ui.theme.Pink
 import com.Azelmods.App.ui.theme.Purple
 import com.Azelmods.App.ui.theme.Teal
@@ -130,7 +131,7 @@ fun AttachmentBottomSheet(
                 AttachmentOption(
                     icon = Icons.Default.Mic,
                     label = "Audio",
-                    color = Color(0xFFFFB020),
+                    color = NexusTokens.Color.Gold,
                     onClick = {
                         onAttachmentSelected(AttachmentType.AUDIO)
                         onDismiss()

@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import com.Azelmods.App.ui.theme.NexusTokens
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -207,7 +208,7 @@ fun AudioMessagePlayer(
                         Icon(
                             imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (playing) "Pause" else "Play",
-                            tint = if (isError) Color(0xFFFF6B6B) else Color.White,
+                            tint = if (isError) NexusTokens.Color.Error else Color.White,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -267,7 +268,7 @@ fun AudioMessagePlayer(
                         text = if (isError) "❌ Error al cargar audio" 
                                else if (isLoading) "⏳ Cargando..." 
                                else "🎵 Mensaje de voz",
-                        color = if (isError) Color(0xFFFF6B6B) else Color.White.copy(alpha = 0.9f),
+                        color = if (isError) NexusTokens.Color.Error else Color.White.copy(alpha = 0.9f),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
