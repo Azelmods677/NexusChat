@@ -35,6 +35,10 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
     // 🔥 JS execution via WebView (Composable handles the actual WebView)
     private val _jsToExecute = MutableStateFlow<String?>(null)
     val jsToExecute: StateFlow<String?> = _jsToExecute.asStateFlow()
+
+    // 🌐 HTML/CSS live preview: el Composable renderiza este HTML en un WebView visible.
+    private val _htmlToPreview = MutableStateFlow<String?>(null)
+    val htmlToPreview: StateFlow<String?> = _htmlToPreview.asStateFlow()
     
     // Referencia + listener del historial de archivos, para poder removerlo en
     // onCleared() y no fugar el listener (antes se registraba y nunca se quitaba).
@@ -183,6 +187,16 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
                     _output.value = "🟨 Ejecutando JavaScript..."
                     _jsToExecute.value = code
                 }
+                "html" -> {
+                    // Renderiza el HTML (con su CSS/JS embebido) en un WebView visible.
+                    _output.value = "🌐 Vista previa HTML — pulsa la X para volver al editor"
+                    _htmlToPreview.value = code
+                }
+                "css" -> {
+                    // El CSS solo no es una página: se previsualiza sobre contenido de ejemplo.
+                    _output.value = "🎨 Vista previa del CSS con contenido de ejemplo"
+                    _htmlToPreview.value = wrapCssInHtml(code)
+                }
                 "python" -> {
                     _output.value = "🐍 Python no está disponible en Android nativo.\n\n" +
                         "Para ejecutar Python:\n" +
@@ -216,6 +230,30 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
         }
     }
 
+    fun clearHtmlPreview() {
+        _htmlToPreview.value = null
+    }
+
+    /** Envuelve una hoja de estilos en una página mínima para poder previsualizarla. */
+    private fun wrapCssInHtml(css: String): String = """
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+        $css
+          </style>
+        </head>
+        <body>
+          <h1>Título de ejemplo</h1>
+          <p>Párrafo de ejemplo para previsualizar tu CSS.</p>
+          <button>Botón</button>
+          <div class="box">Elemento .box</div>
+        </body>
+        </html>
+    """.trimIndent()
+
     /**
      * Called by the Composable after WebView JS execution completes.
      */
@@ -241,6 +279,8 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
         "bash" -> "#!/bin/bash\n# Nexus Chat Framework\n\necho 'Hello from Nexus Chat!'\n"
         "js" -> "// Nexus Chat Framework\nconsole.log('Hello from Nexus Chat!');\n"
         "c" -> "#include <stdio.h>\nint main() {\n    printf(\"Hello from Nexus Chat!\\n\");\n    return 0;\n}\n"
+        "html" -> "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Nexus Chat</title>\n  <style>\n    body { font-family: sans-serif; text-align: center; padding: 2rem; }\n    h1 { color: #7C6FE0; }\n  </style>\n</head>\n<body>\n  <h1>Hello from Nexus Chat!</h1>\n  <p>Edita este HTML y pulsa ▶ para ver la vista previa.</p>\n  <script>console.log('Listo');</script>\n</body>\n</html>\n"
+        "css" -> "/* Nexus Chat Framework */\nbody {\n  font-family: sans-serif;\n  background: #0D0D1E;\n  color: #FFFFFF;\n  padding: 2rem;\n}\nh1 { color: #7C6FE0; }\n.box {\n  margin-top: 1rem;\n  padding: 1rem;\n  border: 2px solid #00D4FF;\n  border-radius: 12px;\n}\n"
         else -> "// Nuevo archivo\n"
     }
     

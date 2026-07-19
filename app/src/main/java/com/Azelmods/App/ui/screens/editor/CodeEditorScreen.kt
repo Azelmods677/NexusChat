@@ -47,6 +47,7 @@ fun CodeEditorScreen(
     val output by viewModel.output.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
     val jsToExecute by viewModel.jsToExecute.collectAsState()
+    val htmlToPreview by viewModel.htmlToPreview.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showNewFileDialog by remember { mutableStateOf(false) }
@@ -463,7 +464,7 @@ fun CodeEditorScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Language:", color = Color.Gray, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    val languages = listOf("python", "kotlin", "bash", "js", "c")
+                    val languages = listOf("html", "css", "js", "python", "kotlin", "bash", "c")
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -502,5 +503,51 @@ fun CodeEditorScreen(
             },
             containerColor = DarkSurface
         )
+    }
+
+    // ── HTML/CSS live preview (WebView visible, a pantalla completa) ──────────
+    htmlToPreview?.let { html ->
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { viewModel.clearHtmlPreview() },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(DarkSurface)
+                            .statusBarsPadding()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Language, null, tint = TerminalGreen)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Vista previa",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = { viewModel.clearHtmlPreview() }) {
+                            Icon(Icons.Default.Close, null, tint = Color.White)
+                        }
+                    }
+                    androidx.compose.ui.viewinterop.AndroidView(
+                        factory = { ctx ->
+                            WebView(ctx).apply {
+                                settings.javaScriptEnabled = true
+                                settings.domStorageEnabled = true
+                                webViewClient = WebViewClient()
+                            }
+                        },
+                        update = { wv ->
+                            wv.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            }
+        }
     }
 }
