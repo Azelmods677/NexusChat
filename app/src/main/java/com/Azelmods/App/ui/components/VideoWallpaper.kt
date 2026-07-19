@@ -87,6 +87,13 @@ fun VideoWallpaper(
                     this.alpha = alpha
                 }
             },
+            // update se ejecuta en cada recomposición: sin esto, al cambiar el
+            // video de fondo el PlayerView seguía atado al player anterior (ya
+            // liberado por DisposableEffect) y el fondo quedaba en negro.
+            update = { view ->
+                if (view.player !== exoPlayer) view.player = exoPlayer
+                view.alpha = alpha
+            },
             modifier = Modifier.fillMaxSize()
         )
     }
