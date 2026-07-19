@@ -105,7 +105,7 @@ fun NexusPrimaryButton(
             .background(
                 if (enabled) Brush.horizontalGradient(gradient)
                 else Brush.horizontalGradient(
-                    listOf(Color(0xFF2A2A3A), DarkBubbleDeep)
+                    listOf(NexusTokens.Color.BgElevated, DarkBubbleDeep)
                 )
             )
             .clickable(

@@ -41,6 +41,7 @@ import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.ui.components.AppBackground
 import com.Azelmods.App.ui.components.ColorPickerDialog
 import com.Azelmods.App.ui.components.VideoBackgroundPlayer
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.Azelmods.App.ui.theme.linearGradientBrush
 import com.Azelmods.App.ui.theme.parseHexColor
 import com.Azelmods.App.ui.theme.rememberThemeColor
@@ -115,7 +116,7 @@ fun BackgroundPickerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0F0F0F),
+                    containerColor = NexusTokens.Color.BgDeep,
                     titleContentColor = Color.White,
                     navigationIconContentColor = Color.White
                 )
@@ -132,7 +133,7 @@ fun BackgroundPickerScreen(
             if (chatId != null) {
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = Color(0xFF0F0F0F),
+                    containerColor = NexusTokens.Color.BgDeep,
                     contentColor = themeColor
                 ) {
                     Tab(
@@ -223,7 +224,7 @@ fun BackgroundPickerScreen(
                                 Icon(
                                     Icons.Default.DoneAll,
                                     contentDescription = null,
-                                    tint = Color(0xFF4FC3F7),
+                                    tint = NexusTokens.Color.Secondary,
                                     modifier = Modifier.size(14.dp)
                                 )
                             }
@@ -237,7 +238,7 @@ fun BackgroundPickerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(0.65f)
-                    .background(Color(0xFF0F0F0F))
+                    .background(NexusTokens.Color.BgDeep)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -529,7 +530,7 @@ private fun RowScope.TypeChip(
             .height(40.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = if (selected) themeColor.copy(alpha = 0.2f) else Color(0xFF1A1A1A),
+        color = if (selected) themeColor.copy(alpha = 0.2f) else NexusTokens.Color.BgElevated,
         border = BorderStroke(
             width = 1.dp,
             color = if (selected) themeColor else Color.Transparent
@@ -587,7 +588,7 @@ private fun ColorContent(
                     modifier = Modifier
                         .aspectRatio(1f)
                         .clip(CircleShape)
-                        .background(Color(0xFF1A1A1A))
+                        .background(NexusTokens.Color.BgElevated)
                         .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape)
                         .clickable(onClick = onCustomClick),
                     contentAlignment = Alignment.Center
@@ -607,14 +608,14 @@ private fun ColorContent(
 @Composable
 private fun ImageContent(
     onPickImage: () -> Unit,
-    themeColor: Color = Color(0xFFCC0000)
+    themeColor: Color = NexusTokens.Color.Primary
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
             onClick = onPickImage,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1A1A1A)
+                containerColor = NexusTokens.Color.BgElevated
             )
         ) {
             Icon(Icons.Default.Image, contentDescription = null)
@@ -652,14 +653,14 @@ private fun ImageContent(
 @Composable
 private fun VideoContent(
     onPickVideo: () -> Unit,
-    themeColor: Color = Color(0xFFCC0000)
+    themeColor: Color = NexusTokens.Color.Primary
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Button(
             onClick = onPickVideo,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1A1A1A)
+                containerColor = NexusTokens.Color.BgElevated
             )
         ) {
             Icon(Icons.Default.VideoLibrary, contentDescription = null)
@@ -703,7 +704,7 @@ private fun GradientContent(
     onColor2Click: () -> Unit,
     onAngleChange: (Int) -> Unit,
     onPresetSelected: (List<String>) -> Unit,
-    themeColor: Color = Color(0xFFCC0000)
+    themeColor: Color = NexusTokens.Color.Primary
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Preset gradients section
@@ -802,7 +803,7 @@ private fun ColorButton(
             .height(48.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
-        color = Color(0xFF1A1A1A)
+        color = NexusTokens.Color.BgElevated
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -829,7 +830,7 @@ private fun ColorButton(
 private fun BlurContent(
     blurRadius: Float,
     onBlurChange: (Float) -> Unit,
-    themeColor: Color = Color(0xFFCC0000)
+    themeColor: Color = NexusTokens.Color.Primary
 ) {
     Column {
         Text(
@@ -853,7 +854,7 @@ private fun BlurContent(
 private fun OverlaySlider(
     alpha: Float,
     onAlphaChange: (Float) -> Unit,
-    themeColor: Color = Color(0xFFCC0000)
+    themeColor: Color = NexusTokens.Color.Primary
 ) {
     Column {
         Text(

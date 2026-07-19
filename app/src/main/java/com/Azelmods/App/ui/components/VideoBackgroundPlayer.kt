@@ -17,6 +17,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.Azelmods.App.ui.theme.TerminalBlack
 
 /**
@@ -122,7 +123,7 @@ fun VideoBackgroundPlayer(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        color = Color(0xFFCC0000)
+                        color = NexusTokens.Color.Error
                     )
                 }
             }
