@@ -210,80 +210,50 @@ class RealTerminalEmulator(private val context: Context) {
     private fun showHelp() {
         val helpText = """
             ╔═══════════════════════════════════════════════════╗
-            ║         REAL TERMUX TERMINAL - HELP              ║
+            ║              NEXUS TERMINAL - HELP                ║
             ╚═══════════════════════════════════════════════════╝
-            
-            This is a REAL terminal powered by azel.
-            All Android shell commands are available.
-            
-            BUILT-IN COMMANDS:
-              help              - Show this help
-              clear / cls       - Clear screen
-              cd <dir>          - Change directory
-              pwd               - Print working directory
-              exit              - Close terminal
-            
-            REAL SHELL COMMANDS:
-              ls [-la] [dir]    - List files
-              cat <file>        - Display file content
-              echo <text>       - Print text
-              touch <file>      - Create file
-              mkdir <dir>       - Create directory
-              rm [-rf] <file>   - Remove file/directory
-              cp <src> <dst>    - Copy file
-              mv <src> <dst>    - Move/rename file
-              chmod <mode> <f>  - Change permissions
-              grep <pattern>    - Search in files
-              find <path>       - Find files
-              ps                - List processes
-              top               - Process monitor
-              df [-h]           - Disk space
-              free              - Memory info
-              uname -a          - System info
-              whoami            - Current user
-              id                - User ID info
-              date              - Current date/time
-              uptime            - System uptime
-              ping <host>       - Ping host
-              netstat           - Network connections
-              ifconfig          - Network interfaces
-              ip addr           - IP addresses
-              getprop           - Android properties
-              am                - Activity manager
-              pm list packages  - List installed apps
-              dumpsys           - System services
-              logcat            - System logs
-              
-            ANDROID SPECIFIC:
-              pm install <apk>  - Install APK
-              pm uninstall <pkg> - Uninstall package
-              am start <intent> - Start activity
-              screencap <file>  - Screenshot
-              screenrecord <f>  - Record screen
-              input text <txt>  - Input text
-              input tap <x> <y> - Tap screen
-              wm size           - Screen resolution
-              wm density        - Screen density
-              
-            ROOT COMMANDS (if available):
-              su                - Switch to root
-              su -c "command"   - Run command as root
-              mount             - Mount filesystems
-              reboot            - Reboot device
-              
-            PACKAGE MANAGEMENT:
-              Install Termux from F-Droid or GitHub
-              Then use: pkg install <package>
-              
-            NOTES:
-              • All commands execute in real-time
-              • Root commands require root access
-              • Some commands may require Termux packages
-              • This is a REAL terminal, not simulated
-            
+
+            Shell real de Android (toybox/toolbox) sobre /system/bin/sh.
+            Cada comando se ejecuta por separado (no es una sesión
+            interactiva: 'export', 'vi' o programas que piden entrada no
+            mantienen estado entre comandos).
+
+            INTEGRADOS:
+              help              - Muestra esta ayuda
+              clear / cls       - Limpia la pantalla
+              cd <dir>          - Cambia de directorio
+              pwd               - Directorio actual
+              exit              - Cierra la terminal
+
+            COMANDOS DE ANDROID DISPONIBLES (sin root):
+              ls [-la] [dir]    - Lista archivos
+              cat <file>        - Muestra un archivo
+              echo <text>       - Imprime texto
+              touch / mkdir     - Crea archivo / carpeta
+              rm / cp / mv      - Borra / copia / mueve
+              grep / find       - Busca en archivos
+              ps / top          - Procesos
+              df -h / free       - Disco / memoria
+              uname -a / getprop - Info del sistema
+              date / uptime     - Fecha / tiempo encendido
+              ping <host>       - Prueba de red
+              pm list packages  - Apps instaladas
+              dumpsys / logcat  - Servicios / logs del sistema
+
+            CON ROOT (si el dispositivo lo tiene y lo concede):
+              su -c "comando"   - Ejecuta como superusuario
+              mount / reboot    - Montar / reiniciar
+
+            LO QUE NO HACE (sé consciente):
+              • NO es Termux: no hay 'pkg'/'apt' ni repositorios.
+              • Sin root, la mayoría de rutas del sistema son de
+                solo lectura y algunos comandos dan "permission denied".
+              • Para Python/gcc/node instala Termux por separado; esta
+                terminal no puede instalarlos.
+
             ═══════════════════════════════════════════════════
         """.trimIndent()
-        
+
         helpText.lines().forEach { addLine(it, TerminalLine.Type.OUTPUT) }
     }
     
