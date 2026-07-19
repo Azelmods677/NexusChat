@@ -20,6 +20,19 @@ class StorageRepository @Inject constructor(
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 
     /**
+     * Metadata explícita con contentType para cada subida. putFile() sobre un
+     * URI file:// (archivos temporales de historias compuestas, crops, videos
+     * con overlays, etc.) no puede resolver el MIME por ContentResolver y sube
+     * como application/octet-stream — y las reglas de Storage que exigen tipo
+     * imagen o video rechazan esa subida con permission denied. Ese era el
+     * motivo por el que las historias con foto o video no se publicaban.
+     */
+    private fun mediaMetadata(contentType: String): com.google.firebase.storage.StorageMetadata =
+        com.google.firebase.storage.StorageMetadata.Builder()
+            .setContentType(contentType)
+            .build()
+
+    /**
      * Tamaño en bytes de un content:// URI (−1 si no se puede determinar).
      * Permite validar límites antes de subir a Storage.
      */
@@ -50,7 +63,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/images/$timestamp.jpg")
             
-            fileRef.putFile(imageUri)
+            fileRef.putFile(imageUri, mediaMetadata("image/jpeg"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
@@ -85,7 +98,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/audio/$timestamp.aac")
             
-            fileRef.putFile(audioUri)
+            fileRef.putFile(audioUri, mediaMetadata("audio/aac"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
@@ -120,7 +133,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/videos/$timestamp.mp4")
             
-            fileRef.putFile(videoUri)
+            fileRef.putFile(videoUri, mediaMetadata("video/mp4"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
@@ -158,7 +171,7 @@ class StorageRepository @Inject constructor(
             val ext = if (isVideo) "mp4" else "jpg"
             val fileRef = storage.reference.child("user_backgrounds/$userId/$timestamp.$ext")
 
-            fileRef.putFile(uri)
+            fileRef.putFile(uri, mediaMetadata(if (isVideo) "video/mp4" else "image/jpeg"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { downloadUri ->
                         continuation.resume(downloadUri.toString())
@@ -193,7 +206,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("stories/$userId/$timestamp.jpg")
             
-            fileRef.putFile(imageUri)
+            fileRef.putFile(imageUri, mediaMetadata("image/jpeg"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
@@ -233,7 +246,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("user_photos/$userId/profile.jpg")
             
-            fileRef.putFile(imageUri)
+            fileRef.putFile(imageUri, mediaMetadata("image/jpeg"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
@@ -279,7 +292,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("user_photos/$userId/cover.jpg")
             
-            fileRef.putFile(imageUri)
+            fileRef.putFile(imageUri, mediaMetadata("image/jpeg"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
@@ -356,7 +369,7 @@ class StorageRepository @Inject constructor(
             val storageRef = storage.reference
             val fileRef = storageRef.child("stories/$userId/$timestamp.mp4")
             
-            fileRef.putFile(videoUri)
+            fileRef.putFile(videoUri, mediaMetadata("video/mp4"))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())
