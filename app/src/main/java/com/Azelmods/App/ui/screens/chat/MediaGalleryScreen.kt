@@ -209,19 +209,10 @@ private fun FullScreenMediaViewer(
                     onDismiss = onDismiss
                 )
             } else if (message.mediaType == "VIDEO") {
-                // TODO: Implement video player with zoom
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Video viewer\n(Tap to close)",
-                        color = Color.White,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                FullscreenVideoPlayer(
+                    videoUrl = message.mediaUrl ?: "",
+                    onDismiss = onDismiss
+                )
             }
         }
         
@@ -377,5 +368,82 @@ private fun ZoomableImage(
                 }
             }
         )
+    }
+}
+
+/**
+ * Fullscreen video playback with pinch-to-zoom, using Media3 ExoPlayer.
+ * Mirrors the inline player in MessageBubble but adds transformable zoom/pan.
+ */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun FullscreenVideoPlayer(
+    videoUrl: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    val exoPlayer = remember(videoUrl) {
+        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+            setMediaItem(androidx.media3.common.MediaItem.fromUri(videoUrl))
+            prepare()
+            playWhenReady = true
+            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose { exoPlayer.release() }
+    }
+
+    val transformableState = rememberTransformableState { zoomChange, panChange, _ ->
+        scale = (scale * zoomChange).coerceIn(1f, 4f)
+        if (scale > 1f) {
+            offsetX += panChange.x
+            offsetY += panChange.y
+        } else {
+            offsetX = 0f
+            offsetY = 0f
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        androidx.compose.ui.viewinterop.AndroidView(
+            factory = { ctx ->
+                androidx.media3.ui.PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = true
+                    setShowNextButton(false)
+                    setShowPreviousButton(false)
+                }
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offsetX,
+                    translationY = offsetY
+                )
+                .transformable(state = transformableState)
+        )
+
+        IconButton(
+            onClick = onDismiss,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(16.dp)
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "Cerrar video",
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+        }
     }
 }

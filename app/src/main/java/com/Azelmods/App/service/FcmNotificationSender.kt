@@ -39,6 +39,9 @@ object FcmNotificationSender {
 
     private const val TAG = "FcmNotificationSender"
     private const val FCM_API_URL = "https://fcm.googleapis.com/fcm/send"
+
+    /** Debe coincidir con @color/notification_accent (payload FCM viaja como string hex). */
+    private const val ACCENT_COLOR_HEX = "#7B5CFA"
     private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
     private val client = OkHttpClient.Builder()
@@ -73,7 +76,7 @@ object FcmNotificationSender {
                 put("sound", "default")
                 put("badge", "1")
                 put("icon", "ic_notification")
-                put("color", "#7B5CFA")
+                put("color", ACCENT_COLOR_HEX)
             }
 
             val messageJson = JSONObject().apply {

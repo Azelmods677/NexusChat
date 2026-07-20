@@ -367,8 +367,15 @@ fun ChatRow(
     themeSecondaryColor: Color = MaterialTheme.colorScheme.secondary
 ) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val contactName = chat.participantNames.values.firstOrNull() ?: "Anónimo"
-    val isOnline = chat.isTyping.values.any { it }
+    val otherUserId = chat.participantIds.ifEmpty { chat.participants }
+        .firstOrNull { it != currentUserId }
+    val contactName = otherUserId?.let { chat.participantNames[it] }
+        ?: chat.contactName.ifBlank { null }
+        ?: chat.participantNames.values.firstOrNull()
+        ?: "Anónimo"
+    val contactPhotoUrl = otherUserId?.let { chat.participantPhotos[it] }
+        ?: chat.contactPhotoUrl
+    val isOnline = chat.isTyping.any { (userId, typing) -> typing && userId != currentUserId }
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
     
     // Animated entry
@@ -433,7 +440,7 @@ fun ChatRow(
                     ) {
                         UserAvatar(
                             name = contactName,
-                            photoUrl = null, // TODO: Get from chat.participantPhotos
+                            photoUrl = contactPhotoUrl,
                             size = 54.dp
                         )
                     }

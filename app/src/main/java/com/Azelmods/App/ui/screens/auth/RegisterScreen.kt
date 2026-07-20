@@ -262,8 +262,11 @@ fun RegisterScreen(
                 )
             }
             
-            // Google Sign-In button
-            // TODO: Migrar a Google Credential Manager API cuando sea posible
+            // Google Sign-In button.
+            // NOTA: usa GoogleSignInClient (marcado @Suppress("DEPRECATION")) de forma
+            // deliberada: es estable y funciona en producción. La migración a Credential
+            // Manager es un cambio de flujo de auth de mayor alcance y se hará en un
+            // refactor dedicado, no aquí.
             val context = androidx.compose.ui.platform.LocalContext.current
             @Suppress("DEPRECATION")
             val googleSignInClient = remember {

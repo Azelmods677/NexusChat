@@ -429,7 +429,7 @@ fun CodeEditorScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 output,
-                                color = Color(0xFFCCCCCC),
+                                color = TerminalGray,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 12.sp,
                                 modifier = Modifier.verticalScroll(rememberScrollState())

@@ -219,15 +219,9 @@ class SecureFileManager @Inject constructor(
         }
     }
 
-    /**
-     * Cancels an ongoing upload or download.
-     *
-     * @param taskId The task ID to cancel
-     */
-    suspend fun cancelTransfer(taskId: String) = withContext(Dispatchers.IO) {
-        // TODO: Implement task cancellation
-        Log.d(TAG, "Cancelling transfer: $taskId")
-    }
+    // Nota: la cancelación de transferencias se hace cancelando la corrutina que
+    // colecta el Flow de uploadFile/downloadFile; los .await() internos se cancelan
+    // en cadena. No hace falta una API de cancelación separada.
 
     /**
      * Deletes a file from Firebase Storage.

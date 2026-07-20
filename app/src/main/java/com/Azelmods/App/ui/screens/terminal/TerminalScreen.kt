@@ -31,8 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
+import com.Azelmods.App.ui.theme.TerminalAmber
 import com.Azelmods.App.ui.theme.TerminalBlack
+import com.Azelmods.App.ui.theme.TerminalGray
 import com.Azelmods.App.ui.theme.TerminalGreen
+import com.Azelmods.App.ui.theme.TerminalRed
+import com.Azelmods.App.ui.theme.TerminalSurface
 import com.Azelmods.App.ui.theme.PurpleBright
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,10 +123,10 @@ fun TerminalScreen(
                         color = when (line.type) {
                             RealTerminalEmulator.TerminalLine.Type.SYSTEM -> PurpleBright
                             RealTerminalEmulator.TerminalLine.Type.INPUT -> TerminalGreen
-                            RealTerminalEmulator.TerminalLine.Type.OUTPUT -> Color(0xFFCCCCCC)
+                            RealTerminalEmulator.TerminalLine.Type.OUTPUT -> TerminalGray
                             RealTerminalEmulator.TerminalLine.Type.SUCCESS -> TerminalGreen
-                            RealTerminalEmulator.TerminalLine.Type.ERROR -> Color(0xFFFF4444)
-                            RealTerminalEmulator.TerminalLine.Type.WARNING -> Color(0xFFFFAA00)
+                            RealTerminalEmulator.TerminalLine.Type.ERROR -> TerminalRed
+                            RealTerminalEmulator.TerminalLine.Type.WARNING -> TerminalAmber
                         }
                     )
                 }
@@ -167,7 +171,7 @@ fun TerminalScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF111111))
+                    .background(TerminalSurface)
                     .padding(horizontal = 8.dp, vertical = 6.dp)
                     .imePadding(),
                 verticalAlignment = Alignment.CenterVertically

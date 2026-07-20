@@ -17,11 +17,6 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
-val ollamaApiKey: String = localProperties.getProperty("OLLAMA_API_KEY")
-    ?: "85ec26b870f043a985328c211858509f.kSYZLHiVMXF3X4uSZba1vVSe"
-val ollamaBaseUrl: String = (localProperties.getProperty("OLLAMA_BASE_URL")
-    ?: "https://ollama.com/v1").trimEnd('/')
-val openCodeApiKey: String = localProperties.getProperty("OPENCODE_API_KEY") ?: ""
 val fcmServerKey: String = localProperties.getProperty("FCM_SERVER_KEY") ?: ""
 // Gemini API key fallback. The preferred source is the user's key stored securely at
 // runtime via AiKeyStore (EncryptedSharedPreferences). This BuildConfig value is only a
@@ -39,9 +34,6 @@ android {
         versionCode = 400
         versionName = "4.0.0"
         
-        buildConfigField("String", "OLLAMA_API_KEY", "\"$ollamaApiKey\"")
-        buildConfigField("String", "OLLAMA_BASE_URL", "\"$ollamaBaseUrl\"")
-        buildConfigField("String", "OPENCODE_API_KEY", "\"$openCodeApiKey\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "FCM_SERVER_KEY", "\"$fcmServerKey\"")
         buildConfigField("Boolean", "FCM_ENABLED", "${fcmServerKey.isNotEmpty()}")

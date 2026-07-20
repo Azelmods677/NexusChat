@@ -195,7 +195,7 @@ fun NavGraph(
         }
         
         composable(
-            route = "incoming_call/{callId}/{callType}",
+            route = Screen.IncomingCall.route,
             arguments = listOf(
                 navArgument("callId") { 
                     type = NavType.StringType
@@ -217,7 +217,7 @@ fun NavGraph(
         }
         
         composable(
-            route = "active_call/{callId}/{callType}?isCaller={isCaller}",
+            route = Screen.ActiveCall.route,
             arguments = listOf(
                 navArgument("callId") { 
                     type = NavType.StringType
@@ -431,13 +431,6 @@ fun NavGraph(
             com.Azelmods.App.ui.screens.background.BackgroundPickerScreen(
                 navController = navController,
                 chatId = chatId
-            )
-        }
-        
-        // Mod Screens
-        composable("mod_home") {
-            com.Azelmods.App.ui.screens.home.ModHomeScreen(
-                navController = navController
             )
         }
         

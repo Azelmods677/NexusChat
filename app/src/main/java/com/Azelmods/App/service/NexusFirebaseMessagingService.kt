@@ -321,7 +321,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .setShortcutId(chatId)
-            .setColor(0xFF7B5CFA.toInt())
+            .setColor(androidx.core.content.ContextCompat.getColor(this, com.Azelmods.App.R.color.notification_accent))
             .apply {
                 if (isSoundEnabled) setSound(customSoundUri)
                 if (!isVibrationEnabled) setVibrate(longArrayOf(0))

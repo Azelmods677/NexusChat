@@ -169,17 +169,19 @@ class SignalProtocolManager @Inject constructor(
      * Both users should compare their safety numbers out-of-band (e.g., in person, phone call)
      * to verify they're communicating with the correct person and not a MITM attacker.
      *
+     * @param ourUserId The authenticated local user's id (both sides must use their real ids
+     *   or the displayed numbers will never match)
      * @param userId The user to generate safety number with
      * @param theirIdentityKey The other user's identity public key
      * @return A 60-digit safety number string, or null if generation failed
      */
     suspend fun generateSafetyNumber(
+        ourUserId: String,
         userId: String,
         theirIdentityKey: IdentityKey
     ): String? = withContext(Dispatchers.IO) {
         try {
             val ourIdentityKey = keyStore.getIdentityKeyPair().publicKey
-            val ourUserId = "current_user" // TODO: Get from auth
 
             // Generate fingerprint using Signal's Fingerprint API
             val generator = NumericFingerprintGenerator(5200)

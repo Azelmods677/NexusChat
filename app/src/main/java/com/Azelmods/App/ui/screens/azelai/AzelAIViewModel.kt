@@ -25,7 +25,7 @@ data class AzelAIState(
     val stats: Map<String, Any> = emptyMap(),
     val currentChatId: String = "",
     val currentChatTitle: String = "",
-    val selectedModel: String = AzelAIApiService.DEEPSEEK_R1_70B,
+    val selectedModel: String = AzelAIApiService.GEMINI_2_5_FLASH,
     val availableModels: List<com.Azelmods.App.data.api.AIModel> = emptyList(),
     val thinkingElapsedMs: Long = 0L
 )

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Acento de marca para notificaciones (equivale a PurpleBright del theme Compose).
+         Única fuente de verdad fuera de Compose: úsalo en NotificationCompat.setColor,
+         payloads FCM y el meta-data default_notification_color del manifest. -->
+    <color name="notification_accent">#FF7B5CFA</color>
+</resources>

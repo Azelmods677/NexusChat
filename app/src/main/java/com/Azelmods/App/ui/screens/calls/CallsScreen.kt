@@ -249,12 +249,10 @@ fun CallsScreen(
                         CallItemRow(
                             call = call,
                             onCallClick = {
-                                try {
-                                    if (call.callId.isNotBlank()) {
-                                        navController.navigate(Screen.IncomingCall.createRoute(call.callId))
-                                    }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
+                                // Call the contact back with the same call type
+                                if (call.userId.isNotBlank()) {
+                                    val type = if (call.callType.equals("video", ignoreCase = true)) "video" else "audio"
+                                    navController.navigate("active_call/${call.userId}/$type")
                                 }
                             },
                             onInfoClick = {
