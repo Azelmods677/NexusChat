@@ -16,8 +16,8 @@ import javax.inject.Singleton
  * 
  * Features:
  * - Save/load background per chat from Firebase
- * - Local cache with StateFlow
- * - Offline support with Room (TODO: add Room integration)
+ * - Local cache in memory with StateFlow (se pierde al cerrar el proceso;
+ *   la persistencia offline con Room no está integrada en este repositorio)
  */
 @Singleton
 class ChatBackgroundRepository @Inject constructor(

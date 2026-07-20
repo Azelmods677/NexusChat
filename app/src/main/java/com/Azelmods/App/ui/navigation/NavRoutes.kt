@@ -15,12 +15,10 @@ object NavRoutes {
     
     // Main
     const val HOME = "home"
-    const val MAIN = "main"
-    
+
     // Chats
     const val CHAT = "chat/{chatId}"
     const val NEW_CONVERSATION = "new_conversation"
-    const val NEW_GROUP = "new_group"
     const val SEARCH = "search"
     
     // Stories
@@ -30,25 +28,21 @@ object NavRoutes {
     
     // Calls
     const val CALLS = "calls"
-    const val INCOMING_CALL = "incoming_call/{callId}"
-    const val ACTIVE_CALL = "active_call/{callId}"
-    const val CALL_HISTORY = "call_history"
-    
+    const val INCOMING_CALL = "incoming_call/{callId}/{callType}"
+    const val ACTIVE_CALL = "active_call/{callId}/{callType}?isCaller={isCaller}"
+
     // Profile
     const val PROFILE = "profile/{userId}"
-    const val PROFILE_MAIN = "profile_main"
     const val PROFILE_VIEWER = "profile_viewer/{userId}"
     const val EDIT_PROFILE = "edit_profile"
-    
+
     // Settings
     const val SETTINGS = "settings"
     const val SETTINGS_ACCOUNT = "settings_account"
     const val SETTINGS_PRIVACY = "settings_privacy"
-    const val SETTINGS_SECURITY = "settings_security"
     const val SETTINGS_NOTIFICATIONS = "settings_notifications"
     const val SETTINGS_APPEARANCE = "settings_appearance"
     const val SETTINGS_STORAGE = "settings_storage"
-    const val SETTINGS_DATA = "settings_data"
     const val SETTINGS_HELP = "settings_help"
     const val SETTINGS_ABOUT = "settings_about"
     const val PREMIUM = "premium"
@@ -80,8 +74,9 @@ object NavRoutes {
         }
     }
     
-    fun incomingCallRoute(callId: String) = "incoming_call/$callId"
-    fun activeCallRoute(callId: String) = "active_call/$callId"
+    fun incomingCallRoute(callId: String, callType: String = "audio") = "incoming_call/$callId/$callType"
+    fun activeCallRoute(callId: String, callType: String = "audio", isCaller: Boolean = true) =
+        "active_call/$callId/$callType?isCaller=$isCaller"
     fun profileRoute(userId: String) = "profile/$userId"
     fun profileViewerRoute(userId: String) = "profile_viewer/$userId"
 }

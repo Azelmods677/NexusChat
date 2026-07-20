@@ -5,13 +5,11 @@ sealed class Screen(val route: String) {
     object Login : Screen(NavRoutes.LOGIN)
     object Register : Screen(NavRoutes.REGISTER)
     object Home : Screen(NavRoutes.HOME)
-    object Main : Screen(NavRoutes.MAIN)
-    
+
     object Chat : Screen(NavRoutes.CHAT) {
         fun createRoute(chatId: String) = NavRoutes.chatRoute(chatId)
     }
     object NewConversation : Screen(NavRoutes.NEW_CONVERSATION)
-    object NewGroup : Screen(NavRoutes.NEW_GROUP)
     object Search : Screen(NavRoutes.SEARCH)
     
     object Stories : Screen(NavRoutes.STORIES)
@@ -22,17 +20,17 @@ sealed class Screen(val route: String) {
     
     object Calls : Screen(NavRoutes.CALLS)
     object IncomingCall : Screen(NavRoutes.INCOMING_CALL) {
-        fun createRoute(callId: String) = NavRoutes.incomingCallRoute(callId)
+        fun createRoute(callId: String, callType: String = "audio") =
+            NavRoutes.incomingCallRoute(callId, callType)
     }
     object ActiveCall : Screen(NavRoutes.ACTIVE_CALL) {
-        fun createRoute(callId: String) = NavRoutes.activeCallRoute(callId)
+        fun createRoute(callId: String, callType: String = "audio", isCaller: Boolean = true) =
+            NavRoutes.activeCallRoute(callId, callType, isCaller)
     }
-    object CallHistory : Screen(NavRoutes.CALL_HISTORY)
-    
+
     object Profile : Screen(NavRoutes.PROFILE) {
         fun createRoute(userId: String) = NavRoutes.profileRoute(userId)
     }
-    object ProfileMain : Screen(NavRoutes.PROFILE_MAIN)
     object ProfileViewer : Screen(NavRoutes.PROFILE_VIEWER) {
         fun createRoute(userId: String) = NavRoutes.profileViewerRoute(userId)
     }
@@ -41,11 +39,9 @@ sealed class Screen(val route: String) {
     object Settings : Screen(NavRoutes.SETTINGS)
     object SettingsAccount : Screen(NavRoutes.SETTINGS_ACCOUNT)
     object SettingsPrivacy : Screen(NavRoutes.SETTINGS_PRIVACY)
-    object SettingsSecurity : Screen(NavRoutes.SETTINGS_SECURITY)
     object SettingsNotifications : Screen(NavRoutes.SETTINGS_NOTIFICATIONS)
     object SettingsAppearance : Screen(NavRoutes.SETTINGS_APPEARANCE)
     object SettingsStorage : Screen(NavRoutes.SETTINGS_STORAGE)
-    object SettingsData : Screen(NavRoutes.SETTINGS_DATA)
     object SettingsHelp : Screen(NavRoutes.SETTINGS_HELP)
     object SettingsAbout : Screen(NavRoutes.SETTINGS_ABOUT)
     object Premium : Screen(NavRoutes.PREMIUM)
@@ -66,8 +62,5 @@ sealed class Screen(val route: String) {
             "background_picker"
         }
     }
-    
-    // Mod Screens
-    object ModHome : Screen("mod_home")
 }
 

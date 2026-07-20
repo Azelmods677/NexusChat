@@ -57,21 +57,6 @@ class AzelAIApiService @Inject constructor(
         const val GEMINI_1_5_PRO = "gemini-1.5-pro"
         const val GEMINI_1_5_FLASH = "gemini-1.5-flash"
         
-        // Mantener nombres antiguos mapeados a Gemini para compatibilidad
-        const val DEEPSEEK_R1_70B = GEMINI_2_5_FLASH
-        const val DEEPSEEK_R1_32B = GEMINI_2_5_FLASH
-        const val DEEPSEEK_R1_14B = GEMINI_2_0_FLASH
-        const val DEEPSEEK_R1_7B = GEMINI_1_5_FLASH
-        const val LLAMA_3_3_70B = GEMINI_1_5_PRO
-        const val LLAMA_3_2_90B = GEMINI_1_5_PRO
-        const val LLAMA_3_2_3B = GEMINI_1_5_FLASH
-        const val LLAMA_3_1_8B = GEMINI_1_5_FLASH
-        const val QWEN_2_5_72B = GEMINI_2_0_FLASH
-        const val MISTRAL_LARGE_3 = GEMINI_2_0_FLASH
-        const val CODELLAMA_70B = GEMINI_1_5_PRO
-        const val DOLPHIN_MIXTRAL = GEMINI_2_0_FLASH
-        const val GPT_OSS_120B_CLOUD = GEMINI_3_1_PRO_PREVIEW
-        
         // Configuración por defecto
         private const val DEFAULT_MODEL = GEMINI_2_5_FLASH
         private const val MAX_TOKENS = 1024

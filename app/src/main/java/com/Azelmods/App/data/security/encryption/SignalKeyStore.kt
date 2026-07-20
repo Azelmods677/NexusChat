@@ -84,20 +84,12 @@ class SignalKeyStore @Inject constructor(
     // ── IdentityKeyStore implementation ──────────────────────────────────────
 
     override fun getIdentityKeyPair(): IdentityKeyPair {
-        // TODO: Update to libsignal 0.40.1 API - IdentityKeyPair constructor signature changed
-        throw UnsupportedOperationException("Signal Protocol temporarily disabled - API migration needed")
-        
-        /* OLD CODE - needs API migration
-        val publicBytes = encryptedPrefs.getString(KEY_IDENTITY_PUBLIC, null)
-            ?: throw IllegalStateException("Identity key pair not initialized")
-        val privateBytes = encryptedPrefs.getString(KEY_IDENTITY_PRIVATE, null)
-            ?: throw IllegalStateException("Identity key pair not initialized")
-
-        return IdentityKeyPair(
-            IdentityKey(android.util.Base64.decode(publicBytes, android.util.Base64.DEFAULT)),
-            android.util.Base64.decode(privateBytes, android.util.Base64.DEFAULT)
+        // El path basado en libsignal no está activo: el E2EE de producción lo provee
+        // E2EECryptoService (ECDH P-256 + AES-256-GCM). Este store legacy se conserva
+        // solo por las interfaces que exige el SDK; ningún flujo alcanzable lo invoca.
+        throw UnsupportedOperationException(
+            "SignalKeyStore inactivo: el cifrado activo es E2EECryptoService (ECDH + AES-GCM)"
         )
-        */
     }
 
     override fun getLocalRegistrationId(): Int {

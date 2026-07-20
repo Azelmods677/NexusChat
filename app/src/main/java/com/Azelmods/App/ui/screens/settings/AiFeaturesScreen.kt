@@ -98,7 +98,7 @@ fun AiFeaturesScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // TODO(features-ia): acá vivían 6 toggles (Smart Replies, Auto-Translate,
+            // NOTA(features-ia): acá vivían 6 toggles (Smart Replies, Auto-Translate,
             // Chat Summary, Tone Suggestions, Photo Enhancement, Voice Transcription)
             // y chips de respuestas sugeridas que eran PURAMENTE decorativos:
             // estado local con remember { mutableStateOf(false) } sin persistencia

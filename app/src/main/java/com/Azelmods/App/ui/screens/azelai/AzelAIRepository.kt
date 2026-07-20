@@ -74,7 +74,7 @@ class AzelAIRepository @Inject constructor(
     fun sendMessageStream(
         userMessage: String,
         conversationHistory: List<AIMessage>,
-        model: String = AzelAIApiService.DEEPSEEK_R1_70B
+        model: String = AzelAIApiService.GEMINI_2_5_FLASH
     ): Flow<String> {
         val messages = buildApiMessages(conversationHistory, userMessage)
         
@@ -96,7 +96,7 @@ class AzelAIRepository @Inject constructor(
     suspend fun sendMessage(
         userMessage: String,
         conversationHistory: List<AIMessage>,
-        model: String = AzelAIApiService.DEEPSEEK_R1_70B
+        model: String = AzelAIApiService.GEMINI_2_5_FLASH
     ): Result<Pair<String, Int>> = runCatching {
         val messages = buildApiMessages(conversationHistory, userMessage)
         

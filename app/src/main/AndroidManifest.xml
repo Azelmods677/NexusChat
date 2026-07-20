@@ -110,6 +110,11 @@
             </intent-filter>
         </service>
 
+        <!-- Color de acento por defecto para notificaciones FCM recibidas en background -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
+
         <!-- Call Notification Receiver (Accept/Decline from notification) -->
         <receiver
             android:name=".service.CallNotificationReceiver"

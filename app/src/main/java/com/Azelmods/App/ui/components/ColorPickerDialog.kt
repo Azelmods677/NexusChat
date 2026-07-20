@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.Azelmods.App.data.model.BackgroundPresets
+import com.Azelmods.App.ui.theme.DialogDark
+import com.Azelmods.App.ui.theme.DialogField
+import com.Azelmods.App.ui.theme.RedDeep
 import com.Azelmods.App.ui.theme.parseHexColor
 
 /**
@@ -49,7 +52,7 @@ fun ColorPickerDialog(
                 .fillMaxWidth()
                 .wrapContentHeight(),
             shape = RoundedCornerShape(20.dp),
-            color = Color(0xFF0F0F0F),
+            color = DialogDark,
             shadowElevation = 16.dp
         ) {
             Column(
@@ -85,7 +88,7 @@ fun ColorPickerDialog(
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFF1A1A1A)
+                        color = DialogField
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -181,7 +184,7 @@ fun ColorPickerDialog(
                         onClick = { onColorSelected(selectedColor) },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFCC0000)
+                            containerColor = RedDeep
                         )
                     ) {
                         Text("Aplicar")

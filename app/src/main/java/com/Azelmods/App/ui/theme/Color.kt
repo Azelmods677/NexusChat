@@ -58,3 +58,23 @@ val DarkBubbleDeep = Color(0xFF1E1E2E)  // Gradiente oscuro: extremo profundo
 val DarkBubbleLight = Color(0xFF2A2A3E) // Gradiente oscuro: extremo claro
 val DarkDeep = Color(0xFF0D0D1A)        // Fondo profundo (fallback de video/wallpaper)
 val RosePink = Color(0xFFFC5C7D)        // Rosa intenso (gradientes de acento)
+
+// ── Fase 5: últimos Color(0xFF…) fuera del sistema de temas ──
+val IndigoDeep = Color(0xFF2D1B69)      // Índigo profundo (barra de modo efímero)
+val TerminalGray = Color(0xFFCCCCCC)    // Gris de salida estándar (terminal/editor)
+val TerminalRed = Color(0xFFFF4444)     // Rojo de error en terminal
+val TerminalAmber = Color(0xFFFFAA00)   // Ámbar de warning en terminal
+val TerminalSurface = Color(0xFF111111) // Superficie de la barra de entrada del terminal
+val DialogDark = Color(0xFF0F0F0F)      // Fondo de diálogos oscuros (color picker)
+val DialogField = Color(0xFF1A1A1A)     // Campos dentro de diálogos oscuros
+val RedDeep = Color(0xFFCC0000)         // Rojo intenso (acciones destructivas)
+val CoralOrange = Color(0xFFFF8A65)     // Coral (paleta de avatares)
+val SkyBlue = Color(0xFF4FC3F7)         // Azul cielo (paleta de avatares)
+val LavenderMist = Color(0xFFCE93D8)    // Lavanda (paleta de avatares)
+
+// Paleta determinista para avatares sin foto (se indexa por hash del nombre)
+val AvatarPalette = listOf(
+    NexusTokens.Color.Primary, CyanAccent, Pink,
+    NeonGreen, GoldPremium, CoralOrange,
+    SkyBlue, LavenderMist
+)

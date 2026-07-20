@@ -68,6 +68,7 @@ import com.google.firebase.auth.FirebaseAuth
 import java.text.SimpleDateFormat
 import java.util.*
 import com.Azelmods.App.ui.theme.Teal
+import com.Azelmods.App.ui.theme.IndigoDeep
 import com.Azelmods.App.ui.theme.PurpleLight
 import com.Azelmods.App.ui.theme.EmeraldGreen
 import com.Azelmods.App.ui.theme.ErrorRed
@@ -1150,7 +1151,7 @@ fun ChatInputArea(
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFF2D1B69).copy(alpha = 0.6f)
+                color = IndigoDeep.copy(alpha = 0.6f)
             ) {
                 Row(
                     modifier = Modifier
