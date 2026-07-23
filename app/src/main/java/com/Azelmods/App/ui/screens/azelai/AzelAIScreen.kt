@@ -259,7 +259,7 @@ fun AzelAIWelcome() {
                 .background(Brush.linearGradient(listOf(AzelPurple, AzelBlue))),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Outlined.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(32.dp))
+            Icon(Icons.Outlined.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(NexusTokens.IconSize.lg))
         }
         Spacer(Modifier.height(32.dp))
         Text(
@@ -327,7 +327,7 @@ fun AzelAIMessageBubble(message: AIMessage) {
                     .clip(CircleShape).background(AzelPurple.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(NexusTokens.IconSize.sm))
             }
         }
         
@@ -519,7 +519,7 @@ fun AzelAIThinkingBubble(
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(32.dp).clip(CircleShape).background(AzelPurple.copy(0.1f)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(16.dp))
+                Icon(Icons.Outlined.AutoAwesome, null, tint = AzelPurple, modifier = Modifier.size(NexusTokens.IconSize.xs))
             }
             Spacer(Modifier.width(12.dp))
             repeat(3) { i ->

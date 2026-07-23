@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -49,17 +52,6 @@ data class TabItem(
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 )
-
-sealed class BottomNavItem(
-    val route: String,
-    val icon: ImageVector,
-    val label: String
-) {
-    object Chats : BottomNavItem(Screen.Home.route, Icons.AutoMirrored.Filled.Chat, "Chats")
-    object Stories : BottomNavItem(Screen.Stories.route, Icons.Default.AutoStories, "Stories")
-    object Calls : BottomNavItem(Screen.Calls.route, Icons.Default.Call, "Calls")
-    object Profile : BottomNavItem("profile_main", Icons.Default.Person, "Profile")
-}
 
 @Composable
 fun MainScreen(
@@ -127,11 +119,33 @@ fun MainScreen(
         modifier = Modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.Transparent,
-                tonalElevation = 0.dp,
-                modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
-            ) {
+            // Nexus bottom bar: el contenedor se mantiene TRANSPARENTE a propósito
+            // para que los fondos animados/fotos del home se vean a través de la
+            // barra. El único añadido de identidad es un hairline de 1dp con el
+            // degradado de marca (primary→secondary) sobre el borde superior — no
+            // tapa el fondo. Lógica de pager/badge/selección intacta.
+            val navScheme = MaterialTheme.colorScheme
+            Column(Modifier.fillMaxWidth()) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    Color.Transparent,
+                                    navScheme.primary.copy(alpha = 0.55f),
+                                    navScheme.secondary.copy(alpha = 0.55f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                NavigationBar(
+                    containerColor = Color.Transparent,
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
+                ) {
                 tabs.forEachIndexed { index, tab ->
                     val isCallsTab = tab.label == "Calls"
                     NavigationBarItem(
@@ -185,6 +199,7 @@ fun MainScreen(
                     )
                 }
             }
+            } // cierra NexusBottomBar Column
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().clipToBounds()) {

@@ -1,11 +1,9 @@
 package com.Azelmods.App.ui.navigation
-
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.kotest.matchers.string.shouldNotContain
 import io.kotest.property.Arb
-import io.kotest.property.arbitrary.string
 import io.kotest.property.arbitrary.stringPattern
 import io.kotest.property.checkAll
 
@@ -141,12 +139,10 @@ class StoryNavigationPreservationTest : StringSpec({
         checkAll(20, callIdGenerator) { callId ->
             val generatedRoute = NavRoutes.incomingCallRoute(callId)
             
-            // Expected behavior: Route should be "incoming_call/{callId}"
-            generatedRoute shouldBe "incoming_call/$callId"
+            // Expected behavior: Route should be "incoming_call/{callId}/audio" (default callType)
+            generatedRoute shouldBe "incoming_call/$callId/audio"
             generatedRoute shouldContain "incoming_call/"
-            
-            val extractedCallId = generatedRoute.removePrefix("incoming_call/")
-            extractedCallId shouldBe callId
+            generatedRoute shouldContain callId
         }
     }
     
@@ -158,12 +154,10 @@ class StoryNavigationPreservationTest : StringSpec({
         checkAll(20, callIdGenerator) { callId ->
             val generatedRoute = NavRoutes.activeCallRoute(callId)
             
-            // Expected behavior: Route should be "active_call/{callId}"
-            generatedRoute shouldBe "active_call/$callId"
+            // Expected behavior: Route should be "active_call/{callId}/audio?isCaller=true" (defaults)
+            generatedRoute shouldBe "active_call/$callId/audio?isCaller=true"
             generatedRoute shouldContain "active_call/"
-            
-            val extractedCallId = generatedRoute.removePrefix("active_call/")
-            extractedCallId shouldBe callId
+            generatedRoute shouldContain callId
         }
     }
     
@@ -185,8 +179,8 @@ class StoryNavigationPreservationTest : StringSpec({
             chatRoute shouldBe "chat/$id"
             profileRoute shouldBe "profile/$id"
             profileViewerRoute shouldBe "profile_viewer/$id"
-            incomingCallRoute shouldBe "incoming_call/$id"
-            activeCallRoute shouldBe "active_call/$id"
+            incomingCallRoute shouldBe "incoming_call/$id/audio"
+            activeCallRoute shouldBe "active_call/$id/audio?isCaller=true"
             
             // Verify no URL encoding characters are present (%, +, etc.)
             chatRoute shouldNotContain "%"
@@ -205,7 +199,6 @@ class StoryNavigationPreservationTest : StringSpec({
         NavRoutes.LOGIN shouldBe "login"
         NavRoutes.REGISTER shouldBe "register"
         NavRoutes.HOME shouldBe "home"
-        NavRoutes.MAIN shouldBe "main"
         
         NavRoutes.CHAT shouldBe "chat/{chatId}"
         NavRoutes.NEW_CONVERSATION shouldBe "new_conversation"
@@ -216,8 +209,8 @@ class StoryNavigationPreservationTest : StringSpec({
         NavRoutes.CREATE_STORY shouldBe "create_story"
         
         NavRoutes.CALLS shouldBe "calls"
-        NavRoutes.INCOMING_CALL shouldBe "incoming_call/{callId}"
-        NavRoutes.ACTIVE_CALL shouldBe "active_call/{callId}"
+        NavRoutes.INCOMING_CALL shouldBe "incoming_call/{callId}/{callType}"
+        NavRoutes.ACTIVE_CALL shouldBe "active_call/{callId}/{callType}?isCaller={isCaller}"
         
         NavRoutes.PROFILE shouldBe "profile/{userId}"
         NavRoutes.PROFILE_VIEWER shouldBe "profile_viewer/{userId}"
@@ -243,7 +236,6 @@ class StoryNavigationPreservationTest : StringSpec({
         Screen.Login.route shouldBe NavRoutes.LOGIN
         Screen.Register.route shouldBe NavRoutes.REGISTER
         Screen.Home.route shouldBe NavRoutes.HOME
-        Screen.Main.route shouldBe NavRoutes.MAIN
         
         Screen.Chat.route shouldBe NavRoutes.CHAT
         Screen.NewConversation.route shouldBe NavRoutes.NEW_CONVERSATION

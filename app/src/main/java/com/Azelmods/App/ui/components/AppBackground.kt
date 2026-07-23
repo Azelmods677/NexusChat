@@ -1,3 +1,4 @@
+
 package com.Azelmods.App.ui.components
 
 import androidx.compose.animation.Crossfade
@@ -21,7 +22,7 @@ import com.Azelmods.App.data.model.BackgroundConfig
 import com.Azelmods.App.data.model.BackgroundType
 import com.Azelmods.App.ui.theme.linearGradientBrush
 import com.Azelmods.App.ui.theme.parseHexColor
-import com.Azelmods.App.ui.theme.TerminalBlack
+import com.Azelmods.App.ui.theme.NexusTokens
 
 /**
  * App-wide background component
@@ -54,11 +55,16 @@ fun AppBackground(
         ) { config ->
             when (config.type) {
                 BackgroundType.NONE -> {
-                    // Default dark background
+                    // Fondo por defecto = identidad Nexus: el gradiente oscuro de
+                    // marca, no el negro del dominio de la terminal. Es la
+                    // superficie más vista de la app; debe ser reconociblemente
+                    // NexusChat desde el primer arranque.
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(TerminalBlack)
+                            .background(
+                                Brush.verticalGradient(NexusTokens.Gradient.Background)
+                            )
                     )
                 }
                 
@@ -86,14 +92,14 @@ fun AppBackground(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(TerminalBlack)
+                                        .background(NexusTokens.Color.BgDeep)
                                 )
                             },
                             error = {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .background(TerminalBlack)
+                                        .background(NexusTokens.Color.BgDeep)
                                 )
                             }
                         )
@@ -105,7 +111,7 @@ fun AppBackground(
                         VideoBackgroundPlayer(
                             videoUri = uri,
                             modifier = Modifier.fillMaxSize(),
-                            fallbackColor = TerminalBlack
+                            fallbackColor = NexusTokens.Color.BgDeep
                         )
                     }
                 }
@@ -129,7 +135,7 @@ fun AppBackground(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(TerminalBlack)
+                            .background(NexusTokens.Color.BgDeep)
                     )
                 }
             }

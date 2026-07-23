@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.Azelmods.App.ui.components.NexusButton
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
@@ -59,6 +60,10 @@ fun LoginScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
+            // Edge-to-edge (enableEdgeToEdge global): el fondo llena la pantalla,
+            // pero el contenido respeta la status bar y sube con el teclado.
+            .statusBarsPadding()
+            .imePadding()
     ) {
         Column(
             modifier = Modifier
@@ -154,30 +159,13 @@ fun LoginScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Login button
-            Button(
+            // Login button — CTA primario del sistema (gradiente de marca,
+            // spring de press, loading integrado sin cambiar el layout).
+            NexusButton(
+                text = "Login",
                 onClick = viewModel::login,
-                enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White
-                    )
-                } else {
-                    Text(
-                        text = "Login",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
+                loading = state.isLoading
+            )
             
             Spacer(modifier = Modifier.height(16.dp))
             

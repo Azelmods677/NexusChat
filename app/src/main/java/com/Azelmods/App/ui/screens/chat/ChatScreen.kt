@@ -249,7 +249,15 @@ fun ChatScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .imePadding() // CRITICAL: This makes content adjust when keyboard appears
+                    // El Scaffold (insets por defecto) ya reserva la barra de navegación
+                    // gestual en paddingValues.bottom. Un `.imePadding()` normal sumaría
+                    // OTRA vez la altura de esa barra cuando abre el teclado (el IME la
+                    // solapa) → hueco visible entre el input y el teclado en navegación
+                    // gestual (Redmi/HyperOS). Excluyendo navigationBars del inset del IME
+                    // el empuje total = max(navbar, teclado), sin doble conteo.
+                    .windowInsetsPadding(
+                        WindowInsets.ime.exclude(WindowInsets.navigationBars)
+                    )
             ) {
                 // Messages List
                 PullToRefreshBox(

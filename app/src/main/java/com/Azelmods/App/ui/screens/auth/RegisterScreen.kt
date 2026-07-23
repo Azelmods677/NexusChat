@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.Azelmods.App.ui.components.NexusButton
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
@@ -55,6 +56,10 @@ fun RegisterScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
+            // Edge-to-edge: fondo a pantalla completa; el contenido scrollable
+            // respeta la status bar y el área visible se reduce con el teclado.
+            .statusBarsPadding()
+            .imePadding()
     ) {
         Column(
             modifier = Modifier
@@ -213,30 +218,13 @@ fun RegisterScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Register button
-            Button(
+            // Register button — CTA primario del sistema (gradiente de marca,
+            // spring de press, loading integrado sin cambiar el layout).
+            NexusButton(
+                text = "Register",
                 onClick = viewModel::register,
-                enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White
-                    )
-                } else {
-                    Text(
-                        text = "Register",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            }
+                loading = state.isLoading
+            )
             
             Spacer(modifier = Modifier.height(16.dp))
             

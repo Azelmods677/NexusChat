@@ -40,7 +40,7 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Enviar Mensajes",
-                    content = "1. Toca '+' en la pantalla principal\n2. Selecciona un contacto\n3. Escribe tu mensaje\n4. Toca enviar\n\n✅ Los mensajes se cifran automáticamente con Signal Protocol."
+                    content = "1. Toca '+' en la pantalla principal\n2. Selecciona un contacto\n3. Escribe tu mensaje\n4. Toca enviar\n\n✅ Los mensajes se cifran de extremo a extremo automáticamente (ECDH P-256 + AES-256-GCM)."
                 ),
                 TutorialSection(
                     title = "Mensajes Multimedia",
@@ -48,7 +48,7 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = "Cifrado E2EE",
-                    content = "Azelgram utiliza Signal Protocol para cifrar todos los mensajes:\n• Claves efímeras por sesión\n• Perfect Forward Secrecy\n• Solo el emisor y receptor pueden leer\n• Activado por defecto en todos los chats"
+                    content = "Azelgram cifra tus mensajes de extremo a extremo:\n• Intercambio de claves ECDH (curva P-256)\n• Cifrado AES-256-GCM autenticado\n• Solo el emisor y el receptor pueden leer\n• Activado por defecto en todos los chats"
                 ),
                 TutorialSection(
                     title = "Chats Grupales",
@@ -86,7 +86,7 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = "Modo Cloud (Recomendado)",
-                    content = "Usa Ollama Cloud sin necesidad de hardware local:\n1. Ve a 'IA' en el menú\n2. Selecciona 'Azel IA'\n3. Elige una categoría o escribe tu pregunta\n4. Recibe respuestas en tiempo real"
+                    content = "Azel IA usa Gemini con tu propia API key (sin hardware local):\n1. Añade tu API key en Ajustes → IA\n2. Ve a 'IA' en el menú y abre 'Azel IA'\n3. Elige una categoría o escribe tu pregunta\n4. Recibe respuestas en tiempo real (streaming)"
                 ),
                 // Sección "Modo Local (Opcional)" eliminada: describía OllamaApiService
                 // (localhost:11434), clase que ya no existe en el código. El tutorial
@@ -154,7 +154,7 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = "Cifrado E2EE",
-                    content = "Signal Protocol integrado:\n• Cifrado extremo a extremo en todos los mensajes\n• Perfect Forward Secrecy\n• Intercambio seguro de claves\n• Sin acceso de terceros al contenido"
+                    content = "Cifrado E2EE integrado:\n• Cifrado extremo a extremo en todos los mensajes\n• Intercambio de claves ECDH por destinatario\n• AES-256-GCM (cifrado autenticado)\n• Sin acceso de terceros al contenido"
                 ),
                 TutorialSection(
                     title = "Bloqueo Biométrico",
@@ -200,7 +200,7 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = "Funciones Exclusivas 2026",
-                    content = "Azelgram incluye herramientas avanzadas:\n• Cifrado Signal Protocol (E2EE)\n• Bloqueo biométrico con Android Biometric\n• Tor/Orbot para navegación anónima\n• Backup cifrado AES-256\n• Ollama Cloud IA sin necesidad de hardware\n• Agente autónomo local (en desarrollo)"
+                    content = "Azelgram incluye herramientas avanzadas:\n• Cifrado E2EE (ECDH + AES-256-GCM)\n• Bloqueo biométrico con Android Biometric\n• Tor/Orbot para navegación anónima\n• Backup cifrado AES-256\n• IA integrada (Gemini) con tu propia API key\n• Asistente Azel IA dentro de la app"
                 ),
                 TutorialSection(
                     title = "Azel IA - Asistente Inteligente",
@@ -212,7 +212,7 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = "Cifrado E2EE",
-                    content = "Máxima seguridad en tus mensajes:\n• Signal Protocol implementado\n• Cifrado doble ratchet\n• Intercambio de claves X3DH\n• Sin servidores intermediarios que lean tu contenido"
+                    content = "Máxima seguridad en tus mensajes:\n• Cifrado extremo a extremo real\n• AES-256-GCM (cifrado autenticado)\n• Intercambio de claves ECDH P-256\n• Sin servidores intermediarios que lean tu contenido"
                 )
             )
         )

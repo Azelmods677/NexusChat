@@ -159,6 +159,24 @@ fun TorBrowserScreenNew(
         }
     }
 
+    // ── PASO 2b: Re-detección AUTOMÁTICA en tiempo real ──
+    // La detección de arriba corre una sola vez al abrir. Si el usuario arranca
+    // Orbot DESPUÉS de abrir el navegador, antes no se enteraba hasta pulsar
+    // Recargar (de ahí el "no detecta en tiempo real" y los .onion que fallaban).
+    // Este bucle re-dispara la detección existente (vía recheckTrigger) cada pocos
+    // segundos hasta que el proxy Tor queda activo, y se detiene solo. Reutiliza el
+    // camino ya probado; no aplica proxy por su cuenta.
+    LaunchedEffect(isWebViewReady) {
+        if (!isWebViewReady) return@LaunchedEffect
+        var attempts = 0
+        while (!proxyEnabled && attempts < 20) {
+            kotlinx.coroutines.delay(4000)
+            if (proxyEnabled) break
+            attempts++
+            recheckTrigger++
+        }
+    }
+
     // ── Limpiar proxy al salir ──
     DisposableEffect(Unit) {
         onDispose {
