@@ -1,7 +1,6 @@
 package com.Azelmods.App.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +30,31 @@ import com.Azelmods.App.ui.theme.NexusTokens
  * Componentes reutilizables con glassmorphism y spring physics
  */
 
+// ─── 0. SUPERFICIE GLASS (modificador canónico) ─────────────────────
+/**
+ * La superficie "vidrio" de NexusChat: relleno translúcido + borde degradado
+ * sutil + esquinas del sistema. Es EL único lugar donde se define el glass;
+ * cualquier componente que quiera verse de vidrio aplica este modificador
+ * en vez de reconstruir fill/border/shape a mano.
+ *
+ * @param glow borde con el gradiente de marca (para superficies destacadas).
+ * @param shape forma de la superficie; por defecto la tarjeta del sistema.
+ */
+fun Modifier.nexusGlass(
+    glow: Boolean = false,
+    shape: RoundedCornerShape = RoundedCornerShape(NexusTokens.Radius.lg)
+): Modifier {
+    val borderBrush = if (glow)
+        Brush.linearGradient(NexusTokens.Gradient.Brand)
+    else
+        Brush.linearGradient(listOf(NexusTokens.Color.GlassBorder, NexusTokens.Color.GlassFill))
+
+    return this
+        .clip(shape)
+        .background(NexusTokens.Color.GlassFill)
+        .border(1.dp, borderBrush, shape)
+}
+
 // ─── 1. GLASS CARD ──────────────────────────────────────────────────
 @Composable
 fun NexusGlassCard(
@@ -43,24 +67,14 @@ fun NexusGlassCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(
-            stiffness = NexusTokens.Anim.SPRING_STIFFNESS,
-            dampingRatio = NexusTokens.Anim.SPRING_DAMPING_LOW
-        ),
+        animationSpec = NexusTokens.Anim.springBouncy(),
         label = "card_scale"
     )
-
-    val borderBrush = if (borderGlow)
-        Brush.linearGradient(NexusTokens.Gradient.Brand)
-    else
-        Brush.linearGradient(listOf(NexusTokens.Color.GlassBorder, NexusTokens.Color.GlassFill))
 
     Column(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clip(RoundedCornerShape(NexusTokens.Radius.lg))
-            .background(NexusTokens.Color.GlassFill)
-            .border(1.dp, borderBrush, RoundedCornerShape(NexusTokens.Radius.lg))
+            .nexusGlass(glow = borderGlow)
             .then(
                 if (onClick != null) Modifier.clickable(
                     interactionSource = interactionSource,

@@ -65,7 +65,12 @@ class NexusCrashHandler private constructor(
             appendLine("NEXUS CHAT CRASH REPORT")
             appendLine("═══════════════════════════════════════")
             appendLine("Time: $timestamp")
-            appendLine("Thread: ${thread.name} (ID: ${thread.threadId()})")
+            // Thread.threadId() (Java 19+) no existe en el runtime de Android < 16 y
+            // lanzaría NoSuchMethodError DENTRO del crash handler (crash del crash).
+            // Con minSdk 31 usamos siempre thread.id: mismo valor, disponible en todo
+            // el rango soportado. La deprecación en JDKs nuevos no aplica al ART actual.
+            @Suppress("DEPRECATION")
+            appendLine("Thread: ${thread.name} (ID: ${thread.id})")
             appendLine("Exception: ${throwable.javaClass.name}")
             appendLine("Message: ${throwable.message ?: "No message"}")
             appendLine()

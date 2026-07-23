@@ -38,7 +38,10 @@ object AppTheme {
 
     // ── 25 temas curados (hue-ordered, vibrantes y distintos) ──────────────
     val ACCENT_SWATCHES: List<AccentSwatch> = listOf(
-        AccentSwatch("PURPLE",     "Púrpura",         ThemeColors(c(0xFF7C4DFF), c(0xFF651FFF), c(0xFF4A148C))),
+        // PURPLE es el acento por defecto: su primary ES el violeta de marca
+        // (NexusTokens.Color.Primary). Así el tema por defecto y la identidad
+        // estática de la app usan exactamente el mismo violeta.
+        AccentSwatch("PURPLE",     "Púrpura",         ThemeColors(c(0xFF7C6FE0), c(0xFF651FFF), c(0xFF4A148C))),
         AccentSwatch("VIOLET",     "Violeta",         ThemeColors(c(0xFF9D4EDD), c(0xFF7B2CBF), c(0xFF5A189A))),
         AccentSwatch("LAVENDER",   "Lavanda",         ThemeColors(c(0xFFB388FF), c(0xFF9575CD), c(0xFF673AB7))),
         AccentSwatch("INDIGO",     "Índigo",          ThemeColors(c(0xFF5C6BC0), c(0xFF3949AB), c(0xFF1A237E))),
