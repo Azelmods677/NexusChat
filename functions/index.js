@@ -21,7 +21,12 @@
  * - Firebase Admin SDK configurado automáticamente al hacer deploy
  */
 
-const functions = require("firebase-functions");
+// Import explícito de /v1: todas las funciones de este archivo usan la API v1
+// (database.ref().onCreate(), pubsub.schedule().onRun()). A partir de
+// firebase-functions v6 la raíz del paquete exporta v2, así que importar la raíz
+// rompería estos handlers. La ruta /v1 existe desde v3 y funciona igual en v4, v5
+// y v6, de modo que este import es estable pase lo que pase con la versión.
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
