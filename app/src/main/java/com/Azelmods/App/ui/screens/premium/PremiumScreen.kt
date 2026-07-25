@@ -39,6 +39,10 @@ fun PremiumScreen(
 ) {
     var selectedPlan by remember { mutableStateOf(1) } // 0=Monthly, 1=Annual, 2=Lifetime
     val view = LocalView.current
+    // No hay Play Billing integrado todavía. El botón NO puede fingir un cobro:
+    // aparentar una compra que no existe engaña al usuario y Google Play lo
+    // rechaza. Hasta que la facturación sea real, esto lo dice claro.
+    var showBillingUnavailable by remember { mutableStateOf(false) }
     
     Scaffold(
         topBar = {
@@ -232,18 +236,12 @@ fun PremiumScreen(
                         )
                         .safeClickable {
                             view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                            // Show success
+                            showBillingUnavailable = true
                         },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Upgrade Now · ${
-                            when (selectedPlan) {
-                                0 -> "$4.99"
-                                1 -> "$39.99"
-                                else -> "$99.99"
-                            }
-                        }",
+                        text = "Premium · disponible pronto",
                         color = Color.White,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.ExtraBold
@@ -251,6 +249,32 @@ fun PremiumScreen(
                 }
             }
         }
+    }
+
+    if (showBillingUnavailable) {
+        AlertDialog(
+            onDismissRequest = { showBillingUnavailable = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = AmberAccent
+                )
+            },
+            title = { Text("Premium todavía no está a la venta") },
+            text = {
+                Text(
+                    "Las suscripciones aún no están activas: los precios que ves son los " +
+                    "planes previstos, no un cobro disponible. Nada se te va a cargar. " +
+                    "Cuando el pago esté habilitado lo verás aquí mismo."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showBillingUnavailable = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
     }
 }
 
