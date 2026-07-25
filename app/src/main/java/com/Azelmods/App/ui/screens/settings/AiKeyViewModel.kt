@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Azelmods.App.data.ai.AiKeyStore
+import com.Azelmods.App.data.ai.AiProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -78,6 +79,63 @@ class AiKeyViewModel @Inject constructor(
                     Log.e(TAG, "No se pudo borrar la API key", it)
                     _feedback.value = "No se pudo borrar la API key."
                 }
+        }
+    }
+
+    // ── Proveedor de IA ──────────────────────────────────────────────────────
+
+    /** Proveedor activo, reactivo para que la UI se redibuje al cambiarlo. */
+    val provider: StateFlow<AiProvider> = keyStore.provider
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), keyStore.getProvider())
+
+    /** Todos los proveedores seleccionables. */
+    val availableProviders: List<AiProvider> = AiProvider.entries
+
+    /** URL base efectiva del proveedor activo (la del usuario o la del preset). */
+    fun currentBaseUrl(): String = keyStore.getBaseUrl()
+
+    /** Modelo efectivo del proveedor activo. */
+    fun currentModel(): String = keyStore.getModel()
+
+    /**
+     * Cambia de proveedor. Resetea URL y modelo a los del preset, porque arrastrar
+     * la URL del anterior solo produce errores difíciles de entender.
+     */
+    fun selectProvider(newProvider: AiProvider) {
+        viewModelScope.launch {
+            runCatching { keyStore.setProvider(newProvider) }
+                .onSuccess {
+                    _feedback.value = if (newProvider.allowsEmptyKey) {
+                        "Proveedor: ${newProvider.displayName}. Revisa la URL del servidor."
+                    } else {
+                        "Proveedor: ${newProvider.displayName}. Necesita su propia API key."
+                    }
+                }
+                .onFailure {
+                    Log.e(TAG, "No se pudo cambiar el proveedor", it)
+                    _feedback.value = "No se pudo cambiar el proveedor."
+                }
+        }
+    }
+
+    /** Guarda la URL base y el modelo del proveedor activo. */
+    fun saveEndpoint(baseUrl: String, model: String) {
+        viewModelScope.launch {
+            runCatching {
+                keyStore.setBaseUrl(baseUrl)
+                keyStore.setModel(model)
+            }.onSuccess {
+                _feedback.value = if (keyStore.isProviderUsable()) {
+                    "Configuración guardada."
+                } else {
+                    // Guardar algo incompleto y no avisar deja al usuario con un chat
+                    // que falla sin explicación.
+                    "Guardado, pero falta algún dato: revisa URL, modelo y API key."
+                }
+            }.onFailure {
+                Log.e(TAG, "No se pudo guardar el endpoint", it)
+                _feedback.value = "No se pudo guardar la configuración."
+            }
         }
     }
 

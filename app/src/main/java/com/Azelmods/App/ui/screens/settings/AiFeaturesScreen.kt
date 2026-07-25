@@ -1,6 +1,8 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -287,9 +289,16 @@ fun GeminiApiKeySection(
 ) {
     val hasKey by viewModel.hasKey.collectAsState()
     val feedback by viewModel.feedback.collectAsState()
+    val provider by viewModel.provider.collectAsState()
 
     var keyInput by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
+    var providerMenuOpen by remember { mutableStateOf(false) }
+
+    // Se reinician al cambiar de proveedor para mostrar los valores del preset nuevo
+    // en vez de los del anterior.
+    var baseUrlInput by remember(provider) { mutableStateOf(viewModel.currentBaseUrl()) }
+    var modelInput by remember(provider) { mutableStateOf(viewModel.currentModel()) }
 
     Surface(
         modifier = Modifier
@@ -309,16 +318,106 @@ fun GeminiApiKeySection(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "API Key de Gemini",
+                        text = "Proveedor de IA",
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Tu clave se guarda cifrada en este dispositivo.",
+                        text = "Tú eliges el proveedor y el modelo. La clave se guarda cifrada en este dispositivo.",
                         color = Color.Gray,
                         fontSize = 13.sp
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Selector de proveedor ────────────────────────────────────────
+            // DropdownMenu plano en vez de ExposedDropdownMenuBox: este último exige
+            // MenuAnchorType (Material3 1.3+) y aquí no se puede verificar la versión
+            // compilando. DropdownMenu es estable desde 1.0 y hace lo mismo.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { providerMenuOpen = true },
+                    color = Color.Transparent,
+                    shape = MaterialTheme.shapes.small,
+                    border = BorderStroke(1.dp, Color.Gray)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Proveedor", color = Color.Gray, fontSize = 11.sp)
+                            Text(
+                                text = provider.displayName,
+                                color = Color.White,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ArrowDropDown,
+                            contentDescription = "Elegir proveedor",
+                            tint = Color.Gray
+                        )
+                    }
+                }
+                DropdownMenu(
+                    expanded = providerMenuOpen,
+                    onDismissRequest = { providerMenuOpen = false }
+                ) {
+                    viewModel.availableProviders.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.displayName) },
+                            onClick = {
+                                providerMenuOpen = false
+                                viewModel.selectProvider(option)
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (provider.hint.isNotBlank()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(text = provider.hint, color = Color.Gray, fontSize = 12.sp)
+            }
+
+            // ── Endpoint: solo aplica a los proveedores OpenAI-compatible ────
+            // Gemini tiene su propia ruta fija, así que mostrar estos campos ahí
+            // solo confundiría.
+            if (provider.isOpenAiCompatible) {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = baseUrlInput,
+                    onValueChange = { baseUrlInput = it },
+                    label = { Text("URL base (…/v1)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = modelInput,
+                    onValueChange = { modelInput = it },
+                    label = { Text("Modelo") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { viewModel.saveEndpoint(baseUrlInput, modelInput) }) {
+                    Text("Guardar proveedor y modelo")
                 }
             }
 
@@ -334,8 +433,14 @@ fun GeminiApiKeySection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (hasKey) "API Key activa" else "Sin API Key configurada",
-                    color = if (hasKey) Teal else Color.Gray,
+                    text = when {
+                        hasKey -> "API Key activa"
+                        // Un servidor local no necesita clave: decir "sin API key" ahí
+                        // sugeriría un problema que no existe.
+                        provider.allowsEmptyKey -> "Sin clave — ${provider.displayName} no la necesita"
+                        else -> "Sin API Key configurada"
+                    },
+                    color = if (hasKey || provider.allowsEmptyKey) Teal else Color.Gray,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )

@@ -20,4 +20,24 @@
             <certificates src="system"/>
         </trust-anchors>
     </domain-config>
+
+    <!--
+        Servidores de IA locales (Ollama, LM Studio, llama.cpp, vLLM) hablan HTTP en
+        claro. La base-config lo prohíbe para todo, y esa prohibición gana sobre el
+        android:usesCleartextTraffic="true" del manifest, así que sin esta excepción
+        cualquier modelo local falla con CleartextNotPermitted.
+
+        Se permite SOLO loopback y el host del emulador: no se abre la red entera.
+        - 127.0.0.1 / localhost: el propio dispositivo, o un PC redirigido con
+          `adb reverse tcp:11434 tcp:11434` (la forma recomendada en móvil físico).
+        - 10.0.2.2: el equipo anfitrión visto desde el emulador de Android.
+
+        Para apuntar a una IP de la red local (p. ej. 192.168.1.50) hay que añadirla
+        aquí a mano: la network security config no acepta rangos CIDR.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
 </network-security-config>

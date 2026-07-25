@@ -156,6 +156,30 @@ Guidelines:
         val channel: SendChannel<StreamResponse> = this
         val activeSource = java.util.concurrent.atomic.AtomicReference<EventSource?>(null)
 
+        // El streaming de abajo es SSE con el formato de Gemini. Un proveedor
+        // OpenAI-compatible no entiende ese endpoint, así que se resuelve con una
+        // llamada normal y se emite la respuesta completa de una vez. Se pierde el
+        // efecto de escritura progresiva, no la funcionalidad.
+        val activeProvider = keyStore.getProvider()
+        if (activeProvider.isOpenAiCompatible) {
+            try {
+                val response = requestQueue.enqueue {
+                    openAiCompatCompletion(activeProvider, messages, temperature, maxTokens, topP)
+                }
+                channel.trySend(StreamResponse.Content(response.content))
+                channel.trySend(StreamResponse.Done)
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ Error con ${activeProvider.displayName}", e)
+                channel.trySend(StreamResponse.Error(e.message ?: "Error del proveedor de IA"))
+            }
+            close()
+            // callbackFlow exige awaitClose antes de que termine el bloque, incluso si
+            // ya se cerró: sin esto lanza IllegalStateException en ejecución. Tras
+            // close() retorna de inmediato.
+            awaitClose { }
+            return@callbackFlow
+        }
+
         try {
             // 🛡️ Encaminar TODA la solicitud de streaming por la cola:
             //   - GeminiRateLimiter aplica el espaciado mínimo entre requests
@@ -355,9 +379,18 @@ Guidelines:
         maxTokens: Int,
         topP: Float
     ): ChatResponse {
+        // Si el usuario eligió un proveedor OpenAI-compatible, se enruta ahí: mismo
+        // contrato para OpenAI, OpenRouter, DeepSeek, Mistral, Groq, Ollama y
+        // cualquier servidor local. Gemini sigue su propio camino porque usa
+        // :generateContent con un esquema distinto.
+        val provider = keyStore.getProvider()
+        if (provider.isOpenAiCompatible) {
+            return openAiCompatCompletion(provider, messages, temperature, maxTokens, topP)
+        }
+
         try {
             Log.d(TAG, "🚀 Starting non-streaming chat completion with Gemini: $model")
-            
+
             val requestBodyString = buildRequestBody(
                 messages = messages,
                 temperature = temperature,
@@ -413,6 +446,60 @@ Guidelines:
         }
     }  // end chatCompletionInternal
     
+    /**
+     * Completion contra un proveedor OpenAI-compatible elegido por el usuario.
+     *
+     * Reutiliza el mismo [client] que Gemini, así que hereda el resolutor DNS por Tor
+     * y los timeouts ya configurados. El modelo y la URL base salen del almacén
+     * cifrado, no de constantes: son del usuario.
+     */
+    private fun openAiCompatCompletion(
+        provider: com.Azelmods.App.data.ai.AiProvider,
+        messages: List<Message>,
+        temperature: Float,
+        maxTokens: Int,
+        topP: Float
+    ): ChatResponse {
+        val baseUrl = keyStore.getBaseUrl()
+        val model = keyStore.getModel()
+        val apiKey = if (provider.allowsEmptyKey) keyStore.getApiKey().orEmpty() else requireApiKey()
+
+        if (baseUrl.isBlank()) {
+            throw Exception("Configura la URL del proveedor ${provider.displayName} en Ajustes de IA")
+        }
+        if (model.isBlank()) {
+            throw Exception("Configura el modelo de ${provider.displayName} en Ajustes de IA")
+        }
+
+        Log.d(TAG, "🚀 Chat completion vía ${provider.displayName}: $model")
+
+        // Este dialecto solo entiende los roles user/assistant/system.
+        val mapped = messages.takeLast(MAX_CONTEXT_MESSAGES).map { msg ->
+            val role = if (msg.role == "assistant") "assistant" else "user"
+            role to msg.content
+        }
+
+        val result = OpenAiCompatClient.chatCompletion(
+            client = client,
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+            model = model,
+            systemPrompt = getSystemPrompt(),
+            messages = mapped,
+            temperature = temperature,
+            maxTokens = maxTokens,
+            topP = topP
+        )
+
+        Log.d(TAG, "✅ Respuesta de ${provider.displayName}, tokens: ${result.totalTokens}")
+
+        return ChatResponse(
+            content = result.content,
+            tokens = result.totalTokens,
+            model = model
+        )
+    }
+
     /**
      * 🔧 CONSTRUIR REQUEST BODY PARA GEMINI
      */

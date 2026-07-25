@@ -37,7 +37,12 @@ class AiKeyStore @Inject constructor(
     companion object {
         private const val TAG = "AiKeyStore"
         private const val PREFS_FILE = "azel_ai_secure_prefs"
+        // Se conserva el nombre histórico para no perder la clave ya guardada de los
+        // usuarios que actualicen; ahora almacena la clave del proveedor activo.
         private const val KEY_API_KEY = "gemini_api_key"
+        private const val KEY_PROVIDER = "ai_provider_id"
+        private const val KEY_BASE_URL = "ai_base_url"
+        private const val KEY_MODEL = "ai_model"
     }
 
     private val prefs: SharedPreferences by lazy { createSecurePrefs() }
@@ -89,6 +94,79 @@ class AiKeyStore @Inject constructor(
      * `true` si existe una API key del usuario almacenada y no está en blanco.
      */
     fun hasApiKey(): Boolean = !getApiKey().isNullOrBlank()
+
+    // ── Proveedor ────────────────────────────────────────────────────────────
+
+    // Se inicializa aquí, no en el bloque init: init se ejecuta en orden de
+    // declaración y está declarado más arriba, así que no puede tocar esta propiedad.
+    private val _provider = MutableStateFlow(getProvider())
+
+    /** Estado reactivo del proveedor activo, para que los ajustes se refresquen solos. */
+    val provider: StateFlow<AiProvider> = _provider.asStateFlow()
+
+    /** Proveedor elegido por el usuario; [AiProvider.DEFAULT] si nunca eligió. */
+    fun getProvider(): AiProvider = AiProvider.fromId(
+        runCatching { prefs.getString(KEY_PROVIDER, null) }.getOrNull()
+    )
+
+    /**
+     * Cambia el proveedor. La URL base y el modelo se resetean a los del preset:
+     * arrastrar la URL de OpenAI a Ollama solo produce errores desconcertantes.
+     * La API key NO se borra, porque volver al proveedor anterior es lo normal.
+     */
+    fun setProvider(newProvider: AiProvider) {
+        runCatching {
+            prefs.edit()
+                .putString(KEY_PROVIDER, newProvider.id)
+                .remove(KEY_BASE_URL)
+                .remove(KEY_MODEL)
+                .apply()
+        }.onFailure { Log.e(TAG, "No se pudo guardar el proveedor", it) }
+        _provider.value = newProvider
+        Log.d(TAG, "Proveedor de IA: ${newProvider.displayName}")
+    }
+
+    /** URL base efectiva: la que puso el usuario o, si no, la del preset. */
+    fun getBaseUrl(): String {
+        val stored = runCatching { prefs.getString(KEY_BASE_URL, null) }.getOrNull()?.trim()
+        val effective = stored?.takeIf { it.isNotEmpty() } ?: getProvider().defaultBaseUrl
+        // Sin barra final: los endpoints se concatenan como "$baseUrl/chat/completions"
+        // y una doble barra devuelve 404 en varios proveedores.
+        return effective.trimEnd('/')
+    }
+
+    fun setBaseUrl(url: String) {
+        runCatching {
+            val sanitized = url.trim()
+            if (sanitized.isEmpty()) prefs.edit().remove(KEY_BASE_URL).apply()
+            else prefs.edit().putString(KEY_BASE_URL, sanitized).apply()
+        }.onFailure { Log.e(TAG, "No se pudo guardar la URL base", it) }
+    }
+
+    /** Modelo efectivo: el que puso el usuario o, si no, el del preset. */
+    fun getModel(): String {
+        val stored = runCatching { prefs.getString(KEY_MODEL, null) }.getOrNull()?.trim()
+        return stored?.takeIf { it.isNotEmpty() } ?: getProvider().defaultModel
+    }
+
+    fun setModel(model: String) {
+        runCatching {
+            val sanitized = model.trim()
+            if (sanitized.isEmpty()) prefs.edit().remove(KEY_MODEL).apply()
+            else prefs.edit().putString(KEY_MODEL, sanitized).apply()
+        }.onFailure { Log.e(TAG, "No se pudo guardar el modelo", it) }
+    }
+
+    /**
+     * `true` si el proveedor activo puede usarse ya: tiene lo que necesita.
+     * Los servidores locales no requieren clave, pero sí una URL base.
+     */
+    fun isProviderUsable(): Boolean {
+        val p = getProvider()
+        val keyOk = p.allowsEmptyKey || hasApiKey()
+        val urlOk = !p.isOpenAiCompatible || getBaseUrl().isNotBlank()
+        return keyOk && urlOk
+    }
 
     private fun readRawKey(): String? = runCatching {
         prefs.getString(KEY_API_KEY, null)
