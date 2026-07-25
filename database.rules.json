@@ -40,7 +40,7 @@
     
     "chats": {
       "$chatId": {
-        ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+        ".read": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
         ".write": "auth != null && (!data.exists() || root.child('chats').child($chatId).child('members').child(auth.uid).exists())",
         
         "members": {

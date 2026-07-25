@@ -580,15 +580,24 @@ class ChatViewModel @Inject constructor(
                                      e is java.net.SocketTimeoutException ||
                                      e is java.io.IOException
                 
-                val isAuthError = e.message?.contains("not authenticated", ignoreCase = true) == true ||
-                                  e.message?.contains("permission denied", ignoreCase = true) == true
-                
+                // Sesión ausente y permiso denegado son fallos distintos: mezclarlos
+                // hacía que un problema de reglas de Firebase se reportara como
+                // "vuelve a iniciar sesión", que nunca lo arreglaba.
+                val isAuthError = e.message?.contains("not authenticated", ignoreCase = true) == true
+                val isPermissionError = e.message?.contains("permission denied", ignoreCase = true) == true ||
+                                        e.message?.contains("permission_denied", ignoreCase = true) == true
+
                 if (isAuthError) {
-                    // Error de autenticación - no es problema de red
-                    android.util.Log.e("ChatViewModel", "🔐 Authentication error - user may not be logged in")
+                    android.util.Log.e("ChatViewModel", "🔐 No hay sesión activa")
                     _state.value = _state.value.copy(
                         replyingTo = null,
-                        error = "Error de autenticación. Por favor, inicia sesión de nuevo."
+                        error = "Tu sesión expiró. Inicia sesión de nuevo."
+                    )
+                } else if (isPermissionError) {
+                    android.util.Log.e("ChatViewModel", "🚫 Permiso denegado por las reglas de Firebase (no es la sesión)")
+                    _state.value = _state.value.copy(
+                        replyingTo = null,
+                        error = "No se pudo enviar: sin permiso para escribir en este chat."
                     )
                 } else if (isNetworkError) {
                     // Error de red real - guardar en cola offline

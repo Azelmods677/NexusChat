@@ -135,12 +135,21 @@ class RealtimeDatabaseRepository @Inject constructor(
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
         val chatRef = database.child("chats").child(chatId)
-        val chatSnapshot = chatRef.get().await()
-        
+
+        // Si la lectura falla (reglas, red) NO asumimos que el chat existe: seguimos
+        // al bloque de creación, que fusiona en vez de reemplazar y por tanto es
+        // seguro ejecutar sobre un chat ya existente.
+        val chatSnapshot = try {
+            chatRef.get().await()
+        } catch (e: Exception) {
+            android.util.Log.w("RealtimeDB", "No se pudo leer el chat $chatId (${e.message}); se intentará crear/fusionar")
+            null
+        }
+
         // ══════════════════════════════════════════════════════════════════
         // 🔧 FIX BUG #5 y #6: CREAR CHAT SI NO EXISTE Y ACTUALIZAR ÍNDICE
         // ══════════════════════════════════════════════════════════════════
-        if (!chatSnapshot.exists()) {
+        if (chatSnapshot == null || !chatSnapshot.exists()) {
             android.util.Log.d("RealtimeDB", "🆕 Chat $chatId no existe, creando...")
             
             // Extraer miembros del chatId (formato: "uid1_uid2" o "group_timestamp")
@@ -155,19 +164,19 @@ class RealtimeDatabaseRepository @Inject constructor(
             
             val membersMap = memberIds.distinct().associateWith { true }
             
-            // Crear el nodo del chat en Firebase
+            // updateChildren y NO setValue: setValue reemplaza el nodo completo y
+            // borraría 'messages' si el chat ya existía (p. ej. si la lectura de
+            // arriba falló, o si el otro miembro lo creó a la vez).
             val chatData = mapOf(
                 "chatId" to chatId,
                 "members" to membersMap,
                 "createdAt" to ServerValue.TIMESTAMP,
-                "lastMessage" to "",
                 "lastMessageTime" to ServerValue.TIMESTAMP,
-                "lastMessageSenderId" to "",
                 "isE2EE" to true // Habilitado por defecto
             )
-            
+
             try {
-                chatRef.setValue(chatData).await()
+                chatRef.updateChildren(chatData).await()
                 android.util.Log.d("RealtimeDB", "✅ Chat $chatId creado exitosamente")
             } catch (e: Exception) {
                 android.util.Log.e("RealtimeDB", "❌ Error creando chat: ${e.message}")
