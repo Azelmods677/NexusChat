@@ -316,14 +316,14 @@ instalado en el dispositivo.
 
 ```mermaid
 flowchart LR
-    A["✅ v4<br/>Design System<br/>+ estabilidad"] --> B["🔜 IA multi-proveedor<br/>OpenAI-compat +<br/>Anthropic + local"]
+    A["✅ v4<br/>Design System<br/>+ estabilidad"] --> B["🔜 IA multi-proveedor<br/>OpenAI-compat +<br/>modelos locales"]
     B --> C["🔜 Rediseño de<br/>pantallas premium"]
     C --> D["🔮 Tema claro<br/>completo"]
 ```
 
 - **IA multi-proveedor** — cliente compatible con OpenAI que habilita, con la clave del
   usuario, proveedores como OpenAI, **Ollama local**, OpenRouter, NVIDIA, Hugging Face,
-  DeepSeek, Mistral y Kimi, además de Anthropic y el Gemini actual.
+  DeepSeek, Mistral y Kimi, además del Gemini actual.
 - **Rediseño de pantallas premium** — aplicar el Nexus Design System pantalla por pantalla.
 - **Tema claro completo** — habilitado por la unificación de tokens de la v4.
 
