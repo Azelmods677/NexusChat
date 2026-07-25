@@ -23,6 +23,17 @@ val fcmServerKey: String = localProperties.getProperty("FCM_SERVER_KEY") ?: ""
 // fallback read from local.properties (key: GEMINI_API_KEY) and defaults to empty.
 val geminiApiKey: String = localProperties.getProperty("GEMINI_API_KEY") ?: ""
 
+// Firma de release. Las credenciales del keystore NUNCA van en el repo: se leen de
+// keystore.properties, que está en .gitignore. Si el archivo no existe, el release
+// cae a la firma debug y el build lo avisa en voz alta, porque Google Play rechaza
+// un AAB firmado en debug.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+val hasReleaseKeystore: Boolean = keystorePropertiesFile.exists()
+if (hasReleaseKeystore) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.Azelmods.App"
     compileSdk = 36
@@ -31,8 +42,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 400
-        versionName = "4.0.0"
+        versionCode = 500
+        versionName = "5.0.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "FCM_SERVER_KEY", "\"$fcmServerKey\"")
@@ -48,6 +59,17 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -56,8 +78,16 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // TODO: replace with release signing config before publishing to production
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "\n⚠️  keystore.properties no encontrado: el release se firmará con la " +
+                    "clave DEBUG y Google Play lo RECHAZARÁ. Copia keystore.properties.example " +
+                    "a keystore.properties y rellénalo con tu keystore real.\n"
+                )
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             isMinifyEnabled = false
