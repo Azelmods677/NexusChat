@@ -556,6 +556,29 @@ Guidelines:
     )
     
     /**
+     * 📥 CATÁLOGO REAL DEL PROVEEDOR ACTIVO
+     *
+     * Consulta `GET {baseUrl}/models` del proveedor OpenAI-compatible configurado y
+     * devuelve sus ids. Gracias a esto la app NO necesita una lista de modelos
+     * hardcodeada: cuando un proveedor publica una versión nueva, aparece sola.
+     *
+     * Gemini no expone este endpoint con el mismo contrato, así que ahí se devuelven
+     * los modelos conocidos de [getAvailableModels].
+     */
+    suspend fun listProviderModels(): List<String> = withContext(Dispatchers.IO) {
+        val provider = keyStore.getProvider()
+        if (!provider.isOpenAiCompatible) {
+            return@withContext getAvailableModels().map { it.id }
+        }
+
+        val baseUrl = keyStore.getBaseUrl()
+        if (baseUrl.isBlank()) throw Exception("Configura primero la URL base del proveedor")
+
+        val apiKey = if (provider.allowsEmptyKey) keyStore.getApiKey().orEmpty() else requireApiKey()
+        OpenAiCompatClient.listModels(client = client, baseUrl = baseUrl, apiKey = apiKey)
+    }
+
+    /**
      * 🔍 VERIFICAR SALUD DE LA API GEMINI
      */
     suspend fun checkHealth(): Boolean = withContext(Dispatchers.IO) {

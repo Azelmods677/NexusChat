@@ -34,6 +34,41 @@ admin.initializeApp();
 const db = admin.database();
 
 /**
+ * 🔑 Obtiene los FCM tokens de un usuario.
+ *
+ * Los tokens se guardan en el nodo raíz `fcmTokens/{uid}`, FUERA de `/users`: la
+ * lista de contactos necesita leer la colección `/users` completa y en Firebase el
+ * permiso de lectura cascadea hacia abajo, así que tener ahí los tokens los habría
+ * dejado al alcance de cualquier usuario autenticado.
+ *
+ * Se sigue leyendo también la ruta antigua (`users/{uid}/fcmTokens`) para que los
+ * dispositivos registrados antes de la migración no se queden sin notificaciones:
+ * cada app reescribe su token en la ruta nueva al arrancar, así que la ruta vieja
+ * se vacía sola con el tiempo.
+ *
+ * @param {string} uid Identificador del usuario destinatario.
+ * @return {Promise<string[]>} Lista de tokens sin duplicados.
+ */
+async function getFcmTokens(uid) {
+    const paths = [`/fcmTokens/${uid}`, `/users/${uid}/fcmTokens`];
+    const tokens = [];
+
+    for (const path of paths) {
+        try {
+            const snapshot = await db.ref(path).once("value");
+            const data = snapshot.val();
+            if (data) {
+                tokens.push(...Object.values(data).filter((t) => typeof t === "string"));
+            }
+        } catch (e) {
+            console.error(`❌ Error reading FCM tokens at ${path}:`, e);
+        }
+    }
+
+    return [...new Set(tokens)];
+}
+
+/**
  * 🆕 onMessageCreate — Se dispara cuando se escribe un nuevo mensaje en
  * `chats/{chatId}/messages/{messageId}`.
  *
@@ -119,16 +154,7 @@ exports.onMessageCreate = functions.database
         }
 
         // ── 7. Obtener FCM tokens del destinatario ──
-        let fcmTokens = [];
-        try {
-            const tokensSnapshot = await db.ref(`/users/${recipientId}/fcmTokens`).once("value");
-            const tokensData = tokensSnapshot.val();
-            if (tokensData) {
-                fcmTokens = Object.values(tokensData).filter((t) => typeof t === "string");
-            }
-        } catch (e) {
-            console.error("❌ Error reading FCM tokens:", e);
-        }
+        const fcmTokens = await getFcmTokens(recipientId);
 
         if (fcmTokens.length === 0) {
             console.log(`⚠️ No FCM tokens for user ${recipientId}`);
@@ -242,16 +268,7 @@ exports.onStoryReaction = functions.database
         }
 
         // Tokens FCM del autor de la historia
-        let fcmTokens = [];
-        try {
-            const tokensSnapshot = await db.ref(`/users/${ownerId}/fcmTokens`).once("value");
-            const tokensData = tokensSnapshot.val();
-            if (tokensData) {
-                fcmTokens = Object.values(tokensData).filter((t) => typeof t === "string");
-            }
-        } catch (e) {
-            console.error("❌ Error reading FCM tokens:", e);
-        }
+        const fcmTokens = await getFcmTokens(ownerId);
         if (fcmTokens.length === 0) {
             console.log(`⚠️ No FCM tokens for story owner ${ownerId}`);
             return null;
@@ -323,16 +340,7 @@ exports.onCallEnded = functions.database
         }
 
         // Obtener FCM tokens del usuario que perdió la llamada
-        let fcmTokens = [];
-        try {
-            const tokensSnapshot = await db.ref(`/users/${missedUserId}/fcmTokens`).once("value");
-            const tokensData = tokensSnapshot.val();
-            if (tokensData) {
-                fcmTokens = Object.values(tokensData).filter((t) => typeof t === "string");
-            }
-        } catch (e) {
-            console.error("❌ Error reading FCM tokens:", e);
-        }
+        const fcmTokens = await getFcmTokens(missedUserId);
 
         for (const token of fcmTokens) {
             try {
@@ -406,16 +414,7 @@ exports.onCallCreate = functions.database
         const callType = callData.callType || "AUDIO";
 
         // ── Obtener FCM tokens del receptor ──
-        let fcmTokens = [];
-        try {
-            const tokensSnapshot = await db.ref(`/users/${receiverId}/fcmTokens`).once("value");
-            const tokensData = tokensSnapshot.val();
-            if (tokensData) {
-                fcmTokens = Object.values(tokensData).filter((t) => typeof t === "string");
-            }
-        } catch (e) {
-            console.error("❌ Error reading FCM tokens:", e);
-        }
+        const fcmTokens = await getFcmTokens(receiverId);
 
         if (fcmTokens.length === 0) {
             console.log(`⚠️ No FCM tokens for receiver ${receiverId}`);

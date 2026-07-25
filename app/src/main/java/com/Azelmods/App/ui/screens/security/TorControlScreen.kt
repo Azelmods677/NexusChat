@@ -15,9 +15,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.Azelmods.App.data.security.tor.OrbotDetector
+import com.Azelmods.App.data.security.tor.OrbotState
+import com.Azelmods.App.data.security.tor.OrbotUiStatus
 import com.Azelmods.App.data.security.tor.TorState
+import com.Azelmods.App.data.security.tor.mapOrbotStatus
 import com.Azelmods.App.ui.theme.DarkBackground
 import com.Azelmods.App.ui.theme.DarkSurface
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Pantalla de control de Tor - simplificada para usar Orbot
@@ -37,6 +43,27 @@ fun TorControlScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Estado REAL de Orbot, comprobado en background (los sockets de OrbotDetector
+    // bloquean). Antes esta pantalla no lo consultaba: si TorService reportaba error
+    // mostraba una tarjeta roja de "Orbot no está instalado" aunque Orbot estuviera
+    // instalado y conectado. Se re-comprueba cuando cambia el estado de Tor y de
+    // forma periódica, para que arrancar Orbot se detecte sin salir de la pantalla.
+    var orbotStatus by remember { mutableStateOf<OrbotUiStatus?>(null) }
+    LaunchedEffect(torState) {
+        while (true) {
+            orbotStatus = withContext(Dispatchers.IO) {
+                runCatching {
+                    mapOrbotStatus(
+                        installed = OrbotDetector.isOrbotUsable(context),
+                        active = OrbotDetector.isTorAvailable()
+                    )
+                }.getOrElse { mapOrbotStatus(installed = false, active = false) }
+            }
+            kotlinx.coroutines.delay(4000)
+        }
+    }
 
     LaunchedEffect(uiState) {
         when (val state = uiState) {
@@ -94,6 +121,25 @@ fun TorControlScreen(
                     } else {
                         viewModel.disableAnonymousMode()
                     }
+                },
+                orbotStatus = orbotStatus,
+                onOrbotAction = {
+                    when (orbotStatus?.state) {
+                        OrbotState.NOT_INSTALLED -> {
+                            runCatching {
+                                context.startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(
+                                            "https://play.google.com/store/apps/details?id=org.torproject.android"
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                        OrbotState.INSTALLED_INACTIVE -> OrbotDetector.launchOrbot(context)
+                        else -> Unit
+                    }
                 }
             )
 
@@ -105,8 +151,10 @@ fun TorControlScreen(
                         "Descárgalo desde Play Store o F-Droid: org.torproject.android"
             )
 
-            // Error display
-            if (torState is TorState.Error) {
+            // Error display — solo si Orbot NO está funcionando. Con Orbot activo, un
+            // TorState.Error residual no debe pintar una tarjeta roja alarmante:
+            // el estado accionable de Orbot ya se muestra dentro del toggle.
+            if (torState is TorState.Error && orbotStatus?.state != OrbotState.ACTIVE) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(

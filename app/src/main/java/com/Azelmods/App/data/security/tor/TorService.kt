@@ -73,10 +73,17 @@ class TorService @Inject constructor(
                 Log.d(TAG, "Buscando Orbot...")
                 _torState.value = TorState.Connecting(progress = 0, message = "Buscando Orbot...")
 
-                // Verificar si Orbot está instalado
-                if (!OrbotDetector.isOrbotInstalled(context)) {
+                // CAUSA RAÍZ de "Orbot no está instalado" con Orbot instalado y
+                // conectado: se comprobaba isOrbotInstalled() ANTES de mirar el proxy.
+                // En Android 11+ getPackageInfo() de otra app falla si no está
+                // declarada en <queries>, así que el modo anónimo moría aquí sin
+                // llegar a probar la conexión. Ahora se comprueba primero si el proxy
+                // de Tor responde —prueba directa de que Orbot está corriendo— y solo
+                // se descarta si NO responde y además el paquete no aparece.
+                if (!OrbotDetector.isOrbotUsable(context)) {
                     _torState.value = TorState.Error(
-                        message = "Orbot no está instalado. Descárgalo desde Play Store o F-Droid (org.torproject.android)",
+                        message = "Orbot no está instalado o no responde. Instálalo desde Play Store " +
+                            "o F-Droid (org.torproject.android), ábrelo y pulsa 'Iniciar'.",
                         exception = null
                     )
                     isMonitoring = false

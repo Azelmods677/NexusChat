@@ -95,12 +95,27 @@ object OrbotDetector {
     }
 
     /**
+     * ¿Está Orbot presente y utilizable?
+     *
+     * El orden importa: se pregunta PRIMERO si el proxy responde. Un proxy Tor
+     * escuchando en 127.0.0.1 es prueba directa de que Orbot está corriendo, y esa
+     * evidencia manda sobre `isOrbotInstalled`, que puede devolver false por
+     * restricciones de visibilidad de paquetes (Android 11+) aunque Orbot esté ahí.
+     *
+     * Debe llamarse desde un hilo de background: abre sockets.
+     */
+    fun isOrbotUsable(context: Context): Boolean =
+        isTorAvailable() || isOrbotInstalled(context)
+
+    /**
      * Obtiene información de estado para mostrar al usuario.
      */
     fun getStatus(context: Context): String {
-        val installed = isOrbotInstalled(context)
         val socks = isSocksProxyAvailable()
         val http = isHttpProxyAvailable()
+        // Solo se consulta el packageManager si el proxy NO responde: si responde,
+        // Orbot está funcionando y la pregunta sobra.
+        val installed = socks || http || isOrbotInstalled(context)
 
         return when {
             socks || http -> "✅ Tor activo vía Orbot"
@@ -132,10 +147,12 @@ object OrbotDetector {
      * Obtiene información detallada del estado de Orbot con acciones sugeridas
      */
     fun getOrbotStatusInfo(context: Context): OrbotStatusInfo {
-        val installed = isOrbotInstalled(context)
         val socksAvailable = isSocksProxyAvailable()
         val httpAvailable = isHttpProxyAvailable()
-        
+        // Igual que en getStatus: si el proxy responde, Orbot está instalado, diga lo
+        // que diga el packageManager (visibilidad de paquetes en Android 11+).
+        val installed = socksAvailable || httpAvailable || isOrbotInstalled(context)
+
         return when {
             !installed -> OrbotStatusInfo(
                 status = OrbotStatus.NOT_INSTALLED,

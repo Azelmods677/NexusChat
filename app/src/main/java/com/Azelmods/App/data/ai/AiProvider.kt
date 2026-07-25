@@ -28,7 +28,16 @@ enum class AiProvider(
     val isLocal: Boolean = false,
     /** true si el endpoint no necesita API key (servidores locales). */
     val allowsEmptyKey: Boolean = false,
-    val hint: String = ""
+    val hint: String = "",
+    /**
+     * Modelos sugeridos para elegir de un toque, sin teclear el id a mano.
+     *
+     * NO es una lista cerrada: el campo "Modelo" sigue siendo texto libre y la
+     * pantalla de IA puede pedir el catálogo real al proveedor (`GET /models`).
+     * Así, cuando un proveedor publica una versión nueva (DeepSeek V4, GLM 5,
+     * Qwen Coder más reciente, Kimi…), aparece sola SIN actualizar la app.
+     */
+    val suggestedModels: List<String> = emptyList()
 ) {
     GEMINI(
         id = "gemini",
@@ -36,7 +45,12 @@ enum class AiProvider(
         defaultBaseUrl = "",
         defaultModel = "gemini-2.5-flash",
         isOpenAiCompatible = false,
-        hint = "Clave desde Google AI Studio."
+        hint = "Clave desde Google AI Studio.",
+        suggestedModels = listOf(
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-2.0-flash"
+        )
     ),
     OPENAI(
         id = "openai",
@@ -44,36 +58,78 @@ enum class AiProvider(
         defaultBaseUrl = "https://api.openai.com/v1",
         defaultModel = "gpt-4o-mini",
         isOpenAiCompatible = true,
-        hint = "Clave desde platform.openai.com."
+        hint = "Clave desde platform.openai.com.",
+        suggestedModels = listOf("gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "o4-mini")
     ),
     OPENROUTER(
         id = "openrouter",
         displayName = "OpenRouter",
         defaultBaseUrl = "https://openrouter.ai/api/v1",
-        defaultModel = "meta-llama/llama-3.3-70b-instruct",
+        defaultModel = "deepseek/deepseek-chat",
         isOpenAiCompatible = true,
-        hint = "Un único acceso a cientos de modelos, con y sin filtros."
+        hint = "Una sola clave para cientos de modelos: DeepSeek, Qwen Coder, GLM, Kimi, Llama… " +
+            "Pulsa «Buscar modelos» para ver el catálogo actualizado.",
+        suggestedModels = listOf(
+            "deepseek/deepseek-chat",
+            "deepseek/deepseek-r1",
+            "qwen/qwen3-coder",
+            "z-ai/glm-4.6",
+            "moonshotai/kimi-k2",
+            "meta-llama/llama-3.3-70b-instruct"
+        )
     ),
     DEEPSEEK(
         id = "deepseek",
         displayName = "DeepSeek",
         defaultBaseUrl = "https://api.deepseek.com/v1",
         defaultModel = "deepseek-chat",
-        isOpenAiCompatible = true
+        isOpenAiCompatible = true,
+        hint = "«deepseek-chat» apunta siempre al modelo de chat más reciente de DeepSeek.",
+        suggestedModels = listOf("deepseek-chat", "deepseek-reasoner")
+    ),
+    QWEN(
+        id = "qwen",
+        displayName = "Qwen (Alibaba)",
+        // Endpoint internacional compatible con OpenAI de DashScope.
+        defaultBaseUrl = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        defaultModel = "qwen3-coder-plus",
+        isOpenAiCompatible = true,
+        hint = "Familia Qwen, incluidos los Coder. Clave desde DashScope (Alibaba Cloud).",
+        suggestedModels = listOf("qwen3-coder-plus", "qwen-plus", "qwen-max", "qwen-turbo")
+    ),
+    ZAI(
+        id = "zai",
+        displayName = "Z.ai / GLM (Zhipu)",
+        defaultBaseUrl = "https://api.z.ai/api/paas/v4",
+        defaultModel = "glm-4.6",
+        isOpenAiCompatible = true,
+        hint = "Modelos GLM. Si ya salió una versión superior, pulsa «Buscar modelos».",
+        suggestedModels = listOf("glm-4.6", "glm-4.5", "glm-4.5-air")
+    ),
+    MOONSHOT(
+        id = "moonshot",
+        displayName = "Kimi (Moonshot AI)",
+        defaultBaseUrl = "https://api.moonshot.ai/v1",
+        defaultModel = "kimi-latest",
+        isOpenAiCompatible = true,
+        hint = "«kimi-latest» sigue siempre al Kimi más nuevo. Clave desde platform.moonshot.ai.",
+        suggestedModels = listOf("kimi-latest", "kimi-k2-turbo-preview", "moonshot-v1-128k")
     ),
     MISTRAL(
         id = "mistral",
         displayName = "Mistral",
         defaultBaseUrl = "https://api.mistral.ai/v1",
         defaultModel = "mistral-small-latest",
-        isOpenAiCompatible = true
+        isOpenAiCompatible = true,
+        suggestedModels = listOf("mistral-small-latest", "mistral-large-latest", "codestral-latest")
     ),
     GROQ(
         id = "groq",
         displayName = "Groq",
         defaultBaseUrl = "https://api.groq.com/openai/v1",
         defaultModel = "llama-3.3-70b-versatile",
-        isOpenAiCompatible = true
+        isOpenAiCompatible = true,
+        suggestedModels = listOf("llama-3.3-70b-versatile", "llama-3.1-8b-instant")
     ),
     OLLAMA(
         id = "ollama",
@@ -89,7 +145,9 @@ enum class AiProvider(
         isOpenAiCompatible = true,
         isLocal = true,
         allowsEmptyKey = true,
-        hint = "Sin clave. En móvil: adb reverse tcp:11434 tcp:11434. El modelo que elijas decide si hay filtros."
+        hint = "Sin clave. En móvil: adb reverse tcp:11434 tcp:11434. El modelo que elijas decide si hay filtros.",
+        // Pulsando «Buscar modelos» se lista lo que realmente tengas descargado.
+        suggestedModels = listOf("llama3.2", "qwen2.5-coder", "deepseek-r1", "mistral")
     ),
     CUSTOM(
         id = "custom",

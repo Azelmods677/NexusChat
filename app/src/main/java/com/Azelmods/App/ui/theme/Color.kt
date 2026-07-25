@@ -38,8 +38,10 @@ val Info = Color(0xFF2196F3)
 
 // ── Estado de mensajes ─────────────────────────────────────────────────────
 val MessageSent = Color(0xFF9E9E9E)
-val MessageDelivered = Teal
-val MessageRead = NexusTokens.Color.Primary
+val MessageDelivered = Color(0xFFB0BEC5)        // Gris claro: entregado, aún no leído
+// Azul "visto": rol propio del canon. Antes era el violeta de marca, que se
+// confundía con cualquier otro acento y no se leía como "lo han leído".
+val MessageRead = NexusTokens.Color.ReadReceipt
 
 // ── Gradiente de Stories (identidad Nexus, 5 paradas) ──────────────────────
 val StoryGradient = listOf(

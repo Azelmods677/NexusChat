@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <base-config cleartextTrafficPermitted="false">
+    <!--
+        base-config = true (cleartext permitido por defecto).
+
+        MOTIVO: el navegador Tor integrado carga servicios .onion, que se sirven por
+        HTTP en claro (no llevan certificado TLS público). La network security config
+        NO admite comodines de TLD (no existe forma de escribir "*.onion"), así que la
+        ÚNICA manera de que el WebView cargue cualquier .onion es permitir cleartext a
+        nivel base. Con base-config = false, cargar un .onion fallaba con
+        net::ERR_CLEARTEXT_NOT_PERMITTED (la pantalla de "Error de conexión" en rojo).
+
+        Esto NO abre la app entera a texto plano de forma insegura: el tráfico real
+        (Firebase, Gemini/OpenAI/OpenRouter, Storage) usa HTTPS igualmente, y los hosts
+        comerciales de IA de abajo siguen FORZADOS a HTTPS con su propio domain-config.
+    -->
+    <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system"/>
             <certificates src="user"/>

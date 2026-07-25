@@ -165,22 +165,19 @@ class DemoAccountManager @Inject constructor(
             // Todos los mensajes son DEL asistente. Antes habia uno falso atribuido al
             // usuario ("¡Genial! Voy a explorar la app"): poner palabras en boca de
             // alguien que no las escribio no es aceptable en produccion.
+            // Bienvenida CORTA y conversacional: el asistente responde de verdad a lo
+            // que escribas (ver DemoAssistant), así que aquí solo se abre la charla en
+            // vez de soltar todo el manual de golpe.
             val welcomeTexts = listOf(
-                "¡Hola! 👋 Soy Azel Assistant. Este chat es de verdad: los mensajes que " +
-                    "ves están guardados en la base de datos, igual que los de cualquier " +
-                    "conversación.",
-                "NexusChat cifra tus mensajes de extremo a extremo con ECDH + AES-256-GCM. " +
-                    "El servidor solo guarda el texto cifrado: ni yo ni nadie más puede leerlo.",
-                "Lo que ya puedes hacer:\n" +
-                    "• Escribir a otra persona (busca su usuario en Nueva conversación)\n" +
-                    "• Enviar fotos, vídeos y notas de voz\n" +
-                    "• Publicar historias de 24 h, con música y dibujo\n" +
-                    "• Escribir código en el editor, con resaltado por lenguaje\n" +
-                    "• Navegar por Tor con Orbot instalado",
-                "💡 Para hablar con alguien real: pulsa el botón de nueva conversación y " +
-                    "busca su nombre de usuario. Necesitáis los dos tener cuenta.",
-                "Si algo no te funciona, vuelve aquí y repasa esta lista. ¡Disfruta " +
-                    "NexusChat! 🚀"
+                "¡Hola! 👋 Soy Azel Assistant, tu guía de bienvenida en NexusChat.",
+                "Este chat es real: los mensajes se guardan en la base de datos, igual " +
+                    "que en cualquier conversación. Escríbeme y te respondo.",
+                "Puedo enseñarte cada función. Prueba a escribirme una de estas palabras:\n" +
+                    "• *cifrado* — cómo protejo tus mensajes\n" +
+                    "• *Tor* — navegación anónima con Orbot\n" +
+                    "• *IA* — conectar tu propio proveedor y modelo\n" +
+                    "• *historias* · *llamadas* · *código*",
+                "¿Empezamos? Escríbeme lo que quieras. 🚀"
             )
 
             welcomeTexts.forEachIndexed { index, body ->

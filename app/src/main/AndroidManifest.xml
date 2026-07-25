@@ -59,6 +59,25 @@
     <!-- Tor Kill Switch – required to declare VPN capability (no VpnService UI is shown;
          TorKillSwitch uses this permission only to signal intent, not to create a VPN) -->
 
+    <!--
+        Package visibility (Android 11+ / API 30+).
+
+        Desde Android 11, getPackageInfo() y getLaunchIntentForPackage() de otra app
+        lanzan NameNotFoundException salvo que el paquete esté declarado aquí. La app
+        tiene minSdk 31, así que SIN este bloque OrbotDetector.isOrbotInstalled()
+        SIEMPRE devolvía false aunque Orbot estuviera instalado y conectado
+        ("el modo anónimo no lo detecta"). Declarar los paquetes de Orbot y una
+        intención de navegador (para abrir Play Store / F-Droid) lo arregla.
+    -->
+    <queries>
+        <package android:name="org.torproject.android" />
+        <package android:name="org.torproject.orbot" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:name=".NexusChatApplication"
         android:allowBackup="true"

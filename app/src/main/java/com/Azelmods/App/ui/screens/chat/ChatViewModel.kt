@@ -61,7 +61,8 @@ class ChatViewModel @Inject constructor(
     private val decryptMessageUseCase: DecryptMessageUseCase,
     private val cacheManager: CacheManager,
     private val translationService: com.Azelmods.App.data.translation.TranslationService,
-    private val userPreferences: com.Azelmods.App.data.preferences.UserPreferences
+    private val userPreferences: com.Azelmods.App.data.preferences.UserPreferences,
+    private val demoAccountManager: com.Azelmods.App.data.demo.DemoAccountManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChatState())
@@ -354,6 +355,17 @@ class ChatViewModel @Inject constructor(
                 val chatId = resolveCanonicalChatId(rawChatId, currentUserId)
                 currentChatId = chatId
 
+                // El chat de bienvenida se sembraba SOLO al abrirlo desde "Nueva
+                // conversación". Entrando por la tarjeta Demo de la pantalla principal
+                // el chat aparecía vacío. Sembrarlo aquí cubre las dos entradas
+                // (initializeDemoAccount es idempotente: sale solo si ya se creó).
+                if (isDemoChat(chatId)) {
+                    runCatching { demoAccountManager.initializeDemoAccount(currentUserId) }
+                        .onFailure {
+                            android.util.Log.w("ChatViewModel", "No se pudo sembrar el chat demo: ${it.message}")
+                        }
+                }
+
                 // Resolve the contact (peer) for this chat.
                 val contact: User? = resolveContact(chatId, rawChatId, currentUserId)
 
@@ -572,6 +584,11 @@ class ChatViewModel @Inject constructor(
                 
                 android.util.Log.d("ChatViewModel", "✅ Message sent successfully")
                 _state.value = _state.value.copy(replyingTo = null, error = null)
+
+                // Chat de bienvenida: "Azel Assistant" responde mensaje a mensaje.
+                if (isDemoChat(targetChatId) && !state.isEphemeralMode) {
+                    replyAsDemoAssistant(content, targetChatId)
+                }
             } catch (e: Exception) {
                 android.util.Log.e("ChatViewModel", "❌ Error sending message: ${e.message}", e)
                 
@@ -634,6 +651,46 @@ class ChatViewModel @Inject constructor(
                         error = "Error al enviar: ${e.message ?: "Error desconocido"}"
                     )
                 }
+            }
+        }
+    }
+
+    // Cuántos mensajes ha escrito el usuario al asistente demo (para avanzar el tour).
+    private var demoTurnIndex = 0
+    private var demoReplyJob: Job? = null
+
+    /** `true` si el chat es el de bienvenida con Azel Assistant. */
+    private fun isDemoChat(chatId: String): Boolean =
+        chatId.contains(DEMO_USER_ID)
+
+    /**
+     * Hace que "Azel Assistant" responda al usuario **mensaje a mensaje** (no todo en
+     * un bloque). Escribe cada respuesta como el bot con una breve pausa entre ellas;
+     * la lista de mensajes se actualiza en tiempo real vía el listener de Firebase, así
+     * que el usuario ve llegar las respuestas de una en una, como en un chat real.
+     */
+    private fun replyAsDemoAssistant(userText: String, chatId: String) {
+        val replies = com.Azelmods.App.data.demo.DemoAssistant.repliesFor(userText, demoTurnIndex)
+        demoTurnIndex++
+
+        demoReplyJob?.cancel()
+        demoReplyJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Pequeña espera inicial para que no llegue "instantáneo".
+                delay(700)
+                replies.forEachIndexed { index, reply ->
+                    databaseRepository.sendMessageAs(
+                        chatId = chatId,
+                        senderId = DEMO_USER_ID,
+                        content = reply
+                    )
+                    // Pausa entre mensajes proporcional a su longitud (efecto "escribiendo").
+                    if (index < replies.lastIndex) {
+                        delay((600L + reply.length * 18L).coerceAtMost(2200L))
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatViewModel", "Demo assistant reply failed: ${e.message}", e)
             }
         }
     }

@@ -102,6 +102,61 @@ object OpenAiCompatClient {
     }
 
     /**
+     * Pide al proveedor su catálogo real de modelos (`GET {baseUrl}/models`).
+     *
+     * Es lo que permite que un modelo recién publicado (una versión nueva de DeepSeek,
+     * GLM, Qwen o Kimi) aparezca en la app SIN actualizar la app: la lista no está
+     * hardcodeada, la contesta el propio proveedor.
+     *
+     * Devuelve los ids ordenados. Lanza excepción con el motivo si falla, para que la
+     * UI pueda explicar por qué (clave inválida, endpoint mal escrito, sin red…).
+     */
+    fun listModels(
+        client: OkHttpClient,
+        baseUrl: String,
+        apiKey: String
+    ): List<String> {
+        require(baseUrl.isNotBlank()) { "La URL base del proveedor está vacía" }
+
+        val requestBuilder = Request.Builder()
+            .url("$baseUrl/models")
+            .get()
+
+        if (apiKey.isNotBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+
+        client.newCall(requestBuilder.build()).execute().use { response ->
+            val raw = response.body?.string()
+
+            if (!response.isSuccessful) {
+                val detail = extractErrorMessage(raw)
+                Log.e(TAG, "HTTP ${response.code} al listar modelos de $baseUrl — $detail")
+                throw Exception("No se pudo obtener la lista (${response.code}): $detail")
+            }
+            if (raw.isNullOrBlank()) throw Exception("El proveedor devolvió una lista vacía")
+
+            val json = JSONObject(raw)
+            // Formato OpenAI: {"data":[{"id":"..."}]}. Algunos servidores devuelven
+            // directamente un array, así que se contemplan ambos.
+            val data: JSONArray = json.optJSONArray("data")
+                ?: runCatching { JSONArray(raw) }.getOrNull()
+                ?: throw Exception("Formato de respuesta no reconocido")
+
+            val ids = (0 until data.length()).mapNotNull { i ->
+                when (val entry = data.opt(i)) {
+                    is JSONObject -> entry.optString("id").takeIf { it.isNotBlank() }
+                    is String -> entry.takeIf { it.isNotBlank() }
+                    else -> null
+                }
+            }
+
+            if (ids.isEmpty()) throw Exception("El proveedor no devolvió ningún modelo")
+            return ids.distinct().sorted()
+        }
+    }
+
+    /**
      * Extrae el texto de error del cuerpo. Los proveedores no coinciden en el formato:
      * unos usan `{"error":{"message":...}}`, otros `{"error":"..."}` y algunos texto
      * plano, así que se prueban en orden y se cae al cuerpo tal cual.

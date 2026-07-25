@@ -6,7 +6,11 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +40,7 @@ import com.Azelmods.App.data.chat.ChatId
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.components.ReadReceiptIndicator
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import com.google.firebase.auth.FirebaseAuth
@@ -357,6 +362,7 @@ fun HomeScreenRedesigned(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatRow(
     chat: Chat,
@@ -375,122 +381,117 @@ fun ChatRow(
         ?: "Anónimo"
     val contactPhotoUrl = otherUserId?.let { chat.participantPhotos[it] }
         ?: chat.contactPhotoUrl
-    val isOnline = chat.isTyping.any { (userId, typing) -> typing && userId != currentUserId }
+    // Presencia REAL del contacto. Antes se calculaba como "alguien está escribiendo",
+    // así que el punto verde de "en línea" solo aparecía mientras el otro tecleaba y
+    // desaparecía al parar: no indicaba presencia en absoluto.
+    val isOnline = chat.isOnline
+    val isPeerTyping = chat.isTyping.any { (userId, typing) -> typing && userId != currentUserId }
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
-    
-    // Animated entry
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        visible = true
-    }
-    
-    AnimatedVisibility(
-        visible = visible,
-        enter = slideInHorizontally { -it } + fadeIn()
+    val hasUnread = unreadCount > 0
+
+    // Feedback táctil: la tarjeta se hunde ligeramente al pulsarla.
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.975f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "press_scale"
+    )
+
+    // NOTA: se retiró el AnimatedVisibility de entrada por fila. Al reciclarse los
+    // items del LazyColumn la animación se re-disparaba en cada scroll y la lista
+    // "parpadeaba". La entrada se anima ahora a nivel de lista, no por tarjeta.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+            .scale(pressScale)
     ) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
-                .safeClickable(onClick = onClick),
-            color = Color.Transparent
+                .heightIn(min = 84.dp)
+                // combinedClickable y no safeClickable: [onLongPress] se recibía como
+                // parámetro pero NUNCA se conectaba, así que el menú de mantener pulsado
+                // (fijar / silenciar / archivar / eliminar) era inalcanzable. De paso, el
+                // interactionSource compartido alimenta la animación de pulsación.
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClick = onClick,
+                    onLongClick = onLongPress
+                ),
+            shape = RoundedCornerShape(20.dp),
+            // Translúcido a propósito: la Home deja ver el fondo/wallpaper del usuario.
+            // Un color opaco aquí rompería esa transparencia.
+            color = if (hasUnread) Color.Black.copy(alpha = 0.42f) else Color.Black.copy(alpha = 0.28f),
+            border = BorderStroke(
+                width = 1.dp,
+                brush = if (hasUnread) {
+                    Brush.linearGradient(listOf(themeColor.copy(alpha = 0.85f), themeSecondaryColor.copy(alpha = 0.55f)))
+                } else {
+                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.04f)))
+                }
+            ),
+            shadowElevation = if (hasUnread) 6.dp else 2.dp
         ) {
+            // fillMaxWidth y NO fillMaxSize: la tarjeta ya no tiene altura fija sino
+            // mínima, así que pedir el alto máximo dejaría la fila a merced de las
+            // constraints del contenedor en lugar de ajustarse al contenido.
             Row(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Avatar with static gradient ring (no per-item animation)
-                Box {
-                    if (unreadCount > 0) {
+                // ── Avatar ────────────────────────────────────────────────────
+                // El anillo de gradiente solo aparece cuando hay mensajes sin leer:
+                // así el adorno significa algo en vez de ser decoración constante.
+                Box(modifier = Modifier.size(56.dp)) {
+                    if (hasUnread) {
                         Box(
                             modifier = Modifier
-                                .size(62.dp)
+                                .fillMaxSize()
                                 .background(
                                     Brush.sweepGradient(
-                                        listOf(
-                                            themeColor,
-                                            Teal,
-                                            Pink,
-                                            themeColor
-                                        )
+                                        listOf(themeColor, Teal, Pink, themeColor)
                                     ),
                                     CircleShape
                                 )
                         )
                     }
-                    
-                    // Inner background
+
                     Box(
                         modifier = Modifier
-                            .size(58.dp)
+                            .size(if (hasUnread) 50.dp else 56.dp)
                             .align(Alignment.Center)
-                            .background(Color.Black.copy(alpha = 0.2f), CircleShape)
-                    )
-                    
-                    // Avatar with photo support
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .align(Alignment.Center)
-                            .safeClickable {
-                                onAvatarClick?.invoke()
-                            }
+                            .safeClickable { onAvatarClick?.invoke() }
                     ) {
                         UserAvatar(
                             name = contactName,
                             photoUrl = contactPhotoUrl,
-                            size = 54.dp
+                            size = if (hasUnread) 50.dp else 56.dp
                         )
                     }
-                    
-                    // Online indicator with pulse animation
+
+                    // Punto de presencia (verde = en línea de verdad).
                     if (isOnline) {
-                        val onlineTransition = rememberInfiniteTransition(label = "online_${chat.chatId}")
-                        val scale by onlineTransition.animateFloat(
-                            initialValue = 1.0f,
-                            targetValue = 1.2f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(1500),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "pulse"
-                        )
-                        
                         Box(
                             modifier = Modifier
                                 .align(Alignment.BottomEnd)
-                                .offset(x = (-2).dp, y = (-2).dp)
+                                .size(15.dp)
+                                .background(Color.Black.copy(alpha = 0.75f), CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            // Glow effect
                             Box(
                                 modifier = Modifier
-                                    .size(16.dp)
-                                    .scale(scale)
-                                    .background(
-                                        EmeraldGreen.copy(alpha = 0.3f),
-                                        CircleShape
-                                    )
-                            )
-                            // Solid indicator
-                            Box(
-                                modifier = Modifier
-                                    .size(12.dp)
-                                    .align(Alignment.Center)
+                                    .size(10.dp)
                                     .background(EmeraldGreen, CircleShape)
-                                    .padding(2.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Black, CircleShape)
-                                )
-                            }
+                            )
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.width(14.dp))
                 
                 // Chat info with glassmorphism effect
@@ -506,94 +507,98 @@ fun ChatRow(
                             modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (chat.isE2EE) {
-                                Text("🔒", fontSize = 14.sp)
-                                Spacer(Modifier.width(4.dp))
-                            }
-                            if (chat.isMuted) {
+                            if (chat.isPinned) {
                                 Icon(
-                                    Icons.Default.NotificationsOff,
-                                    contentDescription = "Silenciado",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(16.dp)
+                                    Icons.Default.PushPin,
+                                    contentDescription = "Fijado",
+                                    tint = themeColor,
+                                    modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
+                            }
+                            if (chat.isE2EE) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = "Cifrado de extremo a extremo",
+                                    tint = EmeraldGreen.copy(alpha = 0.9f),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(Modifier.width(5.dp))
                             }
                             Text(
                                 text = contactName,
                                 color = Color.White,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                            if (chat.isMuted) {
+                                Spacer(Modifier.width(5.dp))
+                                Icon(
+                                    Icons.Default.NotificationsOff,
+                                    contentDescription = "Silenciado",
+                                    tint = Color.Gray,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                            }
                         }
-                        
+
                         Spacer(modifier = Modifier.width(8.dp))
-                        
-                        // Time with better styling
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (unreadCount > 0) 
-                                themeColor.copy(alpha = 0.2f) 
-                            else 
-                                Color.Transparent
-                        ) {
-                            Text(
-                                text = formatTimestamp(chat.lastMessageTime),
-                                color = if (unreadCount > 0) themeColor else Color.Gray,
-                                fontSize = 12.sp,
-                                fontWeight = if (unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
+
+                        Text(
+                            text = formatTimestamp(chat.lastMessageTime),
+                            color = if (hasUnread) themeColor else Color.White.copy(alpha = 0.45f),
+                            fontSize = 11.sp,
+                            fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal
+                        )
                     }
-                    
-                    Spacer(modifier = Modifier.height(6.dp))
-                    
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (chat.isTyping.values.any { it }) {
-                            // Typing indicator with animation
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Teal.copy(alpha = 0.15f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "typing",
-                                        color = Teal,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    TypingDotsSmall()
-                                }
-                            }
-                        } else {
-                            // Message preview with status icon
+                        if (isPeerTyping) {
+                            // "Escribiendo…" en el idioma de la app (antes: "typing").
                             Row(
                                 modifier = Modifier.weight(1f),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Text(
+                                    text = "escribiendo",
+                                    color = Teal,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                TypingDotsSmall()
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Doble check real del design system en vez del texto
+                                // "✓✓" en verde, que se pintaba SIEMPRE igual aunque el
+                                // mensaje no estuviera entregado ni leído.
+                                //
+                                // "Leído" depende de los NO LEÍDOS DEL OTRO, no de los
+                                // míos: si al destinatario no le queda nada pendiente,
+                                // ha visto mi último mensaje.
                                 if (chat.lastMessageSenderId == currentUserId) {
-                                    Text(
-                                        text = "✓✓",
-                                        color = Teal,
-                                        fontSize = 13.sp,
-                                        modifier = Modifier.padding(end = 4.dp)
+                                    val peerUnread = otherUserId?.let { chat.unreadCount[it] } ?: 0
+                                    ReadReceiptIndicator(
+                                        status = if (peerUnread > 0) MessageStatus.DELIVERED else MessageStatus.READ,
+                                        modifier = Modifier.padding(end = 5.dp)
                                     )
                                 }
-                                
+
                                 Text(
                                     text = chat.lastMessage,
-                                    color = if (unreadCount > 0) Color.White else Color.Gray,
-                                    fontSize = 14.sp,
-                                    fontWeight = if (unreadCount > 0) FontWeight.Medium else FontWeight.Normal,
+                                    color = if (hasUnread) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.5f),
+                                    fontSize = 13.sp,
+                                    fontWeight = if (hasUnread) FontWeight.Medium else FontWeight.Normal,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -602,35 +607,30 @@ fun ChatRow(
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         
-                        // Unread badge with animation
+                        // Contador de no leídos. La píldora se ensancha con el número
+                        // (antes era un círculo fijo de 26.dp y "99+" se salía).
                         AnimatedVisibility(
-                            visible = unreadCount > 0,
+                            visible = hasUnread,
                             enter = scaleIn() + fadeIn(),
                             exit = scaleOut() + fadeOut()
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = Color.Transparent,
-                                modifier = Modifier.size(26.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier.background(
-                                        Brush.linearGradient(
-                                            listOf(
-                                                themeColor,
-                                                themeSecondaryColor
-                                            )
-                                        )
+                            Box(
+                                modifier = Modifier
+                                    .heightIn(min = 22.dp)
+                                    .widthIn(min = 22.dp)
+                                    .background(
+                                        Brush.linearGradient(listOf(themeColor, themeSecondaryColor)),
+                                        CircleShape
                                     ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                                    color = Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                )
                             }
                         }
                     }
@@ -782,16 +782,18 @@ fun DemoChatCard(
         label = "border_glow"
     )
     
+    // Mismas métricas que ChatRow (radio 20, margen 12) para que la lista se lea
+    // como un único sistema y no como dos componentes de apps distintas.
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 12.dp, vertical = 5.dp)
     ) {
         // Static gradient border (no rotation animation to avoid recomposition)
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
+                .height(84.dp)
         ) {
             drawRoundRect(
                 brush = Brush.sweepGradient(
@@ -803,29 +805,29 @@ fun DemoChatCard(
                     ),
                     center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
                 ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx())
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(20.dp.toPx()),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
             )
         }
-        
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
+                .height(84.dp)
                 .safeClickable(onClick = onClick),
-            shape = RoundedCornerShape(16.dp),
-            color = Color.Black.copy(alpha = 0.3f),
-            shadowElevation = 8.dp
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Black.copy(alpha = 0.32f),
+            shadowElevation = 6.dp
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Robot avatar with gradient
                 Box(
-                    modifier = Modifier.size(54.dp),
+                    modifier = Modifier.size(56.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
@@ -848,40 +850,42 @@ fun DemoChatCard(
                         )
                     }
                 }
-                
+
                 Spacer(Modifier.width(14.dp))
-                
+
                 // Chat info
                 Column(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text(
-                        "Demo Chat",
+                        "Azel Assistant",
                         color = Color.White,
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     Spacer(Modifier.height(4.dp))
-                    
+
                     Text(
-                        "Prueba el chat sin contactos",
-                        color = Color.Gray,
-                        fontSize = 14.sp
+                        "Escríbeme y te enseño la app",
+                        color = Color.White.copy(alpha = 0.55f),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 
                 // DEMO badge
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = NeonGreen.copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, NeonGreen)
+                    color = NeonGreen.copy(alpha = 0.16f),
+                    border = BorderStroke(1.dp, NeonGreen.copy(alpha = 0.7f))
                 ) {
                     Text(
                         "DEMO",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                         color = NeonGreen,
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }

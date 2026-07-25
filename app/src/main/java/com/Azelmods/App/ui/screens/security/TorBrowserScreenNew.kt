@@ -559,10 +559,15 @@ private fun processUrl(input: String): String {
         // URLs completas (http:// o https://)
         trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
         
-        // Enlaces .onion sin esquema: se asume http://, que es lo que sirven los onion
-        // sin certificado. Si el usuario escribe https:// ya se devolvió tal cual en la
-        // rama de arriba, y así debe ser: los servicios onion v3 SÍ soportan HTTPS
-        // (DuckDuckGo lo exige), al contrario de lo que decía el comentario anterior.
+        // Enlaces .onion sin esquema: se asume http://, que es lo que sirve la mayoría
+        // de servicios onion (no llevan certificado TLS público). Si el usuario escribe
+        // https:// ya se devolvió tal cual en la rama de arriba, y así debe ser: los
+        // servicios onion v3 SÍ soportan HTTPS y algunos lo exigen.
+        //
+        // Para que este http:// llegue a cargar hace falta que la network security
+        // config permita cleartext (ver network_security_config.xml): con
+        // cleartextTrafficPermitted="false" el WebView respondía
+        // net::ERR_CLEARTEXT_NOT_PERMITTED y NINGÚN .onion abría.
         trimmed.endsWith(".onion") || trimmed.contains(".onion/") || trimmed.contains(".onion?") -> {
             val cleanUrl = "http://$trimmed"
             Log.d(TAG, "🧅 URL .onion detectada: $cleanUrl")
@@ -692,6 +697,12 @@ private fun isLegacyV2OnionAddress(url: String): Boolean {
 private fun getSuggestionsForError(errorCode: Int, url: String): String {
     return when {
         errorCode == 404 -> "La página que buscas no existe en este servidor. Verifica que la URL sea correcta."
+        // ERR_CLEARTEXT_NOT_PERMITTED: Android bloqueó una carga HTTP en claro. Con la
+        // network security config actual no debería ocurrir; si aparece, es que la app
+        // se compiló con una configuración antigua.
+        errorCode == -1 && url.startsWith("http://") ->
+            "Android bloqueó esta conexión sin cifrar. Si es un sitio .onion, reinstala " +
+            "la app con la versión actual: la configuración de red ya permite estas cargas."
         errorCode in 500..599 -> "El servidor está teniendo problemas. Espera un momento e intenta de nuevo."
         // Una dirección v2 no carga ni con Tor perfecto: Tor las apagó en 2021.
         // Distinguirlo evita que el usuario culpe a Orbot de una dirección muerta.
@@ -909,23 +920,15 @@ private fun WebView.setupWebView(
                             }
                             return true // Bloquear la carga
                         } else {
-                            // Tor está activo - permitir carga del .onion
+                            // Tor está activo: se carga el .onion tal cual.
+                            //
+                            // ANTES se reescribía https:// → http:// "para asegurar el
+                            // protocolo". Era incorrecto: los servicios onion v3 SÍ
+                            // admiten HTTPS y algunos (DuckDuckGo, Proton) lo exigen,
+                            // así que ese downgrade rompía justo los sitios que mejor
+                            // funcionan. El esquema lo decide el enlace, no la app.
                             Log.d(TAG, "✅ Tor activo - cargando .onion: $url")
-                            
-                            // Asegurar que la URL usa http:// (no https://)
-                            val correctedUrl = if (url.startsWith("https://") && url.contains(".onion")) {
-                                url.replaceFirst("https://", "http://")
-                            } else {
-                                url
-                            }
-                            
-                            if (correctedUrl != url) {
-                                Log.d(TAG, "🔧 Corrigiendo protocolo .onion: $correctedUrl")
-                                view?.loadUrl(correctedUrl)
-                                return true
-                            }
-                            
-                            return false // Permitir la carga normal
+                            return false
                         }
                     }
                     

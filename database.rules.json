@@ -5,6 +5,20 @@
     
     "users": {
       ".indexOn": ["username", "displayName"],
+
+      /*
+        Lectura a nivel de COLECCION.
+
+        "Nueva conversacion", la creacion de grupos y el boton + de Llamadas listan
+        usuarios (getAllUsers) y buscan por username (orderByChild().equalTo()).
+        Firebase exige permiso de lectura EN el nodo consultado y NO hereda hacia
+        arriba desde users/$uid: sin este ".read", cualquier consulta a /users
+        devolvia PERMISSION_DENIED y las tres pantallas fallaban con el error
+        "failed to contact database / firebase denied".
+
+        La ESCRITURA sigue restringida a cada usuario sobre su propio nodo.
+      */
+      ".read": "auth != null",
       "demo_azel_assistant": {
         ".read": "auth != null",
         ".write": "auth != null && !data.exists()"
@@ -13,11 +27,6 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid",
         ".validate": "newData.hasChildren(['displayName', 'email'])",
-        
-        "fcmTokens": {
-          ".read": "auth != null && auth.uid === $uid",
-          ".write": "auth != null && auth.uid === $uid"
-        },
         
         "online": {
           ".read": "auth != null",
@@ -31,6 +40,23 @@
       }
     },
     
+    /*
+      Tokens de notificaciones push, en su PROPIO nodo raíz.
+
+      Antes colgaban de users/$uid/fcmTokens. Al abrir la lectura de /users (para
+      que funcione la lista de contactos) esa regla más estricta habría dejado de
+      proteger nada: en Firebase el permiso de lectura cascadea hacia abajo y un
+      hijo no puede revocar lo que concede el padre. Aquí cada usuario es el único
+      que lee y escribe los suyos. Las Cloud Functions usan el Admin SDK, que no
+      pasa por estas reglas.
+    */
+    "fcmTokens": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
     "userChats": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

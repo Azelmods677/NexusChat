@@ -23,11 +23,14 @@ fun getAccentColor(colorName: String): Color =
 // Get typography based on font size preference
 @Composable
 fun getTypographyForSize(sizeName: String): androidx.compose.material3.Typography {
-    val scaleFactor = when (sizeName.uppercase()) {
-        "SMALL", "PEQUEÑO" -> 0.85f
-        "MEDIUM", "MEDIANO" -> 1.0f
+    // Se aceptan todas las variantes que puede guardar FontSizeScreen (ES/EN, con o
+    // sin guion bajo). Antes "XLarge"/"ExtraLarge" no casaban con "EXTRA_LARGE" y el
+    // tamaño de fuente "Muy grande" no cambiaba nada.
+    val scaleFactor = when (sizeName.uppercase().replace(" ", "").replace("_", "")) {
+        "SMALL", "PEQUEÑO", "PEQUENO" -> 0.85f
+        "MEDIUM", "MEDIANO", "NORMAL" -> 1.0f
         "LARGE", "GRANDE" -> 1.15f
-        "EXTRA_LARGE", "EXTRAGRANDE" -> 1.3f
+        "EXTRALARGE", "XLARGE", "EXTRAGRANDE", "MUYGRANDE" -> 1.3f
         else -> 1.0f
     }
     

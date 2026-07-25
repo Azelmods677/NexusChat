@@ -71,8 +71,10 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
         Log.d(TAG, "New FCM token: $token")
 
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        // Ruta centralizada en FCMTokenManager: los tokens viven fuera de /users
+        // para que la lectura de la colección de usuarios no los exponga.
         FirebaseDatabase.getInstance()
-            .getReference("users/$uid/fcmTokens/${Build.MODEL}")
+            .getReference(com.Azelmods.App.utils.FCMTokenManager.tokenPath(uid))
             .setValue(token)
             .addOnSuccessListener { Log.d(TAG, "FCM token saved") }
             .addOnFailureListener { e -> Log.e(TAG, "Failed to save FCM token", e) }

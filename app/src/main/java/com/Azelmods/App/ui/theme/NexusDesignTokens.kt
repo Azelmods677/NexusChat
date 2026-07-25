@@ -50,6 +50,11 @@ object NexusTokens {
         val Error         = Color(0xFFFF5252)
         val Success       = Color(0xFF00E676)
         val Warning       = Color(0xFFFFD740)
+
+        // Confirmación de lectura ("visto"). Rol propio, no un alias de marca:
+        // el doble check azul es un lenguaje visual que el usuario ya conoce, y
+        // usar el violeta de marca lo hacía indistinguible del resto de la UI.
+        val ReadReceipt   = Color(0xFF34B7F1)   // Azul "visto"
     }
     
     // ── GRADIENTES ──────────────────────────────────

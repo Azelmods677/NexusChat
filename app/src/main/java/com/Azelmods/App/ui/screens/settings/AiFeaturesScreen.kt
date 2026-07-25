@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
@@ -30,9 +32,6 @@ fun AiFeaturesScreen(
     navController: NavController,
     aiKeyViewModel: AiKeyViewModel = hiltViewModel()
 ) {
-    var aiMessage by remember { mutableStateOf("") }
-    var aiResponse by remember { mutableStateOf("") }
-    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -179,96 +178,13 @@ fun AiFeaturesScreen(
                 }
             }
             
-            // Assistant section
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                color = DarkSurface,
-                shape = MaterialTheme.shapes.large
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.SmartToy,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "AI Assistant",
-                            color = Color.White,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedTextField(
-                        value = aiMessage,
-                        onValueChange = { aiMessage = it },
-                        placeholder = { Text("Ask AI anything...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            cursorColor = MaterialTheme.colorScheme.primary
-                        ),
-                        trailingIcon = {
-                            IconButton(
-                                onClick = {
-                                    // Simple keyword-based response
-                                    aiResponse = when {
-                                        aiMessage.contains("hello", ignoreCase = true) ->
-                                            "Hello! How can I help you today?"
-                                        aiMessage.contains("help", ignoreCase = true) ->
-                                            "I'm here to assist you with Nexus Chat features. What would you like to know?"
-                                        aiMessage.contains("feature", ignoreCase = true) ->
-                                            "Nexus Chat offers messaging, stories, calls, and AI-powered features!"
-                                        else ->
-                                            "I understand you're asking about: \"$aiMessage\". How can I assist you further?"
-                                    }
-                                }
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    )
-                    
-                    if (aiResponse.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Icon(
-                                    Icons.Default.SmartToy,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = aiResponse,
-                                    color = Color.White,
-                                    fontSize = 14.sp
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            
+            // NOTA(assistant-falso): aquí había un "AI Assistant" con un campo de texto
+            // que NO llamaba a ningún modelo: devolvía frases fijas según palabras clave
+            // ("hello", "help", "feature") y, si no casaba ninguna, repetía la pregunta
+            // del usuario. Simular una IA que no existe engaña sobre lo que hace la app.
+            // El asistente REAL es Azel IA (botón de arriba), que usa el proveedor,
+            // modelo y clave configurados en esta misma pantalla.
+
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -290,6 +206,8 @@ fun GeminiApiKeySection(
     val hasKey by viewModel.hasKey.collectAsState()
     val feedback by viewModel.feedback.collectAsState()
     val provider by viewModel.provider.collectAsState()
+    val remoteModels by viewModel.remoteModels.collectAsState()
+    val isLoadingModels by viewModel.isLoadingModels.collectAsState()
 
     var keyInput by remember { mutableStateOf("") }
     var showKey by remember { mutableStateOf(false) }
@@ -415,6 +333,26 @@ fun GeminiApiKeySection(
                         unfocusedTextColor = Color.White
                     )
                 )
+
+                // ── Catálogo de modelos ──────────────────────────────────────
+                // Sugerencias del preset + lista REAL del proveedor bajo demanda.
+                // Así un modelo recién publicado se puede elegir sin actualizar la app.
+                ModelCatalog(
+                    suggested = viewModel.suggestedModels(),
+                    remote = remoteModels,
+                    isLoading = isLoadingModels,
+                    selected = modelInput,
+                    onPick = { picked ->
+                        modelInput = picked
+                        viewModel.selectModel(picked)
+                    },
+                    onFetch = {
+                        // Se guarda antes la URL para consultar el endpoint correcto.
+                        viewModel.saveEndpoint(baseUrlInput, modelInput)
+                        viewModel.loadProviderModels()
+                    }
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(onClick = { viewModel.saveEndpoint(baseUrlInput, modelInput) }) {
                     Text("Guardar proveedor y modelo")
@@ -518,6 +456,113 @@ fun GeminiApiKeySection(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Catálogo de modelos del proveedor activo.
+ *
+ * Combina dos fuentes deliberadamente:
+ *  - **Sugeridos**: atajos del preset, disponibles sin red.
+ *  - **Del proveedor**: lo que responde `GET /models`, es decir el catálogo REAL y
+ *    actual. Por eso no hace falta publicar una versión de la app cada vez que un
+ *    proveedor saca un modelo nuevo.
+ *
+ * El campo "Modelo" sigue siendo texto libre: esto son atajos, no una lista cerrada.
+ */
+@Composable
+private fun ModelCatalog(
+    suggested: List<String>,
+    remote: List<String>,
+    isLoading: Boolean,
+    selected: String,
+    onPick: (String) -> Unit,
+    onFetch: () -> Unit
+) {
+    Spacer(modifier = Modifier.height(12.dp))
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "Modelos",
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        } else {
+            TextButton(onClick = onFetch) {
+                Icon(
+                    Icons.Default.CloudDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Buscar modelos", fontSize = 13.sp)
+            }
+        }
+    }
+
+    if (suggested.isNotEmpty() && remote.isEmpty()) {
+        Text(
+            text = "Sugeridos — o pulsa «Buscar modelos» para ver el catálogo actual del proveedor.",
+            color = Color.Gray,
+            fontSize = 11.sp
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        ModelChips(models = suggested, selected = selected, onPick = onPick)
+    }
+
+    if (remote.isNotEmpty()) {
+        Text(
+            text = "Disponibles en tu cuenta (${remote.size})",
+            color = Color.Gray,
+            fontSize = 11.sp
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        // Se limita la altura: algunos proveedores devuelven cientos de modelos.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 220.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            ModelChips(models = remote, selected = selected, onPick = onPick)
+        }
+    }
+}
+
+/** Fila envolvente de chips seleccionables con el id de cada modelo. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ModelChips(
+    models: List<String>,
+    selected: String,
+    onPick: (String) -> Unit
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        models.forEach { model ->
+            val isSelected = model.equals(selected.trim(), ignoreCase = true)
+            FilterChip(
+                selected = isSelected,
+                onClick = { onPick(model) },
+                label = { Text(model, fontSize = 12.sp) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = Color.White,
+                    labelColor = Color.White.copy(alpha = 0.75f)
+                )
+            )
         }
     }
 }

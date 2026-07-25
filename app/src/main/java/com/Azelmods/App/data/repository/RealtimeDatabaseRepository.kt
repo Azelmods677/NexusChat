@@ -289,6 +289,40 @@ class RealtimeDatabaseRepository @Inject constructor(
         )
     }
 
+    /**
+     * Escribe un mensaje atribuido a OTRO remitente (p. ej. el bot de bienvenida
+     * "Azel Assistant"), en texto plano y sin cifrado E2EE.
+     *
+     * El chat de demo ya existe cuando se llama a esto, así que se omite toda la
+     * lógica de creación/índice de [sendMessageInternal]. La escritura la ejecuta el
+     * usuario autenticado —que ES miembro del chat—, de modo que las reglas la
+     * permiten aunque el `senderId` sea el del asistente.
+     */
+    suspend fun sendMessageAs(chatId: String, senderId: String, content: String) {
+        val chatRef = database.child("chats").child(chatId)
+        val messageId = chatRef.child("messages").push().key
+            ?: throw Exception("Failed to generate message ID")
+
+        val messageData = hashMapOf<String, Any>(
+            "messageId" to messageId,
+            "senderId" to senderId,
+            "content" to content,
+            "timestamp" to ServerValue.TIMESTAMP,
+            "status" to "sent",
+            "reactions" to emptyMap<String, String>(),
+            "isEncrypted" to false
+        )
+        chatRef.child("messages").child(messageId).setValue(messageData).await()
+
+        chatRef.updateChildren(
+            mapOf(
+                "lastMessage" to content,
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to senderId
+            )
+        ).await()
+    }
+
     fun getUserChats(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
         val userChatsIndexRef = database.child("userChats").child(userId)
         val listener = object : ValueEventListener {

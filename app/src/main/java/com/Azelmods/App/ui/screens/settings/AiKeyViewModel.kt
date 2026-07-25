@@ -27,7 +27,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AiKeyViewModel @Inject constructor(
-    private val keyStore: AiKeyStore
+    private val keyStore: AiKeyStore,
+    private val apiService: com.Azelmods.App.data.api.AzelAIApiService
 ) : ViewModel() {
 
     companion object {
@@ -105,6 +106,9 @@ class AiKeyViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching { keyStore.setProvider(newProvider) }
                 .onSuccess {
+                    // El catálogo pertenece al proveedor anterior: mostrarlo aquí
+                    // ofrecería modelos que este proveedor no acepta.
+                    _remoteModels.value = emptyList()
                     _feedback.value = if (newProvider.allowsEmptyKey) {
                         "Proveedor: ${newProvider.displayName}. Revisa la URL del servidor."
                     } else {
@@ -136,6 +140,67 @@ class AiKeyViewModel @Inject constructor(
                 Log.e(TAG, "No se pudo guardar el endpoint", it)
                 _feedback.value = "No se pudo guardar la configuración."
             }
+        }
+    }
+
+    // ── Catálogo de modelos ──────────────────────────────────────────────────
+
+    private val _remoteModels = MutableStateFlow<List<String>>(emptyList())
+
+    /**
+     * Modelos que el proveedor ha declarado en su endpoint `/models`.
+     *
+     * Se pide bajo demanda ([loadProviderModels]) para que la app NO dependa de una
+     * lista hardcodeada: cuando el proveedor publica un modelo nuevo (una versión
+     * superior de DeepSeek, GLM, Qwen o Kimi) aparece aquí sin actualizar la app.
+     */
+    val remoteModels: StateFlow<List<String>> = _remoteModels.asStateFlow()
+
+    private val _isLoadingModels = MutableStateFlow(false)
+    val isLoadingModels: StateFlow<Boolean> = _isLoadingModels.asStateFlow()
+
+    /** Modelos sugeridos del preset del proveedor activo (atajo sin red). */
+    fun suggestedModels(): List<String> = keyStore.getProvider().suggestedModels
+
+    /**
+     * Consulta al proveedor su lista real de modelos. Requiere URL base válida y, salvo
+     * en servidores locales, una API key configurada.
+     */
+    fun loadProviderModels() {
+        if (_isLoadingModels.value) return
+        viewModelScope.launch {
+            _isLoadingModels.value = true
+            runCatching { apiService.listProviderModels() }
+                .onSuccess { models ->
+                    _remoteModels.value = models
+                    _feedback.value = if (models.isEmpty()) {
+                        "El proveedor no devolvió modelos."
+                    } else {
+                        "${models.size} modelos disponibles. Toca uno para usarlo."
+                    }
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "No se pudieron listar los modelos", error)
+                    val raw = error.message.orEmpty()
+                    _feedback.value = when {
+                        // Marcador interno del servicio: traducirlo o el usuario vería
+                        // literalmente "API_KEY_MISSING".
+                        raw.contains(com.Azelmods.App.data.api.AzelAIApiService.API_KEY_MISSING) ->
+                            "Guarda primero tu API key para consultar los modelos."
+                        raw.isBlank() -> "No se pudo obtener la lista de modelos."
+                        else -> raw
+                    }
+                }
+            _isLoadingModels.value = false
+        }
+    }
+
+    /** Fija el modelo activo (desde la lista o escrito a mano). */
+    fun selectModel(model: String) {
+        viewModelScope.launch {
+            runCatching { keyStore.setModel(model) }
+                .onSuccess { _feedback.value = "Modelo activo: $model" }
+                .onFailure { _feedback.value = "No se pudo guardar el modelo." }
         }
     }
 

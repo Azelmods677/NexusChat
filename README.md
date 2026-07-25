@@ -37,7 +37,8 @@
 9. [Compilar el proyecto](#compilar-el-proyecto)
 10. [Roadmap](#roadmap)
 11. [Novedades de la v5](#novedades-de-la-v5)
-12. [Licencia](#licencia)
+12. [Autoría](#autoría)
+13. [Licencia](#licencia)
 
 ---
 
@@ -324,9 +325,19 @@ firebase deploy --only functions
 ./gradlew installDebug
 ```
 
+> **El paso 3 es obligatorio.** Las reglas de `database.rules.json` son las que permiten
+> listar contactos en *Nueva conversación*, crear grupos y usar el botón **+** de Llamadas.
+> Con reglas antiguas desplegadas, esas tres pantallas fallan con *"failed to contact
+> database"* aunque el código de la app sea correcto: las reglas viven en el servidor, no
+> en el APK.
+
 > **El paso 4 es obligatorio.** Las Cloud Functions entregan las notificaciones push, incluido
 > el aviso de llamada entrante. Sin desplegarlas, las llamadas no suenan y no llegan
 > notificaciones con la app cerrada.
+>
+> Los tokens de push se guardan ahora en el nodo raíz `fcmTokens/{uid}`. Si actualizas desde
+> una versión anterior, **redespliega también las functions**: leen las dos rutas durante la
+> migración, así que ningún dispositivo se queda sin notificaciones.
 
 La señalización de llamadas y la sincronización de mensajes no necesitan ningún servidor
 adicional: usan el proyecto de Firebase configurado. La navegación Tor requiere tener
@@ -382,8 +393,14 @@ desarrollo real y completa las historias con música y dibujo.
 ### Asistente de IA sin ataduras
 
 El usuario decide con qué inteligencia habla. **Gemini, OpenAI, OpenRouter, DeepSeek,
-Mistral, Groq, Ollama** o cualquier endpoint propio compatible con OpenAI —LM Studio, vLLM,
-llama.cpp—, cada uno con su clave y su modelo. La clave se guarda cifrada en el dispositivo.
+Qwen, GLM (Z.ai), Kimi (Moonshot), Mistral, Groq, Ollama** o cualquier endpoint propio
+compatible con OpenAI —LM Studio, vLLM, llama.cpp—, cada uno con su clave y su modelo.
+La clave se guarda cifrada en el dispositivo.
+
+El catálogo de modelos **no está grabado en la app**: el botón *Buscar modelos* consulta el
+endpoint `/models` del proveedor y ofrece lo que realmente hay disponible en tu cuenta. Así,
+cuando un proveedor publica una versión nueva, aparece sola —sin actualizar la app— y el
+campo de modelo sigue siendo texto libre para casos a medida.
 
 Incluye **modelos locales**: con Ollama corriendo en tu equipo, las conversaciones no salen
 de tu red. Y el comportamiento del asistente lo define el modelo elegido, no la app.
@@ -404,8 +421,21 @@ se publica.
 
 - Mensajería y llamadas con **notificaciones push propias**, servidas desde Cloud Functions
 - **Historial de llamadas** completo, tanto emitidas como recibidas
-- **Chat de bienvenida** que explica la app al entrar por primera vez
 - Navegación **Tor** con detección de Orbot en tiempo real y selección automática de proxy
+
+### Asistente de bienvenida que conversa
+
+El **Demo Chat** ya no es un guion estático: escríbele y *Azel Assistant* responde
+**mensaje a mensaje**, con pausas naturales, guiando un recorrido por las funciones de la
+app. Pregúntale por *cifrado*, *Tor*, *IA*, *historias*, *llamadas* o *código* y te explica
+cada una desde una conversación real, guardada en la base de datos como cualquier otra.
+
+### Interfaz de la lista de chats
+
+Cada conversación es ahora una **tarjeta** translúcida —el fondo del usuario se sigue
+viendo— con anillo de acento solo cuando hay mensajes sin leer, respuesta táctil al pulsar y
+menú de mantener pulsado (fijar, silenciar, archivar, eliminar) por fin accesible. Los
+**checks de lectura** se dibujan a medida, con el azul de "visto" del design system.
 
 ### Lista para publicar
 
@@ -414,6 +444,16 @@ se publica.
 - La pantalla **Premium** muestra los planes previstos y deja claro que las suscripciones aún
   no están activas: no simula ninguna compra
 
+## Autoría
+
+**NexusChat está desarrollado y mantenido íntegramente por [Azel Mods](https://github.com/Azelmods677)**,
+único autor y propietario del proyecto.
+
+El código se publica como **plantilla para desarrolladores**: puedes clonarlo, estudiarlo,
+modificarlo y construir tu propia app encima, según los términos de la licencia MIT. Se
+distribuye únicamente por **GitHub y repositorios alternativos**, no por Google Play.
+
 ## Licencia
 
-Distribuido bajo licencia **MIT**. Ver [LICENSE](LICENSE) para más detalles.
+Distribuido bajo licencia **MIT**. Copyright © 2026 Azel Mods.
+Ver [LICENSE](LICENSE) para más detalles.
