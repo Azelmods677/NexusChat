@@ -373,6 +373,12 @@ fun CodeEditorScreen(
                         .weight(1f),
                     color = DarkSurface
                 ) {
+                    // El resaltado depende del lenguaje del archivo abierto; se recuerda
+                    // para no reconstruir la transformación en cada recomposición.
+                    val editorLanguage = currentFile?.language ?: "text"
+                    val syntaxTransformation = remember(editorLanguage) {
+                        CodeSyntaxTransformation(editorLanguage)
+                    }
                     BasicTextField(
                         value = editorContent,
                         onValueChange = { editorContent = it },
@@ -381,11 +387,12 @@ fun CodeEditorScreen(
                             .padding(12.dp)
                             .verticalScroll(rememberScrollState()),
                         textStyle = TextStyle(
-                            color = TerminalGreen,
+                            color = CodeColors.Plain,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 14.sp,
                             lineHeight = 20.sp
                         ),
+                        visualTransformation = syntaxTransformation,
                         cursorBrush = SolidColor(TerminalGreen)
                     )
                 }
@@ -464,7 +471,10 @@ fun CodeEditorScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Language:", color = Color.Gray, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(4.dp))
-                    val languages = listOf("html", "css", "js", "python", "kotlin", "bash", "c")
+                    val languages = listOf(
+                        "html", "css", "js", "ts", "jsx", "tsx", "json",
+                        "python", "kotlin", "bash", "c"
+                    )
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)

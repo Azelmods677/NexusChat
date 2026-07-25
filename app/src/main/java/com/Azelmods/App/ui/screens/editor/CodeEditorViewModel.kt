@@ -220,6 +220,20 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
                         "No disponible en Android sin Termux.\n\n" +
                         "Instala via Termux: pkg install clang"
                 }
+                "json" -> {
+                    // Validar y formatear JSON sí se puede hacer aquí mismo, sin red
+                    // ni herramientas externas. Es lo único honesto que "ejecutar"
+                    // puede significar para un JSON, y es genuinamente útil.
+                    _output.value = formatJson(code)
+                }
+                "ts", "tsx", "jsx" -> {
+                    _output.value = "🔷 ${language.uppercase()} necesita transpilarse a JavaScript " +
+                        "antes de ejecutarse, y eso requiere un bundler (tsc, esbuild, Vite) " +
+                        "que no corre en el dispositivo.\n\n" +
+                        "El editor sí te da resaltado completo para escribirlo.\n" +
+                        "Para probarlo, crea un archivo .js con el resultado compilado " +
+                        "y púlsale ▶, o abre un .html que lo cargue."
+                }
                 else -> {
                     _output.value = "⚠️ Lenguaje '$language' no soportado para ejecución en este dispositivo."
                 }
@@ -272,6 +286,25 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
     private fun executeKotlin(code: String): String = ""  // removed — no crash
     private suspend fun executeShell(interpreter: String, code: String): String = ""  // removed — no crash
     
+    /**
+     * Valida y reindenta JSON. Devuelve el error con su posición si no es válido:
+     * un "JSON inválido" a secas no sirve para arreglarlo.
+     */
+    private fun formatJson(code: String): String {
+        val trimmed = code.trim()
+        if (trimmed.isEmpty()) return "⚠️ El archivo está vacío."
+        return try {
+            val pretty = when (trimmed.first()) {
+                '[' -> org.json.JSONArray(trimmed).toString(2)
+                '{' -> org.json.JSONObject(trimmed).toString(2)
+                else -> return "❌ JSON inválido: debe empezar por '{' o '['."
+            }
+            "✅ JSON válido\n\n$pretty"
+        } catch (e: org.json.JSONException) {
+            "❌ JSON inválido\n\n${e.message}"
+        }
+    }
+
     // Templates by language
     private fun getTemplate(lang: String) = when (lang) {
         "python" -> "#!/usr/bin/env python3\n# Nexus Chat Dev Framework\n\nprint('Hello from Nexus Chat!')\n"
@@ -281,6 +314,10 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
         "c" -> "#include <stdio.h>\nint main() {\n    printf(\"Hello from Nexus Chat!\\n\");\n    return 0;\n}\n"
         "html" -> "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Nexus Chat</title>\n  <style>\n    body { font-family: sans-serif; text-align: center; padding: 2rem; }\n    h1 { color: #7C6FE0; }\n  </style>\n</head>\n<body>\n  <h1>Hello from Nexus Chat!</h1>\n  <p>Edita este HTML y pulsa ▶ para ver la vista previa.</p>\n  <script>console.log('Listo');</script>\n</body>\n</html>\n"
         "css" -> "/* Nexus Chat Framework */\nbody {\n  font-family: sans-serif;\n  background: #0D0D1E;\n  color: #FFFFFF;\n  padding: 2rem;\n}\nh1 { color: #7C6FE0; }\n.box {\n  margin-top: 1rem;\n  padding: 1rem;\n  border: 2px solid #00D4FF;\n  border-radius: 12px;\n}\n"
+        "ts" -> "// Nexus Chat Framework — TypeScript\ninterface Saludo {\n  mensaje: string;\n  veces: number;\n}\n\nconst saludar = ({ mensaje, veces }: Saludo): void => {\n  for (let i = 0; i < veces; i++) console.log(mensaje);\n};\n\nsaludar({ mensaje: 'Hello from Nexus Chat!', veces: 3 });\n"
+        "jsx" -> "// Nexus Chat Framework — React\nimport React, { useState } from 'react';\n\nexport default function App() {\n  const [contador, setContador] = useState(0);\n\n  return (\n    <div className=\"app\">\n      <h1>Hello from Nexus Chat!</h1>\n      <button onClick={() => setContador(contador + 1)}>\n        Pulsado {contador} veces\n      </button>\n    </div>\n  );\n}\n"
+        "tsx" -> "// Nexus Chat Framework — React + TypeScript\nimport React, { useState } from 'react';\n\ntype Props = {\n  titulo: string;\n};\n\nexport default function App({ titulo }: Props) {\n  const [contador, setContador] = useState<number>(0);\n\n  return (\n    <div className=\"app\">\n      <h1>{titulo}</h1>\n      <button onClick={() => setContador(contador + 1)}>\n        Pulsado {contador} veces\n      </button>\n    </div>\n  );\n}\n"
+        "json" -> "{\n  \"nombre\": \"nexus-chat\",\n  \"version\": \"5.0.0\",\n  \"descripcion\": \"Proyecto creado en el editor de Nexus Chat\",\n  \"activo\": true,\n  \"dependencias\": []\n}\n"
         else -> "// Nuevo archivo\n"
     }
     
