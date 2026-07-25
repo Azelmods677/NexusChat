@@ -31,6 +31,11 @@ local.properties
 models_new_key.json
 *.keystore
 *.jks
+# Dependencias de Node (Cloud Functions). NUNCA se versionan: son ~6000 archivos,
+# dependen de la plataforma, y `firebase deploy` las instala en el servidor desde
+# package.json + package-lock.json. El lock es lo que garantiza versiones exactas.
+node_modules/
+
 # Credenciales de firma del release: contienen contraseñas en claro.
 # El repo es publico; esto NUNCA debe subirse. La plantilla sin secretos es
 # keystore.properties.example, que si esta versionada.
