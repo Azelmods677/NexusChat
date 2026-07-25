@@ -66,6 +66,12 @@ fun CreateStoryScreen(
     var textPosition by remember { mutableStateOf(Offset(100f, 300f)) }
     var showTextDialog by remember { mutableStateOf(false) }
     var showDrawMode by remember { mutableStateOf(false) }
+    // Los trazos viven en el ámbito de la pantalla, NO dentro del diálogo de dibujo:
+    // declarados dentro, cerrar el diálogo los destruía y dibujar no tenía ningún
+    // efecto. Se guardan en coordenadas normalizadas (0..1) para poder pintarlos a
+    // cualquier tamaño: el lienzo del diálogo y el área de la foto no miden igual.
+    val drawnStrokes = remember { mutableStateListOf<DrawnStroke>() }
+    var drawColor by remember { mutableStateOf(Pink) }
     var showStickerPicker by remember { mutableStateOf(false) }
     var selectedSticker by remember { mutableStateOf("") }
     var emojiOverlays by remember { mutableStateOf<List<EmojiOverlay>>(emptyList()) }
@@ -572,6 +578,32 @@ fun CreateStoryScreen(
                             )
                         }
                         
+                        // Trazos del modo dibujo. Se pintan DENTRO del subárbol que
+                        // captureLayer graba, así quedan rasterizados en la imagen
+                        // que se publica en vez de perderse al cerrar el diálogo.
+                        if (drawnStrokes.isNotEmpty()) {
+                            androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+                                drawnStrokes.forEach { stroke ->
+                                    val pts = stroke.points
+                                    for (i in 1 until pts.size) {
+                                        drawLine(
+                                            color = stroke.color,
+                                            start = Offset(
+                                                pts[i - 1].x * size.width,
+                                                pts[i - 1].y * size.height
+                                            ),
+                                            end = Offset(
+                                                pts[i].x * size.width,
+                                                pts[i].y * size.height
+                                            ),
+                                            strokeWidth = stroke.width,
+                                            cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         // Sticker overlay (deprecated - use emoji overlays instead)
                         if (selectedSticker.isNotEmpty()) {
                             Text(
@@ -850,42 +882,56 @@ fun CreateStoryScreen(
             onDismissRequest = { showDrawMode = false },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            val strokes = remember { mutableStateListOf<DrawnStroke>() }
             var current by remember { mutableStateOf<DrawnStroke?>(null) }
-            var color by remember { mutableStateOf(Pink) }
             val palette = listOf(
                 Color.White, Color.Black, NexusTokens.Color.Primary, Pink,
                 CyanAccent, NeonGreen, GoldPremium, NexusTokens.Color.Error
             )
 
-            Box(modifier = Modifier.fillMaxSize().background(NexusTokens.Color.BgBase)) {
+            // Sin fondo: antes se pintaba NexusTokens.Color.BgBase (opaco), que tapaba
+            // por completo la foto sobre la que se supone que estás dibujando. Ese era
+            // el "cuadro negro" que cubría la pantalla.
+            Box(modifier = Modifier.fillMaxSize()) {
                 androidx.compose.foundation.Canvas(
                     modifier = Modifier
                         .fillMaxSize()
-                        .pointerInput(color) {
+                        .pointerInput(drawColor) {
+                            // Normalizamos a 0..1 para que el trazo caiga en el mismo
+                            // sitio al repintarse sobre el área de la foto, que tiene
+                            // otras dimensiones que este lienzo.
+                            fun norm(o: Offset) = Offset(
+                                if (size.width > 0) o.x / size.width else 0f,
+                                if (size.height > 0) o.y / size.height else 0f
+                            )
                             detectDragGestures(
                                 onDragStart = { offset ->
-                                    current = DrawnStroke(mutableStateListOf(offset), color, 10f)
+                                    current = DrawnStroke(mutableStateListOf(norm(offset)), drawColor, 10f)
                                 },
                                 onDrag = { change, _ ->
-                                    current?.points?.add(change.position)
+                                    current?.points?.add(norm(change.position))
                                     // Force recomposition by reassigning
                                     current = current?.copy()
                                 },
                                 onDragEnd = {
-                                    current?.let { strokes.add(it) }
+                                    current?.let { drawnStrokes.add(it) }
                                     current = null
                                 }
                             )
                         }
                 ) {
-                    (strokes + listOfNotNull(current)).forEach { stroke ->
+                    (drawnStrokes + listOfNotNull(current)).forEach { stroke ->
                         val pts = stroke.points
                         for (i in 1 until pts.size) {
                             drawLine(
                                 color = stroke.color,
-                                start = pts[i - 1],
-                                end = pts[i],
+                                start = Offset(
+                                    pts[i - 1].x * size.width,
+                                    pts[i - 1].y * size.height
+                                ),
+                                end = Offset(
+                                    pts[i].x * size.width,
+                                    pts[i].y * size.height
+                                ),
                                 strokeWidth = stroke.width,
                                 cap = androidx.compose.ui.graphics.StrokeCap.Round
                             )
@@ -906,11 +952,11 @@ fun CreateStoryScreen(
                         Icon(Icons.Default.Close, "Cerrar", tint = Color.White)
                     }
                     Row {
-                        IconButton(onClick = { if (strokes.isNotEmpty()) strokes.removeAt(strokes.size - 1) }) {
+                        IconButton(onClick = { if (drawnStrokes.isNotEmpty()) drawnStrokes.removeAt(drawnStrokes.size - 1) }) {
                             @Suppress("DEPRECATION")
                             Icon(Icons.Default.Undo, "Deshacer", tint = Color.White)
                         }
-                        IconButton(onClick = { strokes.clear() }) {
+                        IconButton(onClick = { drawnStrokes.clear() }) {
                             Icon(Icons.Default.Delete, "Limpiar", tint = NexusTokens.Color.Error)
                         }
                         TextButton(onClick = { showDrawMode = false }) {
@@ -937,11 +983,11 @@ fun CreateStoryScreen(
                                 .clip(CircleShape)
                                 .background(c)
                                 .border(
-                                    if (color == c) 3.dp else 1.dp,
-                                    if (color == c) Color.White else Color.Transparent,
+                                    if (drawColor == c) 3.dp else 1.dp,
+                                    if (drawColor == c) Color.White else Color.Transparent,
                                     CircleShape
                                 )
-                                .clickable { color = c }
+                                .clickable { drawColor = c }
                         )
                     }
                 }
@@ -1086,7 +1132,10 @@ fun StoryEditOption(
 
 /**
  * A single freehand stroke drawn on the story canvas.
- * [points] are screen-space positions; [color] and [width] define its style.
+ * [points] are NORMALIZED positions (0..1 on each axis), no screen pixels: el trazo se
+ * captura en el lienzo del diálogo y se repinta sobre el área de la foto, que mide
+ * distinto. Multiplica por el tamaño del destino al dibujar.
+ * [color] and [width] define its style.
  */
 data class DrawnStroke(
     val points: MutableList<Offset>,
