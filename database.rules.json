@@ -5,6 +5,10 @@
     
     "users": {
       ".indexOn": ["username", "displayName"],
+      "demo_azel_assistant": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists()"
+      },
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid",

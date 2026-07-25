@@ -28,6 +28,7 @@ class DemoAccountManager @Inject constructor(
         private const val DEMO_USER_NAME = "Azel Assistant"
         private const val DEMO_USERNAME = "@azel"
         private const val DEMO_BIO = "I'm here to help you explore AzelGram features!"
+        private const val DEMO_EMAIL = "azel.assistant@nexuschat.app"
     }
     
     /**
@@ -68,11 +69,14 @@ class DemoAccountManager @Inject constructor(
      */
     private suspend fun createDemoUser() {
         try {
+            // `email` es obligatorio: la regla .validate de users/$uid exige
+            // displayName + email. Sin él la escritura se rechaza.
             val demoUserData = mapOf(
                 "uid" to DEMO_USER_ID,
                 "name" to DEMO_USER_NAME,
                 "username" to DEMO_USERNAME,
                 "displayName" to DEMO_USER_NAME,
+                "email" to DEMO_EMAIL,
                 "bio" to DEMO_BIO,
                 "isOnline" to true,
                 "lastSeen" to ServerValue.TIMESTAMP,
@@ -88,10 +92,12 @@ class DemoAccountManager @Inject constructor(
                 .await()
             
             Log.d(TAG, "Demo user created: $DEMO_USER_ID")
-            
+
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating demo user: ${e.message}", e)
-            throw e
+            // No se relanza: si el perfil del bot ya existe (lo crea el primer usuario
+            // que instala la app) la escritura se rechaza por regla, y antes esa
+            // excepción abortaba el chat y los mensajes de bienvenida por completo.
+            Log.w(TAG, "No se pudo crear el perfil demo (puede que ya exista): ${e.message}")
         }
     }
     
@@ -117,10 +123,12 @@ class DemoAccountManager @Inject constructor(
                 "isGroup" to false
             )
             
+            // updateChildren y no setValue: setValue reemplaza el nodo completo y
+            // borraría los mensajes si el chat ya existiera.
             database.reference
                 .child("chats")
                 .child(chatId)
-                .setValue(demoChatData)
+                .updateChildren(demoChatData)
                 .await()
             
             // Update userChats index for both users
@@ -143,96 +151,66 @@ class DemoAccountManager @Inject constructor(
             val uidA = currentUserId
             val uidB = DEMO_USER_ID
             val chatId = if (uidA < uidB) "${uidA}_${uidB}" else "${uidB}_${uidA}"
-            val messagesRef = database.reference.child("messages").child(chatId)
-            
+            // chats/{chatId}/messages, NO el nodo raiz "messages": la app lee de aqui.
+            // Antes escribia en messages/{chatId}, que ninguna pantalla consulta y que
+            // ademas las reglas rechazan (no existe, hereda .write: false del root),
+            // asi que el chat de bienvenida siempre aparecia vacio.
+            val messagesRef = database.reference
+                .child("chats")
+                .child(chatId)
+                .child("messages")
+
             val baseTime = System.currentTimeMillis() - (5 * 60 * 1000) // 5 minutes ago
-            
-            // Message 1: Welcome from Azel
-            val message1 = mapOf(
-                "messageId" to "demo_msg_1",
-                "senderId" to DEMO_USER_ID,
-                "senderName" to DEMO_USER_NAME,
-                "text" to "¡Hola! 👋 Soy Azel Assistant, tu guía en AzelGram.",
-                "timestamp" to baseTime,
-                "type" to "TEXT",
-                "isRead" to false
+
+            // Todos los mensajes son DEL asistente. Antes habia uno falso atribuido al
+            // usuario ("¡Genial! Voy a explorar la app"): poner palabras en boca de
+            // alguien que no las escribio no es aceptable en produccion.
+            val welcomeTexts = listOf(
+                "¡Hola! 👋 Soy Azel Assistant. Este chat es de verdad: los mensajes que " +
+                    "ves están guardados en la base de datos, igual que los de cualquier " +
+                    "conversación.",
+                "NexusChat cifra tus mensajes de extremo a extremo con ECDH + AES-256-GCM. " +
+                    "El servidor solo guarda el texto cifrado: ni yo ni nadie más puede leerlo.",
+                "Lo que ya puedes hacer:\n" +
+                    "• Escribir a otra persona (busca su usuario en Nueva conversación)\n" +
+                    "• Enviar fotos, vídeos y notas de voz\n" +
+                    "• Publicar historias de 24 h, con música y dibujo\n" +
+                    "• Escribir código en el editor, con resaltado por lenguaje\n" +
+                    "• Navegar por Tor con Orbot instalado",
+                "💡 Para hablar con alguien real: pulsa el botón de nueva conversación y " +
+                    "busca su nombre de usuario. Necesitáis los dos tener cuenta.",
+                "Si algo no te funciona, vuelve aquí y repasa esta lista. ¡Disfruta " +
+                    "NexusChat! 🚀"
             )
-            messagesRef.child("demo_msg_1").setValue(message1).await()
-            
-            // Message 2: Introduction
-            val message2 = mapOf(
-                "messageId" to "demo_msg_2",
-                "senderId" to DEMO_USER_ID,
-                "senderName" to DEMO_USER_NAME,
-                "text" to "Estoy aquí para ayudarte a explorar todas las funciones de la app.",
-                "timestamp" to baseTime + 10000,
-                "type" to "TEXT",
-                "isRead" to false
-            )
-            messagesRef.child("demo_msg_2").setValue(message2).await()
-            
-            // Message 3: Feature exploration prompt
-            val message3 = mapOf(
-                "messageId" to "demo_msg_3",
-                "senderId" to DEMO_USER_ID,
-                "senderName" to DEMO_USER_NAME,
-                "text" to "Puedes probar:\n• Enviar mensajes de texto\n• Compartir fotos y videos\n• Hacer llamadas de voz/video\n• Crear historias\n• Navegar de forma anónima con Tor",
-                "timestamp" to baseTime + 20000,
-                "type" to "TEXT",
-                "isRead" to false
-            )
-            messagesRef.child("demo_msg_3").setValue(message3).await()
-            
-            // Message 4: Sample user reply
-            val message4 = mapOf(
-                "messageId" to "demo_msg_4",
-                "senderId" to currentUserId,
-                "senderName" to "Tú",
-                "text" to "¡Genial! Voy a explorar la app 😊",
-                "timestamp" to baseTime + 30000,
-                "type" to "TEXT",
-                "isRead" to true
-            )
-            messagesRef.child("demo_msg_4").setValue(message4).await()
-            
-            // Message 5: Follow-up from Azel
-            val message5 = mapOf(
-                "messageId" to "demo_msg_5",
-                "senderId" to DEMO_USER_ID,
-                "senderName" to DEMO_USER_NAME,
-                "text" to "¡Perfecto! Si necesitas ayuda, siempre puedes volver a este chat. 💬",
-                "timestamp" to baseTime + 40000,
-                "type" to "TEXT",
-                "isRead" to false
-            )
-            messagesRef.child("demo_msg_5").setValue(message5).await()
-            
-            // Message 6: Security tip
-            val message6 = mapOf(
-                "messageId" to "demo_msg_6",
-                "senderId" to DEMO_USER_ID,
-                "senderName" to DEMO_USER_NAME,
-                "text" to "💡 Tip: Activa el modo anónimo en Configuración > Seguridad para navegar con Tor.",
-                "timestamp" to baseTime + 50000,
-                "type" to "TEXT",
-                "isRead" to false
-            )
-            messagesRef.child("demo_msg_6").setValue(message6).await()
-            
-            // Message 7: Final message
-            val message7 = mapOf(
-                "messageId" to "demo_msg_7",
-                "senderId" to DEMO_USER_ID,
-                "senderName" to DEMO_USER_NAME,
-                "text" to "¡Disfruta explorando NexusChat! 🚀",
-                "timestamp" to baseTime + 60000,
-                "type" to "TEXT",
-                "isRead" to false
-            )
-            messagesRef.child("demo_msg_7").setValue(message7).await()
-            
-            Log.d(TAG, "Demo messages created: 7 messages")
-            
+
+            welcomeTexts.forEachIndexed { index, body ->
+                val messageId = "demo_msg_${index + 1}"
+                // El esquema debe ser el MISMO que usa sendMessage() real: la app lee
+                // `content`, no `text`, y `status`, no `isRead`. Con los nombres viejos
+                // los mensajes salian en blanco aunque estuvieran en el sitio correcto.
+                val message = mapOf(
+                    "messageId" to messageId,
+                    "senderId" to DEMO_USER_ID,
+                    "content" to body,
+                    "timestamp" to baseTime + (index * 10_000L),
+                    "status" to "sent",
+                    "isEncrypted" to false,
+                    "reactions" to emptyMap<String, String>()
+                )
+                messagesRef.child(messageId).setValue(message).await()
+            }
+
+            // Que el ultimo mensaje sea el que la lista de chats muestra como preview.
+            database.reference.child("chats").child(chatId).updateChildren(
+                mapOf(
+                    "lastMessage" to welcomeTexts.last(),
+                    "lastMessageTime" to baseTime + ((welcomeTexts.size - 1) * 10_000L),
+                    "lastMessageSenderId" to DEMO_USER_ID
+                )
+            ).await()
+
+            Log.d(TAG, "Demo messages created: ${welcomeTexts.size} messages")
+
         } catch (e: Exception) {
             Log.e(TAG, "Error creating demo messages: ${e.message}", e)
             throw e
