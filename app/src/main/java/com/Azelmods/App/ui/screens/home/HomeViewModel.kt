@@ -106,6 +106,49 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Bloquea o desbloquea al otro miembro de un chat individual.
+     *
+     * Quien queda bloqueado deja de poder escribir en la conversacion, y eso lo
+     * impone la regla de Firebase, no la interfaz. En grupos no aplica: no hay un
+     * "otro" unico a quien bloquear.
+     */
+    fun toggleBlock(chatId: String, onResult: (String) -> Unit = {}) {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val chat = _state.value.chats.find { it.chatId == chatId } ?: return
+        if (chat.chatType == ChatType.GROUP) {
+            onResult("En los grupos no se puede bloquear")
+            return
+        }
+        val otherUid = chat.participantIds.ifEmpty { chat.participants }
+            .firstOrNull { it != currentUserId }
+        if (otherUid == null) {
+            onResult("No se pudo identificar al contacto")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val alreadyBlocked = runCatching {
+                databaseRepository.isBlockedByMe(chatId, otherUid)
+            }.getOrDefault(false)
+
+            val result = runCatching {
+                if (alreadyBlocked) databaseRepository.unblockUser(chatId, otherUid)
+                else databaseRepository.blockUser(chatId, otherUid)
+            }
+
+            withContext(Dispatchers.Main) {
+                onResult(
+                    when {
+                        result.isFailure -> "No se pudo completar la accion"
+                        alreadyBlocked -> "Contacto desbloqueado"
+                        else -> "Contacto bloqueado: ya no puede escribirte aqui"
+                    }
+                )
+            }
+        }
+    }
+
     fun archiveChat(chatId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {

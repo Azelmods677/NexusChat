@@ -347,6 +347,22 @@ fun HomeScreenRedesigned(
                             showBottomSheet = false
                         }
                     )
+                    // Bloquear solo tiene sentido en chats de dos personas: en un
+                    // grupo no hay un "otro" unico a quien bloquear.
+                    if (chat.chatType != com.Azelmods.App.data.model.ChatType.GROUP) {
+                        ChatActionItem(
+                            icon = Icons.Default.Block,
+                            text = "Bloquear / Desbloquear",
+                            onClick = {
+                                viewModel.toggleBlock(chat.chatId) { message ->
+                                    android.widget.Toast
+                                        .makeText(context, message, android.widget.Toast.LENGTH_LONG)
+                                        .show()
+                                }
+                                showBottomSheet = false
+                            }
+                        )
+                    }
                     ChatActionItem(
                         icon = Icons.Default.Delete,
                         text = "Delete",

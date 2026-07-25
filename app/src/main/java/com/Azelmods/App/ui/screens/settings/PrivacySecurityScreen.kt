@@ -44,7 +44,9 @@ fun PrivacySecurityScreen(
     var showDownloadDataDialog by remember { mutableStateOf(false) }
     var showDeleteDataDialog by remember { mutableStateOf(false) }
     var deleteDataConfirm by remember { mutableStateOf("") }
-    var blockedUsers by remember { mutableStateOf(listOf<String>()) }
+    // Lista real desde Firebase (antes era una lista local vacía que nunca se llenaba).
+    val blockedContacts by viewModel.blockedContacts.collectAsState()
+    val isLoadingBlocked by viewModel.isLoadingBlocked.collectAsState()
     var isLoadingData by remember { mutableStateOf(false) }
     var dataExportResult by remember { mutableStateOf<String?>(null) }
 
@@ -104,10 +106,14 @@ fun PrivacySecurityScreen(
             )
 
             SettingsItem(
-                title = "Blocked Users",
-                subtitle = "Manage blocked contacts",
+                title = "Contactos bloqueados",
+                subtitle = if (blockedContacts.isEmpty()) "Ninguno"
+                           else "${blockedContacts.size} bloqueado(s)",
                 icon = Icons.Default.Block,
-                onClick = { showBlockedUsersDialog = true }
+                onClick = {
+                    viewModel.loadBlockedContacts()
+                    showBlockedUsersDialog = true
+                }
             )
 
             HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
@@ -175,19 +181,47 @@ fun PrivacySecurityScreen(
     if (showBlockedUsersDialog) {
         AlertDialog(
             onDismissRequest = { showBlockedUsersDialog = false },
-            title = { Text("Blocked Users", color = Color.White) },
+            title = { Text("Contactos bloqueados", color = Color.White) },
             text = {
                 Column {
-                    if (blockedUsers.isEmpty()) {
-                        Text("No blocked users", color = Color.Gray)
-                    } else {
-                        blockedUsers.forEach { user ->
-                            Text(user, color = Color.White)
-                            HorizontalDivider(color = DarkSurface)
+                    when {
+                        isLoadingBlocked -> {
+                            Text("Cargando…", color = Color.Gray)
+                        }
+                        blockedContacts.isEmpty() -> {
+                            Text("No has bloqueado a nadie.", color = Color.Gray)
+                        }
+                        else -> {
+                            blockedContacts.forEach { contact ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        contact.name,
+                                        color = Color.White,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TextButton(
+                                        onClick = {
+                                            viewModel.unblockContact(contact.chatId, contact.uid)
+                                        }
+                                    ) {
+                                        Text("Desbloquear", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                                    }
+                                }
+                                HorizontalDivider(color = DarkSurface)
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Use long-press on a chat to block a user.", color = Color.Gray, fontSize = 12.sp)
+                    Text(
+                        "Para bloquear a alguien, mantén pulsada su conversación en la " +
+                            "lista de chats y elige Bloquear. Quien esté bloqueado no podrá " +
+                            "escribirte en ese chat.",
+                        color = Color.Gray,
+                        fontSize = 12.sp
+                    )
                 }
             },
             confirmButton = {

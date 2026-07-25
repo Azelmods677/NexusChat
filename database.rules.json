@@ -83,8 +83,34 @@
           ".indexOn": ["timestamp"],
           "$messageId": {
             ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
+            "//": "Escribir exige ser miembro Y no estar bloqueado por el otro miembro. La comprobacion vive en la regla, no solo en la app: un bloqueo que solo oculta mensajes en la interfaz no es un bloqueo, porque un cliente modificado seguiria escribiendo en el chat.",
+            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()"
           }
+        }
+      }
+    },
+
+    /*
+      Bloqueos por conversacion.
+
+      chatBlocks/$chatId/$uidBloqueado = true  →  ese uid NO puede escribir en el chat.
+
+      Se indexa por chat y no por usuario a proposito: la regla de escritura de
+      mensajes ya conoce el $chatId, asi que puede resolver el bloqueo con una sola
+      lectura. Con un indice global (blockedUsers/$uid/$otro) la regla tendria que
+      deducir quien es el otro miembro a partir del chatId, cosa que el lenguaje de
+      reglas no puede hacer de forma fiable.
+
+      Quien bloquea puede deshacerlo; el bloqueado NO puede desbloquearse solo,
+      porque la condicion $uidBloqueado !== auth.uid le impide escribir en su propia
+      casilla (y borrar es escribir null).
+    */
+    "chatBlocks": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+        "$blockedUid": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && $blockedUid !== auth.uid",
+          ".validate": "newData.val() === true || !newData.exists()"
         }
       }
     },

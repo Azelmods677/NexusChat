@@ -323,6 +323,87 @@ class RealtimeDatabaseRepository @Inject constructor(
         ).await()
     }
 
+    // ── BLOQUEO DE CONTACTOS ─────────────────────────────────────────────────
+    // El bloqueo se guarda en chatBlocks/{chatId}/{uidBloqueado} y lo hace cumplir
+    // la regla de escritura de mensajes, no la interfaz: ocultar los mensajes solo
+    // en la app dejaria que un cliente modificado siguiera escribiendo.
+
+    /** Bloquea a [otherUid] en [chatId]: deja de poder escribir en esa conversacion. */
+    suspend fun blockUser(chatId: String, otherUid: String) {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
+        if (otherUid == currentUserId) return
+        database.child("chatBlocks").child(chatId).child(otherUid).setValue(true).await()
+        Log.d("RealtimeDB", "🚫 $otherUid bloqueado en $chatId")
+    }
+
+    /** Deshace el bloqueo. Solo funciona para quien bloqueo: la regla impide que el bloqueado se libere. */
+    suspend fun unblockUser(chatId: String, otherUid: String) {
+        database.child("chatBlocks").child(chatId).child(otherUid).removeValue().await()
+        Log.d("RealtimeDB", "✅ $otherUid desbloqueado en $chatId")
+    }
+
+    /**
+     * `true` si el usuario actual tiene bloqueado a [otherUid] en [chatId].
+     *
+     * Ante un fallo de lectura devuelve `false`: es el valor que deja al usuario
+     * intentar la accion, y la regla del servidor decide de verdad.
+     */
+    suspend fun isBlockedByMe(chatId: String, otherUid: String): Boolean {
+        return runCatching {
+            database.child("chatBlocks").child(chatId).child(otherUid).get().await().exists()
+        }.getOrDefault(false)
+    }
+
+    /** Uids bloqueados en [chatId], en tiempo real. */
+    fun observeChatBlocks(chatId: String): Flow<Set<String>> = callbackFlow {
+        val ref = database.child("chatBlocks").child(chatId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                trySend(snapshot.children.mapNotNull { it.key }.toSet())
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Sin permiso o sin red: se asume "nadie bloqueado" para no dejar la
+                // pantalla colgada; la regla del servidor sigue mandando igualmente.
+                trySend(emptySet())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    /**
+     * Recorre los chats del usuario y devuelve a quien tiene bloqueado, con el
+     * chatId donde ocurre para poder deshacerlo desde Ajustes.
+     */
+    suspend fun getBlockedContacts(): List<BlockedContact> {
+        val currentUserId = auth.currentUser?.uid ?: return emptyList()
+        return try {
+            val chatIds = database.child("userChats").child(currentUserId).get().await()
+                .children.mapNotNull { it.key }
+
+            chatIds.mapNotNull { chatId ->
+                val blocked = runCatching {
+                    database.child("chatBlocks").child(chatId).get().await()
+                        .children.mapNotNull { it.key }
+                }.getOrDefault(emptyList())
+
+                // Solo interesan los bloqueos hechos POR el usuario (sobre otros).
+                val target = blocked.firstOrNull { it != currentUserId } ?: return@mapNotNull null
+                val name = runCatching {
+                    getUserById(target)?.let { data ->
+                        data["displayName"] as? String ?: data["name"] as? String
+                    }
+                }.getOrNull() ?: "Usuario"
+
+                BlockedContact(uid = target, name = name, chatId = chatId)
+            }
+        } catch (e: Exception) {
+            Log.e("RealtimeDB", "No se pudieron leer los contactos bloqueados: ${e.message}")
+            emptyList()
+        }
+    }
+
     fun getUserChats(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
         val userChatsIndexRef = database.child("userChats").child(userId)
         val listener = object : ValueEventListener {
@@ -1300,3 +1381,15 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
     }
 }
+
+/**
+ * Contacto bloqueado por el usuario actual.
+ *
+ * Lleva el [chatId] porque el bloqueo se guarda por conversacion
+ * (chatBlocks/{chatId}/{uid}): sin el no se podria deshacer desde Ajustes.
+ */
+data class BlockedContact(
+    val uid: String,
+    val name: String,
+    val chatId: String
+)

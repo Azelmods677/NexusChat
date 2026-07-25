@@ -24,8 +24,39 @@ import kotlinx.coroutines.flow.asStateFlow
 class SettingsViewModel @Inject constructor(
     private val userPreferences: UserPreferences,
     val appBackgroundManager: AppBackgroundManager,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val databaseRepository: com.Azelmods.App.data.repository.RealtimeDatabaseRepository
 ) : ViewModel() {
+
+    // ── Contactos bloqueados ─────────────────────────────────────────────────
+    // Antes la pantalla de privacidad mostraba una lista declarada como
+    // `remember { mutableStateOf(listOf<String>()) }`: SIEMPRE vacía, sin origen de
+    // datos, y con una pista que hablaba de un gesto que no existía. Ahora sale de
+    // Firebase y se puede deshacer el bloqueo desde aquí.
+
+    private val _blockedContacts =
+        MutableStateFlow<List<com.Azelmods.App.data.repository.BlockedContact>>(emptyList())
+    val blockedContacts: kotlinx.coroutines.flow.StateFlow<List<com.Azelmods.App.data.repository.BlockedContact>> =
+        _blockedContacts.asStateFlow()
+
+    private val _isLoadingBlocked = MutableStateFlow(false)
+    val isLoadingBlocked: kotlinx.coroutines.flow.StateFlow<Boolean> = _isLoadingBlocked.asStateFlow()
+
+    fun loadBlockedContacts() {
+        viewModelScope.launch {
+            _isLoadingBlocked.value = true
+            _blockedContacts.value = runCatching { databaseRepository.getBlockedContacts() }
+                .getOrDefault(emptyList())
+            _isLoadingBlocked.value = false
+        }
+    }
+
+    fun unblockContact(chatId: String, uid: String) {
+        viewModelScope.launch {
+            runCatching { databaseRepository.unblockUser(chatId, uid) }
+            loadBlockedContacts()
+        }
+    }
     
     // Account Settings
     val displayName: StateFlow<String> = userPreferences.displayName
