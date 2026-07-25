@@ -480,7 +480,9 @@ class RealtimeDatabaseRepository @Inject constructor(
         isVideo: Boolean,
         caption: String? = null,
         text: String? = null,
-        backgroundColor: String? = null
+        backgroundColor: String? = null,
+        musicUrl: String? = null,
+        musicName: String? = null
     ): String {
         val userId = auth.currentUser?.uid ?: throw Exception("Not logged in")
         val storyId = database.child("stories").child(userId).push().key ?: ""
@@ -506,6 +508,15 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
         if (!backgroundColor.isNullOrBlank()) {
             storyData["backgroundColor"] = backgroundColor
+        }
+        // Música de la historia. Antes se elegía en el editor y se descartaba: el Uri
+        // local no servía de nada porque solo existe en el dispositivo del autor, así
+        // que hay que guardar la URL ya subida a Storage.
+        if (!musicUrl.isNullOrBlank()) {
+            storyData["musicUrl"] = musicUrl
+        }
+        if (!musicName.isNullOrBlank()) {
+            storyData["musicName"] = musicName
         }
         database.child("stories").child(userId).child(storyId).setValue(storyData).await()
         return storyId

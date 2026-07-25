@@ -35,7 +35,24 @@ class CreateStoryViewModel @Inject constructor(
     
     private val _state = MutableStateFlow(CreateStoryState())
     val state: StateFlow<CreateStoryState> = _state.asStateFlow()
-    
+
+    /**
+     * Sube la pista de audio elegida, si hay alguna, y devuelve su URL de descarga.
+     *
+     * Devuelve null si falla en vez de propagar la excepción: quedarse sin música es
+     * un defecto menor, perder la historia entera por eso no es aceptable. Esa es la
+     * misma regla que ya sigue el resto de este ViewModel con las composiciones.
+     */
+    private suspend fun uploadMusicOrNull(musicUri: Uri?, userId: String): String? {
+        if (musicUri == null) return null
+        return try {
+            storageRepository.uploadStoryMusic(musicUri, userId)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
     /**
      * Upload a COMPOSED IMAGE story: the editor captures its editable area (photo +
      * text / stickers / emojis) into [composedBitmap] using a Compose GraphicsLayer,
@@ -45,7 +62,13 @@ class CreateStoryViewModel @Inject constructor(
      * If anything goes wrong while saving the composed bitmap we fall back to
      * uploading [originalUri] so the user never ends up unable to publish.
      */
-    fun uploadComposedImageStory(composedBitmap: Bitmap, caption: String, originalUri: Uri?) {
+    fun uploadComposedImageStory(
+        composedBitmap: Bitmap,
+        caption: String,
+        originalUri: Uri?,
+        musicUri: Uri? = null,
+        musicName: String = ""
+    ) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
 
@@ -69,12 +92,15 @@ class CreateStoryViewModel @Inject constructor(
                 }
 
                 val imageUrl = storageRepository.uploadStory(uploadUri, userId)
+                val musicUrl = uploadMusicOrNull(musicUri, userId)
 
                 databaseRepository.createStory(
                     mediaUrl = imageUrl,
                     mediaType = "IMAGE",
                     isVideo = false,
-                    caption = caption
+                    caption = caption,
+                    musicUrl = musicUrl,
+                    musicName = musicName.takeIf { musicUrl != null }
                 )
 
                 _state.value = _state.value.copy(
@@ -95,7 +121,12 @@ class CreateStoryViewModel @Inject constructor(
      * Upload IMAGE story to Firebase Storage and save to Realtime Database
      * Pattern: stories/{userId}/{timestamp}.jpg
      */
-    fun uploadImageStory(imageUri: Uri, caption: String) {
+    fun uploadImageStory(
+        imageUri: Uri,
+        caption: String,
+        musicUri: Uri? = null,
+        musicName: String = ""
+    ) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
             
@@ -112,13 +143,16 @@ class CreateStoryViewModel @Inject constructor(
                 
                 // Step 1: Upload to Storage FIRST and AWAIT completion
                 val imageUrl = storageRepository.uploadStory(imageUri, userId)
-                
+                val musicUrl = uploadMusicOrNull(musicUri, userId)
+
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
                 databaseRepository.createStory(
                     mediaUrl = imageUrl,
                     mediaType = "IMAGE",
                     isVideo = false,
-                    caption = caption
+                    caption = caption,
+                    musicUrl = musicUrl,
+                    musicName = musicName.takeIf { musicUrl != null }
                 )
 
                 _state.value = _state.value.copy(
@@ -235,7 +269,12 @@ class CreateStoryViewModel @Inject constructor(
     /**
      * Create TEXT story (no upload needed, direct to database)
      */
-    fun createTextStory(text: String, backgroundColor: String) {
+    fun createTextStory(
+        text: String,
+        backgroundColor: String,
+        musicUri: Uri? = null,
+        musicName: String = ""
+    ) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
             
@@ -252,12 +291,16 @@ class CreateStoryViewModel @Inject constructor(
                 // TEXT stories skip Storage entirely. Se persisten los campos
                 // `text` y `backgroundColor` que el visor realmente lee (antes se
                 // metía el texto en mediaUrl y se descartaba el color → texto en blanco).
+                val musicUrl = uploadMusicOrNull(musicUri, userId)
+
                 databaseRepository.createStory(
                     mediaUrl = text,
                     mediaType = "TEXT",
                     isVideo = false,
                     text = text,
-                    backgroundColor = backgroundColor
+                    backgroundColor = backgroundColor,
+                    musicUrl = musicUrl,
+                    musicName = musicName.takeIf { musicUrl != null }
                 )
 
                 _state.value = _state.value.copy(

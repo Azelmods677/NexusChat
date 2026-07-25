@@ -29,7 +29,12 @@ data class StoryItemData(
     val timestamp: Long,
     val expiresAt: Long,
     val views: List<String>,
-    val isViewed: Boolean = false
+    val isViewed: Boolean = false,
+    // Pista de audio opcional (historias de imagen y de texto). Es la URL ya subida a
+    // Storage, no el Uri local: ese solo existe en el dispositivo del autor, que es
+    // por lo que antes la música elegida no llegaba a ninguna parte.
+    val musicUrl: String? = null,
+    val musicName: String? = null
 )
 
 data class StoriesState(
@@ -134,7 +139,9 @@ class StoriesViewModel @Inject constructor(
                                     timestamp = timestamp,
                                     expiresAt = expiresAt,
                                     views = viewerIds,
-                                    isViewed = viewerIds.contains(currentUserId)
+                                    isViewed = viewerIds.contains(currentUserId),
+                                    musicUrl = storyMap["musicUrl"] as? String,
+                                    musicName = storyMap["musicName"] as? String
                                 )
                             )
                         } catch (e: Exception) {

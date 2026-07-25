@@ -223,6 +223,43 @@ class StorageRepository @Inject constructor(
     }
     
     /**
+     * Sube la pista de audio que acompaña a una historia.
+     * Pattern: stories/{userId}/{timestamp}_music
+     *
+     * Va bajo `stories/{userId}/` a propósito: así reutiliza exactamente las mismas
+     * reglas de Storage que la imagen o el vídeo de la historia, sin abrir una ruta
+     * nueva que habría que autorizar aparte.
+     */
+    suspend fun uploadStoryMusic(audioUri: Uri, userId: String): String = suspendCoroutine { continuation ->
+        try {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            if (currentUser == null) {
+                continuation.resumeWithException(
+                    Exception("User not authenticated. Please log in to upload files.")
+                )
+                return@suspendCoroutine
+            }
+
+            val timestamp = System.currentTimeMillis()
+            val fileRef = storage.reference.child("stories/$userId/${timestamp}_music")
+
+            fileRef.putFile(audioUri, mediaMetadata("audio/mpeg"))
+                .addOnSuccessListener {
+                    fileRef.downloadUrl.addOnSuccessListener { uri ->
+                        continuation.resume(uri.toString())
+                    }.addOnFailureListener { exception ->
+                        continuation.resumeWithException(exception)
+                    }
+                }
+                .addOnFailureListener { exception ->
+                    continuation.resumeWithException(exception)
+                }
+        } catch (e: Exception) {
+            continuation.resumeWithException(e)
+        }
+    }
+
+    /**
      * Upload profile photo to Firebase Storage
      * Pattern: user_photos/{userId}/profile.jpg
      */

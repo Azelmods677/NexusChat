@@ -101,7 +101,9 @@ class StoryViewerViewModel @Inject constructor(
                                 timestamp = timestamp,
                                 expiresAt = expiresAt,
                                 views = viewerIds,
-                                isViewed = viewerIds.contains(currentUserId)
+                                isViewed = viewerIds.contains(currentUserId),
+                                musicUrl = storyMap["musicUrl"] as? String,
+                                musicName = storyMap["musicName"] as? String
                             )
                         )
                     }

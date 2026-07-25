@@ -186,6 +186,32 @@ fun StoryViewerScreen(
         return
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Música de la historia (imagen y texto; el vídeo trae su propio audio).
+    //
+    // Vive aquí, fuera del `when` de tipos, para que haya un único reproductor por
+    // historia. Se recrea al cambiar de pista y se libera en onDispose: sin eso el
+    // audio seguiría sonando después de salir del visor.
+    // ────────────────────────────────────────────────────────────────────────
+    val storyMusicUrl = currentStory.musicUrl
+    if (!storyMusicUrl.isNullOrBlank() && !currentStory.type.equals("VIDEO", ignoreCase = true)) {
+        val musicPlayer = remember(storyMusicUrl) {
+            androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+                setMediaItem(androidx.media3.common.MediaItem.fromUri(storyMusicUrl))
+                repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+                prepare()
+            }
+        }
+        DisposableEffect(musicPlayer) {
+            onDispose { musicPlayer.release() }
+        }
+        // Respeta la pausa por pulsación larga, igual que hace el vídeo.
+        LaunchedEffect(musicPlayer, isPaused) {
+            musicPlayer.playWhenReady = !isPaused
+            if (isPaused) musicPlayer.pause() else musicPlayer.play()
+        }
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Main story viewer
     // ────────────────────────────────────────────────────────────────────────
@@ -488,6 +514,36 @@ fun StoryViewerScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // ── 2b. INDICADOR DE MÚSICA ──────────────────────────────────────────
+        // Si suena una pista, el usuario tiene que poder ver cuál.
+        if (!storyMusicUrl.isNullOrBlank() && !currentStory.type.equals("VIDEO", ignoreCase = true)) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 72.dp)
+                    .background(
+                        Color.Black.copy(alpha = 0.45f),
+                        RoundedCornerShape(50)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = currentStory.musicName?.takeIf { it.isNotBlank() } ?: "Audio",
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1
                 )
             }
         }

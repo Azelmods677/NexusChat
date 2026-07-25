@@ -216,7 +216,12 @@ fun CreateStoryScreen(
                                     when {
                                         selectedImageUri.toString() == "text_only" -> {
                                             // Text story
-                                            viewModel.createTextStory(textOverlay, "#7C3AED")
+                                            viewModel.createTextStory(
+                                                text = textOverlay,
+                                                backgroundColor = "#7C3AED",
+                                                musicUri = selectedMusicUri,
+                                                musicName = selectedMusicName
+                                            )
                                         }
                                         isVideoSelected -> {
                                             // Video story: burn the text/sticker/emoji
@@ -264,12 +269,19 @@ fun CreateStoryScreen(
                                                     viewModel.uploadComposedImageStory(
                                                         composedBitmap = composed,
                                                         caption = caption,
-                                                        originalUri = original
+                                                        originalUri = original,
+                                                        musicUri = selectedMusicUri,
+                                                        musicName = selectedMusicName
                                                     )
                                                 } catch (e: Exception) {
                                                     e.printStackTrace()
                                                     // Fallback: upload the untouched image.
-                                                    viewModel.uploadImageStory(original, caption)
+                                                    viewModel.uploadImageStory(
+                                                        imageUri = original,
+                                                        caption = caption,
+                                                        musicUri = selectedMusicUri,
+                                                        musicName = selectedMusicName
+                                                    )
                                                 }
                                             }
                                         }
@@ -689,12 +701,27 @@ fun CreateStoryScreen(
                                 color = NexusTokens.Color.Gold,
                                 onClick = { showStickerPicker = true }
                             )
+                            // En vídeo no se ofrece música: el clip ya trae su propio
+                            // audio y mezclar las dos pistas exigiría transcodificar.
+                            // Antes el botón aparecía siempre y no hacía nada.
                             ModernStoryEditOption(
                                 icon = Icons.Default.MusicNote,
-                                label = if (selectedMusicName.isNotBlank()) "Música ✔" else "Music",
-                                color = Teal,
+                                label = when {
+                                    isVideoSelected -> "Sin música"
+                                    selectedMusicName.isNotBlank() -> "Música ✔"
+                                    else -> "Music"
+                                },
+                                color = if (isVideoSelected) Color.Gray else Teal,
                                 onClick = {
-                                    musicPickerLauncher.launch("audio/*")
+                                    if (isVideoSelected) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "El vídeo ya lleva su propio audio",
+                                            android.widget.Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        musicPickerLauncher.launch("audio/*")
+                                    }
                                 }
                             )
                         }
