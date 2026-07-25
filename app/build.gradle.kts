@@ -17,7 +17,10 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
-val fcmServerKey: String = localProperties.getProperty("FCM_SERVER_KEY") ?: ""
+// Nota: ya no se lee FCM_SERVER_KEY. Las notificaciones las envían las Cloud
+// Functions (functions/index.js) con firebase-admin. La server key es una
+// credencial de servidor y no debe empaquetarse en el APK, y de todos modos la API
+// legacy que la usaba fue apagada por Google en junio de 2024.
 // Gemini API key fallback. The preferred source is the user's key stored securely at
 // runtime via AiKeyStore (EncryptedSharedPreferences). This BuildConfig value is only a
 // fallback read from local.properties (key: GEMINI_API_KEY) and defaults to empty.
@@ -46,8 +49,6 @@ android {
         versionName = "5.0.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
-        buildConfigField("String", "FCM_SERVER_KEY", "\"$fcmServerKey\"")
-        buildConfigField("Boolean", "FCM_ENABLED", "${fcmServerKey.isNotEmpty()}")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

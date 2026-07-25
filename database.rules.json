@@ -95,6 +95,16 @@
       }
     },
     
+    "userCalls": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$callId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('calls').child($callId).child('callerId').val() === auth.uid || root.child('calls').child($callId).child('receiverId').val() === auth.uid)",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
+
     "calls": {
       ".indexOn": ["callerId", "receiverId"],
       "$callId": {

@@ -2,7 +2,6 @@ package com.Azelmods.App.data.repository
 
 import android.net.Uri
 import android.util.Log
-import com.Azelmods.App.BuildConfig
 import com.Azelmods.App.data.local.CacheManager
 import com.Azelmods.App.data.security.encryption.E2EECryptoService
 import com.Azelmods.App.util.CrashlyticsLogger
@@ -333,12 +332,39 @@ class RealtimeDatabaseRepository @Inject constructor(
         database.child("chats").child(chatId).removeValue().await()
     }
 
+    /**
+     * Historial de llamadas del usuario, leído del índice `userCalls/{uid}`.
+     *
+     * Antes consultaba `calls` con orderByChild("callerId"): esa consulta se ejecuta
+     * SOBRE el nodo `calls`, y Firebase exige permiso de lectura ahí. Las reglas solo
+     * lo dan en `calls/$callId`, así que la consulta se denegaba siempre y el
+     * historial salía vacío. Además solo miraba `callerId`, por lo que las llamadas
+     * recibidas nunca habrían aparecido.
+     */
     fun getUserCallHistory(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
-        val callsRef = database.child("calls").orderByChild("callerId").equalTo(userId)
+        val callsRef = database.child("userCalls").child(userId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val calls = snapshot.children.mapNotNull { it.value as? Map<String, Any> }
-                trySend(calls)
+                val callIds = snapshot.children.mapNotNull { it.key }
+                if (callIds.isEmpty()) {
+                    trySend(emptyList())
+                    return
+                }
+                launch {
+                    val calls = mutableListOf<Map<String, Any>>()
+                    callIds.forEach { callId ->
+                        runCatching {
+                            val snap = database.child("calls").child(callId).get().await()
+                            (snap.value as? Map<String, Any>)?.let { map ->
+                                calls.add(map.toMutableMap().apply { put("callId", callId) })
+                            }
+                        }.onFailure {
+                            Log.w("RealtimeDB", "No se pudo leer la llamada $callId: ${it.message}")
+                        }
+                    }
+                    // Más recientes primero.
+                    trySend(calls.sortedByDescending { (it["startTime"] as? Long) ?: 0L })
+                }
             }
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
@@ -750,6 +776,26 @@ class RealtimeDatabaseRepository @Inject constructor(
     suspend fun createCall(callData: Map<String, Any>): String {
         val callId = database.child("calls").push().key ?: throw Exception("Failed to generate call ID")
         database.child("calls").child(callId).setValue(callData).await()
+
+        // Índice por usuario, igual que userChats. Es imprescindible: consultar el
+        // nodo `calls` con orderByChild requiere permiso de lectura SOBRE `calls`
+        // entero, y concederlo dejaría los metadatos de las llamadas de todos los
+        // usuarios al alcance de cualquiera. Con el índice, cada uno lee solo las
+        // suyas y el historial funciona sin abrir nada.
+        val participants = listOfNotNull(
+            callData["callerId"] as? String,
+            callData["receiverId"] as? String
+        ).filter { it.isNotBlank() }.distinct()
+
+        participants.forEach { uid ->
+            runCatching {
+                database.child("userCalls").child(uid).child(callId).setValue(true).await()
+            }.onFailure {
+                // No se relanza: perder una entrada del historial no debe impedir
+                // que la llamada se realice.
+                Log.w("RealtimeDB", "No se pudo indexar la llamada $callId para $uid: ${it.message}")
+            }
+        }
         return callId
     }
 
@@ -1104,55 +1150,35 @@ class RealtimeDatabaseRepository @Inject constructor(
         awaitClose { ref.removeEventListener(listener) }
     }
 
-    private suspend fun sendFcmForMessage(
+    /**
+     * No hace nada a propósito: las notificaciones las envía la Cloud Function
+     * `onMessageCreate` (functions/index.js), que se dispara con cada escritura en
+     * `chats/{chatId}/messages/{messageId}` — es decir, con TODOS los tipos de
+     * mensaje que llamaban aquí (texto, foto, vídeo, audio, documento, ubicación,
+     * sticker).
+     *
+     * Se eliminó el envío desde el cliente por dos razones, cada una decisiva:
+     *
+     * 1. Usaba `https://fcm.googleapis.com/fcm/send` con `Authorization: key=…`,
+     *    la API legacy de FCM que Google APAGÓ el 20 de junio de 2024. No fallaba
+     *    por configuración: ya no existe, así que ninguna notificación llegaba.
+     * 2. Enviar push desde el cliente exige embutir la server key en el APK.
+     *    Cualquiera puede extraerla de un APK y mandar notificaciones a todos los
+     *    usuarios. Es una credencial de servidor y no puede viajar en la app.
+     *
+     * Se conservan las llamadas para no tocar diez sitios; el trabajo lo hace el
+     * servidor, que es donde corresponde. Requiere desplegar las funciones:
+     * `firebase deploy --only functions`.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    private fun sendFcmForMessage(
         chatId: String,
         senderId: String,
         content: String,
         mediaType: String? = null,
         senderPhotoUrl: String? = null
     ) {
-        if (!BuildConfig.FCM_ENABLED || BuildConfig.FCM_SERVER_KEY.isBlank()) {
-            Log.d("RealtimeDB", "FCM disabled")
-            return
-        }
-
-        try {
-            val chatSnapshot = database.child("chats").child(chatId).child("members").get().await()
-            val members = when (val value = chatSnapshot.value) {
-                is Map<*, *> -> value.keys.filterIsInstance<String>()
-                is List<*> -> value.filterIsInstance<String>() // Fallback retrocompatibilidad
-                else -> emptyList()
-            }
-            val recipientId = members.firstOrNull { it != senderId } ?: return
-
-            val userSnapshot = database.child("users").child(senderId).child("displayName").get().await()
-            val senderName = userSnapshot.getValue(String::class.java) ?: "Usuario"
-
-            val tokensSnapshot = database.child("users").child(recipientId).child("fcmTokens").get().await()
-            val fcmTokens = tokensSnapshot.children.mapNotNull { it.getValue(String::class.java) }
-            if (fcmTokens.isEmpty()) return
-
-            val displayText = when (mediaType) {
-                "IMAGE" -> "📷 Foto"
-                "VIDEO" -> "🎥 Video"
-                "AUDIO" -> "🎤 Mensaje de voz"
-                "DOCUMENT" -> "📄 Documento"
-                "LOCATION" -> "📍 Ubicación"
-                "STICKER" -> "Sticker"
-                else -> content
-            }
-
-            val dataPayload = com.Azelmods.App.service.FcmNotificationSender.buildMessagePayload(
-                chatId = chatId, senderId = senderId, senderName = senderName,
-                senderPhotoUrl = senderPhotoUrl, mediaType = mediaType, body = displayText
-            )
-
-            com.Azelmods.App.service.FcmNotificationSender.sendToMultipleTokens(
-                fcmTokens, BuildConfig.FCM_SERVER_KEY, senderName, displayText, dataPayload
-            )
-        } catch (e: Exception) {
-            Log.e("RealtimeDB", "FCM error: ${e.message}")
-        }
+        // Intencionadamente vacío. Ver KDoc.
     }
 
     fun observeTyping(chatId: String): Flow<Map<String, Boolean>> = callbackFlow {
