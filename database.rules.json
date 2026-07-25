@@ -83,7 +83,12 @@
           ".indexOn": ["timestamp"],
           "$messageId": {
             ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-            "//": "Escribir exige ser miembro Y no estar bloqueado por el otro miembro. La comprobacion vive en la regla, no solo en la app: un bloqueo que solo oculta mensajes en la interfaz no es un bloqueo, porque un cliente modificado seguiria escribiendo en el chat.",
+            /*
+              Escribir exige ser miembro Y no estar bloqueado por el otro miembro.
+              La comprobacion vive en la regla y no solo en la app: un bloqueo que
+              unicamente oculta mensajes en la interfaz no es un bloqueo, porque un
+              cliente modificado seguiria escribiendo en el chat.
+            */
             ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()"
           }
         }
