@@ -191,8 +191,7 @@ app/src/main/java/com/Azelmods/App/
 - **Llamadas de voz y video (WebRTC)** — audio/video peer-to-peer con señalización vía
   Firebase; el stream viaja directo entre dispositivos.
 - **Historias (Stories)** — contenido efímero de 24 horas con reacciones y respuestas,
-  **música** (la pista se sube y suena en el visor, en bucle y sincronizada con la pausa) y
-  **dibujo a mano alzada** rasterizado en la imagen publicada.
+  **música** que acompaña a la historia y **dibujo a mano alzada** sobre la foto.
 - **Navegación anónima (Tor/Orbot)** — navegador integrado que enruta el tráfico por la red
   Tor delegando en Orbot como proxy local, con detección de conexión en tiempo real y
   fallback automático de proxy HTTP a SOCKS5.
@@ -325,16 +324,9 @@ firebase deploy --only functions
 ./gradlew installDebug
 ```
 
-> ### ⚠️ El paso 4 no es opcional
->
-> Las Cloud Functions (`functions/index.js`) envían **todas** las notificaciones push, y
-> entre ellas `onCallCreate`, que es la que avisa al receptor de una llamada entrante.
-> **Sin desplegarlas, las llamadas no suenan** aunque WebRTC funcione perfectamente, y no
-> llega ninguna notificación con la app cerrada.
->
-> El envío de push **no puede hacerse desde el cliente**: exigiría empotrar la server key de
-> FCM en el APK, de donde cualquiera podría extraerla y notificar a todos los usuarios.
-> Además, la API legacy que lo permitía fue apagada por Google en junio de 2024.
+> **El paso 4 es obligatorio.** Las Cloud Functions entregan las notificaciones push, incluido
+> el aviso de llamada entrante. Sin desplegarlas, las llamadas no suenan y no llegan
+> notificaciones con la app cerrada.
 
 La señalización de llamadas y la sincronización de mensajes no necesitan ningún servidor
 adicional: usan el proyecto de Firebase configurado. La navegación Tor requiere tener
@@ -384,55 +376,43 @@ flowchart LR
 
 ## Novedades de la v5
 
-La v5 es la versión en la que el backend existe de verdad. Varias funciones que parecían
-bugs de la app estaban en realidad **sin desplegar** o apuntando a APIs retiradas.
+La v5 abre la app a cualquier modelo de IA, convierte el editor en una herramienta de
+desarrollo real y completa las historias con música y dibujo.
 
-### El backend, por primera vez desplegado
+### Asistente de IA sin ataduras
 
-- **Faltaba `firebase.json`**, así que ningún `firebase deploy` había funcionado nunca: las
-  reglas del repo no eran las que corrían en el proyecto y las Cloud Functions no existían en
-  el servidor. Añadidos `firebase.json` y `.firebaserc`.
-- **Cloud Functions migradas a Node 22** (el runtime Node 18 fue retirado en octubre de 2025),
-  con `firebase-admin` 13 y `firebase-functions` 6. El import pasa a `firebase-functions/v1`
-  porque desde la v6 la raíz del paquete exporta v2 y habría roto los seis handlers.
-- **Notificaciones push reescritas al servidor.** El cliente las enviaba con la API legacy de
-  FCM, **apagada por Google en junio de 2024**, y para hacerlo tenía que llevar la server key
-  dentro del APK. Eliminado; ahora las envían las Cloud Functions con `admin.messaging()`.
+El usuario decide con qué inteligencia habla. **Gemini, OpenAI, OpenRouter, DeepSeek,
+Mistral, Groq, Ollama** o cualquier endpoint propio compatible con OpenAI —LM Studio, vLLM,
+llama.cpp—, cada uno con su clave y su modelo. La clave se guarda cifrada en el dispositivo.
 
-### Comunicación
+Incluye **modelos locales**: con Ollama corriendo en tu equipo, las conversaciones no salen
+de tu red. Y el comportamiento del asistente lo define el modelo elegido, no la app.
 
-- **Primer mensaje de un chat nuevo.** La regla de lectura de `chats/$chatId` exigía ser
-  miembro, imposible en un chat que aún no existe: Firebase devolvía *permission denied* y la
-  app lo mostraba como «Error de autenticación», que nunca era el problema.
-- **Riesgo de pérdida de mensajes.** Al crear un chat se usaba `setValue` sobre el nodo
-  completo, lo que podía borrar `messages`. Ahora es `updateChildren`.
-- **Historial de llamadas.** Consultaba el nodo `calls` entero, y Firebase exige permiso de
-  lectura sobre el nodo consultado: se denegaba siempre. Resuelto con un índice
-  `userCalls/{uid}`, sin exponer las llamadas de los demás usuarios.
-- **Chat de bienvenida.** Escribía en un nodo que ninguna pantalla lee, con nombres de campo
-  que no existen en el esquema real. Reescrito y sin el mensaje falso que se atribuía al
-  usuario.
+### Editor de código de verdad
 
-### Funciones
+Resaltado de sintaxis para **HTML, CSS, JavaScript, TypeScript, JSX, TSX, JSON, Python,
+Kotlin, Bash y C**, con vista previa real de HTML y CSS en WebView, ejecución de JavaScript
+y validación con formateo de JSON, todo en el dispositivo y sin conexión.
 
-- **IA multi-proveedor** — ocho proveedores más endpoints propios, con clave, URL y modelo
-  elegidos por el usuario. Un solo cliente los cubre todos porque comparten el dialecto de
-  OpenAI. Los modelos locales requerían además permitir HTTP en loopback.
-- **Editor con resaltado de sintaxis** — implementado como `VisualTransformation`, que solo
-  añade estilos sin alterar el texto: por eso el cursor nunca se desalinea. Añadidos
-  TypeScript, JSX, TSX y JSON.
-- **Stories: música y dibujo funcionan.** Los trazos se declaraban dentro del diálogo, así que
-  cerrarlo los destruía, y el diálogo tapaba la foto con un fondo opaco. La música se elegía
-  y se descartaba sin llegar nunca a subirse.
-- **`.onion`** — las direcciones de ejemplo eran v2, desconectadas por Tor en 2021: fallaban
-  con el mismo síntoma que «Orbot no está activo».
+### Historias completas
 
-### Producción
+Añade **música** a una historia —la pista viaja con ella y suena en el visor, en bucle y
+respetando la pausa— y **dibuja sobre la foto**: los trazos quedan grabados en la imagen que
+se publica.
 
-- **Firma de release real** leída de `keystore.properties` (fuera del repo). Antes el release
-  se firmaba con la clave de debug, que Google Play rechaza.
-- **Premium honesto** — el botón mostraba precios y solo vibraba. Ya no simula un cobro.
-- **Repo limpio** — 5984 archivos de `node_modules` fuera del control de versiones.
+### Comunicación más sólida
+
+- Mensajería y llamadas con **notificaciones push propias**, servidas desde Cloud Functions
+- **Historial de llamadas** completo, tanto emitidas como recibidas
+- **Chat de bienvenida** que explica la app al entrar por primera vez
+- Navegación **Tor** con detección de Orbot en tiempo real y selección automática de proxy
+
+### Lista para publicar
+
+- **Firma de release** con keystore propio, fuera del repositorio
+- Backend desplegable con un comando: reglas de seguridad y Cloud Functions
+- La pantalla **Premium** muestra los planes previstos y deja claro que las suscripciones aún
+  no están activas: no simula ninguna compra
 
 ## Licencia
 
