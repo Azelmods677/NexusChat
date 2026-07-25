@@ -559,14 +559,12 @@ private fun processUrl(input: String): String {
         // URLs completas (http:// o https://)
         trimmed.startsWith("http://") || trimmed.startsWith("https://") -> trimmed
         
-        // Enlaces .onion (siempre usar http:// - Tor no soporta HTTPS en .onion)
+        // Enlaces .onion sin esquema: se asume http://, que es lo que sirven los onion
+        // sin certificado. Si el usuario escribe https:// ya se devolvió tal cual en la
+        // rama de arriba, y así debe ser: los servicios onion v3 SÍ soportan HTTPS
+        // (DuckDuckGo lo exige), al contrario de lo que decía el comentario anterior.
         trimmed.endsWith(".onion") || trimmed.contains(".onion/") || trimmed.contains(".onion?") -> {
-            val cleanUrl = if (trimmed.contains("://")) {
-                // Si ya tiene protocolo, forzar http://
-                trimmed.replaceFirst("https://", "http://")
-            } else {
-                "http://$trimmed"
-            }
+            val cleanUrl = "http://$trimmed"
             Log.d(TAG, "🧅 URL .onion detectada: $cleanUrl")
             cleanUrl
         }
@@ -670,12 +668,37 @@ private fun getErrorPage(url: String, errorCode: Int, description: String): Stri
 """.trimIndent()
 
 /**
+ * Detecta direcciones onion v2, apagadas por la red Tor en 2021.
+ *
+ * Un servicio onion v3 tiene exactamente 56 caracteres base32 antes de `.onion`;
+ * los v2 tenían 16. Distinguirlos importa porque el síntoma es idéntico al de
+ * "Orbot no está activo", y el usuario acaba culpando al navegador de una
+ * dirección que simplemente ya no existe.
+ */
+private fun isLegacyV2OnionAddress(url: String): Boolean {
+    val host = (
+        runCatching { java.net.URI(url).host }.getOrNull()
+            ?: url.removePrefix("http://").removePrefix("https://").substringBefore('/')
+        ).lowercase()
+    if (!host.endsWith(".onion")) return false
+    // Último subdominio antes de .onion: es el que codifica la clave del servicio.
+    val label = host.removeSuffix(".onion").substringAfterLast('.')
+    return label.length in 1..16
+}
+
+/**
  * Genera sugerencias contextuales según el tipo de error.
  */
 private fun getSuggestionsForError(errorCode: Int, url: String): String {
     return when {
         errorCode == 404 -> "La página que buscas no existe en este servidor. Verifica que la URL sea correcta."
         errorCode in 500..599 -> "El servidor está teniendo problemas. Espera un momento e intenta de nuevo."
+        // Una dirección v2 no carga ni con Tor perfecto: Tor las apagó en 2021.
+        // Distinguirlo evita que el usuario culpe a Orbot de una dirección muerta.
+        isLegacyV2OnionAddress(url) ->
+            "Esa dirección .onion es de tipo v2 (demasiado corta). Tor dejó de " +
+            "soportarlas en 2021, así que ya no carga aunque Orbot funcione. " +
+            "Busca la dirección v3 del sitio: tiene 56 caracteres."
         url.contains(".onion") -> "Los sitios .onion requieren Orbot activo. Abre Orbot, presiona 'Iniciar' y vuelve a intentar."
         errorCode == -1 || errorCode == 0 -> "No se pudo conectar al servidor. Verifica tu conexión a internet."
         else -> "Ocurrió un error inesperado. Intenta recargar la página."
@@ -779,10 +802,14 @@ private fun getOnionHelpPage(url: String): String = """
         </div>
         <div class="examples">
             <h3>✅ Sitios .onion para probar</h3>
-            <p>Una vez que Orbot esté activo, prueba estos enlaces:</p>
-            <code>http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion</code>
-            <code>http://thehiddenwiki.onion</code>
-            <code>http://3g2upl4pq6kufc4m.onion</code>
+            <p>Una vez que Orbot esté activo, prueba estos enlaces (direcciones v3 verificadas):</p>
+            <code>https://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion</code>
+            <code>http://protonmailrmez3lotccipshtkleegetolb73fuirgj7r4o4vfu7ozyd.onion</code>
+            <p style="font-size:12px;color:#777;margin-top:10px;">
+                Una dirección onion válida tiene 56 caracteres antes de <code>.onion</code>.
+                Si es más corta es una dirección v2, y Tor las desconectó en 2021: ya no
+                cargan por mucho que Orbot funcione.
+            </p>
         </div>
         <p style="font-size: 13px; color: #888888;">
             💡 DuckDuckGo automáticamente te mostrará resultados .onion cuando uses Tor
