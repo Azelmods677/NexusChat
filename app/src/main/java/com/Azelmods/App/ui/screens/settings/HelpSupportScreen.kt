@@ -1,4 +1,4 @@
-﻿package com.Azelmods.App.ui.screens.settings
+package com.Azelmods.App.ui.screens.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,24 +10,58 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
+
+/**
+ * Ayuda y soporte.
+ *
+ * Revisión de la v5: esta pantalla enlazaba a un ecosistema que NO EXISTE —
+ * `azelmods.com`, `docs.azelmods.com`, `community.azelmods.com`,
+ * `feedback.azelmods.com`, `support@azelmods.com`, `bugs@azelmods.com`—. Todos
+ * esos botones abrían un navegador o un cliente de correo hacia la nada, que es
+ * peor que no ofrecer soporte: el usuario cree que hay un canal y no lo hay.
+ *
+ * Ahora todo apunta al único canal real del proyecto: **el repositorio de GitHub**.
+ * Las guías se leen dentro de la app, sin conexión.
+ */
+private const val REPO_URL = "https://github.com/Azelmods677/NexusChat"
+private const val ISSUES_URL = "$REPO_URL/issues"
+private const val LICENSE_URL = "$REPO_URL/blob/main/LICENSE"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HelpSupportScreen(
     navController: NavController
 ) {
+    val context = LocalContext.current
+
+    /** Abre una URL sin dejar que un dispositivo sin navegador tumbe la pantalla. */
+    fun open(url: String) {
+        try {
+            context.startActivity(
+                android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(url)
+                )
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("HelpSupport", "No se pudo abrir $url", e)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Help & Support") },
+                title = { Text("Ayuda y soporte") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -45,301 +79,145 @@ fun HelpSupportScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
+            // ── GUÍAS ────────────────────────────────────────────────────────
+            SectionHeader("Guías y aprendizaje")
+
             Text(
-                text = "Get Help",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
+                text = "Se leen dentro de la app, sin conexión. Describen únicamente " +
+                    "funciones que existen en esta versión.",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
             )
-            
+
+            // Los ids DEBEN coincidir con TutorialContent.tutorials. Antes se navegaba
+            // a "tutorial/gestures" mientras el tutorial se llamaba "touch_gestures":
+            // el enlace abría una pantalla vacía.
             SettingsItem(
-                title = "FAQ - Preguntas Frecuentes",
-                subtitle = "Respuestas rápidas a dudas comunes",
-                icon = Icons.Default.QuestionAnswer,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply { 
-                        data = android.net.Uri.parse("https://azelmods.com/nexuschat/faq") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening FAQ", e)
-                    }
-                }
-            )
-            
-            SettingsItem(
-                title = "Contactar Soporte Técnico",
-                subtitle = "support@azelmods.com | Respuesta en 24-48h",
-                icon = Icons.Default.Support,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply { 
-                        data = android.net.Uri.parse("mailto:support@azelmods.com?subject=NexusChat - Soporte Técnico&body=Describe tu problema o consulta aquí...")
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening email", e)
-                    } 
-                }
-            )
-            
-            SettingsItem(
-                title = "Reportar un Error",
-                subtitle = "Ayúdanos a mejorar reportando bugs",
-                icon = Icons.Default.BugReport,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply { 
-                        data = android.net.Uri.parse("mailto:bugs@azelmods.com?subject=NexusChat - Reporte de Error&body=Versión de la app: [auto]%0A%0ADescribe el error:%0A%0APasos para reproducir:%0A1. %0A2. %0A3. %0A%0AComportamiento esperado:%0A")
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening bug report", e)
-                    }
-                }
-            )
-            
-            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
-            
-            Text(
-                text = "Resources",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-            
-            SettingsItem(
-                title = "Guía de Usuario",
-                subtitle = "Manual completo de NexusChat",
-                icon = Icons.AutoMirrored.Filled.MenuBook,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply { 
-                        data = android.net.Uri.parse("https://docs.azelmods.com/nexuschat") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening guide", e)
-                    }
-                }
-            )
-            
-            SettingsItem(
-                title = "Comunidad y Foro",
-                subtitle = "Únete a nuestra comunidad oficial",
-                icon = Icons.Default.Forum,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply { 
-                        data = android.net.Uri.parse("https://community.azelmods.com") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening community", e)
-                    }
-                }
-            )
-            
-            SettingsItem(
-                title = "Solicitar Funciones",
-                subtitle = "Sugiere mejoras para NexusChat",
-                icon = Icons.Default.Lightbulb,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply { 
-                        data = android.net.Uri.parse("https://feedback.azelmods.com/nexuschat") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening feedback", e)
-                    }
-                }
-            )
-            
-            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
-            
-            Text(
-                text = "Guides & Tutorials",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-            
-            SettingsItem(
-                title = "🚀 Primeros Pasos",
-                subtitle = "Aprende a usar Nexus Chat",
+                title = "🚀 Primeros pasos",
+                subtitle = "Crear tu cuenta y moverte por la app",
                 icon = Icons.Default.School,
                 onClick = { navController.navigate("tutorial/getting_started") }
             )
-            
             SettingsItem(
                 title = "💬 Mensajería",
-                subtitle = "Enviar mensajes y multimedia",
+                subtitle = "Chats, multimedia, cifrado y mensajes temporales",
                 icon = Icons.AutoMirrored.Filled.Message,
                 onClick = { navController.navigate("tutorial/messaging") }
             )
-            
             SettingsItem(
                 title = "📸 Historias",
-                subtitle = "Crear y ver historias",
+                subtitle = "Crear historias con música y dibujo",
                 icon = Icons.Default.PhotoLibrary,
                 onClick = { navController.navigate("tutorial/stories") }
             )
-            
             SettingsItem(
-                title = "🤖 Funciones de IA",
-                subtitle = "Usar Azel IA y asistentes",
+                title = "📞 Llamadas",
+                subtitle = "Voz y vídeo P2P con WebRTC",
+                icon = Icons.Default.Call,
+                onClick = { navController.navigate("tutorial/calls") }
+            )
+            SettingsItem(
+                title = "🤖 Azel IA",
+                subtitle = "Elegir proveedor, modelo y clave propia",
                 icon = Icons.Default.Psychology,
                 onClick = { navController.navigate("tutorial/ai_features") }
             )
-            
-            SettingsItem(
-                title = "🎨 Apariencia",
-                subtitle = "Personalizar temas y fondos",
-                icon = Icons.Default.Palette,
-                onClick = { navController.navigate("tutorial/appearance") }
-            )
-            
             SettingsItem(
                 title = "🔒 Privacidad",
-                subtitle = "Configurar privacidad y seguridad",
+                subtitle = "Cifrado, bloqueo biométrico y copias cifradas",
                 icon = Icons.Default.Security,
                 onClick = { navController.navigate("tutorial/privacy") }
             )
-            
             SettingsItem(
-                title = "⚙️ Herramientas Avanzadas",
-                subtitle = "Terminal y CyberSec",
+                title = "🧅 Tor y Orbot",
+                subtitle = "Navegación anónima y sitios .onion",
+                icon = Icons.Default.Shield,
+                onClick = { navController.navigate("tutorial/tor") }
+            )
+            SettingsItem(
+                title = "🎨 Apariencia",
+                subtitle = "25 acentos, tamaño de texto y fondos",
+                icon = Icons.Default.Palette,
+                onClick = { navController.navigate("tutorial/appearance") }
+            )
+            SettingsItem(
+                title = "⚙️ Editor y terminal",
+                subtitle = "Editor con resaltado y emulador de terminal",
                 icon = Icons.Default.DeveloperMode,
-                onClick = { navController.navigate("tutorial/framework") }
+                onClick = { navController.navigate("tutorial/tools") }
             )
-            
             SettingsItem(
-                title = "👆 Gestos Táctiles",
-                subtitle = "Navegación por gestos y atajos",
+                title = "👆 Gestos",
+                subtitle = "Atajos táctiles en chats, historias y fotos",
                 icon = Icons.Default.TouchApp,
-                onClick = { navController.navigate("tutorial/gestures") }
+                onClick = { navController.navigate("tutorial/touch_gestures") }
             )
-            
+
             HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
-            
+
+            // ── SOPORTE ──────────────────────────────────────────────────────
+            SectionHeader("Soporte")
+
             Text(
-                text = "Acerca de Azel Mods",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
+                text = "Nexus Chat es un proyecto de un solo desarrollador. El canal de " +
+                    "soporte es el repositorio: ahí quedan registradas las incidencias y su estado.",
+                color = Color.Gray,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
             )
-            
+
             SettingsItem(
-                title = "Sobre Azel Mods",
-                subtitle = "Desarrollador independiente especializado en apps seguras",
-                icon = Icons.Default.Info,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply { 
-                        data = android.net.Uri.parse("https://azelmods.com/about") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening about", e)
-                    }
-                }
+                title = "Reportar un error",
+                subtitle = "Abre una incidencia en GitHub",
+                icon = Icons.Default.BugReport,
+                onClick = { open(ISSUES_URL) }
             )
-            
             SettingsItem(
-                title = "Compromiso de Privacidad",
-                subtitle = "Cifrado end-to-end y cero acceso a tus datos",
-                icon = Icons.Default.Security,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply { 
-                        data = android.net.Uri.parse("https://azelmods.com/privacy-policy") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening privacy", e)
-                    }
-                }
+                title = "Proponer una función",
+                subtitle = "Comparte tu idea en el repositorio",
+                icon = Icons.Default.Lightbulb,
+                onClick = { open(ISSUES_URL) }
             )
-            
             SettingsItem(
-                title = "Términos y Condiciones",
-                subtitle = "Condiciones de uso de NexusChat",
-                icon = Icons.Default.Description,
-                onClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        data = android.net.Uri.parse("https://azelmods.com/terms-of-service")
-                    }
-                    try {
-                        navController.context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening terms", e)
-                    }
-                }
-            )
-            
-            SettingsItem(
-                title = "Licencias Open Source",
-                subtitle = "Componentes de código abierto utilizados",
+                title = "Código fuente",
+                subtitle = "github.com/Azelmods677/NexusChat",
                 icon = Icons.Default.Code,
-                onClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        data = android.net.Uri.parse("https://azelmods.com/licenses")
-                    }
-                    try {
-                        navController.context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening licenses", e)
-                    }
-                }
+                onClick = { open(REPO_URL) }
             )
-            
-            SettingsItem(
-                title = "Sitio Web Oficial",
-                subtitle = "www.azelmods.com",
-                icon = Icons.Default.Language,
-                onClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        data = android.net.Uri.parse("https://www.azelmods.com")
-                    }
-                    try {
-                        navController.context.startActivity(intent)
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error opening website", e)
-                    }
-                }
-            )
-            
+
             HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
-            
-            Text(
-                text = "Feedback",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-            
+
+            // ── PROYECTO ─────────────────────────────────────────────────────
+            SectionHeader("Sobre el proyecto")
+
             SettingsItem(
-                title = "Send Feedback",
-                subtitle = "Share your thoughts",
-                icon = Icons.Default.Feedback,
-                onClick = { 
-                    val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply { 
-                        data = android.net.Uri.parse("mailto:support@azelmods.com?subject=NexusChat Feedback") 
-                    }
-                    try { 
-                        navController.context.startActivity(intent) 
-                    } catch (e: Exception) {
-                        android.util.Log.e("HelpSupport", "Error sending feedback", e)
-                    }
-                }
+                title = "Acerca de Nexus Chat",
+                subtitle = "Versión, stack técnico y autoría",
+                icon = Icons.Default.Info,
+                // Ruta tipada, no un literal: la pantalla vive en "settings_about" y
+                // escribir "about" a mano habría sido otro enlace roto.
+                onClick = { navController.navigate(Screen.SettingsAbout.route) }
             )
+            SettingsItem(
+                title = "Licencia MIT",
+                subtitle = "Puedes usar y modificar el código libremente",
+                icon = Icons.Default.Description,
+                onClick = { open(LICENSE_URL) }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
+}
+
+@Composable
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.primary,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(16.dp)
+    )
 }

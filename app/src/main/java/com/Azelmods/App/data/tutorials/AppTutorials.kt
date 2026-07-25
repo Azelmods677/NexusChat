@@ -3,7 +3,7 @@ package com.Azelmods.App.data.tutorials
 /**
  * App Tutorials - Complete guide for all features (2026 Edition)
  *
- * Comprehensive tutorials explaining every major feature of Azelgram Messenger
+ * Comprehensive tutorials explaining every major feature of Nexus Chat
  */
 object AppTutorials {
 
@@ -16,10 +16,11 @@ object AppTutorials {
 
 ## Arquitectura en Tiempo Real
 
-Azelgram utiliza Firebase Realtime Database con cifrado Signal Protocol (E2EE).
+Nexus Chat usa Firebase Realtime Database y cifra los chats de dos personas en el
+dispositivo con ECDH P-256 + AES-256-GCM.
 
 ```
-ChatRepository → Firebase Realtime Database + Signal Protocol
+ChatRepository → Firebase Realtime Database + E2EECryptoService (ECDH + AES-GCM)
     ↓
 ChatViewModel → Maneja estado con StateFlow
     ↓
@@ -34,7 +35,7 @@ ChatScreen → UI con LazyColumn optimizada + backgrounds dinámicos
 
 **Voz:** Grabación inline con AudioRecorder, reproducción con seekbar
 
-**Cifrados (E2EE):** Todo el contenido se cifra con Signal Protocol antes de enviarse
+**Cifrados (E2EE):** En chats de dos personas, el texto se cifra en el dispositivo antes de salir
 
 ## Funcionalidades Clave
 
@@ -45,13 +46,17 @@ ChatScreen → UI con LazyColumn optimizada + backgrounds dinámicos
 
 **Wallpaper personalizado:** Fondos sólidos, degradados, imágenes o video por chat
 
-**Respuesta rápida:** Swipe left en mensaje para responder
+**Responder a un mensaje:** mantén pulsado el mensaje y quedará citado sobre la barra de escritura
+
+**Mensajes temporales:** de una sola visualización o con autodestrucción programada
 
 ---
 
-⚠️ Los mensajes se almacenan en `/chats/{chatId}/messages/` con cifrado extremo a extremo.
+⚠️ Los mensajes se almacenan en `/chats/{chatId}/messages/`; en chats de dos personas
+el servidor solo guarda el texto cifrado.
 
-ℹ️ El cifrado E2EE requiere que ambos usuarios tengan la versión 2.0+ de Azelgram.
+ℹ️ El cifrado E2EE necesita que ambas cuentas hayan publicado su clave pública, cosa
+que ocurre sola al abrir la app por primera vez.
     """.trimIndent()
 
     // ═══════════════════════════════════════════════════════════════
@@ -101,7 +106,8 @@ Grid de 8 columnas con scrollable tabs.
 
 ⚠️ Las stories se eliminan automáticamente después de 24 horas.
 
-ℹ️ Solo tus contactos pueden ver tus stories (configurable en privacidad).
+ℹ️ Cualquier usuario con cuenta puede ver tus historias mientras estén activas: aún
+no hay control de audiencia por historia. Publica pensando en eso.
     """.trimIndent()
 
     // ═══════════════════════════════════════════════════════════════
@@ -152,41 +158,49 @@ Estos colores se aplican a toda la interfaz automáticamente.
     val AI_AGENT_TUTORIAL = """
 # 🤖 Sistema de IA — Azel IA
 
-## Arquitectura 2026
+## El proveedor lo eliges tú
 
-Motor de IA en la nube:
+La app no está atada a ninguna IA concreta. Tú pones el proveedor, el modelo y la
+clave, y esa clave se guarda cifrada en el dispositivo.
 
-**Ollama Cloud:**
 ```
-App → AzelAIApiService → Ollama Cloud API (servidores remotos)
+App → AzelAIApiService → el proveedor que hayas configurado
 ```
 
-Sin necesidad de hardware local. Modelos disponibles:
-• deepseek-r1:70b — Razonamiento profundo
-• gpt-oss:120b-cloud — Modelo insignia
-• llama3:70b — Propósito general
-• codellama:70b — Programación
+Compatibles hoy: Google Gemini, OpenAI, OpenRouter, DeepSeek, Qwen, GLM (Z.ai),
+Kimi (Moonshot), Mistral, Groq, Ollama y cualquier servidor que hable el dialecto
+de OpenAI (LM Studio, vLLM, llama.cpp).
 
-## Cómo Usar Azel IA
+## Configurarlo
 
-1. Ve a la pestaña "IA" desde el menú principal
-2. Elige un prompt predefinido o escribe tu consulta
-3. Recibe respuestas en tiempo real con streaming
+1. Ajustes → IA
+2. Elige proveedor y revisa la URL base
+3. Pega tu API key (los servidores locales no la necesitan)
+4. Elige modelo entre los sugeridos o pulsa **Buscar modelos**
+5. Abre "Acceder a Azel IA" y empieza a escribir
 
-## Categorías de Prompts
+## Modelos siempre al día
 
-• 🐍 Python • ⚡ JavaScript • 📱 Android • 🐧 Linux
-• 🔐 Criptografía • 🌐 Redes • 🛡️ Seguridad defensiva
-• ✍️ Redacción • 🌎 Traducción • 🤖 Prompts de IA
+**Buscar modelos** pregunta al proveedor qué modelos tienes disponibles ahora
+mismo. La lista no está grabada dentro de la app, así que un modelo recién
+publicado aparece solo, sin actualizar nada.
+
+## Modelos locales
+
+Con Ollama corriendo en tu equipo, la conversación no sale de tu red:
+
+```
+adb reverse tcp:11434 tcp:11434
+```
+
+En el emulador, usa 10.0.2.2 como host.
 
 ---
 
 ℹ️ Usa la IA de forma responsable y conforme a las leyes aplicables.
 
-ℹ️ El modo Cloud está configurado por defecto y no requiere instalación adicional.
+ℹ️ El comportamiento y los filtros los define el modelo que elijas, no la app.
     """.trimIndent()
-    // Nota: las secciones "Ollama Local" / "Configuración Local" se eliminaron porque
-    // documentaban OllamaApiService (localhost:11434), clase ya borrada del proyecto.
 
     // ═══════════════════════════════════════════════════════════════
     // SECURITY & PRIVACY 2026
@@ -197,16 +211,24 @@ Sin necesidad de hardware local. Modelos disponibles:
 
 ## Cifrado Extremo a Extremo (E2EE)
 
-Todos los mensajes se cifran con **Signal Protocol** antes de salir del dispositivo.
+Los mensajes de los chats de dos personas se cifran en tu dispositivo con
+**ECDH P-256 + AES-256-GCM** antes de salir.
 
 ```
-Mensaje original → Cifrado Signal → Firebase → Descifrado Signal → Mensaje original
+Mensaje original → Cifrado AES-GCM → Firebase (solo texto cifrado) → Descifrado → Mensaje original
 ```
 
-• Claves efímeras por sesión (Perfect Forward Secrecy)
-• Intercambio de claves mediante el protocolo X3DH
-• Cifrado doble ratchet para mensajes continuos
-• Solo el emisor y receptor pueden leer el contenido
+• Cada cuenta genera un par de claves de identidad en el propio dispositivo
+• La clave privada NUNCA sale del teléfono; en Firebase solo se publica la pública
+• El secreto compartido se deriva con ECDH entre las dos identidades
+• AES-256-GCM aporta cifrado autenticado: detecta manipulaciones del mensaje
+
+Qué NO ofrece hoy, dicho claramente:
+• No hay secreto hacia adelante (Perfect Forward Secrecy): las claves de identidad
+  son estables, no efímeras por sesión
+• No implementa X3DH ni doble ratchet
+• Los grupos aún no van cifrados de extremo a extremo
+• Los metadatos (quién habla con quién y cuándo) siguen siendo visibles en el servidor
 
 ## Bloqueo Biométrico
 
@@ -224,6 +246,13 @@ Navegación anónima integrada:
 • **Navegación .onion:** Acceso a sitios onion desde la app
 • **Proxy automático:** Redirección de tráfico a través de Tor
 
+## Ajustes de Privacidad
+
+En Privacidad y seguridad controlas qué muestras a los demás:
+• Última conexión
+• Foto de perfil
+• Confirmaciones de lectura (el doble check azul)
+
 ## Backup Cifrado
 
 Realiza copias de seguridad cifradas con AES-256:
@@ -233,20 +262,10 @@ Realiza copias de seguridad cifradas con AES-256:
 3. El backup se almacena cifrado en Firebase Storage
 4. Restaura en cualquier dispositivo con la misma contraseña
 
-## Bloqueo de Contactos
+Sin esa contraseña la copia no se puede restaurar. No hay forma de recuperarla.
 
-1. Abre el perfil del contacto
-2. Tap en "Más opciones" → Bloquear
-3. El contacto no podrá enviarte mensajes ni ver tu perfil
-
-## Detección de Root / Tampering
-
-La app detecta automáticamente:
-• Dispositivos rooteados
-• Modificaciones en el APK
-• Entornos de depuración no autorizados
-
-⚠️ El cifrado E2EE está activo por defecto en todos los mensajes.
+⚠️ El cifrado E2EE está activo por defecto en los chats de dos personas.
+Los grupos NO lo usan todavía.
 
 ℹ️ El bloqueo biométrico usa el hardware de tu dispositivo (no almacena huellas).
     """.trimIndent()
@@ -329,9 +348,9 @@ PeerConnection → Audio/Video streams cifrados
 • Canales FCM configurados
 
 **Apariencia:**
-• Tema: Claro / Oscuro / Automático
-• **15 colores de acento:** Verde, Rojo, Azul, Morado, Teal, Rosa, Naranja, Amarillo, Cian, Índigo, Lima, Ámbar, Marrón, Gris, Azul Gris
-• Tamaño de fuente: Pequeño / Mediano / Grande
+• Tema: interruptor de modo oscuro (el oscuro es el predeterminado)
+• **25 colores de acento:** de Púrpura y Violeta a Esmeralda, Ámbar, Coral, Carmesí, Magenta, Pizarra o Luna de Sangre
+• Tamaño de fuente: Pequeño / Normal / Grande / Muy Grande (se aplica a toda la app)
 • Wallpaper de chat: Predeterminado / Galería / Colores sólidos / Degradados / Video
 
 **Almacenamiento:**
@@ -396,8 +415,8 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 
 ## Gestos en Chat
 
-• Long press en mensaje → Menú contextual (Copiar, Eliminar, Reenviar)
-• Swipe left → Responder rápido
+• Long press en mensaje → Responder (queda citado sobre la barra de escritura)
+• Menú del mensaje → Traducir, Editar o Eliminar
 • Pull to refresh → Actualizar mensajes
 
 ## Accesibilidad
@@ -418,7 +437,7 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
     // ═══════════════════════════════════════════════════════════════
 
     val FIRST_TIME_GUIDE = """
-# 🎉 Bienvenido a Azelgram Messenger
+# 🎉 Bienvenido a Nexus Chat
 
 ## Guía de Inicio Rápido
 
@@ -443,9 +462,9 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 **💬 Mensajería:** Texto, fotos, videos, voz, E2EE
 **📸 Stories:** Contenido temporal de 24h con emojis draggables
 **📞 Llamadas:** Audio y video HD con WebRTC
-**🤖 Azel IA:** Asistente inteligente para programación, redacción y análisis
-**🔒 Seguridad:** Cifrado Signal, bloqueo biométrico, Tor/Orbot
-**🎨 Personalización:** 15 colores de acento, wallpapers, temas
+**🤖 Azel IA:** Asistente con el proveedor y modelo que tú elijas (incluidos locales)
+**🔒 Seguridad:** Cifrado E2EE (ECDH + AES-256-GCM), bloqueo biométrico, Tor/Orbot
+**🎨 Personalización:** 25 colores de acento, fondos de imagen/vídeo, tamaño de texto
 
 ## Tecnologías Clave
 
@@ -454,8 +473,8 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 • **DI:** Hilt
 • **Async:** Coroutines + Flow
 • **Llamadas:** WebRTC
-• **Cifrado:** Signal Protocol
-• **IA:** Ollama Cloud API
+• **Cifrado:** ECDH P-256 + AES-256-GCM
+• **IA:** proveedor y modelo a elección del usuario (incluidos locales)
 • **Anonimato:** Tor / Orbot
 
 ⚠️ Activa el bloqueo biométrico en Ajustes → Privacidad para proteger tu app.

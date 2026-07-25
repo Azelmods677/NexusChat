@@ -1,10 +1,5 @@
 package com.Azelmods.App.ui.screens.settings
 
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.BatteryManager
-import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
@@ -20,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,46 +27,59 @@ import com.Azelmods.App.ui.components.NexusStatusBadge
 import com.Azelmods.App.ui.theme.NexusTokens
 import kotlinx.coroutines.delay
 
+private const val REPO_URL = "https://github.com/Azelmods677/NexusChat"
+
+/**
+ * Pantalla "Acerca de" — cierre de la v5.
+ *
+ * Criterio: una ficha técnica de la que uno pueda fiarse. Todo lo que se afirma aquí
+ * está verificado contra el código o contra `build.gradle.kts`; si algo no está
+ * implementado, se dice, no se adorna.
+ *
+ * Correcciones respecto a la versión anterior:
+ *  - "Cifrado E2EE — Grado militar": eslogan sin significado técnico. Ahora se nombra
+ *    el algoritmo real (ECDH P-256 + AES-256-GCM) y se acota su alcance.
+ *  - "15 Temas": son 25 acentos (`AppTheme.ACCENT_SWATCHES`).
+ *  - Se invitaba a dar una estrella en GitHub sin enlazar el repositorio en ninguna
+ *    parte. Ahora el repositorio es el primer enlace.
+ *  - Versiones de librerías corregidas y alineadas con el build real.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AboutScreen(navController: NavController) {
-    val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
-    
-    // Animaciones
+
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(100)
         visible = true
     }
-    
+
     val infiniteTransition = rememberInfiniteTransition(label = "about_anim")
-    
-    // Logo pulse
+
     val pulse by infiniteTransition.animateFloat(
-        initialValue = 1f, targetValue = 1.06f,
+        initialValue = 1f, targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
-            tween(2000, easing = FastOutSlowInEasing),
+            tween(2600, easing = FastOutSlowInEasing),
             RepeatMode.Reverse
         ), label = "pulse"
     )
-    
-    // Gradiente del anillo rotando
+
     val ringRotation by infiniteTransition.animateFloat(
         initialValue = 0f, targetValue = 360f,
-        animationSpec = infiniteRepeatable(tween(4000, easing = LinearEasing)),
+        animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing)),
         label = "ring"
     )
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        "Acerca de", 
+                        "Acerca de",
                         fontWeight = FontWeight.Bold,
                         color = NexusTokens.Color.TextPrimary
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
@@ -84,7 +91,7 @@ fun AboutScreen(navController: NavController) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NexusTokens.Color.BgBase
+                    containerColor = Color.Transparent
                 )
             )
         },
@@ -99,43 +106,38 @@ fun AboutScreen(navController: NavController) {
                 Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 contentPadding = PaddingValues(
-                    top = padding.calculateTopPadding() + NexusTokens.Space.xxl,
+                    top = padding.calculateTopPadding() + NexusTokens.Space.lg,
                     bottom = NexusTokens.Space.xxxl,
                     start = NexusTokens.Space.md,
                     end = NexusTokens.Space.md
                 ),
                 verticalArrangement = Arrangement.spacedBy(NexusTokens.Space.md)
             ) {
-                
-                // ── LOGO ────────────────────────────────
+
+                // ── IDENTIDAD ───────────────────────────────────────────────
                 item {
                     AnimatedVisibility(
                         visible = visible,
                         enter = fadeIn(tween(800)) + scaleIn(tween(800))
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Box(Modifier.size(140.dp), contentAlignment = Alignment.Center) {
-                                // Anillo exterior rotando
-                                Box(
-                                    Modifier
-                                        .size(140.dp)
-                                        .rotate(ringRotation)
-                                        .clip(CircleShape)
-                                        .background(
-                                            Brush.sweepGradient(NexusTokens.Gradient.AzelAI)
-                                        )
-                                )
-                                // Separador
+                            Box(Modifier.size(132.dp), contentAlignment = Alignment.Center) {
                                 Box(
                                     Modifier
                                         .size(132.dp)
+                                        .rotate(ringRotation)
+                                        .clip(CircleShape)
+                                        .background(Brush.sweepGradient(NexusTokens.Gradient.AzelAI))
+                                )
+                                Box(
+                                    Modifier
+                                        .size(124.dp)
                                         .clip(CircleShape)
                                         .background(NexusTokens.Color.BgBase)
                                 )
-                                // Logo
                                 Box(
                                     Modifier
-                                        .size(110.dp)
+                                        .size(104.dp)
                                         .graphicsLayer { scaleX = pulse; scaleY = pulse }
                                         .clip(RoundedCornerShape(NexusTokens.Radius.xxl))
                                         .background(Brush.linearGradient(NexusTokens.Gradient.Brand)),
@@ -143,7 +145,7 @@ fun AboutScreen(navController: NavController) {
                                 ) {
                                     Text(
                                         "NC",
-                                        fontSize = 42.sp,
+                                        fontSize = 40.sp,
                                         fontWeight = FontWeight.Black,
                                         color = Color.White
                                     )
@@ -153,60 +155,87 @@ fun AboutScreen(navController: NavController) {
                         }
                     }
                 }
-                
-                // ── NOMBRE + VERSIÓN ────────────────────
+
                 item {
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = fadeIn(tween(800, delayMillis = 200)) + slideInVertically(
-                            tween(800, delayMillis = 200)
-                        ) { 50 }
-                    ) {
+                    Reveal(visible, 200) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                "NexusChat",
+                                "Nexus Chat",
                                 color = NexusTokens.Color.TextPrimary,
                                 fontSize = NexusTokens.FontSize.h1,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = (-1).sp
                             )
+                            Spacer(Modifier.height(NexusTokens.Space.xs))
                             Text(
-                                "by AzelMods677",
-                                color = NexusTokens.Color.Secondary,
-                                fontSize = NexusTokens.FontSize.md,
-                                fontWeight = FontWeight.Medium
+                                "Mensajería con la privacidad como requisito de diseño",
+                                color = NexusTokens.Color.TextMuted,
+                                fontSize = NexusTokens.FontSize.sm,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(horizontal = NexusTokens.Space.lg)
                             )
-                            Spacer(Modifier.height(NexusTokens.Space.sm))
-                            Row(horizontalArrangement = Arrangement.spacedBy(NexusTokens.Space.sm)) {
-                                NexusStatusBadge(
-                                    "v${BuildConfig.VERSION_NAME}",
-                                    NexusTokens.Color.Primary
-                                )
-                                NexusStatusBadge("2026", NexusTokens.Color.Secondary)
+                            Spacer(Modifier.height(NexusTokens.Space.md))
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(NexusTokens.Space.xs),
+                                verticalArrangement = Arrangement.spacedBy(NexusTokens.Space.xs)
+                            ) {
+                                NexusStatusBadge("v${BuildConfig.VERSION_NAME}", NexusTokens.Color.Primary)
+                                NexusStatusBadge("Android 12+", NexusTokens.Color.Secondary)
                                 NexusStatusBadge("MIT", NexusTokens.Color.Gold)
+                                NexusStatusBadge("Open Source", NexusTokens.Color.Online)
                             }
                         }
                     }
                 }
-                
-                item { Spacer(Modifier.height(NexusTokens.Space.xl)) }
-                
-                // ── FEATURES GRID ───────────────────────
+
+                item { Spacer(Modifier.height(NexusTokens.Space.sm)) }
+
+                // ── AUTORÍA ─────────────────────────────────────────────────
                 item {
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = fadeIn(tween(800, delayMillis = 400)) + slideInVertically(
-                            tween(800, delayMillis = 400)
-                        ) { 50 }
-                    ) {
+                    Reveal(visible, 300) {
+                        NexusGlassCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            borderGlow = true
+                        ) {
+                            Text(
+                                "Desarrollado por",
+                                color = NexusTokens.Color.TextMuted,
+                                fontSize = NexusTokens.FontSize.xs
+                            )
+                            Spacer(Modifier.height(NexusTokens.Space.xs))
+                            Text(
+                                "Azel Mods",
+                                color = NexusTokens.Color.TextPrimary,
+                                fontSize = NexusTokens.FontSize.xxl,
+                                fontWeight = FontWeight.Black
+                            )
+                            Spacer(Modifier.height(NexusTokens.Space.xs))
+                            Text(
+                                "Autor y propietario único del proyecto. Diseño, arquitectura, " +
+                                    "backend e interfaz desarrollados de principio a fin por una sola persona.",
+                                color = NexusTokens.Color.TextSecondary,
+                                fontSize = NexusTokens.FontSize.sm,
+                                lineHeight = 19.sp
+                            )
+                        }
+                    }
+                }
+
+                // ── CAPACIDADES ─────────────────────────────────────────────
+                item {
+                    Reveal(visible, 400) {
                         Column {
+                            SectionTitle("Qué incluye")
+                            Spacer(Modifier.height(NexusTokens.Space.sm))
                             val features = listOf(
-                                Triple("🔐", "Cifrado E2EE", "Grado militar"),
-                                Triple("🤖", "AzelAI", "Multi-proveedor IA"),
-                                Triple("📹", "WebRTC HD", "Voz + Video P2P"),
-                                Triple("🧅", "Tor Browser", "Privacidad total"),
-                                Triple("💻", "Terminal", "Shell local real"),
-                                Triple("🎨", "15 Temas", "Ultra personalizable")
+                                Triple("🔐", "Cifrado E2EE", "ECDH P-256 + AES-256-GCM"),
+                                Triple("🤖", "Azel IA", "Proveedor y modelo a tu elección"),
+                                Triple("📹", "Llamadas P2P", "Voz y vídeo con WebRTC"),
+                                Triple("🧅", "Red Tor", "Navegación .onion vía Orbot"),
+                                Triple("📸", "Historias", "24 h, con música y dibujo"),
+                                Triple("💻", "Editor y terminal", "Resaltado y vista previa"),
+                                Triple("🎨", "25 acentos", "Fondos de imagen y vídeo"),
+                                Triple("🔔", "Push propias", "Servidas por Cloud Functions")
                             )
                             features.chunked(2).forEach { row ->
                                 Row(
@@ -215,7 +244,7 @@ fun AboutScreen(navController: NavController) {
                                 ) {
                                     row.forEach { (icon, title, sub) ->
                                         NexusGlassCard(modifier = Modifier.weight(1f)) {
-                                            Text(icon, fontSize = 26.sp)
+                                            Text(icon, fontSize = 24.sp)
                                             Spacer(Modifier.height(NexusTokens.Space.xs))
                                             Text(
                                                 title,
@@ -226,7 +255,8 @@ fun AboutScreen(navController: NavController) {
                                             Text(
                                                 sub,
                                                 color = NexusTokens.Color.TextMuted,
-                                                fontSize = NexusTokens.FontSize.sm
+                                                fontSize = NexusTokens.FontSize.xs,
+                                                lineHeight = 15.sp
                                             )
                                         }
                                     }
@@ -237,69 +267,89 @@ fun AboutScreen(navController: NavController) {
                         }
                     }
                 }
-                
-                item { Spacer(Modifier.height(NexusTokens.Space.md)) }
-                
-                // ── STACK TÉCNICO ───────────────────────
+
+                // ── ALCANCE REAL DEL CIFRADO ────────────────────────────────
+                // Un "acerca de" que promete más seguridad de la que hay es un
+                // problema, no un adorno: el usuario decide qué contar por el chat
+                // basándose en esto.
                 item {
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = fadeIn(tween(800, delayMillis = 600)) + slideInVertically(
-                            tween(800, delayMillis = 600)
-                        ) { 50 }
-                    ) {
-                        NexusGlassCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            borderGlow = true
-                        ) {
+                    Reveal(visible, 500) {
+                        NexusGlassCard(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                "🛠 Stack Técnico",
+                                "🛡  Alcance del cifrado",
+                                color = NexusTokens.Color.TextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = NexusTokens.FontSize.lg
+                            )
+                            Spacer(Modifier.height(NexusTokens.Space.sm))
+                            Text(
+                                "Los chats de dos personas se cifran en el dispositivo: la clave " +
+                                    "privada nunca sale de él y el servidor solo almacena texto cifrado.",
+                                color = NexusTokens.Color.TextSecondary,
+                                fontSize = NexusTokens.FontSize.sm,
+                                lineHeight = 19.sp
+                            )
+                            Spacer(Modifier.height(NexusTokens.Space.sm))
+                            Text(
+                                "Con la misma honestidad: los grupos todavía no van cifrados de " +
+                                    "extremo a extremo, no hay secreto hacia adelante (las claves de " +
+                                    "identidad son estables) y los metadatos —quién habla con quién y " +
+                                    "cuándo— siguen siendo visibles para el servidor.",
+                                color = NexusTokens.Color.TextMuted,
+                                fontSize = NexusTokens.FontSize.sm,
+                                lineHeight = 19.sp
+                            )
+                        }
+                    }
+                }
+
+                // ── STACK ───────────────────────────────────────────────────
+                item {
+                    Reveal(visible, 600) {
+                        NexusGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                "🛠  Stack técnico",
                                 color = NexusTokens.Color.TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = NexusTokens.FontSize.lg
                             )
                             Spacer(Modifier.height(NexusTokens.Space.sm))
                             val stack = listOf(
-                                "Kotlin 100%" to NexusTokens.Color.Primary,
+                                "Kotlin 2.1.20" to NexusTokens.Color.Primary,
                                 "Jetpack Compose" to NexusTokens.Color.Secondary,
-                                "Hilt DI" to NexusTokens.Color.Accent,
-                                "Firebase BOM 33.7" to NexusTokens.Color.Gold,
+                                "Material 3" to NexusTokens.Color.Secondary,
+                                "Hilt 2.54" to NexusTokens.Color.Accent,
+                                "Firebase BOM 33.9" to NexusTokens.Color.Gold,
                                 "WebRTC 1.1.3" to NexusTokens.Color.Online,
+                                "Room" to NexusTokens.Color.PrimaryLight,
                                 "Clean Architecture" to NexusTokens.Color.PrimaryLight
                             )
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(NexusTokens.Space.xs),
                                 verticalArrangement = Arrangement.spacedBy(NexusTokens.Space.xs)
                             ) {
-                                stack.forEach { (name, color) ->
-                                    NexusStatusBadge(name, color)
-                                }
+                                stack.forEach { (name, color) -> NexusStatusBadge(name, color) }
                             }
                         }
                     }
                 }
-                
-                item { Spacer(Modifier.height(NexusTokens.Space.md)) }
-                
-                // ── LINKS ───────────────────────────────
+
+                // ── ENLACES ─────────────────────────────────────────────────
                 item {
-                    AnimatedVisibility(
-                        visible = visible,
-                        enter = fadeIn(tween(800, delayMillis = 800)) + slideInVertically(
-                            tween(800, delayMillis = 800)
-                        ) { 50 }
-                    ) {
+                    Reveal(visible, 700) {
                         Column {
+                            SectionTitle("Enlaces")
+                            Spacer(Modifier.height(NexusTokens.Space.sm))
                             val links = listOf(
-                                Triple("▶", "YouTube", "@AzelModsx677") to "https://youtube.com/@AzelModsx677",
-                                Triple("✈", "Telegram", "t.me/AzelModsx7779") to "https://t.me/AzelModsx7779",
-                                Triple("♪", "TikTok", "@azelmods677") to "https://tiktok.com/@azelmods677"
+                                LinkRow("⌘", "Código fuente", "github.com/Azelmods677/NexusChat", REPO_URL),
+                                LinkRow("▶", "YouTube", "@AzelModsx677", "https://youtube.com/@AzelModsx677"),
+                                LinkRow("✈", "Telegram", "t.me/AzelModsx7779", "https://t.me/AzelModsx7779"),
+                                LinkRow("♪", "TikTok", "@azelmods677", "https://tiktok.com/@azelmods677")
                             )
-                            links.forEach { (data, url) ->
-                                val (icon, platform, handle) = data
+                            links.forEach { link ->
                                 NexusGlassCard(
                                     modifier = Modifier.fillMaxWidth(),
-                                    onClick = { uriHandler.openUri(url) }
+                                    onClick = { uriHandler.openUri(link.url) }
                                 ) {
                                     Row(
                                         Modifier.fillMaxWidth(),
@@ -310,18 +360,18 @@ fun AboutScreen(navController: NavController) {
                                             horizontalArrangement = Arrangement.spacedBy(NexusTokens.Space.sm),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Text(icon, fontSize = 20.sp)
+                                            Text(link.icon, fontSize = 18.sp)
                                             Column {
                                                 Text(
-                                                    platform,
+                                                    link.platform,
                                                     color = NexusTokens.Color.TextPrimary,
                                                     fontWeight = FontWeight.SemiBold,
                                                     fontSize = NexusTokens.FontSize.md
                                                 )
                                                 Text(
-                                                    handle,
+                                                    link.handle,
                                                     color = NexusTokens.Color.TextMuted,
-                                                    fontSize = NexusTokens.FontSize.sm
+                                                    fontSize = NexusTokens.FontSize.xs
                                                 )
                                             }
                                         }
@@ -333,24 +383,71 @@ fun AboutScreen(navController: NavController) {
                         }
                     }
                 }
-                
-                // ── FOOTER ──────────────────────────────
+
+                // ── PIE ─────────────────────────────────────────────────────
                 item {
-                    Spacer(Modifier.height(NexusTokens.Space.md))
-                    Text(
-                        "© 2026 AzelMods677 · MIT License",
-                        color = NexusTokens.Color.TextDisabled,
-                        fontSize = NexusTokens.FontSize.xs,
-                        textAlign = TextAlign.Center
-                    )
-                    Text(
-                        "⭐ Si te gusta el proyecto, dale una estrella en GitHub",
-                        color = NexusTokens.Color.TextMuted,
-                        fontSize = NexusTokens.FontSize.xs,
-                        textAlign = TextAlign.Center
-                    )
+                    Reveal(visible, 800) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Spacer(Modifier.height(NexusTokens.Space.md))
+                            Text(
+                                "Plantilla libre para desarrolladores. Clónala, estúdiala y " +
+                                    "construye la tuya encima.",
+                                color = NexusTokens.Color.TextMuted,
+                                fontSize = NexusTokens.FontSize.xs,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 16.sp
+                            )
+                            Spacer(Modifier.height(NexusTokens.Space.sm))
+                            Text(
+                                "© 2026 Azel Mods · Licencia MIT",
+                                color = NexusTokens.Color.TextDisabled,
+                                fontSize = NexusTokens.FontSize.xs,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+/**
+ * Entrada escalonada: cada bloque aparece un poco después del anterior.
+ *
+ * Se declara al nivel del fichero y no como función local dentro de [AboutScreen]:
+ * los composables locales complican el trabajo del compilador de Compose y no
+ * aportan nada aquí.
+ */
+@Composable
+private fun Reveal(
+    visible: Boolean,
+    delayMs: Int,
+    content: @Composable () -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(600, delayMillis = delayMs)) +
+            slideInVertically(tween(600, delayMillis = delayMs)) { 40 }
+    ) { content() }
+}
+
+/** Enlace externo de la ficha. */
+private data class LinkRow(
+    val icon: String,
+    val platform: String,
+    val handle: String,
+    val url: String
+)
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(
+        text = text,
+        color = NexusTokens.Color.TextSecondary,
+        fontSize = NexusTokens.FontSize.sm,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Start
+    )
 }
