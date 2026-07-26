@@ -47,6 +47,8 @@ class ChatViewModelTest : StringSpec({
     val cacheManager = mockk<CacheManager>(relaxed = true)
     val translationService = mockk<TranslationService>(relaxed = true)
     val userPreferences = mockk<com.Azelmods.App.data.preferences.UserPreferences>(relaxed = true)
+    // Dependencia añadida en la v5 junto con el asistente del chat de bienvenida.
+    val demoAccountManager = mockk<com.Azelmods.App.data.demo.DemoAccountManager>(relaxed = true)
 
     // Helper that builds a ChatViewModel with the shared mocks.
     fun buildViewModel() = ChatViewModel(
@@ -56,7 +58,8 @@ class ChatViewModelTest : StringSpec({
         decryptMessageUseCase = decryptMessageUseCase,
         cacheManager = cacheManager,
         translationService = translationService,
-        userPreferences = userPreferences
+        userPreferences = userPreferences,
+        demoAccountManager = demoAccountManager
     )
 
     // Mock FirebaseAuth
