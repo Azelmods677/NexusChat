@@ -1,0 +1,34 @@
+# Normalizacion de finales de linea.
+#
+# El repositorio se clona desde Windows, macOS y Linux, y el CI corre en Linux.
+# Sin este fichero, un `core.autocrlf=true` en Windows puede colar CRLF en
+# ficheros que en Linux DEBEN llevar LF: `gradlew` con CRLF muere al instante
+# con "bad interpreter: /bin/sh^M", y un binario tratado como texto se corrompe.
+
+# Por defecto: git decide, y normaliza a LF dentro del repositorio.
+* text=auto eol=lf
+
+# Scripts que ejecuta el CI en Linux: LF obligatorio.
+gradlew         text eol=lf
+*.sh            text eol=lf
+
+# Scripts de Windows: CRLF obligatorio.
+gradlew.bat     text eol=crlf
+*.bat           text eol=crlf
+*.cmd           text eol=crlf
+
+# Binarios: nunca convertir.
+*.jar           binary
+*.zip           binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.webp          binary
+*.gif           binary
+*.ttf           binary
+*.otf           binary
+*.keystore      binary
+*.jks           binary
+*.apk           binary
+*.aab           binary
+*.so            binary

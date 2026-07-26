@@ -2,39 +2,62 @@ name: Android CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main ]
+
+# Si se empujan varios commits seguidos, cancela la ejecucion anterior en vez de
+# encolarlas: interesa el resultado del ultimo commit, no el de todos.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    name: Compilar y probar
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
-        
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
-      
-    - name: Build with Gradle
-      run: ./gradlew build
-      
-    - name: Run tests
-      run: ./gradlew test
-      
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
-      
-    - name: Upload Debug APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Preparar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # setup-gradle es la forma soportada de cachear Gradle. Antes se usaba
+      # `cache: gradle` dentro de setup-java, que ya no es la recomendada.
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Permisos de ejecucion para gradlew
+        run: chmod +x gradlew
+
+      # Se compila DEBUG y se pasan las pruebas unitarias. A proposito NO se
+      # ejecuta `./gradlew build`, que arrastra assembleRelease: la firma de
+      # release depende de keystore.properties, que no esta en el repositorio (ni
+      # debe estarlo), asi que en CI saldria un APK firmado con la clave de
+      # depuracion. Eso no aporta nada y da una señal verde engañosa.
+      - name: Compilar APK de depuracion
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Pruebas unitarias
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Publicar el APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      # Los informes de test solo son utiles cuando algo ha fallado.
+      - name: Publicar informes de test si fallan
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informes-de-test
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
