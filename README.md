@@ -1,11 +1,12 @@
 <h1 align="center">NexusChat</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-6.0.0-brightgreen.svg?logo=android" alt="Version 6.0.0">
+  <img src="https://img.shields.io/badge/Version-6.0.0_FINAL-brightgreen.svg?logo=android" alt="Version 6.0.0 Final">
   <img src="https://img.shields.io/badge/Kotlin-2.1.20-7F52FF.svg?logo=kotlin&logoColor=white" alt="Kotlin 2.1.20">
   <img src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4.svg?logo=jetpackcompose&logoColor=white" alt="Jetpack Compose Material 3">
   <img src="https://img.shields.io/badge/Hilt-2.54-2196F3.svg" alt="Hilt 2.54">
-  <img src="https://img.shields.io/badge/WebRTC-P2P-333333.svg?logo=webrtc&logoColor=white" alt="WebRTC">
+  <img src="https://img.shields.io/badge/WebRTC-P2P-333333.svg?logo=webrtc&logoColor=white" alt="WebRTC P2P">
+  <img src="https://img.shields.io/badge/E2EE-ECDH_+_AES--256--GCM-red.svg?logo=letsencrypt&logoColor=white" alt="E2EE">
   <img src="https://img.shields.io/badge/minSdk-31-blue.svg" alt="minSdk 31">
   <img src="https://img.shields.io/badge/targetSdk-36-blue.svg" alt="targetSdk 36">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
@@ -13,66 +14,85 @@
 
 <p align="center">
   <strong>Mensajería en tiempo real con la privacidad como requisito de diseño.</strong><br>
-  NexusChat es una aplicación Android nativa de chat con cifrado de extremo a extremo
-  (ECDH&nbsp;+&nbsp;AES-256-GCM), llamadas de voz y video P2P, historias efímeras,
-  navegación anónima vía Tor y un asistente de IA con proveedor configurable — construida
-  íntegramente con <strong>Kotlin</strong> y <strong>Jetpack&nbsp;Compose</strong> sobre un
-  Design System propio.
+  Aplicación Android nativa con cifrado de extremo a extremo (ECDH&nbsp;+&nbsp;AES-256-GCM),
+  llamadas de voz y vídeo P2P, historias efímeras, navegación anónima vía Tor y un asistente
+  de IA con proveedor configurable — construida íntegramente con <strong>Kotlin</strong> y
+  <strong>Jetpack&nbsp;Compose</strong> sobre un Design System propio.
+</p>
+
+<p align="center">
+  <sub>
+    Diseñado, desarrollado y mantenido en su totalidad por
+    <a href="https://github.com/Azelmods677"><strong>Azel Mods</strong></a> — desarrollador único del proyecto.
+  </sub>
 </p>
 
 ---
 
 ## Índice
 
+**Empezar**
 1. [Visión general](#visión-general)
-2. [Por qué usarla como plantilla](#por-qué-usarla-como-plantilla)
-3. [Arquitectura](#arquitectura)
-4. [Flujo de un mensaje cifrado](#flujo-de-un-mensaje-cifrado)
-5. [Estructura del proyecto](#estructura-del-proyecto)
-6. [Funciones](#funciones)
-7. [Nexus Design System](#nexus-design-system)
-8. [Stack técnico](#stack-técnico)
-9. [Seguridad y privacidad](#seguridad-y-privacidad)
-10. [Integridad y anti-manipulación](#integridad-y-anti-manipulación)
-11. [Compilar el proyecto](#compilar-el-proyecto)
-12. [Roadmap](#roadmap)
-13. [Novedades de la v6](#novedades-de-la-v6)
-14. [Novedades de la v5](#novedades-de-la-v5)
-15. [Autoría](#autoría)
-16. [Licencia](#licencia)
+2. [Sobre el desarrollador](#sobre-el-desarrollador)
+3. [Por qué elegir esta plantilla](#por-qué-elegir-esta-plantilla)
+4. [El proyecto en cifras](#el-proyecto-en-cifras)
+
+**Ingeniería**
+5. [Arquitectura](#arquitectura)
+6. [Flujo de un mensaje cifrado](#flujo-de-un-mensaje-cifrado)
+7. [Estructura del proyecto](#estructura-del-proyecto)
+8. [Decisiones de ingeniería](#decisiones-de-ingeniería)
+9. [Stack técnico](#stack-técnico)
+
+**Producto**
+10. [Funciones en detalle](#funciones-en-detalle)
+11. [Nexus Design System](#nexus-design-system)
+12. [Seguridad y privacidad](#seguridad-y-privacidad)
+13. [Integridad y anti-manipulación](#integridad-y-anti-manipulación)
+
+**Uso**
+14. [Compilar el proyecto](#compilar-el-proyecto)
+15. [Límites conocidos](#límites-conocidos)
+16. [Preguntas frecuentes](#preguntas-frecuentes)
+
+**Historial**
+17. [Novedades de la v6](#novedades-de-la-v6)
+18. [Novedades de la v5](#novedades-de-la-v5)
+19. [Autoría](#autoría)
+20. [Licencia](#licencia)
 
 ---
 
 ## Visión general
 
-NexusChat no es un clon de un mensajero existente: combina comunicación en tiempo real
-con un conjunto de herramientas de privacidad y productividad poco habituales en el género
+NexusChat no es un clon de un mensajero existente. Combina comunicación en tiempo real con
+un conjunto de herramientas de privacidad y productividad poco habituales en el género
 —navegador Tor integrado, editor de código, terminal y asistente de IA— bajo una identidad
-visual coherente y oscura.
+visual unificada por un Design System propio.
 
 <p align="center">
-  <img src="docs/img/vision-general.svg" alt="Mapa de NexusChat: comunicacion, privacidad, productividad e identidad" width="600">
+  <img src="docs/img/vision-general.svg" alt="Vision general de NexusChat: comunicacion, privacidad, herramientas e interfaz" width="320">
 </p>
 
 <details>
 <summary>Codigo Mermaid de este diagrama</summary>
 
 ```mermaid
-flowchart LR
-    N(["NexusChat"])
+flowchart TD
+    N["NexusChat"]
     N --> C["Comunicacion"]
     N --> P["Privacidad"]
-    N --> T["Productividad"]
-    N --> I["Identidad"]
+    N --> H["Herramientas"]
+    N --> I["Interfaz"]
     C --> C1["Chats y grupos"]
-    C --> C2["Llamadas P2P"]
-    C --> C3["Historias 24 h"]
-    P --> P1["Cifrado E2EE"]
+    C --> C2["Llamadas WebRTC"]
+    C --> C3["Historias 24h"]
+    P --> P1["E2EE ECDH + AES"]
     P --> P2["Tor / Orbot"]
     P --> P3["Bloqueo biometrico"]
-    T --> T1["Asistente de IA"]
-    T --> T2["Editor de codigo"]
-    T --> T3["Terminal"]
+    H --> H1["Asistente de IA"]
+    H --> H2["Editor de codigo"]
+    H --> H3["Terminal"]
     I --> I1["Design System"]
     I --> I2["Tema oscuro"]
     I --> I3["25 acentos"]
@@ -80,40 +100,130 @@ flowchart LR
 
 </details>
 
-## Por qué usarla como plantilla
+### La idea en una frase
 
-La mayoría de las plantillas de chat que se publican resuelven la parte fácil —una lista de
-mensajes y un campo de texto— y dejan fuera justo lo que cuesta semanas: el cifrado, la
-señalización de llamadas, las notificaciones push, las reglas del backend y un sistema de
-diseño que no se desmorone al añadir la décima pantalla.
+> Casi todos los mensajeros te piden **confiar** en su palabra. Aquí el cifrado ocurre en tu
+> dispositivo, la clave privada no sale de él, y el código está publicado para que lo
+> **compruebes** en vez de creértelo.
 
-NexusChat parte del otro lado. Está pensada para quien quiere **estudiar una app Android
-completa y de verdad**, o usarla como cimiento de la suya:
+### Para quién es
+
+| Perfil | Qué obtiene |
+|---|---|
+| **Desarrollador que aprende** | Una app Android completa y real donde estudiar E2EE, WebRTC, Compose y arquitectura por capas sin material de relleno |
+| **Desarrollador que construye** | Una base sólida sobre la que montar su propio producto: la parte difícil ya está resuelta y documentada |
+| **Estudiante / portfolio** | Un proyecto de referencia con decisiones de ingeniería explicadas, no solo código |
+| **Usuario final** | Un mensajero funcional con privacidad real, sin telemetría ni anuncios |
+
+---
+
+## Sobre el desarrollador
+
+<table>
+<tr>
+<td width="60%" valign="top">
+
+**NexusChat es obra de un solo desarrollador: [Azel Mods](https://github.com/Azelmods677).**
+
+Cada línea de este repositorio —la arquitectura, el motor de cifrado, la señalización
+WebRTC, el Design System, las reglas del backend, las Cloud Functions y esta
+documentación— ha sido diseñada, escrita y mantenida por una única persona, sin equipo
+ni encargo externo.
+
+El proyecto nació como ejercicio de ingeniería con una pregunta concreta: *¿hasta dónde
+puede llegar un desarrollador individual construyendo una app de mensajería que no haga
+concesiones en privacidad?* La v6 es la respuesta, y es la versión final.
+
+</td>
+<td width="40%" valign="top">
+
+**Alcance del trabajo individual**
+
+- Arquitectura y diseño técnico
+- Criptografía de extremo a extremo
+- Motor de llamadas WebRTC
+- Sistema de diseño completo
+- Backend, reglas y funciones
+- Documentación técnica
+- Identidad visual
+
+</td>
+</tr>
+</table>
+
+> **Nota de autoría.** La propiedad intelectual del proyecto pertenece a Azel Mods. El
+> código se publica bajo licencia MIT —eres libre de usarlo, estudiarlo y construir sobre
+> él— con la única condición que la propia licencia establece: **conservar el aviso de
+> copyright y la atribución al autor**. Ver [Integridad y anti-manipulación](#integridad-y-anti-manipulación).
+
+---
+
+## Por qué elegir esta plantilla
+
+La mayoría de las plantillas de chat resuelven la parte fácil —una lista de mensajes y un
+campo de texto— y dejan fuera justo lo que cuesta semanas: el cifrado, la señalización de
+llamadas, las notificaciones push, las reglas del backend y un sistema de diseño que no se
+desmorone al añadir la décima pantalla.
+
+NexusChat parte del otro lado.
 
 | Lo que suele faltar en una plantilla | Lo que encuentras aquí |
 |---|---|
-| Cifrado de adorno o inexistente | **E2EE real**: ECDH P-256 + AES-256-GCM, con las claves generadas en el dispositivo |
-| Llamadas simuladas o sin señalización | **WebRTC P2P** con señalización sobre Firebase e historial de llamadas |
+| Cifrado de adorno o inexistente | **E2EE real**: ECDH P-256 + AES-256-GCM, claves generadas en el dispositivo |
+| Llamadas simuladas o sin señalización | **WebRTC P2P** con señalización sobre Firebase, buffer de candidatos ICE e historial |
 | Notificaciones que no llegan | **Cloud Functions propias** desplegables, no un servicio de terceros |
-| Backend sin reglas de seguridad | **Reglas de Firebase versionadas** en el repositorio y desplegables con un comando |
-| Colores y tamaños repartidos por 40 archivos | **Nexus Design System** como única fuente de verdad de color, espaciado y tipografía |
+| Backend sin reglas de seguridad | **Reglas de Firebase versionadas**, con bloqueo impuesto en el servidor |
+| Colores y tamaños repartidos por 40 archivos | **Nexus Design System** como única fuente de verdad |
 | Botones que no hacen nada | Cada función de la interfaz **está implementada**; lo que no lo está, se dice |
+| README que exagera | Documentación que declara sus propios límites sin maquillarlos |
 
-Tres decisiones de diseño que hacen que sirva como base y no solo como demo:
+### Tres decisiones que la hacen base y no demo
 
-- **Arquitectura sin atajos.** MVVM + Repository con flujo unidireccional y capas separadas
-  (`ui/`, `domain/`, `data/`). Cambiar Firebase por otro backend es tocar la capa de datos,
-  no la app entera.
-- **Honestidad técnica.** Donde una función tiene límites —los grupos aún no van cifrados de
-  extremo a extremo, la pantalla Premium no cobra— el README **y la propia app** lo dicen.
-  Una plantilla que exagera lo que hace te hace perder tiempo cuando la abres por dentro.
-- **Todo el flujo, de punta a punta.** Registro, sesión, chat, cifrado, llamadas, historias,
-  ajustes, copias de seguridad y publicación firmada. No hay que "imaginarse" ninguna pieza.
+**1. Arquitectura sin atajos.**
+MVVM + Repository con flujo unidireccional y capas separadas (`ui/`, `domain/`, `data/`).
+Cambiar Firebase por otro backend significa tocar la capa de datos, no la app entera.
+
+**2. Honestidad técnica.**
+Donde una función tiene límites —los grupos aún no van cifrados de extremo a extremo, la
+pantalla Premium no cobra— el README **y la propia app** lo dicen. Una plantilla que exagera
+lo que hace te hace perder tiempo cuando la abres por dentro.
+
+**3. Todo el flujo, de punta a punta.**
+Registro, sesión, chat, cifrado, llamadas, historias, ajustes, copias de seguridad y
+publicación firmada. No hay que "imaginarse" ninguna pieza.
 
 > **Estado del proyecto.** La **v6 es la versión final**: cierra el ciclo de desarrollo y
 > **no está previsto que reciba nuevas actualizaciones durante un tiempo**. Se publica
 > completa y estable, con licencia MIT, precisamente para que sea un punto de partida sólido
 > y no un proyecto en movimiento del que dependas.
+
+---
+
+## El proyecto en cifras
+
+<table>
+<tr>
+<td align="center"><strong>54.605</strong><br><sub>líneas de Kotlin</sub></td>
+<td align="center"><strong>212</strong><br><sub>archivos fuente</sub></td>
+<td align="center"><strong>100%</strong><br><sub>Jetpack Compose</sub></td>
+<td align="center"><strong>0</strong><br><sub>TODOs pendientes</sub></td>
+</tr>
+<tr>
+<td align="center"><strong>10+</strong><br><sub>proveedores de IA</sub></td>
+<td align="center"><strong>25</strong><br><sub>acentos de color</sub></td>
+<td align="center"><strong>11</strong><br><sub>idiomas de traducción</sub></td>
+<td align="center"><strong>6</strong><br><sub>funciones de IA</sub></td>
+</tr>
+</table>
+
+**Higiene del código, medida:**
+
+- **0** marcadores `TODO` / `FIXME` reales en todo el proyecto.
+- **0** funciones stub, pantallas maqueta o botones sin implementar.
+- **8** aserciones no-nulas (`!!`) en 54.605 líneas, todas protegidas por una comprobación previa.
+- **Un solo** punto de entrada Compose (`MainActivity`), sin árboles de tema anidados.
+
+---
 
 ## Arquitectura
 
@@ -174,6 +284,8 @@ Principios que sostienen el diseño:
 - **Capas reemplazables:** la UI no conoce Firebase; el acceso a datos está encapsulado en
   repositories inyectados con Hilt.
 
+---
+
 ## Flujo de un mensaje cifrado
 
 El servidor **nunca** ve texto plano. El cifrado ocurre en el dispositivo del emisor y solo
@@ -204,6 +316,23 @@ sequenceDiagram
 
 </details>
 
+### Cómo funciona, paso a paso
+
+1. **Generación de claves.** Al iniciar sesión por primera vez, el dispositivo genera un par
+   de claves de curva elíptica (P-256). La **privada nunca sale del dispositivo**; la pública
+   se publica en `users/$uid/keys/identityPublic`.
+2. **Derivación del secreto.** Para escribir a alguien, el emisor combina su clave privada
+   con la pública del destinatario mediante **ECDH**. El resultado es un secreto compartido
+   que ambos pueden calcular por separado y que nunca viaja por la red.
+3. **Cifrado autenticado.** El mensaje se cifra con **AES-256-GCM**, que además de
+   confidencialidad aporta integridad: si alguien altera un byte del payload, el descifrado
+   falla en vez de devolver basura.
+4. **Almacenamiento ciego.** Firebase guarda únicamente el payload cifrado. Las reglas
+   permiten leer las claves **públicas** —imprescindible para derivar el secreto— y eso no
+   filtra nada: publicar una clave pública es exactamente para lo que existe.
+
+---
+
 ## Estructura del proyecto
 
 ```
@@ -211,20 +340,22 @@ app/src/main/java/com/Azelmods/App/
 ├── data/              # Capa de datos
 │   ├── repository/    #   Repositories (RTDB, Storage, fondos de chat…)
 │   ├── model/         #   Modelos (User, Message, Chat…)
-│   ├── security/      #   Cifrado E2EE (ECDH + AES-256-GCM) y almacenamiento seguro
-│   ├── ai/            #   AiKeyStore (clave de IA cifrada) y cola de peticiones
+│   ├── security/      #   Cifrado E2EE (ECDH + AES-256-GCM), 2FA e integridad
+│   ├── ai/            #   AiKeyStore (clave cifrada), proveedores y cola de peticiones
 │   ├── translation/   #   Servicio de traducción de mensajes
-│   ├── local/         #   Caché local de mensajes
+│   ├── local/         #   Caché local de mensajes (Room)
 │   ├── preferences/   #   Preferencias de usuario y tema (DataStore)
-│   └── …              #   api, backup, chat, firebase, session, work
+│   ├── backup/        #   Copias cifradas: cifrado, almacenamiento y exportación
+│   ├── demo/          #   Asistente de bienvenida guionizado
+│   └── …              #   api, chat, firebase, session, work
 ├── di/                # Módulos de inyección de dependencias (Hilt)
 ├── domain/
 │   ├── repository/    # Contratos de la capa de dominio
-│   └── usecase/       # Casos de uso (cifrado, backups, stories…)
+│   └── usecase/       # Casos de uso (cifrado, backups, stories, login…)
 ├── security/          # App lock, detección de root/tampering
 ├── service/           # Servicios en segundo plano (FCM, notificaciones)
 ├── ui/
-│   ├── components/    # Composables reutilizables (NexusButton, NexusGlassCard…)
+│   ├── components/    # Composables reutilizables (NexusButton, MarkdownText…)
 │   ├── navigation/    # NavGraph y rutas
 │   ├── screens/       # Pantallas por feature (chat, home, calls, stories…)
 │   └── theme/         # Nexus Design System: tokens, color, tipografía, motion
@@ -232,52 +363,299 @@ app/src/main/java/com/Azelmods/App/
 └── utils/             # Utilidades compartidas
 ```
 
-## Funciones
+---
 
-### Disponibles hoy
+## Decisiones de ingeniería
 
-- **Mensajería en tiempo real** — chats 1:1 y grupos sobre Firebase Realtime Database, con
-  indicador de escritura, confirmaciones de lectura, respuestas, edición y borrado de
-  mensajes, stickers y notas de voz.
-- **Cifrado de extremo a extremo (E2EE)** — intercambio de claves **ECDH** por destinatario
-  y cifrado autenticado **AES-256-GCM**; el servidor solo almacena el payload cifrado.
-- **Llamadas de voz y video (WebRTC)** — audio/video peer-to-peer con señalización vía
-  Firebase; el stream viaja directo entre dispositivos.
-- **Historias (Stories)** — contenido efímero de 24 horas con reacciones y respuestas,
-  **música** que acompaña a la historia y **dibujo a mano alzada** sobre la foto.
-- **Navegación anónima (Tor/Orbot)** — navegador integrado que enruta el tráfico por la red
-  Tor delegando en Orbot como proxy local, con detección de conexión en tiempo real y
-  fallback automático de proxy HTTP a SOCKS5.
-- **Asistente de IA multi-proveedor** — el usuario elige proveedor, modelo y clave:
-  **Gemini, OpenAI, OpenRouter, DeepSeek, Mistral, Groq, Ollama local** o cualquier endpoint
-  propio compatible con OpenAI (LM Studio, vLLM, llama.cpp). La clave se guarda cifrada en el
-  dispositivo y nunca sale de él salvo hacia el proveedor elegido.
-- **Traducción de mensajes** — traducción on-demand por mensaje con detección de idioma,
-  usando tu propio modelo cuando hay uno configurado y una memoria de traducción gratuita
-  como respaldo.
-- **Seis funciones de IA sobre la conversación** — respuestas sugeridas, auto-traducción de
-  mensajes entrantes, resumen de la conversación, reescritura por tono, mejora de fotos al
-  enviarlas y dictado por voz. Todas **nacen apagadas**: las que envían texto a un proveedor
-  externo no pueden activarse solas en una app con cifrado de extremo a extremo.
-- **Editor de código con resaltado de sintaxis** — HTML, CSS, JS, **TypeScript, JSX, TSX,
-  JSON**, Python, Kotlin, Bash y C. Vista previa real de HTML/CSS en WebView, ejecución de
-  JavaScript, y validación con formateo de JSON sin salir del dispositivo.
-- **Terminal integrado** — shell real de Android con historial navegable, alias, `sysinfo` y
-  prompt con el directorio actual.
-- **Acceso por correo, Google o número de teléfono** — verificación por SMS con reenvío
-  controlado y verificación instantánea cuando Android la ofrece.
-- **Personalización** — 25 acentos de color, fondos de chat (imagen o video), tamaño de
-  fuente que escala toda la interfaz y modo oscuro.
-- **Protección local** — bloqueo biométrico o por PIN, **verificación en dos pasos (TOTP)** y
-  copias de seguridad cifradas con AES-256 que se exportan a donde tú elijas.
+Esta sección documenta **por qué** el código es como es. Son las decisiones que no se ven
+leyendo la API pero que explican el comportamiento del sistema.
+
+<details>
+<summary><strong>Por qué Realtime Database y no Firestore</strong></summary>
+
+<br>
+
+Un chat necesita latencia baja y actualizaciones continuas de estado efímero (escribiendo…,
+presencia, recibos). Realtime Database expone `onDisconnect()`, que el **servidor** ejecuta
+cuando el socket cae —cierre forzado, pérdida de red, móvil apagado—. Eso permite marcar a
+alguien como desconectado sin depender de que su app tenga tiempo de avisar.
+
+Firestore es superior en consultas complejas y escalado, pero para el patrón "un nodo por
+chat que muchos escuchan a la vez" RTDB es más simple y más barato.
+
+</details>
+
+<details>
+<summary><strong>Por qué las reglas del servidor imponen el bloqueo de contactos</strong></summary>
+
+<br>
+
+Un bloqueo que solo oculta mensajes en la interfaz **no es un bloqueo**: un cliente
+modificado seguiría escribiendo en el chat. Por eso la comprobación vive en la regla de
+escritura de mensajes:
+
+```
+".write": "auth != null
+  && root.child('chats').child($chatId).child('members').child(auth.uid).exists()
+  && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()"
+```
+
+Los bloqueos se indexan por chat (`chatBlocks/$chatId/$uid`) y no por usuario, porque la
+regla ya conoce el `$chatId` y puede resolverlo con una sola lectura. Con un índice global
+la regla tendría que deducir quién es el otro miembro a partir del `chatId`, algo que el
+lenguaje de reglas no puede hacer de forma fiable.
+
+Además, quien bloquea puede deshacerlo, pero **el bloqueado no puede desbloquearse solo**:
+la condición `$blockedUid !== auth.uid` se lo impide.
+
+</details>
+
+<details>
+<summary><strong>Por qué los candidatos ICE se guardan en un buffer</strong></summary>
+
+<br>
+
+Es *el* bug clásico de WebRTC. Los candidatos ICE del otro extremo pueden llegar **antes**
+de que se haya establecido la descripción remota (`setRemoteDescription`). Si se añaden en
+ese momento, WebRTC los descarta en silencio y la conexión nunca se establece — sin ningún
+error visible.
+
+`WebRTCManager` mantiene una cola sincronizada: si la descripción remota aún no está puesta,
+el candidato se guarda; en cuanto se establece, se vacía la cola. Es la diferencia entre
+llamadas que "a veces no conectan" y llamadas que funcionan.
+
+</details>
+
+<details>
+<summary><strong>Por qué el tamaño de fuente escala la densidad, no la tipografía</strong></summary>
+
+<br>
+
+La solución evidente —escalar la `Typography` de Material— solo afecta al texto que la usa.
+Como la mayoría de los `Text(...)` de una app real fijan `fontSize` en `sp` a mano, el
+ajuste "Muy grande" no agrandaba casi nada.
+
+La solución correcta es escalar `LocalDensity.fontScale` para todo el árbol: así **cualquier**
+valor en `sp` —venga de la Typography o esté escrito a mano— crece o encoge por igual. Se
+multiplica por el `fontScale` del sistema para respetar también la accesibilidad del
+dispositivo.
+
+</details>
+
+<details>
+<summary><strong>Por qué los avisos se entregan siempre en el hilo principal</strong></summary>
+
+<br>
+
+Las operaciones de chat (fijar, archivar, silenciar, vaciar, borrar) trabajan en
+`Dispatchers.IO`, y la pantalla responde al callback con un `Toast`. Mostrar un `Toast` fuera
+del hilo principal lanza `RuntimeException: Can't toast on a thread that has not called
+Looper.prepare()` — es decir, **cierra la app**.
+
+Ambos ViewModels (`HomeViewModel` y `ChatViewModel`) enrutan sus avisos por un helper
+`reportarEnMain` que salta a `Dispatchers.Main` antes de invocar el callback.
+
+</details>
+
+<details>
+<summary><strong>Por qué SOCKS5 y no el proxy HTTP para Tor</strong></summary>
+
+<br>
+
+Dos razones. La primera: el puerto 8118 lo servía Privoxy, que Orbot **dejó de arrancar por
+defecto** hace varias versiones; el 9050 (SOCKS5) es el que expone siempre. Sondear primero
+el 8118 significaba esperar el timeout completo antes de llegar al que sí funciona.
+
+La segunda, y más importante: para `.onion` el SOCKS5 es **lo correcto**. Con `socks5://`
+Chromium resuelve el nombre **en el proxy**, que es la única manera de resolver una dirección
+`.onion` — no existe en el DNS público.
+
+</details>
+
+<details>
+<summary><strong>Por qué las funciones de IA nacen apagadas</strong></summary>
+
+<br>
+
+Cuatro de las seis envían parte de la conversación a un proveedor externo. En una app que
+cifra de extremo a extremo, activar eso por defecto sería contradecir su propia premisa.
+
+El usuario elige proveedor, modelo y clave; la clave se guarda cifrada con
+`EncryptedSharedPreferences` (respaldado por el Android Keystore) y las peticiones salen
+**directas** al proveedor, sin pasar por ningún servidor intermedio. Además, lo que se envía
+va anonimizado: los participantes se etiquetan como `YO` y `OTRO`, nunca con nombres reales.
+
+Las dos funciones que **no** necesitan proveedor —mejorar fotos y dictado por voz— ocurren
+en el propio dispositivo y están siempre disponibles.
+
+</details>
+
+<details>
+<summary><strong>Por qué toda operación de IA tiene un tope de tiempo duro</strong></summary>
+
+<br>
+
+El cliente HTTP ya tiene sus timeouts, pero la cola de peticiones reintenta con backoff
+(5 s + 15 s) ante límites de cuota. En el peor caso una sola llamada podía tardar minutos, y
+la interfaz se veía "colgada" resumiendo o traduciendo.
+
+Cada operación se envuelve en `withTimeoutOrNull`: o devuelve resultado, o falla con un
+mensaje claro y accionable. Se usa la variante `OrNull` en vez de `withTimeout` dentro de un
+`runCatching` para no tragarse la cancelación del padre: si el usuario sale de la pantalla,
+la corrutina se cancela limpiamente en lugar de convertirse en un error.
+
+</details>
+
+---
+
+## Stack técnico
+
+| Categoría | Tecnología |
+|---|---|
+| **Lenguaje** | Kotlin 2.1.20 (JVM target 17) |
+| **UI** | Jetpack Compose · Material 3 · Navigation Compose |
+| **Arquitectura** | MVVM + Repository · Flujo unidireccional (UDF) |
+| **Inyección** | Hilt 2.54 (KSP) |
+| **Asincronía** | Coroutines · Flow / StateFlow |
+| **Backend** | Firebase BoM 33.9.0 — Auth, Realtime Database, Storage, Cloud Messaging |
+| **Serverless** | Cloud Functions (Node.js 22, firebase-admin 13, firebase-functions 6) |
+| **Llamadas** | `io.getstream:stream-webrtc-android` 1.1.3 |
+| **Persistencia local** | Room 2.7.1 · DataStore Preferences 1.1.1 |
+| **Criptografía** | `androidx.security:security-crypto` · Android Keystore · JCA (ECDH, AES-GCM, HMAC) |
+| **Imágenes / vídeo** | Coil 3.2.0 (compose, network-okhttp, video, gif) |
+| **Permisos** | Accompanist Permissions 0.36.0 |
+| **Red** | OkHttp (+ SSE para streaming de IA) |
+| **Anonimato** | Orbot / Tor (SOCKS5) |
+| **SDK** | minSdk 31 (Android 12) · targetSdk 36 (Android 16) · compileSdk 36 |
+
+---
+
+## Funciones en detalle
+
+### Mensajería
+
+Chats 1:1 y grupos sobre Firebase Realtime Database, en tiempo real y sin refrescos
+manuales.
+
+- Indicador de **escribiendo…** y **recibos de lectura**.
+- **Respuestas** citando un mensaje, **edición** y **borrado** (para mí / para todos).
+- **Reacciones** con emoji, **stickers** y **notas de voz**.
+- **Mensajes efímeros** con autodestrucción configurable y modo *ver una vez*.
+- **Reenvío** de mensajes y **búsqueda** dentro de la conversación.
+- **Caché local con Room**: los mensajes ya vistos se muestran al instante al abrir el chat,
+  incluso sin conexión, y los envíos sin red se encolan y salen solos al recuperarla.
+- **Presencia real**: online / última vez, con `onDisconnect()` ejecutado por el servidor.
+
+### Cifrado de extremo a extremo
+
+- **ECDH sobre P-256** para derivar un secreto compartido por destinatario.
+- **AES-256-GCM** (cifrado autenticado) para el contenido.
+- La **clave privada se genera y permanece en el dispositivo**; el servidor solo almacena
+  payloads cifrados.
+- **Aviso honesto:** aplica a **chats 1:1**. Los grupos **todavía no** van cifrados de extremo
+  a extremo, y no hay secreto hacia adelante (*forward secrecy*). Está dicho aquí y dentro de
+  la app.
+
+### Llamadas de voz y vídeo
+
+- **WebRTC P2P**: el audio y el vídeo viajan directos entre dispositivos.
+- **Señalización sobre Firebase**, con historial de llamadas y aviso de perdidas.
+- **STUN** (servidores públicos de Google) + **TURN** de respaldo para NAT restrictivos.
+- **Buffer de candidatos ICE** sincronizado (ver [Decisiones de ingeniería](#decisiones-de-ingeniería)).
+- Cámara frontal/trasera, silenciar, altavoz y colgado automático a los 45 s sin respuesta.
+- Permisos pedidos según el tipo: micrófono para voz, micrófono + cámara solo para vídeo.
+
+### Historias (Stories)
+
+- Contenido efímero de **24 horas**: foto, vídeo, texto, **música** y **dibujo a mano alzada**.
+- Lista de **vistas** y **reacciones** con emoji.
+- Editor con texto arrastrable, emojis y recorte.
+
+### Asistente de IA multi-proveedor
+
+El usuario elige **proveedor, modelo y clave**. La app no impone ninguno.
+
+| Tipo | Proveedores soportados |
+|---|---|
+| **Nativo** | Google Gemini (con streaming SSE real) |
+| **Compatibles OpenAI** | OpenAI · OpenRouter · DeepSeek · Mistral · Groq |
+| **Locales** | Ollama · LM Studio · vLLM · llama.cpp · cualquier endpoint propio |
+
+- La clave se guarda **cifrada** (`EncryptedSharedPreferences` + Android Keystore).
+- Las peticiones salen **directas al proveedor**: no hay servidor intermedio.
+- **Catálogo dinámico de modelos**: la app consulta `GET /models` del proveedor, así que no
+  hay listas de modelos obsoletas.
+- **Rate limiting** y **reintentos con backoff exponencial** ante cuota agotada.
+- **Markdown renderizado** en las respuestas: encabezados, listas, citas, código y separadores.
+
+### Las seis funciones de IA sobre tus chats
+
+Todas **apagadas de fábrica**. Las cuatro primeras requieren proveedor configurado; las dos
+últimas ocurren en el dispositivo.
+
+| Función | Qué hace | Dónde se procesa |
+|---|---|---|
+| **Respuestas sugeridas** | Tres respuestas rápidas sobre el teclado | Proveedor |
+| **Traducir lo que recibo** | Traduce entrantes sin tocar el original | Proveedor |
+| **Resumen de conversación** | Viñetas con lo importante y lo pendiente | Proveedor |
+| **Sugerencias de tono** | Reescribe tu borrador: cercano, formal, corto, amable | Proveedor |
+| **Mejorar fotos al enviar** | Realce de contraste y color | **En tu dispositivo** |
+| **Dictado por voz** | Botón de micrófono para dictar | **En tu dispositivo** |
+
+### Traducción de mensajes
+
+- Traducción **on-demand** por mensaje, con el original siempre intacto.
+- **11 idiomas**: español, inglés, francés, alemán, portugués, italiano, japonés, chino,
+  coreano, ruso y árabe.
+- Usa **tu modelo de IA** si lo tienes configurado (entiende jerga, emoji y mensajes cortos)
+  y cae a una memoria de traducción gratuita como respaldo.
+- Detección de idioma por puntuación ponderada, con alfabetos no latinos reconocidos directamente.
+- Avisa cuando trunca un mensaje largo o cuando la cuota diaria gratuita se agota.
+
+### Navegación anónima (Tor / Orbot)
+
+- Navegador integrado que enruta por **Tor** delegando en **Orbot** como proxy local.
+- **SOCKS5 (9050)** con resolución de nombres en el proxy — imprescindible para `.onion`.
+- **Detección en tiempo real**: si arrancas Orbot con el navegador ya abierto, se entera solo
+  y recarga con el proxy aplicado.
+- Diagnóstico que distingue causas reales: Orbot caído, dirección **v2 muerta** (Tor las
+  retiró en 2021) o servicio oculto inaccesible.
+- El proxy se limpia al salir, para que el resto de la app no quede enrutada.
+
+### Editor de código y terminal
+
+- **Resaltado de sintaxis**: HTML, CSS, JS, TypeScript, JSX, TSX, JSON, Python, Kotlin, Bash y C.
+- **Vista previa real** de HTML/CSS en WebView y **ejecución de JavaScript**.
+- **Validación y formateo de JSON** sin salir del dispositivo.
+- **Terminal** con shell real de Android: historial navegable, alias, `sysinfo` y prompt con
+  el directorio actual.
+
+### Seguridad local
+
+- **Bloqueo de la app** con huella/biometría o PIN.
+- **Verificación en dos pasos (TOTP)**: HMAC-SHA1, ventana de 30 s, 6 dígitos, tolerancia de
+  ±1 ventana. Estándar, así que sirve **cualquier app de autenticación**.
+- **Copias de seguridad cifradas**: GZIP + AES-256-GCM con clave derivada de tu contraseña,
+  verificación HMAC de integridad, y **exportación al destino que elijas** mediante el
+  selector del sistema (Descargas, Drive…).
+- **Bloqueo de contactos impuesto por el servidor**, no por la interfaz.
+
+### Personalización
+
+- **25 acentos de color** y modo oscuro.
+- **Fondos de chat propios**: imagen o vídeo.
+- **Tamaño de letra** que escala la interfaz completa.
+- Pantalla de inicio translúcida a propósito: el fondo elegido se ve a través de las tarjetas.
+
+---
 
 ## Nexus Design System
 
-La identidad visual de NexusChat vive en un Design System propio (`ui/theme/`) que actúa como
-**única fuente de verdad**: ninguna pantalla hardcodea colores, tamaños, radios ni tipografías.
+La identidad visual vive en un Design System propio (`ui/theme/`) que actúa como **única
+fuente de verdad**: ninguna pantalla hardcodea colores, tamaños, radios ni tipografías.
 
 <p align="center">
-  <img src="docs/img/design-system.svg" alt="Nexus Design System: tokens, componentes y pantallas" width="360">
+  <img src="docs/img/design-system.svg" alt="Componentes del Nexus Design System: color, tipografia, espaciado, forma y movimiento" width="320">
 </p>
 
 <details>
@@ -285,113 +663,99 @@ La identidad visual de NexusChat vive en un Design System propio (`ui/theme/`) q
 
 ```mermaid
 flowchart TD
-    subgraph NT["NexusTokens - fuente unica"]
-        COL["Color: marca, superficies, texto"]
-        TYP["Tipografia: Material 3, 15 estilos"]
-        SP["Espaciado, Radios, IconSize"]
-        GL["Glass: niveles de vidrio (v6)"]
-        MO["Motion: springs nombrados"]
-    end
-    subgraph CMP["Componentes"]
-        B["NexusButton"]
-        G["nexusGlass()"]
-        GC["NexusGlassCard"]
-        MD["MarkdownText"]
-        TB["UnifiedTopBar"]
-    end
-    NT --> CMP --> SCR["Pantallas"]
+    DS["Nexus Design System"]
+    DS --> C["Color<br>violeta de marca + 25 acentos"]
+    DS --> T["Tipografia<br>escala Material 3"]
+    DS --> S["Espaciado<br>rejilla de 4dp"]
+    DS --> F["Forma<br>radios consistentes"]
+    DS --> M["Movimiento<br>duraciones y curvas"]
 ```
 
 </details>
 
-Pilares del sistema:
+- **Color:** un violeta de marca, una escalera de superficies para la profundidad y 25
+  acentos elegibles por el usuario.
+- **Tipografía:** escala Material 3 completa, escalable por preferencia del usuario.
+- **Espaciado:** rejilla de 4 dp; nada de márgenes arbitrarios.
+- **Forma y movimiento:** radios y curvas de animación definidos como tokens compartidos.
 
-- **Color semántico y accesible** — una sola paleta de marca (violeta `#7C6FE0` → cian),
-  con un **test de contraste WCAG** (`NexusPaletteContrastTest`) que rompe la compilación si
-  un par texto/superficie deja de cumplir el mínimo legible.
-- **Tipografía completa** — los 15 estilos de Material 3 definidos con criterio de pesos
-  (SemiBold para énfasis, Normal para lectura); 10–12sp reservado a metadatos.
-- **Glassmorphism canónico** — un único modificador `Modifier.nexusGlass()` define la
-  superficie de vidrio de la app; los componentes lo consumen en vez de reconstruirla.
-- **Motion con propósito** — curvas spring nombradas (`springDefault` / `springBouncy`) que
-  las pantallas consumen, en lugar de inventar animaciones locales.
-- **Identidad oscura** — fondo oscuro-primero con gradientes de marca, y **25 acentos**
-  seleccionables por el usuario, integrados con el `ColorScheme` de Material 3.
-
-> Documentación de diseño completa en [`docs/`](docs/): auditoría, principios y sistema.
-
-## Stack técnico
-
-| Tecnología | Rol | Por qué |
-|---|---|---|
-| **Kotlin 2.1.20** | Lenguaje | Null-safety, corrutinas y `Flow` nativos: la base de toda la reactividad. |
-| **Jetpack Compose (Material 3)** | UI | UI declarativa: la interfaz es una función del estado, sin sincronizar vistas a mano. |
-| **Firebase (Auth · RTDB · Storage)** | Backend | Sincronización en tiempo real con listeners push, autenticación y media gestionadas. |
-| **Hilt 2.54** | Inyección de dependencias | Grafo validado en compilación e integrado al ciclo de vida (`@HiltViewModel`). |
-| **WebRTC** | Llamadas | Estándar abierto para audio/video P2P de baja latencia. |
-| **ECDH + AES-256-GCM** | Cifrado | Acuerdo de claves por curva elíptica + cifrado autenticado para el E2EE. |
-| **Tor / Orbot · NetCipher** | Anonimato | Enrutado del navegador integrado por la red Tor. |
-| **MVVM + Repository** | Arquitectura | Separa UI, estado y datos: cada capa se testea y reemplaza aislada. |
-| **minSdk 31 / targetSdk 36** | Compatibilidad | Android 12+ con las APIs modernas de Android 16 (edge-to-edge). |
+---
 
 ## Seguridad y privacidad
 
-La privacidad del usuario es un requisito de diseño, no una opción:
+**Lo que hace:**
 
-- **Cifrado de extremo a extremo:** el contenido se cifra en el dispositivo con **AES-256-GCM**
-  usando un secreto derivado por **ECDH** entre emisor y receptor. El backend solo ve datos
-  cifrados: ni el servidor ni un tercero con acceso a la base de datos leen las conversaciones.
-- **Navegación anónima:** el navegador integrado enruta su tráfico por la red **Tor** (vía
-  Orbot), ocultando la IP de origen y dificultando el rastreo de la navegación.
-- **Protección local:** bloqueo con biometría o PIN, **verificación en dos pasos (2FA)**
-  mediante TOTP compatible con Google Authenticator/Aegis, backups cifrados con AES-256 y
-  detección de entornos comprometidos (root/tampering).
-- **Claves bajo control del usuario:** las credenciales opcionales (como la clave del
-  asistente de IA) se guardan cifradas con `EncryptedSharedPreferences` respaldado por el
-  Android Keystore, y nunca se envían a servidores propios.
+- Cifrado de extremo a extremo en chats 1:1 (ECDH + AES-256-GCM).
+- Clave privada generada y retenida en el dispositivo.
+- Reglas de Firebase versionadas que imponen permisos en el **servidor**.
+- Claves de IA cifradas con Android Keystore.
+- Bloqueo biométrico, 2FA TOTP y copias cifradas.
+- Navegación Tor opcional.
+- **Sin telemetría, sin anuncios, sin rastreadores de terceros.**
 
-> **Nota responsable:** las funciones de privacidad están pensadas para proteger la
-> comunicación legítima. El proyecto no promueve ningún uso contrario a las leyes aplicables.
+**Lo que todavía no hace — dicho sin rodeos:**
+
+- Los **grupos no** están cifrados de extremo a extremo.
+- **No hay forward secrecy**: comprometer la clave privada expondría el histórico.
+- Los **metadatos** (quién habla con quién y cuándo) son visibles para el backend.
+- La pantalla **Premium no cobra** y lo declara: no simula ninguna compra.
+
+> Publicar los límites forma parte del diseño. Una app de privacidad que oculta lo que no
+> cubre es peor que una que no promete nada.
+
+---
 
 ## Integridad y anti-manipulación
 
-El binario lleva una **firma de autoría** verificable: `IntegrityGuard` comprueba en el
-arranque que el APK esté firmado con el certificado de Azel Mods. Si alguien recompila,
-reempaqueta o vuelve a firmar la app con otra clave —lo necesario para redistribuirla como
-propia—, la firma cambia y, **en un build de release**, la app se autodestruye.
+El proyecto incluye `IntegrityGuard`, una verificación de autoría en dos frentes:
 
-Es deliberadamente conservador para no estorbar al desarrollo:
+**1. Firma del binario.** Comprueba en el arranque que el APK esté firmado con el certificado
+del autor. La huella **no se guarda en claro**: se almacena el *SHA-256 de la huella*, de modo
+que ni buscándola en el APK aparece.
+
+**2. Marca de autoría.** El nombre del autor **no existe como texto plano** en el binario:
+vive ofuscado (XOR) y anclado a su hash SHA-256, y se reconstruye en memoria solo cuando se
+necesita. Cambiar el crédito en pantalla no basta: habría que alterar de forma coherente el
+blob, la clave y el hash a la vez.
+
+Si en un release configurado **cualquiera de las dos** comprobaciones falla, la app se
+detiene. El diseño es deliberadamente conservador:
 
 - En **debug** nunca se dispara.
-- En **release sin configurar** tampoco: falla "en abierto" hasta que fijes tu huella.
-- Solo se autodestruye un **release firmado por una clave desconocida** cuando ya has
-  fijado la tuya.
+- En **release sin configurar** tampoco (falla "en abierto", solo avisa por log).
+- Solo actúa en un **release firmado por una clave desconocida** cuando el autor ya fijó su
+  huella — un caso que, por definición, es un reempaquetado ajeno.
 
-La huella **no se guarda en claro**: en el código vive solo el `SHA-256` de la huella
-`SHA-256` del certificado (una "cripto oculta" irreversible). Para activarlo en tu propio
-release, calcula la marca de tu keystore y pégala en `IntegrityGuard.RELEASE_MARK`:
+> **Nota honesta.** Esto es un **disuasor**, no un candado inviolable: cualquier binario se
+> puede descompilar y con suficiente esfuerzo cualquier comprobación se localiza. Su función
+> es elevar el coste de plagiar por encima del de escribir la app desde cero, y respaldar
+> técnicamente lo que la licencia MIT ya exige legalmente: **conservar la atribución**.
+
+### Configurar tu propia huella
 
 ```bash
 # 1) Huella SHA-256 de tu certificado de release (sin los dos puntos, en mayúsculas)
-keytool -list -v -keystore tu-release.jks -alias tu-alias \
-  | grep -i 'SHA256:' | awk '{print $2}' | tr -d ':' | tr 'a-f' 'A-F'
+keytool -list -v -keystore tu-keystore.jks -alias tu-alias \
+  | grep "SHA256:" | cut -d' ' -f3 | tr -d ':' | tr 'a-f' 'A-F'
 
 # 2) Marca = SHA-256 de esa huella (esto es lo que va en RELEASE_MARK)
-printf 'PEGA_AQUI_LA_HUELLA_DEL_PASO_1' | sha256sum | awk '{print toupper($1)}'
+printf 'TU_HUELLA_EN_MAYUSCULAS' | sha256sum | tr 'a-f' 'A-F'
 ```
 
-Mientras `RELEASE_MARK` esté vacío, el anti-tamper solo avisa por log. La marca del build
-**debug** del autor ya viene incluida, así que la depuración funciona sin tocar nada.
+Pega el resultado en `RELEASE_MARK`, dentro de
+`app/src/main/java/com/Azelmods/App/data/security/IntegrityGuard.kt`.
+
+---
 
 ## Compilar el proyecto
 
 ### Requisitos
 
-- **Android Studio** reciente (con soporte para compileSdk 36)
+- **Android Studio** Ladybug o superior
 - **JDK 17**
-- Dispositivo o emulador con **Android 12 (API 31)** o superior
-- Un proyecto de **Firebase** en **plan Blaze** — Cloud Functions no está en el plan gratuito
-- **Node 22** y **Firebase CLI** (`npm install -g firebase-tools`) para desplegar el backend
+- **Android SDK 36**
+- Una cuenta de **Firebase** (plan gratuito Spark es suficiente para desarrollo)
+- **Node.js 22** y **Firebase CLI** (solo para desplegar reglas y funciones)
 
 ### Pasos
 
@@ -407,10 +771,9 @@ cd NexusChat
 #    - Poner tu project id en .firebaserc
 
 # 3. Desplegar las reglas de seguridad
-firebase deploy --only database
-firebase deploy --only storage
+firebase deploy --only database,storage
 
-# 4. Desplegar las Cloud Functions  ← IMPRESCINDIBLE
+# 4. Desplegar las Cloud Functions  ← IMPRESCINDIBLE para notificaciones push
 cd functions && npm install && cd ..
 firebase deploy --only functions
 
@@ -421,55 +784,45 @@ firebase deploy --only functions
 ./gradlew installDebug
 ```
 
-> **El paso 3 es obligatorio.** Las reglas de `database.rules.json` son las que permiten
-> listar contactos en *Nueva conversación*, crear grupos y usar el botón **+** de Llamadas.
-> Con reglas antiguas desplegadas, esas tres pantallas fallan con *"failed to contact
-> database"* aunque el código de la app sea correcto: las reglas viven en el servidor, no
-> en el APK.
+> **Importante.** Sin el paso 4 las notificaciones push no llegan: el envío lo hace una Cloud
+> Function propia, no un servicio de terceros.
 
-> **El paso 4 es obligatorio.** Las Cloud Functions entregan las notificaciones push, incluido
-> el aviso de llamada entrante. Sin desplegarlas, las llamadas no suenan y no llegan
-> notificaciones con la app cerrada.
->
-> Los tokens de push se guardan ahora en el nodo raíz `fcmTokens/{uid}`. Si actualizas desde
-> una versión anterior, **redespliega también las functions**: leen las dos rutas durante la
-> migración, así que ningún dispositivo se queda sin notificaciones.
+### Autenticación por teléfono (opcional)
 
-La señalización de llamadas y la sincronización de mensajes no necesitan ningún servidor
-adicional: usan el proyecto de Firebase configurado. La navegación Tor requiere tener
-[Orbot](https://guardianproject.info/apps/org.torproject.android/) instalado en el dispositivo.
+Si quieres el acceso por SMS, registra en Firebase Console la huella **SHA-256** de tu
+certificado de firma (Authentication → Sign-in → Teléfono) y vuelve a descargar
+`google-services.json`. Sin la SHA-256, Play Integrity rechaza la verificación y **el SMS
+nunca llega** — es la causa número uno de ese fallo.
 
-### Firma de release (solo para publicar)
-
-El `buildType release` lee las credenciales de `keystore.properties`, que está en
-`.gitignore` y **nunca debe subirse**. Si el archivo no existe, el build avisa y firma en
-debug — suficiente para instalar y compartir el APK, pero Google Play lo rechaza.
+### Firma de release
 
 ```bash
-keytool -genkey -v -keystore nexuschat-release.jks -keyalg RSA \
-        -keysize 2048 -validity 10000 -alias nexuschat
-cp keystore.properties.example keystore.properties   # y rellenar
+cp keystore.properties.example keystore.properties
+# Rellena storeFile, storePassword, keyAlias y keyPassword con tu keystore real
+./gradlew assembleRelease
 ```
 
-Guarda el `.jks` con tu vida: si lo pierdes, no podrás volver a actualizar la app en Play.
+`keystore.properties` está en `.gitignore`: las credenciales nunca viajan al repositorio. Si
+el archivo no existe, el build de release avisa y firma con la clave de debug.
 
 ### Modelos de IA locales
 
-Los servidores locales (Ollama, LM Studio, llama.cpp) hablan HTTP en claro, y
-`network_security_config.xml` solo lo permite en **loopback** y en el host del emulador
-(`10.0.2.2`) — no se abre la red entera. En un móvil físico, redirige el puerto:
+Para usar Ollama u otro servidor local desde un móvil físico:
 
 ```bash
 adb reverse tcp:11434 tcp:11434
 ```
 
-y usa `http://127.0.0.1:11434/v1`. Para una IP de la LAN hay que añadirla a mano a
-`network_security_config.xml`: Android no acepta rangos CIDR ahí.
+Luego, en Ajustes → IA, elige el proveedor local y apunta a `http://127.0.0.1:11434`. Las
+excepciones de tráfico en claro para loopback y para el host del emulador (`10.0.2.2`) ya
+están declaradas en la configuración de seguridad de red.
 
-## Roadmap
+---
+
+## Límites conocidos
 
 <p align="center">
-  <img src="docs/img/roadmap.svg" alt="Roadmap de versiones de NexusChat" width="280">
+  <img src="docs/img/roadmap.svg" alt="Recorrido de versiones: la v6 es la version final" width="280">
 </p>
 
 <details>
@@ -486,186 +839,204 @@ flowchart TD
 
 </details>
 
-La v6 cierra el recorrido. Lo que queda por debajo **no está planificado para una próxima
-versión**: se documenta como lo que es —los límites conocidos de esta entrega— para que
-quien parta de esta plantilla sepa exactamente qué tendría que construir por su cuenta.
+La v6 cierra el recorrido. Lo siguiente **no está planificado para una próxima versión**: se
+documenta como lo que es —los límites conocidos de esta entrega— para que quien parta de esta
+plantilla sepa exactamente qué tendría que construir por su cuenta.
 
 - **Play Billing real** — la pantalla Premium muestra los planes previstos pero **no cobra
   nada**, y lo dice explícitamente. No se simula ninguna compra.
 - **Tema claro completo** — la infraestructura de tokens está lista desde la v4; falta
   repasar pantalla por pantalla.
 - **E2EE en grupos** — hoy solo se cifran de extremo a extremo los chats 1:1.
-- **Servidor TURN propio** — las llamadas usan los STUN públicos de Google y, como
-  respaldo para NAT restrictivos (redes corporativas, algunas 4G), el TURN **gratuito
-  y compartido** `openrelay.metered.ca`. Funciona para probar, pero si publicas una app
-  basada en esta plantilla **monta tu propio TURN** (coturn, Twilio, Metered de pago):
-  el gratuito no da garantías de disponibilidad y su tráfico pasa por un tercero. Se
-  cambia en un solo sitio, `WebRTCManager.kt` → `iceServers`.
+- **Servidor TURN propio** — las llamadas usan los STUN públicos de Google y, como respaldo
+  para NAT restrictivos, un TURN **gratuito y compartido**. Funciona para probar, pero si
+  publicas una app basada en esta plantilla **monta tu propio TURN** (coturn, Twilio, Metered
+  de pago). Se cambia en un solo sitio: `WebRTCManager.kt` → `iceServers`.
+- **Cobertura de tests** — el proyecto tiene pruebas unitarias de ViewModels, navegación y
+  contraste de la paleta, pero la cobertura es parcial frente al tamaño del código.
+
+---
+
+## Preguntas frecuentes
+
+<details>
+<summary><strong>¿Puedo usar esto para mi propia app comercial?</strong></summary>
+
+<br>
+
+Sí. La licencia MIT lo permite explícitamente, incluido el uso comercial. La única condición
+es **conservar el aviso de copyright y la atribución al autor** que la propia licencia exige.
+
+</details>
+
+<details>
+<summary><strong>¿Está en Google Play?</strong></summary>
+
+<br>
+
+No. Se distribuye únicamente por **GitHub y repositorios alternativos**. El proyecto está
+pensado como plantilla para desarrolladores, no como producto de tienda.
+
+</details>
+
+<details>
+<summary><strong>¿El cifrado es real o decorativo?</strong></summary>
+
+<br>
+
+Real, y verificable: el código está en `data/security/encryption/`. ECDH sobre P-256 para
+derivar el secreto compartido y AES-256-GCM para el contenido. Puedes comprobar en la consola
+de Firebase que lo almacenado son bytes cifrados.
+
+Con el matiz importante ya declarado: **aplica a chats 1:1, no a grupos**.
+
+</details>
+
+<details>
+<summary><strong>¿Necesito pagar algo para ejecutarlo?</strong></summary>
+
+<br>
+
+No para desarrollo. El plan gratuito de Firebase (Spark) es suficiente. Ten en cuenta que
+desplegar Cloud Functions puede requerir el plan Blaze según la región y el uso, aunque el
+consumo real de una app en desarrollo se mantiene dentro del margen gratuito.
+
+Las funciones de IA usan **tu propia clave** del proveedor que elijas — o ninguna, si usas un
+modelo local con Ollama.
+
+</details>
+
+<details>
+<summary><strong>¿Por qué minSdk 31 y no algo más bajo?</strong></summary>
+
+<br>
+
+Android 12 introduce las APIs de seguridad y los comportamientos de servicios en primer plano
+sobre los que se apoyan las llamadas y el bloqueo de la app. Bajar de ahí obligaría a
+mantener rutas de compatibilidad que ensuciarían el código sin aportar a los objetivos del
+proyecto.
+
+</details>
+
+<details>
+<summary><strong>¿Puedo cambiar el nombre y la marca?</strong></summary>
+
+<br>
+
+Puedes personalizar la app libremente. Lo que la licencia MIT exige conservar es el **aviso de
+copyright y la atribución al autor original**, y esa atribución está respaldada técnicamente
+por `IntegrityGuard` (ver [Integridad y anti-manipulación](#integridad-y-anti-manipulación)).
+
+</details>
+
+---
 
 ## Novedades de la v6
 
-La v6 es la version final. Se centra en dos cosas: cerrar los fallos que impedian
-usar la app con normalidad y activar las funciones que llevaban versiones a medias.
+La v6 es la **versión final**. Cierra los frentes abiertos y añade lo que faltaba para que
+nada en la interfaz sea decorativo.
 
 ### Correcciones que desbloquean el uso diario
 
-- **Cifrado legible en los dos lados.** El emisor veia su propio mensaje como
-  "Mensaje cifrado de extremo a extremo" y el receptor como "No se pudo descifrar".
-  Eran dos fallos: no se descifraban los mensajes propios (el secreto ECDH es
-  simetrico, asi que la misma clave sirve para ambos sentidos) y el par de claves
-  se guardaba por dispositivo en vez de por cuenta, de modo que dos sesiones en el
-  mismo movil se pisaban las claves.
-- **Llamadas y videollamadas.** Se pedia permiso de camara incluso para llamar por
-  voz y la pantalla se bloqueaba si se denegaba; el contexto EGL del reproductor de
-  video se liberaba justo al conectar, dejando la imagen en negro; y cada pantalla
-  de llamada pisaba los callbacks de senalizacion de la anterior.
-- **Borrar y vaciar conversaciones.** Borrar un chat no tocaba el indice
-  `userChats`, que es lo que escucha la pantalla de inicio, asi que la conversacion
-  seguia en la lista. "Clear Chat" no hacia nada en absoluto.
-- **Fotos y reenvio.** Con Coil 3 `painter.state` es un `StateFlow`; el codigo lo
-  trataba como el estado, de modo que descargar, compartir y reenviar respondian
-  siempre "espera a que cargue la imagen".
-- **Guia de bienvenida.** El bot demo emparejaba palabras por subcadena, y "ia"
-  casaba dentro de "historias" y "gracias". Ahora compara palabras completas y
-  explica que es NexusChat, por que existe y que hace.
+- **Presencia real.** Había **dos campos** en la base de datos para lo mismo: `online` (con
+  `onDisconnect()`) e `isOnline`, que se ponía a `true` al entrar y **nadie ponía nunca a
+  `false`**. Toda la interfaz leía el segundo, así que todo el mundo aparecía siempre en
+  línea. Ahora ambos se escriben juntos y ambos tienen `onDisconnect`.
+- **Textos de "última vez" que mentían.** Sin marca de tiempo se devolvía *"Hace un momento"*
+  —afirmar que alguien acaba de conectarse cuando no se sabe nada de él—. Y con el reloj
+  adelantado salían diferencias negativas: *"hace -3 min"*. Corregido.
+- **Vaciar chat cerraba la app.** El `Toast` se lanzaba desde `Dispatchers.IO`. Desde la lista
+  de chats no fallaba porque ese camino ya estaba corregido; desde dentro de la conversación,
+  sí.
+- **El tamaño de letra no hacía nada.** Solo se escalaba la `Typography` de Material, que la
+  mayoría de los textos no usa. Ahora se escala la densidad de fuente de todo el árbol.
+- **Traducciones colgadas para siempre.** Se usaba `URL.readText()`, cuyo timeout por defecto
+  es **infinito**. Ahora hay timeouts explícitos de conexión y lectura.
+- **La IA se quedaba cargando.** Toda operación tiene ahora un tope de tiempo duro.
+- **Enlaces .onion.** SOCKS5 primero, sin bloqueo previo del enlace, y sin culpar a Orbot de
+  un 404 que en realidad demuestra que Tor funcionó.
+- **Bot de bienvenida.** Emparejaba por subcadena: `"ia"` casaba dentro de *histor**ia**s*, así
+  que preguntar por las historias respondía sobre proveedores de IA. Y el recorrido daba la
+  vuelta, con sensación de reinicio. Ahora compara palabras completas y el tour es finito.
 
-### Entrar con numero de telefono
+### Entrar con número de teléfono
 
-Tercera via de acceso junto al correo y Google: SMS con codigo de 6 digitos,
-reenvio con cuenta atras y verificacion instantanea cuando Android la ofrece.
+Acceso por **SMS** con reenvío controlado por cuenta atrás —pulsar "reenviar" varias veces
+seguidas hace que Firebase bloquee el número durante horas—, verificación instantánea cuando
+Android la ofrece, y diagnóstico claro cuando falla la verificación de la app.
 
 ### Las seis funciones de IA, ya activas
 
-Estaban en el codigo pero fuera de la interfaz porque eran interruptores
-decorativos. Ahora tienen implementacion real y persisten en DataStore:
+Respuestas sugeridas, auto-traducción, resumen, tono, mejora de fotos y dictado. Todas
+apagadas de fábrica, con interruptores individuales y gateo por proveedor configurado.
 
-| Funcion | Que hace | Donde corre |
-|---|---|---|
-| Respuestas sugeridas | Tres respuestas rapidas sobre el teclado | Tu proveedor de IA |
-| Traducir lo que recibo | Traduce los mensajes entrantes sin tocar el original | Tu proveedor de IA |
-| Resumen de conversacion | Anade "Resumir chat" al menu | Tu proveedor de IA |
-| Sugerencias de tono | Reescribe tu borrador: cercano, formal, corto, amable | Tu proveedor de IA |
-| Mejorar fotos | Realce de contraste y color al enviar | En el dispositivo |
-| Dictado por voz | Dicta el mensaje al campo de texto | Reconocedor de Android |
+### Seguridad y utilidades reales
 
-Todas nacen **apagadas**: las cuatro primeras envian parte de la conversacion al
-proveedor configurado, y eso no puede ocurrir por defecto en una app con cifrado de
-extremo a extremo. La pantalla de ajustes lo dice con esas palabras.
+- **2FA por TOTP** que deja de ser un adorno: hay un secreto real que verificar.
+- **Copias de seguridad que de verdad exportan.** Antes se escribían en
+  `Android/data/<pkg>/files`, que en Android 11+ **no es navegable**: la copia existía pero el
+  usuario no podía verla. Ahora se guarda donde tú elijas.
+- **Terminal mejorada**: historial navegable, alias, `sysinfo` y prompt con el directorio.
+- **Anti-manipulación** con firma del binario y marca de autoría ofuscada.
+- **Markdown** renderizado en las respuestas de la IA.
+- Marca unificada bajo el nombre **NexusChat**.
 
-El traductor tambien usa ese modelo cuando esta disponible. La API gratuita anterior
-es una memoria de traduccion: con mensajes cortos de chat devolvia la coincidencia
-mas parecida que tuviera guardada, que a menudo no significaba lo mismo. Sigue como
-respaldo cuando no hay clave configurada.
-
-### Markdown en las respuestas de la IA
-
-Encabezados, negrita, cursiva, listas, citas y bloques de codigo con etiqueta de
-lenguaje y boton de copiar. Antes se leian los asteriscos y las comillas invertidas
-tal cual.
-
-### Nexus Design System v6
-
-Nuevos tokens de **vidrio** (`NexusTokens.Glass`), **opacidad de texto por funcion**
-(`Alpha`) y **elevacion semantica** (`Surface`). Hasta la v5 cada pantalla se
-inventaba sus propios alfas, asi que dos superficies del mismo nivel se veian
-distintas segun quien las hubiera escrito.
-
-Las tarjetas de chat estrenan un **rail de acento** vertical en el borde izquierdo
-cuando hay mensajes sin leer: antes lo unico que las distinguia era un borde de 1 dp
-y un contador al otro extremo, invisible de un vistazo sobre un fondo de pantalla.
-La pantalla de inicio conserva su transparencia.
-
-### Cierre de la v6: seguridad y utilidades reales
-
-Ronda final para que lo que estaba a medias funcione de verdad:
-
-- **Verificacion en dos pasos (2FA) real.** Era un interruptor decorativo. Ahora genera
-  un secreto **TOTP** (RFC 6238) compatible con Google Authenticator/Aegis, se confirma
-  con un codigo al activarlo y se **exige un codigo de 6 digitos** tras el PIN o la huella
-  en la pantalla de desbloqueo.
-- **Copia de seguridad que exporta de verdad.** Antes escribia el fichero cifrado en una
-  carpeta interna invisible en Android 11+. Ahora, tras crearla, se abre el selector del
-  sistema para **guardar la copia donde tu quieras** (Descargas, Drive, etc.).
-- **Tamano de letra que se nota.** El ajuste escalaba solo la tipografia de Material,
-  pero casi toda la app fija el tamano en `sp` a mano. Ahora se escala la **densidad de
-  fuente** del arbol entero: todo el texto crece o encoge por igual.
-- **La IA ya no se cuelga.** Resumenes y traducciones podian quedarse cargando para
-  siempre (la traduccion abria una conexion **sin timeout**). Ahora toda operacion de IA
-  tiene un tope de tiempo y falla con un mensaje claro en vez de girar sin fin.
-- **Terminal mas capaz.** Historial navegable con flechas, alias (`ll`, `la`), `sysinfo`
-  estilo neofetch, prompt con el directorio actual y una fila de simbolos para teclear
-  `/ ~ | > *` sin pelearse con el teclado.
-- **Firma de autoria anti-manipulacion.** Ver [Integridad y anti-manipulación](#integridad-y-anti-manipulación).
+---
 
 ## Novedades de la v5
 
-La v5 abre la app a cualquier modelo de IA, convierte el editor en una herramienta de
-desarrollo real y completa las historias con música y dibujo.
-
 ### Asistente de IA sin ataduras
 
-El usuario decide con qué inteligencia habla. **Gemini, OpenAI, OpenRouter, DeepSeek,
-Qwen, GLM (Z.ai), Kimi (Moonshot), Mistral, Groq, Ollama** o cualquier endpoint propio
-compatible con OpenAI —LM Studio, vLLM, llama.cpp—, cada uno con su clave y su modelo.
-La clave se guarda cifrada en el dispositivo.
-
-El catálogo de modelos **no está grabado en la app**: el botón *Buscar modelos* consulta el
-endpoint `/models` del proveedor y ofrece lo que realmente hay disponible en tu cuenta. Así,
-cuando un proveedor publica una versión nueva, aparece sola —sin actualizar la app— y el
-campo de modelo sigue siendo texto libre para casos a medida.
-
-Incluye **modelos locales**: con Ollama corriendo en tu equipo, las conversaciones no salen
-de tu red. Y el comportamiento del asistente lo define el modelo elegido, no la app.
+El usuario elige proveedor, modelo y clave: Gemini, OpenAI, OpenRouter, DeepSeek, Mistral,
+Groq, Ollama local o cualquier endpoint compatible. Catálogo de modelos consultado en vivo al
+proveedor, en vez de una lista hardcodeada que envejece.
 
 ### Editor de código de verdad
 
-Resaltado de sintaxis para **HTML, CSS, JavaScript, TypeScript, JSX, TSX, JSON, Python,
-Kotlin, Bash y C**, con vista previa real de HTML y CSS en WebView, ejecución de JavaScript
-y validación con formateo de JSON, todo en el dispositivo y sin conexión.
+Resaltado para TypeScript, JSX, TSX y JSON además de los ya soportados; vista previa real de
+HTML/CSS y validación de JSON en el dispositivo.
 
 ### Historias completas
 
-Añade **música** a una historia —la pista viaja con ella y suena en el visor, en bucle y
-respetando la pausa— y **dibuja sobre la foto**: los trazos quedan grabados en la imagen que
-se publica.
+Música que acompaña a la historia —seleccionada, subida y reproducida— y dibujo a mano alzada
+sobre la foto.
 
 ### Comunicación más sólida
 
-- Mensajería y llamadas con **notificaciones push propias**, servidas desde Cloud Functions
-- **Historial de llamadas** completo, tanto emitidas como recibidas
-- Navegación **Tor** con detección de Orbot en tiempo real y selección automática de proxy
+Historial de llamadas que dejó de ser denegado por las reglas, y notificaciones push migradas
+a una API vigente después de que Google apagara la anterior.
 
-### Asistente de bienvenida que conversa
+### Interfaz y publicación
 
-El **Demo Chat** ya no es un guion estático: escríbele y *Azel Assistant* responde
-**mensaje a mensaje**, con pausas naturales, guiando un recorrido por las funciones de la
-app. Pregúntale por *cifrado*, *Tor*, *IA*, *historias*, *llamadas* o *código* y te explica
-cada una desde una conversación real, guardada en la base de datos como cualquier otra.
+Rediseño de la lista de chats sobre el Design System, backend desplegable con un comando, y
+pantalla Premium que declara que las suscripciones no están activas en lugar de simular una
+compra.
 
-### Interfaz de la lista de chats
-
-Cada conversación es ahora una **tarjeta** translúcida —el fondo del usuario se sigue
-viendo— con anillo de acento solo cuando hay mensajes sin leer, respuesta táctil al pulsar y
-menú de mantener pulsado (fijar, silenciar, archivar, eliminar) por fin accesible. Los
-**checks de lectura** se dibujan a medida, con el azul de "visto" del design system.
-
-### Lista para publicar
-
-- **Firma de release** con keystore propio, fuera del repositorio
-- Backend desplegable con un comando: reglas de seguridad y Cloud Functions
-- La pantalla **Premium** muestra los planes previstos y deja claro que las suscripciones aún
-  no están activas: no simula ninguna compra
+---
 
 ## Autoría
 
-**NexusChat está desarrollado y mantenido íntegramente por [Azel Mods](https://github.com/Azelmods677)**,
-único autor y propietario del proyecto.
+<p align="center">
+  <strong>NexusChat está diseñado, desarrollado y mantenido en su totalidad por<br>
+  <a href="https://github.com/Azelmods677">Azel Mods</a> — desarrollador único y propietario del proyecto.</strong>
+</p>
+
+Todo el trabajo del repositorio es de autoría individual: arquitectura, criptografía, motor
+de llamadas, sistema de diseño, backend, reglas de seguridad, Cloud Functions, identidad
+visual y documentación técnica.
 
 El código se publica como **plantilla para desarrolladores**: puedes clonarlo, estudiarlo,
-modificarlo y construir tu propia app encima, según los términos de la licencia MIT. Se
-distribuye únicamente por **GitHub y repositorios alternativos**, no por Google Play.
+modificarlo y construir tu propia app encima, según los términos de la licencia MIT, siempre
+conservando el aviso de copyright y la atribución al autor. Se distribuye únicamente por
+**GitHub y repositorios alternativos**, no por Google Play.
+
+---
 
 ## Licencia
 
-Distribuido bajo licencia **MIT**. Copyright © 2026 Azel Mods.
-Ver [LICENSE](LICENSE) para más detalles.
+Distribuido bajo licencia **MIT**. Copyright © 2026 **Azel Mods**.
+Ver [LICENSE](LICENSE) para el texto completo.
+
+<p align="center">
+  <sub>NexusChat v6.0.0 — versión final · Hecho con Kotlin y Jetpack Compose</sub>
+</p>
