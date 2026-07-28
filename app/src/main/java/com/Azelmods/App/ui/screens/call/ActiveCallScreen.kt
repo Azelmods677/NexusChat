@@ -51,20 +51,32 @@ fun ActiveCallScreen(
         return
     }
     
-    // Permission check
+    // ── Permisos: SOLO los que la llamada necesita de verdad ──
+    //
+    // Antes se exigían micrófono Y cámara para cualquier llamada, y la pantalla
+    // hacía `return` mientras faltara alguno. Resultado: quien denegaba la
+    // cámara —lo normal en una llamada de voz— se quedaba clavado en la pantalla
+    // de permisos, el `LaunchedEffect` que crea la llamada nunca llegaba a
+    // ejecutarse y la llamada no salía ni entraba. Por eso "las llamadas no
+    // funcionan" para el que llama y para el que recibe.
+    val isVideoCall = callType.equals("video", ignoreCase = true)
+    val requiredPermissions = remember(isVideoCall) {
+        if (isVideoCall) {
+            listOf(android.Manifest.permission.RECORD_AUDIO, android.Manifest.permission.CAMERA)
+        } else {
+            listOf(android.Manifest.permission.RECORD_AUDIO)
+        }
+    }
     val permissions = com.google.accompanist.permissions.rememberMultiplePermissionsState(
-        listOf(
-            android.Manifest.permission.RECORD_AUDIO,
-            android.Manifest.permission.CAMERA
-        )
+        requiredPermissions
     )
-    
+
     LaunchedEffect(Unit) {
         if (!permissions.allPermissionsGranted) {
             permissions.launchMultiplePermissionRequest()
         }
     }
-    
+
     // Show permission rationale if not granted
     if (!permissions.allPermissionsGranted) {
         Box(
@@ -78,32 +90,36 @@ fun ActiveCallScreen(
                 modifier = Modifier.padding(32.dp)
             ) {
                 Icon(
-                    Icons.Default.Mic,
+                    if (isVideoCall) Icons.Default.Videocam else Icons.Default.Mic,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(64.dp)
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 Text(
                     text = "Permisos Requeridos",
                     color = Color.White,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
-                
+
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Text(
-                    text = "Necesitamos acceso al micrófono y cámara para realizar llamadas",
+                    text = if (isVideoCall) {
+                        "Necesitamos el micrófono y la cámara para las videollamadas"
+                    } else {
+                        "Necesitamos el micrófono para las llamadas de voz"
+                    },
                     color = Color.Gray,
                     fontSize = 14.sp,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-                
+
                 Spacer(modifier = Modifier.height(24.dp))
-                
+
                 Button(
                     onClick = { permissions.launchMultiplePermissionRequest() },
                     colors = ButtonDefaults.buttonColors(
@@ -112,9 +128,9 @@ fun ActiveCallScreen(
                 ) {
                     Text("Conceder Permisos")
                 }
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 TextButton(onClick = { navController.popBackStack() }) {
                     Text("Cancelar", color = Color.Gray)
                 }
@@ -127,7 +143,12 @@ fun ActiveCallScreen(
     
     LaunchedEffect(contactId) {
         try {
-            val type = if (callType == "video") com.Azelmods.App.data.model.CallType.VIDEO
+            // Case-insensitive a propósito: el tipo llega en minúsculas desde la
+            // navegación interna pero en MAYÚSCULAS desde el push de FCM
+            // (CallType.name). Compararlo sólo contra "video" degradaba las
+            // videollamadas entrantes a audio, y entonces el receptor negociaba
+            // sin pista de vídeo contra una oferta que sí la traía.
+            val type = if (isVideoCall) com.Azelmods.App.data.model.CallType.VIDEO
                        else com.Azelmods.App.data.model.CallType.AUDIO
             if (isCaller) {
                 // Caller: contactId is the OTHER user's id. startCall creates the call,

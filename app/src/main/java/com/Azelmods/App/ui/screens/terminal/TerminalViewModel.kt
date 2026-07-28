@@ -29,7 +29,9 @@ class TerminalViewModel @Inject constructor(
     // Expose terminal state
     val lines: StateFlow<List<RealTerminalEmulator.TerminalLine>> = terminalEmulator.lines
     val isRoot: StateFlow<Boolean> = terminalEmulator.isRoot
-    
+    val cwd: StateFlow<String> = terminalEmulator.cwd
+    val history: StateFlow<List<String>> = terminalEmulator.history
+
     fun execute(command: String) {
         viewModelScope.launch {
             terminalEmulator.execute(command)

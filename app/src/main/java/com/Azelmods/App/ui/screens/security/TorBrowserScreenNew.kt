@@ -117,11 +117,24 @@ fun TorBrowserScreenNew(
             withContext(Dispatchers.IO) {
                 try {
                     // I/O de red SIEMPRE en Dispatchers.IO (nunca en el hilo principal).
-                    val hasHttp = OrbotDetector.isHttpProxyAvailable()
                     val hasSocks = OrbotDetector.isSocksProxyAvailable()
+                    val hasHttp = OrbotDetector.isHttpProxyAvailable()
+                    // SOCKS5 (9050) PRIMERO, y no el HTTP (8118).
+                    //
+                    // El 8118 lo servía Privoxy, que Orbot dejó de arrancar por
+                    // defecto hace varias versiones; el 9050 es el que expone
+                    // siempre. Sondear primero el 8118 significaba, en un Orbot
+                    // moderno, esperar los 3 s completos de timeout antes de
+                    // llegar al que sí funciona — y ese retraso es justo el que
+                    // dejaba `proxyEnabled` en false mientras el usuario tocaba
+                    // el enlace.
+                    //
+                    // Además, para .onion el SOCKS5 es lo correcto: la resolución
+                    // del nombre la hace Tor en el otro extremo, que es la única
+                    // manera de resolver una dirección .onion.
                     proxyRule = when {
-                        hasHttp -> "http://$ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT"
                         hasSocks -> "socks5://$ORBOT_HTTP_HOST:$ORBOT_SOCKS_PORT"
+                        hasHttp -> "http://$ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT"
                         else -> null
                     }
                     torReady = proxyRule != null
@@ -666,7 +679,7 @@ private fun getErrorPage(url: String, errorCode: Int, description: String): Stri
             </p>
         </div>
         <div class="hint">Intenta recargar la página o verifica la URL</div>
-        <div class="brand">Azelgram — Navegador Privado</div>
+        <div class="brand">NexusChat — Navegador Privado</div>
     </div>
 </body>
 </html>
@@ -894,42 +907,47 @@ private fun WebView.setupWebView(
                     val isOnionUrl = url.contains(".onion")
                     
                     if (isOnionUrl) {
-                        // CAUSA RAÍZ DEL CRASH: shouldOverrideUrlLoading corre en el hilo
-                        // principal (UI). Llamar aquí a OrbotDetector.isSocksProxyAvailable()/
-                        // isHttpProxyAvailable() hacía un Socket.connect BLOQUEANTE en el hilo
-                        // principal → android.os.NetworkOnMainThreadException → la app crasheaba
-                        // al tocar un enlace .onion sin Tor activo. Usamos únicamente el estado
-                        // proxyEnabled, que ya se detectó de forma asíncrona en el LaunchedEffect.
-                        val torActive = proxyEnabled()
+                        // NUNCA se bloquea aquí un .onion.
+                        //
+                        // Esto era lo que impedía abrir direcciones .onion con
+                        // Orbot funcionando. La comprobación anterior era
+                        // `if (!proxyEnabled()) { mostrar error; return true }`,
+                        // y `proxyEnabled` solo pasa a true cuando WebView invoca
+                        // el callback ASÍNCRONO de setProxyOverride, después de
+                        // un delay(500) y de hasta 3 s sondeando el puerto 8118 y
+                        // otros 3 s el 9050. Durante esos ~6,5 s —y en cualquier
+                        // recomposición que reiniciara el estado— la app rechazaba
+                        // el enlace por su cuenta y pintaba una pantalla de error
+                        // diciendo que la conexión estaba bloqueada, aunque Tor
+                        // estuviera perfectamente arriba. El bloqueo lo ponía la
+                        // app, no la red.
+                        //
+                        // Ahora se deja que la carga ocurra. Si de verdad falla,
+                        // `onReceivedError` ya distingue el motivo (Orbot caído,
+                        // dirección v2 muerta, servicio inaccesible) y enseña ahí
+                        // el mensaje correcto, que es el sitio donde se sabe qué
+                        // ha pasado de verdad.
+                        //
+                        // El esquema del enlace se respeta: los servicios onion v3
+                        // admiten HTTPS y algunos lo exigen, así que reescribir
+                        // https:// → http:// rompía justo los que mejor funcionan.
+                        Log.d(TAG, "🧅 Cargando .onion (proxy activo=${proxyEnabled()}): $url")
 
-                        if (!torActive) {
-                            // Tor NO está activo - mostrar página de ayuda
-                            Log.w(TAG, "⚠️ Intento de cargar .onion sin Tor activo: $url")
-                            val helpHtml = getOnionHelpPage(url)
-                            view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
-                            
+                        if (!proxyEnabled()) {
+                            // Aviso NO bloqueante: se intenta igual, pero se
+                            // advierte por si Orbot aún está arrancando.
                             scope.launch {
                                 try {
                                     snackbarHostState.showSnackbar(
-                                        message = "🧅 Los sitios .onion requieren Orbot activo. Abre Orbot y recarga.",
-                                        duration = SnackbarDuration.Long
+                                        message = "🧅 Conectando por Tor… si falla, comprueba que Orbot esté activo y recarga.",
+                                        duration = SnackbarDuration.Short
                                     )
                                 } catch (e: Exception) {
                                     Log.e(TAG, "❌ Error mostrando snackbar", e)
                                 }
                             }
-                            return true // Bloquear la carga
-                        } else {
-                            // Tor está activo: se carga el .onion tal cual.
-                            //
-                            // ANTES se reescribía https:// → http:// "para asegurar el
-                            // protocolo". Era incorrecto: los servicios onion v3 SÍ
-                            // admiten HTTPS y algunos (DuckDuckGo, Proton) lo exigen,
-                            // así que ese downgrade rompía justo los sitios que mejor
-                            // funcionan. El esquema lo decide el enlace, no la app.
-                            Log.d(TAG, "✅ Tor activo - cargando .onion: $url")
-                            return false
                         }
+                        return false
                     }
                     
                     // URLs normales (no .onion) - permitir siempre
@@ -1003,22 +1021,13 @@ private fun WebView.setupWebView(
 
                         Log.w(TAG, "Error HTTP en $url: $statusCode $reasonPhrase")
 
-                        // Para .onion con error, mostrar la guía de ayuda
-                        if (url.contains(".onion")) {
-                            val helpHtml = getOnionHelpPage(url)
-                            view?.loadDataWithBaseURL(null, helpHtml, "text/html", "UTF-8", null)
-                            scope.launch {
-                                try {
-                                    snackbarHostState.showSnackbar(
-                                        message = "🧅 No se pudo cargar $url — ¿Orbot activo?",
-                                        duration = SnackbarDuration.Long
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e(TAG, "❌ Error mostrando snackbar", e)
-                                }
-                            }
-                            return
-                        }
+                        // Aquí ya NO se desvía el .onion a la guía de "¿Orbot
+                        // activo?". Un código de estado HTTP significa que la
+                        // petición LLEGÓ al servicio oculto y este respondió: Tor
+                        // hizo su trabajo. Esa rama tapaba sitios que se habían
+                        // cargado correctamente y culpaba a Orbot de un 404 o un
+                        // 403 del propio servidor. Se muestra el error real, igual
+                        // que para cualquier otra web.
 
                         // Para errores HTTP específicos, mostrar página de error detallada
                         val description = when (statusCode) {

@@ -108,6 +108,19 @@ class AppLockManager @Inject constructor(
     suspend fun isBiometricEnabled(): Boolean {
         return appLockPreferences.isBiometricEnabled.first()
     }
+
+    /**
+     * `true` si el segundo factor (TOTP) está activo. Cuando lo está, desbloquear
+     * exige, además del PIN o la huella, el código de 6 dígitos de la app de
+     * autenticación. Así el 2FA deja de ser decorativo.
+     */
+    suspend fun is2faEnabled(): Boolean = appLockPreferences.is2faEnabledNow()
+
+    /** Comprueba un código TOTP contra el secreto guardado (±30 s de tolerancia). */
+    suspend fun verifyTotp(code: String): Boolean {
+        val secret = appLockPreferences.getTotpSecret() ?: return false
+        return com.Azelmods.App.data.security.TotpAuthenticator.verify(secret, code)
+    }
     
     /**
      * Resetea el estado de bloqueo (usado al cerrar sesión)

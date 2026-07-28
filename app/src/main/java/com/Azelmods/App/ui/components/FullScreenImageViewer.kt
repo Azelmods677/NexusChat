@@ -42,11 +42,20 @@ import kotlin.math.abs
 import com.Azelmods.App.ui.theme.ErrorRed
 import com.Azelmods.App.ui.theme.DarkSurface
 
-@Suppress("USELESS_IS_CHECK")
 /**
  * 🖼️ FULL SCREEN IMAGE VIEWER
  * Visor de imágenes a pantalla completa con zoom, pan, descarga y swipe-to-dismiss
  * Similar a WhatsApp/Telegram - Usa Dialog fullscreen para cubrir barras del sistema
+ *
+ * Los `@Suppress("USELESS_IS_CHECK")` y `@Suppress("KotlinConstantConditions")`
+ * que llevaba este archivo silenciaban los avisos del compilador sobre las ramas
+ * `is AsyncImagePainter.State.Loading/Error`, que efectivamente eran inalcanzables
+ * porque se comparaba contra un `StateFlow` en vez de contra el estado. Corregido
+ * el tipo, los avisos desaparecen y las supresiones sobran.
+ *
+ * @param onDelete si se indica, el visor muestra un botón de eliminar operativo.
+ *   Recibe `true` cuando el usuario elige borrar para todos.
+ * @param canDeleteForEveryone `true` sólo si la foto la envió el propio usuario.
  */
 @Composable
 fun FullScreenImageViewer(
@@ -54,7 +63,9 @@ fun FullScreenImageViewer(
     senderName: String = "",
     timestamp: String = "",
     onDismiss: () -> Unit,
-    onDownload: (() -> Unit)? = null
+    onDownload: (() -> Unit)? = null,
+    onDelete: ((Boolean) -> Unit)? = null,
+    canDeleteForEveryone: Boolean = false
 ) {
     // Dialog fullscreen que cubre toda la pantalla incluyendo barras del sistema
     Dialog(
@@ -69,24 +80,28 @@ fun FullScreenImageViewer(
             senderName = senderName,
             timestamp = timestamp,
             onDismiss = onDismiss,
-            onDownload = onDownload
+            onDownload = onDownload,
+            onDelete = onDelete,
+            canDeleteForEveryone = canDeleteForEveryone
         )
     }
 }
 
-@Suppress("KotlinConstantConditions")
 @Composable
 private fun FullScreenImageContent(
     imageUrl: String,
     senderName: String,
     timestamp: String,
     onDismiss: () -> Unit,
-    onDownload: (() -> Unit)?
+    onDownload: (() -> Unit)?,
+    onDelete: ((Boolean) -> Unit)? = null,
+    canDeleteForEveryone: Boolean = false
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var showOptionsMenu by remember { mutableStateOf(false) }
     var showControls by remember { mutableStateOf(true) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val themeColor = rememberThemeColor()
@@ -119,13 +134,41 @@ private fun FullScreenImageContent(
             .build()
     )
 
-    val imageState = painter.state
+    // En Coil 3, `painter.state` es un StateFlow<State>, NO un State.
+    //
+    // El código anterior lo trataba como si fuera el estado en sí. Dos
+    // consecuencias, y las dos se notaban:
+    //   · el `when (imageState)` no casaba nunca con Loading ni con Error, así
+    //     que no había ni indicador de carga ni aviso de imagen rota;
+    //   · `extractBitmap()` intentaba castear el StateFlow a State.Success y
+    //     devolvía null SIEMPRE, de modo que Descargar, Compartir y Reenviar
+    //     respondían "Espera a que cargue la imagen" aunque la foto llevara
+    //     rato visible en pantalla.
+    val imageState by painter.state.collectAsState()
 
     // Extracts the currently-loaded bitmap (if the image finished loading).
-    fun extractBitmap(): Bitmap? =
-        (painter.state as? AsyncImagePainter.State.Success)
-            ?.result?.image?.asDrawable(context.resources)
-            ?.let { (it as? BitmapDrawable)?.bitmap }
+    fun extractBitmap(): Bitmap? {
+        val success = painter.state.value as? AsyncImagePainter.State.Success ?: return null
+        val image = success.result.image
+        val drawable = image.asDrawable(context.resources)
+        (drawable as? BitmapDrawable)?.bitmap?.let { return it }
+
+        // Imágenes que no vienen respaldadas por un Bitmap (vectores, algunos
+        // formatos animados) se rasterizan aquí en vez de darse por perdidas.
+        val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: image.width
+        val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: image.height
+        if (width <= 0 || height <= 0) return null
+        return try {
+            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            drawable.setBounds(0, 0, width, height)
+            drawable.draw(canvas)
+            bitmap
+        } catch (e: Exception) {
+            android.util.Log.e("FullScreenImageViewer", "No se pudo rasterizar la imagen", e)
+            null
+        }
+    }
 
     // Auto-hide controls after 4 seconds
     LaunchedEffect(showControls) {
@@ -461,20 +504,75 @@ private fun FullScreenImageContent(
                     )
 
                     // Delete button
-                    ImageViewerAction(
-                        icon = Icons.Default.Delete,
-                        label = "Eliminar",
-                        color = ErrorRed,
-                        onClick = {
-                            android.widget.Toast.makeText(
-                                context,
-                                "Para eliminar, mantén presionado el mensaje en el chat",
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    )
+                    if (onDelete != null) {
+                        ImageViewerAction(
+                            icon = Icons.Default.Delete,
+                            label = "Eliminar",
+                            color = ErrorRed,
+                            onClick = { showDeleteDialog = true }
+                        )
+                    }
                 }
             }
+        }
+
+        // Diálogo de borrado. "Para todos" sólo se ofrece si la foto es propia:
+        // ofrecerlo sobre la de otra persona sería prometer algo que las reglas
+        // del servidor rechazan.
+        if (showDeleteDialog && onDelete != null) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ErrorRed) },
+                title = { Text("¿Eliminar la foto?") },
+                text = {
+                    Text(
+                        if (canDeleteForEveryone) {
+                            "Puedes quitarla solo de tu vista o borrarla también para la otra persona."
+                        } else {
+                            "La foto desaparecerá de tu conversación. La otra persona la seguirá viendo."
+                        }
+                    )
+                },
+                confirmButton = {
+                    if (canDeleteForEveryone) {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                onDelete(true)
+                            }
+                        ) {
+                            Text("Eliminar para todos", color = ErrorRed)
+                        }
+                    } else {
+                        TextButton(
+                            onClick = {
+                                showDeleteDialog = false
+                                onDelete(false)
+                            }
+                        ) {
+                            Text("Eliminar", color = ErrorRed)
+                        }
+                    }
+                },
+                dismissButton = {
+                    Row {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("Cancelar")
+                        }
+                        if (canDeleteForEveryone) {
+                            TextButton(
+                                onClick = {
+                                    showDeleteDialog = false
+                                    onDelete(false)
+                                }
+                            ) {
+                                Text("Solo para mí")
+                            }
+                        }
+                    }
+                },
+                containerColor = DarkSurface
+            )
         }
 
         // Swipe indicator

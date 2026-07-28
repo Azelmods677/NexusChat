@@ -91,11 +91,58 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
         when (type) {
             "incoming_call" -> showIncomingCallNotification(data)
             "missed_call"   -> showMissedCallNotification(data)
-            "message"       -> showMessageNotification(data)
+            // Silenciar un chat no impedía nada: el ajuste se guardaba y ningún
+            // sitio lo consultaba, así que las notificaciones seguían llegando
+            // igual. La comprobación va aquí, en el cliente, porque el silencio
+            // es una preferencia privada de cada usuario que el servidor no
+            // tiene por qué conocer para decidir a quién enviar el push.
+            //
+            // Las llamadas NO se filtran a propósito: silenciar una
+            // conversación silencia sus mensajes, no impide que te llamen.
+            "message"       -> withChatNotMuted(data) { showMessageNotification(data) }
             "story"         -> showStoryNotification(data)
             "ai"            -> showAINotification(data)
-            else            -> showMessageNotification(data)
+            else            -> withChatNotMuted(data) { showMessageNotification(data) }
         }
+    }
+
+    /**
+     * Ejecuta [onAllowed] salvo que el usuario haya silenciado ese chat.
+     *
+     * Ante cualquier duda —sin sesión, sin chatId, fallo de red al leer el
+     * ajuste— se notifica. Perder un mensaje por un error de lectura es peor
+     * que una notificación de más en un chat silenciado.
+     */
+    private fun withChatNotMuted(data: Map<String, String>, onAllowed: () -> Unit) {
+        val chatId = data["chatId"]
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (chatId.isNullOrBlank() || uid.isNullOrBlank()) {
+            onAllowed()
+            return
+        }
+
+        FirebaseDatabase.getInstance()
+            .getReference("chat_settings/$uid/$chatId")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val isMuted = snapshot.child("isMuted").getValue(Boolean::class.java) ?: false
+                val muteUntil = snapshot.child("muteUntil").getValue(Long::class.java) ?: 0L
+                val silenciado = com.Azelmods.App.data.model.ChatSettings(
+                    chatId = chatId,
+                    isMuted = isMuted,
+                    muteUntil = muteUntil
+                ).isCurrentlyMuted()
+
+                if (silenciado) {
+                    Log.d(TAG, "🔕 Chat $chatId silenciado: no se notifica")
+                } else {
+                    onAllowed()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "No se pudo leer el silencio de $chatId, se notifica igual: ${e.message}")
+                onAllowed()
+            }
     }
 
     // ╔══════════════════════════════════════════════════════════╗

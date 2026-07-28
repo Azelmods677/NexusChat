@@ -522,29 +522,65 @@ private fun BackupRestoreDialog(onDismiss: () -> Unit) {
     ).backupManager()
     var password by remember { mutableStateOf("") }
     var progress by remember { mutableStateOf("") }
+    var working by remember { mutableStateOf(false) }
+    // Id de la copia ya creada, a la espera de que el usuario elija dónde guardarla.
+    var pendingBackupId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    // Selector del sistema "Guardar como…". Aquí es donde la copia sale de la app a
+    // un sitio que el usuario controla (Descargas, Drive, etc.): eso es "exportar".
+    val saveLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri: Uri? ->
+        val backupId = pendingBackupId
+        if (uri == null) {
+            // El usuario canceló el selector. La copia sigue guardada dentro de la app.
+            progress = "Copia creada, pero no se exportó (cancelaste el guardado)."
+            working = false
+        } else if (backupId != null) {
+            scope.launch {
+                progress = "Exportando…"
+                val ok = backupManager.exportBackupTo(backupId, uri)
+                progress = if (ok) "✅ Copia exportada correctamente." else "No se pudo exportar el archivo."
+                working = false
+                pendingBackupId = null
+            }
+        }
+    }
+
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!working) onDismiss() },
         title = { Text("Copia de seguridad") },
         text = {
             Column {
+                Text(
+                    "Se crea una copia CIFRADA de tus chats, contactos y perfil, y eliges " +
+                        "dónde guardarla. Necesitarás esta contraseña para restaurarla.",
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Contraseña de cifrado") },
-                    singleLine = true
+                    singleLine = true,
+                    visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    enabled = !working
                 )
                 if (progress.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    if (working) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(4.dp))
                     Text(progress, fontSize = 12.sp)
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                if (password.isNotBlank()) {
+            TextButton(
+                enabled = !working && password.length >= 4,
+                onClick = {
+                    working = true
                     scope.launch {
                         backupManager.createBackup(
                             password,
@@ -553,17 +589,26 @@ private fun BackupRestoreDialog(onDismiss: () -> Unit) {
                             when (result) {
                                 is com.Azelmods.App.data.backup.BackupResult.Progress ->
                                     progress = result.message
-                                is com.Azelmods.App.data.backup.BackupResult.Success ->
-                                    progress = "Copia completada"
-                                is com.Azelmods.App.data.backup.BackupResult.Error ->
+                                is com.Azelmods.App.data.backup.BackupResult.Success -> {
+                                    // La copia ya existe dentro de la app: ahora se
+                                    // pide al usuario dónde exportarla realmente.
+                                    pendingBackupId = result.backupId
+                                    progress = "Elige dónde guardar el archivo…"
+                                    saveLauncher.launch(backupManager.suggestedExportName())
+                                }
+                                is com.Azelmods.App.data.backup.BackupResult.Error -> {
                                     progress = "Error: ${result.message}"
+                                    working = false
+                                }
                             }
                         }
                     }
                 }
-            }) { Text("Exportar") }
+            ) { Text("Exportar") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } }
+        dismissButton = {
+            TextButton(enabled = !working, onClick = onDismiss) { Text("Cerrar") }
+        }
     )
 }
 

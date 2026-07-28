@@ -35,9 +35,22 @@ fun PrivacySecurityScreen(
     val lastSeenEnabled by viewModel.lastSeenEnabled.collectAsState()
     val profilePhotoVisible by viewModel.profilePhotoVisible.collectAsState()
     val readReceiptsEnabled by viewModel.readReceiptsEnabled.collectAsState()
-    val twoFactorEnabled by viewModel.twoFactorEnabled.collectAsState()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // 2FA real (TOTP), respaldado por AppLockPreferences y aplicado en el bloqueo.
+    val appLockPrefs = remember {
+        dagger.hilt.android.EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            TwoFactorEntryPoint::class.java
+        ).appLockPreferences()
+    }
+    var twoFaEnabled by remember { mutableStateOf(false) }
+    var show2faSetup by remember { mutableStateOf(false) }
+    var show2faDisable by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        appLockPrefs.is2faEnabled.collect { twoFaEnabled = it }
+    }
 
     var showBlockedUsersDialog by remember { mutableStateOf(false) }
     var showActiveSessionsDialog by remember { mutableStateOf(false) }
@@ -128,11 +141,14 @@ fun PrivacySecurityScreen(
             )
 
             SettingsSwitchItem(
-                title = "Two-Factor Authentication",
-                subtitle = "Add an extra layer of security",
+                title = "Verificación en dos pasos (2FA)",
+                subtitle = if (twoFaEnabled) "Activa: se pide un código al desbloquear"
+                           else "Añade un código TOTP sobre el bloqueo de la app",
                 icon = Icons.Default.Security,
-                checked = twoFactorEnabled,
-                onCheckedChange = { viewModel.setTwoFactorEnabled(it) }
+                checked = twoFaEnabled,
+                onCheckedChange = { turnOn ->
+                    if (turnOn) show2faSetup = true else show2faDisable = true
+                }
             )
 
             SettingsItem(
@@ -175,6 +191,20 @@ fun PrivacySecurityScreen(
                 onClick = { showDeleteDataDialog = true }
             )
         }
+    }
+
+    // 2FA: alta (genera secreto y pide confirmar un código) y baja.
+    if (show2faSetup) {
+        TwoFactorSetupDialog(
+            appLockPreferences = appLockPrefs,
+            onDismiss = { show2faSetup = false }
+        )
+    }
+    if (show2faDisable) {
+        TwoFactorDisableDialog(
+            appLockPreferences = appLockPrefs,
+            onDismiss = { show2faDisable = false }
+        )
     }
 
     // Blocked Users Dialog
@@ -372,6 +402,156 @@ fun PrivacySecurityScreen(
             containerColor = DarkSurface
         )
     }
+}
+
+/** Acceso a [AppLockPreferences] desde un Composable sin pasar por el ViewModel. */
+@dagger.hilt.EntryPoint
+@dagger.hilt.InstallIn(dagger.hilt.components.SingletonComponent::class)
+interface TwoFactorEntryPoint {
+    fun appLockPreferences(): com.Azelmods.App.data.preferences.AppLockPreferences
+}
+
+/**
+ * Alta de 2FA: genera un secreto TOTP, lo muestra para que el usuario lo añada a su
+ * app de autenticación (o lo copie), y exige un código válido antes de activarlo.
+ * Confirmar con un código demuestra que el secreto quedó bien guardado en ambos lados.
+ *
+ * Requisito: debe existir ya un PIN de bloqueo, porque el 2FA se exige en la pantalla
+ * de desbloqueo (sin primer factor, no hay dónde pedir el segundo).
+ */
+@Composable
+private fun TwoFactorSetupDialog(
+    appLockPreferences: com.Azelmods.App.data.preferences.AppLockPreferences,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var hasPin by remember { mutableStateOf<Boolean?>(null) }
+    val secret = remember { com.Azelmods.App.data.security.TotpAuthenticator.generateSecret() }
+    var code by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) { hasPin = appLockPreferences.hasPin() }
+
+    val account = remember {
+        FirebaseAuth.getInstance().currentUser?.let { it.email ?: it.phoneNumber ?: it.uid } ?: "cuenta"
+    }
+    val otpauthUri = remember(secret) {
+        com.Azelmods.App.data.security.TotpAuthenticator.provisioningUri(secret, account)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Activar verificación en dos pasos", color = Color.White) },
+        text = {
+            Column {
+                when (hasPin) {
+                    false -> Text(
+                        "Primero activa el bloqueo con PIN (Passcode Lock). El segundo " +
+                            "factor se pide en esa pantalla de desbloqueo.",
+                        color = Color.Gray, fontSize = 13.sp
+                    )
+                    else -> {
+                        Text(
+                            "1) Añade esta clave a tu app de autenticación (Google " +
+                                "Authenticator, Aegis…). 2) Escribe el código que te muestre.",
+                            color = Color.Gray, fontSize = 13.sp
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        // Clave en grupos de 4 para poder teclearla sin errores.
+                        Text(
+                            secret.chunked(4).joinToString(" "),
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(onClick = {
+                            val clip = context.getSystemService(Context.CLIPBOARD_SERVICE)
+                                as android.content.ClipboardManager
+                            clip.setPrimaryClip(android.content.ClipData.newPlainText("2FA", secret))
+                        }) { Text("Copiar clave", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp) }
+                        TextButton(onClick = {
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse(otpauthUri))
+                                )
+                            }
+                        }) { Text("Abrir en app de autenticación", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp) }
+                        Spacer(Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = code,
+                            onValueChange = { code = it.filter { c -> c.isDigit() }.take(6); error = null },
+                            label = { Text("Código de 6 dígitos") },
+                            singleLine = true,
+                            isError = error != null,
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                            )
+                        )
+                        if (error != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(error!!, color = ErrorRed, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (hasPin == true) {
+                TextButton(
+                    enabled = code.length == 6,
+                    onClick = {
+                        if (com.Azelmods.App.data.security.TotpAuthenticator.verify(secret, code)) {
+                            scope.launch {
+                                appLockPreferences.enable2fa(secret)
+                                onDismiss()
+                            }
+                        } else {
+                            error = "Código incorrecto. Revisa la hora del teléfono e inténtalo otra vez."
+                        }
+                    }
+                ) { Text("Activar", color = MaterialTheme.colorScheme.primary) }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = Color.Gray) }
+        },
+        containerColor = DarkSurface
+    )
+}
+
+/** Baja de 2FA: confirma y borra el secreto. */
+@Composable
+private fun TwoFactorDisableDialog(
+    appLockPreferences: com.Azelmods.App.data.preferences.AppLockPreferences,
+    onDismiss: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Desactivar 2FA", color = Color.White) },
+        text = {
+            Text(
+                "Se dejará de pedir el código al desbloquear y se borrará la clave " +
+                    "guardada. Podrás volver a activarlo cuando quieras.",
+                color = Color.Gray, fontSize = 13.sp
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                scope.launch {
+                    appLockPreferences.disable2fa()
+                    onDismiss()
+                }
+            }) { Text("Desactivar", color = ErrorRed) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = Color.Gray) }
+        },
+        containerColor = DarkSurface
+    )
 }
 
 @Composable

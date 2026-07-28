@@ -20,7 +20,7 @@ data class Tutorial(
  * el usuario la busca, no la encuentra y concluye que la app está rota.
  *
  * Revisión completa en la v5. Se corrigieron:
- *  - La marca: los textos decían "Azelgram"; la app se llama **Nexus Chat**.
+ *  - La marca: los textos arrastraban un nombre antiguo; la app se llama **NexusChat**.
  *  - "15 colores de acento" → son 25 (`AppTheme.ACCENT_SWATCHES`).
  *  - "3 tamaños de fuente" → son 4 (Pequeño, Normal, Grande, Muy Grande).
  *  - "Tema automático según el sistema": no existe, solo hay interruptor de tema oscuro.

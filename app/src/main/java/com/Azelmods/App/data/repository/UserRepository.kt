@@ -57,15 +57,30 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
     
+    /**
+     * Actualiza la presencia de un usuario.
+     *
+     * Escribe `online` e `isOnline` a la vez. Antes solo tocaba `isOnline`,
+     * mientras que la presencia real con `onDisconnect` vivía en `online`: dos
+     * banderas para lo mismo que se desincronizaban, y como la interfaz lee
+     * `isOnline`, los contactos se quedaban "en línea" para siempre.
+     *
+     * La fuente principal de presencia es
+     * [com.Azelmods.App.data.repository.RealtimeDatabaseRepository.updatePresence],
+     * que además registra los `onDisconnect` del servidor. Este método se
+     * mantiene coherente con aquel para que ninguna ruta reintroduzca el desfase.
+     */
     override suspend fun updateOnlineStatus(userId: String, isOnline: Boolean): Resource<Unit> {
         return try {
             val userRef = firebaseManager.database.getReference("users/$userId")
-            userRef.child("isOnline").setValue(isOnline).await()
-            
-            if (!isOnline) {
-                userRef.child("lastSeen").setValue(System.currentTimeMillis()).await()
-            }
-            
+            userRef.updateChildren(
+                mapOf(
+                    "online" to isOnline,
+                    "isOnline" to isOnline,
+                    "lastSeen" to System.currentTimeMillis()
+                )
+            ).await()
+
             Resource.Success(Unit)
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Failed to update online status")

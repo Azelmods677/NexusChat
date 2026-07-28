@@ -20,20 +20,23 @@ class DecryptMessageUseCase @Inject constructor(
 ) {
 
     /**
-     * Decrypts a message from a specific sender.
+     * Descifra un mensaje intercambiado con [peerId].
      *
-     * @param senderId The sender's user ID
+     * @param peerId El **otro extremo de la conversación**, no necesariamente
+     *   quien envió el mensaje. El secreto ECDH es simétrico, así que la misma
+     *   clave descifra los mensajes recibidos y los propios; pasar aquí el
+     *   `senderId` hacía imposible releer lo que uno mismo había escrito.
      * @param ciphertext The encrypted message bytes
      * @param messageType The type of encrypted message (PreKey or Whisper)
      * @return [DecryptionResult] containing decrypted plaintext or error
      */
     suspend operator fun invoke(
-        senderId: String,
+        peerId: String,
         ciphertext: ByteArray,
         messageType: MessageType
     ): DecryptionResult {
         return signalProtocolManager.decryptMessage(
-            senderId = senderId,
+            senderId = peerId,
             ciphertext = ciphertext,
             messageType = messageType
         )

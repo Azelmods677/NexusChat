@@ -8,6 +8,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -114,15 +117,62 @@ fun ChatScreen(
     var selectedImageUrl by remember { mutableStateOf("") }
     var selectedImageSender by remember { mutableStateOf("") }
     var selectedImageTimestamp by remember { mutableStateOf("") }
+    var selectedImageMessage by remember { mutableStateOf<com.Azelmods.App.data.model.Message?>(null) }
+    var showClearChatDialog by remember { mutableStateOf(false) }
+    var showMuteDialog by remember { mutableStateOf(false) }
+
+    // Dictado por voz: se delega en el reconocedor del sistema y el resultado se
+    // AÑADE al borrador en vez de reemplazarlo, para poder dictar por partes.
+    val dictationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val spoken = result.data
+            ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+            ?.trim()
+            .orEmpty()
+        if (spoken.isNotBlank()) {
+            messageText = if (messageText.isBlank()) spoken else "$messageText $spoken"
+        }
+    }
+    val launchDictation: () -> Unit = {
+        val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+            )
+            putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "Habla ahora")
+        }
+        try {
+            dictationLauncher.launch(intent)
+        } catch (e: Exception) {
+            // Hay dispositivos sin ningún reconocedor instalado; avisar es mejor
+            // que dejar el botón sin reacción aparente.
+            android.widget.Toast
+                .makeText(context, "Este dispositivo no tiene reconocimiento de voz", android.widget.Toast.LENGTH_SHORT)
+                .show()
+        }
+    }
     
     LaunchedEffect(contactId) {
         viewModel.loadChat(contactId)
     }
     
-    // Auto-scroll to bottom when new message arrives
-    LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) {
+    // Auto-scroll to bottom when new message arrives.
+    // No mientras se busca: saltar al final cada vez que llega un mensaje
+    // arruinaría la navegación entre coincidencias.
+    LaunchedEffect(state.messages.size, state.isSearchOpen) {
+        if (state.messages.isNotEmpty() && !state.isSearchOpen) {
             listState.animateScrollToItem(state.messages.size - 1)
+        }
+    }
+
+    // Desplazamiento al resultado de búsqueda activo.
+    LaunchedEffect(state.searchIndex, state.searchResults) {
+        val objetivo = state.searchResults.getOrNull(state.searchIndex) ?: return@LaunchedEffect
+        val posicion = state.messages.indexOfFirst { it.messageId == objetivo }
+        if (posicion >= 0) {
+            listState.animateScrollToItem(posicion)
         }
     }
     
@@ -184,6 +234,73 @@ fun ChatScreen(
                 },
                 onMoreClick = { showMenu = true }
             )
+
+            // ── Barra de búsqueda dentro de la conversación ──
+            // Aparece bajo la cabecera al elegir "Buscar en el chat". Muestra
+            // la posición actual (p. ej. 2/7) y permite saltar entre
+            // coincidencias, que es lo que hace útil una búsqueda en un chat
+            // largo frente a un simple filtro.
+            AnimatedVisibility(visible = state.isSearchOpen) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = DarkSurface
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        TextField(
+                            value = state.searchQuery,
+                            onValueChange = viewModel::onSearchQueryChange,
+                            placeholder = { Text("Buscar en esta conversación", color = Color.Gray) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                        if (state.searchQuery.isNotBlank()) {
+                            Text(
+                                text = if (state.searchResults.isEmpty()) {
+                                    "0"
+                                } else {
+                                    "${state.searchIndex + 1}/${state.searchResults.size}"
+                                },
+                                color = if (state.searchResults.isEmpty()) ErrorRed else Color.Gray,
+                                fontSize = 12.sp
+                            )
+                            IconButton(
+                                onClick = { viewModel.previousSearchResult() },
+                                enabled = state.searchResults.isNotEmpty()
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowUp, "Anterior", tint = Color.White)
+                            }
+                            IconButton(
+                                onClick = { viewModel.nextSearchResult() },
+                                enabled = state.searchResults.isNotEmpty()
+                            ) {
+                                Icon(Icons.Default.KeyboardArrowDown, "Siguiente", tint = Color.White)
+                            }
+                        }
+                        IconButton(onClick = { viewModel.closeSearch() }) {
+                            Icon(Icons.Default.Close, "Cerrar búsqueda", tint = Color.White)
+                        }
+                    }
+                }
+            }
         },
         containerColor = Color.Transparent
     ) { paddingValues ->
@@ -330,6 +447,24 @@ fun ChatScreen(
                             }
                         ) { message ->
                             val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            // Resalte del resultado de búsqueda activo: sin esto,
+                            // saltar a una coincidencia deja al usuario mirando la
+                            // conversación sin saber cuál de los mensajes casó.
+                            val esResultadoActivo = state.isSearchOpen &&
+                                state.searchResults.getOrNull(state.searchIndex) == message.messageId
+                            val resalte by animateColorAsState(
+                                targetValue = if (esResultadoActivo) {
+                                    themeColor.copy(alpha = 0.22f)
+                                } else {
+                                    Color.Transparent
+                                },
+                                label = "resalteBusqueda"
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(resalte, RoundedCornerShape(12.dp))
+                            ) {
                             MessageBubble(
                                 message = message,
                                 isOwnMessage = message.senderId == currentUserId,
@@ -342,6 +477,9 @@ fun ChatScreen(
                                     selectedImageUrl = url
                                     selectedImageSender = sender
                                     selectedImageTimestamp = timestamp
+                                    // Se guarda el mensaje entero, no sólo la URL: el
+                                    // visor necesita el id para poder borrar la foto.
+                                    selectedImageMessage = message
                                     showImageViewer = true
                                 },
                                 themeColor = themeColor,
@@ -361,8 +499,9 @@ fun ChatScreen(
                                     viewModel.translateMessage(message.messageId, message.content)
                                 }
                             )
+                            }
                         }
-                        
+
                         // Typing indicator
                         if (state.isTyping) {
                             item {
@@ -455,6 +594,95 @@ fun ChatScreen(
                         }
                     }
                     
+                    // ── Dictado por voz ──
+                    // Usa el reconocedor de Android (el mismo del teclado de
+                    // Google), no un servicio externo: el audio no sale del
+                    // dispositivo salvo que el propio Android decida procesarlo
+                    // en la nube, que es lo que el usuario ya tiene configurado
+                    // a nivel de sistema.
+                    if (state.voiceDictationEnabled) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            SuggestionChip(
+                                onClick = { launchDictation() },
+                                label = { Text("Dictar", fontSize = 13.sp) },
+                                icon = {
+                                    Icon(
+                                        Icons.Default.KeyboardVoice,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    // ── Respuestas sugeridas por IA ──
+                    // Sólo aparecen si el usuario activó la función y el modelo
+                    // devolvió algo. Al tocar una, se escribe en el campo de
+                    // texto en vez de enviarse: la decisión de mandar el mensaje
+                    // sigue siendo del usuario, no de la IA.
+                    if (state.smartRepliesEnabled && state.smartReplies.isNotEmpty() && messageText.isBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            state.smartReplies.forEach { suggestion ->
+                                SuggestionChip(
+                                    onClick = {
+                                        messageText = suggestion
+                                        viewModel.dismissSmartReplies()
+                                    },
+                                    label = { Text(suggestion, fontSize = 13.sp) },
+                                    icon = {
+                                        Icon(
+                                            Icons.Default.AutoAwesome,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Sugerencias de tono ──
+                    if (state.toneSuggestionsEnabled && messageText.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (state.isRewritingTone) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                            com.Azelmods.App.data.ai.MessageTone.entries.forEach { tone ->
+                                SuggestionChip(
+                                    enabled = !state.isRewritingTone,
+                                    onClick = {
+                                        viewModel.rewriteDraftTone(messageText, tone) { rewritten ->
+                                            messageText = rewritten
+                                        }
+                                    },
+                                    label = { Text(tone.label, fontSize = 13.sp) }
+                                )
+                            }
+                        }
+                    }
+
                     // Input Area - ALWAYS AT BOTTOM
                     ChatInputArea(
                         messageText = messageText,
@@ -511,31 +739,192 @@ fun ChatScreen(
                     },
                     leadingIcon = { Icon(Icons.Default.Wallpaper, null, tint = Color.White) }
                 )
+                // Resumir la conversación con el modelo del usuario. Sólo aparece
+                // si se activó en Ajustes → IA, para no ofrecer una acción que
+                // fallaría por no haber proveedor configurado.
+                if (state.summaryEnabled) {
+                    DropdownMenuItem(
+                        text = { Text("Resumir chat", color = Color.White) },
+                        onClick = {
+                            showMenu = false
+                            viewModel.summarizeConversation()
+                        },
+                        leadingIcon = { Icon(Icons.Default.Summarize, null, tint = Color.White) }
+                    )
+                }
+                // "Buscar" y "Silenciar" llevaban versiones con
+                // `onClick = { showMenu = false }` y nada más: no hacían
+                // absolutamente nada. Ahora tienen implementación real —búsqueda
+                // sobre los mensajes de la conversación y silencio por usuario
+                // con caducidad—.
                 DropdownMenuItem(
-                    text = { Text("Search", color = Color.White) },
-                    onClick = { showMenu = false },
+                    text = { Text("Buscar en el chat", color = Color.White) },
+                    onClick = {
+                        showMenu = false
+                        viewModel.openSearch()
+                    },
                     leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) }
                 )
                 DropdownMenuItem(
-                    text = { Text("Mute", color = Color.White) },
-                    onClick = { showMenu = false },
-                    leadingIcon = { Icon(Icons.Default.NotificationsOff, null, tint = Color.White) }
+                    text = {
+                        Text(
+                            if (state.isMuted) "Reactivar notificaciones" else "Silenciar chat",
+                            color = Color.White
+                        )
+                    },
+                    onClick = {
+                        showMenu = false
+                        if (state.isMuted) {
+                            viewModel.toggleMute { message ->
+                                android.widget.Toast
+                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        } else {
+                            showMuteDialog = true
+                        }
+                    },
+                    leadingIcon = {
+                        Icon(
+                            if (state.isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                            null,
+                            tint = Color.White
+                        )
+                    }
                 )
                 DropdownMenuItem(
-                    text = { Text("Clear Chat", color = ErrorRed) },
-                    onClick = { showMenu = false },
+                    text = { Text("Vaciar chat", color = ErrorRed) },
+                    onClick = {
+                        showMenu = false
+                        showClearChatDialog = true
+                    },
                     leadingIcon = { Icon(Icons.Default.Delete, null, tint = ErrorRed) }
                 )
             }
         }
         
+        if (showMuteDialog) {
+            val opciones = listOf(
+                "1 hora" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_HOUR,
+                "8 horas" to com.Azelmods.App.data.model.ChatSettings.MUTE_8_HOURS,
+                "1 semana" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_WEEK,
+                "Hasta que lo reactive" to com.Azelmods.App.data.model.ChatSettings.MUTE_ALWAYS
+            )
+            AlertDialog(
+                onDismissRequest = { showMuteDialog = false },
+                icon = { Icon(Icons.Default.NotificationsOff, contentDescription = null) },
+                title = { Text("Silenciar conversación") },
+                text = {
+                    Column {
+                        Text(
+                            "Dejarás de recibir notificaciones de este chat. Las llamadas seguirán entrando.",
+                            fontSize = 13.sp,
+                            color = Color.Gray
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        opciones.forEach { (etiqueta, duracion) ->
+                            TextButton(
+                                onClick = {
+                                    showMuteDialog = false
+                                    viewModel.toggleMute(duracion) { message ->
+                                        android.widget.Toast
+                                            .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                            .show()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(etiqueta, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showMuteDialog = false }) { Text("Cancelar") }
+                }
+            )
+        }
+
+        // Resumen de la conversación (o el error si el proveedor falló).
+        if (state.isSummarizing) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Resumiendo…") },
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Leyendo la conversación")
+                    }
+                },
+                confirmButton = {}
+            )
+        }
+        state.conversationSummary?.let { summary ->
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissSummary() },
+                icon = { Icon(Icons.Default.Summarize, contentDescription = null) },
+                title = { Text("Resumen del chat") },
+                text = {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        com.Azelmods.App.ui.components.MarkdownText(markdown = summary)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissSummary() }) { Text("Cerrar") }
+                }
+            )
+        }
+
+        if (showClearChatDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearChatDialog = false },
+                icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ErrorRed) },
+                title = { Text("¿Vaciar la conversación?") },
+                text = { Text("Se borrarán todos los mensajes de este chat para los dos participantes. La conversación se mantiene.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showClearChatDialog = false
+                            viewModel.clearChat { message ->
+                                android.widget.Toast
+                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        }
+                    ) {
+                        Text("Vaciar", color = ErrorRed)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearChatDialog = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            )
+        }
+
         // Full Screen Image Viewer
         if (showImageViewer) {
+            val imageMessage = selectedImageMessage
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
             FullScreenImageViewer(
                 imageUrl = selectedImageUrl,
                 senderName = selectedImageSender,
                 timestamp = selectedImageTimestamp,
-                onDismiss = { showImageViewer = false }
+                onDismiss = { showImageViewer = false },
+                // El botón de eliminar del visor sólo mostraba un aviso pidiendo
+                // que se borrara desde el chat. Ahora borra de verdad; si la foto
+                // es de otra persona sólo se puede quitar de la propia vista, así
+                // que el visor recibe también si el mensaje es nuestro.
+                onDelete = imageMessage?.let { msg ->
+                    { forEveryone: Boolean ->
+                        viewModel.deleteMessage(msg, forEveryone)
+                        showImageViewer = false
+                    }
+                },
+                canDeleteForEveryone = imageMessage?.senderId == currentUserId
             )
         }
     }
@@ -563,7 +952,9 @@ fun ChatTopBar(
     val statusText = when {
         isTyping -> "escribiendo..."
         contact?.isOnline == true -> "en línea"
-        else -> "última vez ${formatLastSeen(contact?.lastSeen ?: 0)}"
+        // formatLastSeen ya devuelve la frase completa; anteponer "última vez"
+        // aquí producía "última vez visto hace 5min".
+        else -> formatLastSeen(contact?.lastSeen ?: 0)
     }
     
     val statusColor = when {
@@ -1815,14 +2206,30 @@ private fun formatTime(timestamp: Long): String {
     return sdf.format(Date(timestamp))
 }
 
+/**
+ * Texto de "última conexión" ya completo, listo para pintar.
+ *
+ * Antes devolvía "Hace un momento" cuando NO había marca de tiempo. Es decir:
+ * de un contacto del que no se sabía nada se afirmaba que acababa de estar
+ * conectado. Junto con el campo `isOnline` que nunca bajaba a false, ese era el
+ * motivo de que todo el mundo pareciera estar siempre en línea o "recientemente".
+ * Sin dato ahora se dice que no se sabe, que es la verdad.
+ *
+ * Devuelve la frase entera ("última vez hace 5 min") en lugar de un fragmento,
+ * porque quien llamaba anteponía "última vez" y salían cosas como "última vez
+ * visto hace 5min" o, peor, "última vez en línea".
+ */
 private fun formatLastSeen(timestamp: Long): String {
-    if (timestamp <= 0L) return "Hace un momento"
+    if (timestamp <= 0L) return "sin conexión reciente"
     val diff = System.currentTimeMillis() - timestamp
     return when {
-        diff < 60_000 -> "en línea"
-        diff < 3_600_000 -> "visto hace ${diff/60_000}min"
-        diff < 86_400_000 -> "visto hace ${diff/3_600_000}h"
-        diff < 7 * 86_400_000 -> "visto hace ${diff/86_400_000}d"
-        else -> "visto el ${SimpleDateFormat("dd/MM/yy", Locale.getDefault()).format(Date(timestamp))}"
+        // Un reloj adelantado en el móvil daba diferencias negativas y con
+        // ellas salía "última vez hace -3 min".
+        diff < 0 -> "en línea hace poco"
+        diff < 60_000 -> "última vez hace menos de un minuto"
+        diff < 3_600_000 -> "última vez hace ${diff / 60_000} min"
+        diff < 86_400_000 -> "última vez hace ${diff / 3_600_000} h"
+        diff < 7L * 86_400_000L -> "última vez hace ${diff / 86_400_000} d"
+        else -> "última vez el ${SimpleDateFormat("dd/MM/yy", Locale.getDefault()).format(Date(timestamp))}"
     }
 }

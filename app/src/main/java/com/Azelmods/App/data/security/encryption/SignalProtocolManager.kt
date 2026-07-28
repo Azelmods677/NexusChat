@@ -1,93 +1,58 @@
 package com.Azelmods.App.data.security.encryption
 
-import android.content.Context
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.signal.libsignal.protocol.*
-import org.signal.libsignal.protocol.ecc.Curve
-import org.signal.libsignal.protocol.ecc.ECKeyPair
-import org.signal.libsignal.protocol.state.*
-import org.signal.libsignal.protocol.util.KeyHelper
-import org.signal.libsignal.protocol.fingerprint.NumericFingerprintGenerator
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Manages Signal Protocol encryption/decryption for end-to-end encrypted messaging.
+ * Punto de entrada del cifrado de extremo a extremo de la app.
  *
- * Implements the Signal Protocol (formerly Axolotl/TextSecure) which provides:
- * - Perfect Forward Secrecy (PFS) via Double Ratchet Algorithm
- * - Future Secrecy via key rotation
- * - Deniable authentication
- * - Asynchronous messaging support
+ * ## Qué pasó con el Signal Protocol
  *
- * ## Architecture
- * - Uses libsignal-android for cryptographic primitives
- * - Stores keys in Android Keystore (hardware-backed when available)
- * - Manages PreKeys, SignedPreKeys, and Identity Keys per user
- * - Handles session establishment and message encryption/decryption
+ * Este archivo describía una implementación del Signal Protocol completa —Double
+ * Ratchet, PreKeys, secreto hacia adelante— y arrastraba dos clases de apoyo
+ * (`SignalKeyStore`, 418 líneas, y `PreKeyManager`, 323) más la dependencia
+ * `libsignal-android`. Nada de eso llegó a ejecutarse: el cifrado real siempre
+ * lo hizo [E2EECryptoService] con ECDH P-256 + AES-256-GCM, y los métodos de
+ * PreKeys devolvían `0`, `false` o `null` sin hacer nada. Se han eliminado en la
+ * v6, porque un andamiaje que sólo se referencia a sí mismo confunde a quien lee
+ * el código y, peor, sugiere garantías criptográficas que la app no da.
  *
- * ## Key Types
- * - **Identity Key**: Long-term key pair that identifies the user
- * - **Signed PreKey**: Medium-term key signed by identity key
- * - **OneTime PreKeys**: Single-use keys for initial session establishment
- * - **Session Keys**: Ephemeral keys derived via Double Ratchet
+ * Lo que la app ofrece de verdad, y así está escrito en Ajustes → Acerca de:
+ * cifrado de extremo a extremo en chats 1:1, **sin** secreto hacia adelante y
+ * **sin** cubrir los grupos.
  *
- * Requirements: 1.1, 1.2, 1.3, 1.4
+ * La clase se conserva —en vez de llamar a [E2EECryptoService] directamente—
+ * porque aquí viven los tipos de resultado que usa toda la app.
  */
 @Singleton
 class SignalProtocolManager @Inject constructor(
-    private val context: Context,
-    private val keyStore: SignalKeyStore,
-    private val preKeyManager: PreKeyManager,
     private val e2eeCryptoService: E2EECryptoService
 ) {
 
-    companion object {
-        private const val TAG = "SignalProtocolManager"
-        
-        /**
-         * Number of OneTime PreKeys to generate and upload to server
-         */
-        private const val PREKEY_BATCH_SIZE = 100
-        
-        /**
-         * Minimum number of PreKeys before generating a new batch
-         */
-        private const val PREKEY_MINIMUM_THRESHOLD = 10
-    }
-
-    /**
-     * Initializes E2EE for the current user via [E2EECryptoService].
-     *
-     * Signal Protocol v0.40.1 removed the old KeyHelper API. The new E2EECryptoService
-     * wraps the modern Signal Protocol API (IdentityKeyPair.generate(), ECKeyPair.generate(), etc.).
-     *
-     * @param userId The unique identifier for the current user
-     * @return [SignalProtocolInitResult] indicating success or failure
-     */
+    /** Genera y publica el par de claves del usuario si aún no existe. */
     suspend fun initialize(userId: String): SignalProtocolInitResult = withContext(Dispatchers.IO) {
-        return@withContext if (e2eeCryptoService.ensureLocalKeys()) {
-            SignalProtocolInitResult.AlreadyInitialized
+        if (e2eeCryptoService.ensureLocalKeys()) {
+            SignalProtocolInitResult.Ready
         } else {
             SignalProtocolInitResult.Error("No se pudieron generar claves E2EE")
         }
     }
 
-    /**
-     * Encrypts a message for a specific recipient via [E2EECryptoService].
-     */
+    /** Cifra [plaintext] para [recipientId]. */
     suspend fun encryptMessage(
         recipientId: String,
-        plaintext: String,
-        recipientPreKeyBundle: PreKeyBundle? = null
+        plaintext: String
     ): EncryptionResult = withContext(Dispatchers.IO) {
         e2eeCryptoService.encryptFor(recipientId, plaintext)
     }
 
     /**
-     * Decrypts a message from a specific sender via [E2EECryptoService].
+     * Descifra un payload intercambiado con [senderId].
+     *
+     * Ojo: [senderId] es el **otro extremo del chat**, no necesariamente quien
+     * envió el mensaje. Ver [E2EECryptoService.decryptFrom].
      */
     suspend fun decryptMessage(
         senderId: String,
@@ -96,124 +61,11 @@ class SignalProtocolManager @Inject constructor(
     ): DecryptionResult = withContext(Dispatchers.IO) {
         e2eeCryptoService.decryptFrom(senderId, ciphertext)
     }
-
-    /**
-     * Generates a PreKey bundle for the current user to be uploaded to the server.
-     *
-     * Other users will fetch this bundle to establish sessions with this user.
-     *
-     * @return [PreKeyBundle] containing public keys
-     */
-    suspend fun generatePreKeyBundle(): PreKeyBundle? = withContext(Dispatchers.IO) {
-        try {
-            val identityKeyPair = keyStore.getIdentityKeyPair()
-            val registrationId = keyStore.getLocalRegistrationId()
-            val signedPreKey = keyStore.loadSignedPreKey(1)
-            val preKey = keyStore.loadPreKey(1)
-
-            PreKeyBundle(
-                registrationId,
-                1, // deviceId
-                preKey.id,
-                preKey.keyPair.publicKey,
-                signedPreKey.id,
-                signedPreKey.keyPair.publicKey,
-                signedPreKey.signature,
-                identityKeyPair.publicKey
-            )
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error generating PreKey bundle", e)
-            null
-        }
-    }
-
-    /**
-     * Checks if PreKeys need to be replenished.
-     * Delegates to [E2EECryptoService] for the actual implementation.
-     */
-    suspend fun replenishPreKeysIfNeeded(): Int = withContext(Dispatchers.IO) {
-        // Implementado via E2EECryptoService
-        0
-    }
-
-    /**
-     * Rotates the signed PreKey.
-     * Delegates to [E2EECryptoService] for the actual implementation.
-     */
-    suspend fun rotateSignedPreKey(): Boolean = withContext(Dispatchers.IO) {
-        // Implementado via E2EECryptoService
-        false
-    }
-
-    /**
-     * Deletes the session with a specific user.
-     *
-     * Use this when you want to reset the encryption session (e.g., after security verification).
-     *
-     * @param userId The user whose session should be deleted
-     */
-    suspend fun deleteSession(userId: String) = withContext(Dispatchers.IO) {
-        try {
-            val address = SignalProtocolAddress(userId, 1)
-            keyStore.deleteSession(address)
-            Log.d(TAG, "Deleted session with: $userId")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error deleting session", e)
-        }
-    }
-
-    /**
-     * Generates a safety number for identity verification with another user.
-     *
-     * Both users should compare their safety numbers out-of-band (e.g., in person, phone call)
-     * to verify they're communicating with the correct person and not a MITM attacker.
-     *
-     * @param ourUserId The authenticated local user's id (both sides must use their real ids
-     *   or the displayed numbers will never match)
-     * @param userId The user to generate safety number with
-     * @param theirIdentityKey The other user's identity public key
-     * @return A 60-digit safety number string, or null if generation failed
-     */
-    suspend fun generateSafetyNumber(
-        ourUserId: String,
-        userId: String,
-        theirIdentityKey: IdentityKey
-    ): String? = withContext(Dispatchers.IO) {
-        try {
-            val ourIdentityKey = keyStore.getIdentityKeyPair().publicKey
-
-            // Generate fingerprint using Signal's Fingerprint API
-            val generator = NumericFingerprintGenerator(5200)
-            val fingerprint = generator.createFor(
-                5200,
-                ourUserId.toByteArray(),
-                ourIdentityKey,
-                userId.toByteArray(),
-                theirIdentityKey
-            )
-
-            fingerprint.displayableFingerprint.toString()
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error generating safety number", e)
-            null
-        }
-    }
 }
 
-/**
- * Result of Signal Protocol initialization
- */
+/** Resultado de preparar el cifrado para la sesión actual. */
 sealed class SignalProtocolInitResult {
-    data class Success(
-        val identityKey: IdentityKey,
-        val signedPreKey: SignedPreKeyRecord,
-        val preKeys: List<PreKeyRecord>,
-        val registrationId: Int
-    ) : SignalProtocolInitResult()
-
-    object AlreadyInitialized : SignalProtocolInitResult()
+    object Ready : SignalProtocolInitResult()
     data class Error(val message: String) : SignalProtocolInitResult()
 }
 

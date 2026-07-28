@@ -24,14 +24,26 @@ data class Translation(
 )
 
 /**
- * 🌐 TranslationService — automatic message translation.
+ * 🌐 TranslationService — traducción de mensajes.
  *
- * Uses the free MyMemory API (no API key required for basic usage,
- * ~1000 words/day). All network work runs on [Dispatchers.IO].
+ * ## Dos motores, en este orden
+ *
+ * 1. **El modelo de IA del usuario**, si tiene uno configurado. MyMemory es una
+ *    *memoria de traducción* alimentada por aportaciones de la comunidad: con
+ *    frases completas y formales va bien, pero con lo que se escribe en un chat
+ *    —mensajes de tres palabras, jerga, emoji, sin contexto— devuelve la
+ *    coincidencia más parecida que tenga guardada, que a menudo no significa lo
+ *    mismo. De ahí que "traduzca mal". Un modelo de lenguaje entiende el
+ *    registro y acierta mucho más.
+ * 2. **MyMemory** como respaldo gratuito cuando no hay clave de IA o el
+ *    proveedor falla, para que la función nunca deje de existir.
+ *
+ * Todo el trabajo de red va en [Dispatchers.IO].
  */
 @Singleton
 class TranslationService @Inject constructor(
-    private val quotaTracker: TranslationQuotaTracker
+    private val quotaTracker: TranslationQuotaTracker,
+    private val aiAssistService: com.Azelmods.App.data.ai.AiAssistService
 ) {
 
     private val baseUrl = "https://api.mymemory.translated.net/get"
@@ -52,9 +64,31 @@ class TranslationService @Inject constructor(
                 android.util.Log.w("TranslationService", "🌐 Empty text provided")
                 return@withContext Result.failure(Exception("Texto vacío"))
             }
-            
+
             // Normalizar códigos de idioma
             val normalizedTarget = normalizeLanguageCode(targetLang)
+
+            // ── Motor preferente: el modelo del usuario ──
+            // No consume la cuota de MyMemory y respeta jerga, emoji y tono.
+            if (aiAssistService.isAvailable()) {
+                val languageName = languageName(normalizedTarget)
+                val aiResult = aiAssistService.translate(text, languageName)
+                aiResult.getOrNull()?.takeIf { it.isNotBlank() }?.let { translated ->
+                    android.util.Log.d("TranslationService", "🌐 Traducido con el modelo del usuario")
+                    return@withContext Result.success(
+                        Translation(
+                            text = translated,
+                            wasTruncated = false,
+                            remainingWords = quotaTracker.remainingWordsToday()
+                        )
+                    )
+                }
+                android.util.Log.w(
+                    "TranslationService",
+                    "🌐 La IA no pudo traducir (${aiResult.exceptionOrNull()?.message}); se usa MyMemory"
+                )
+            }
+
             // CAUSA RAÍZ (fix): MyMemory NO soporta "auto" como idioma origen. Con
             // langpair="auto|es" devuelve 403 ("'AUTO' IS AN INVALID SOURCE LANGUAGE")
             // y la traducción fallaba SIEMPRE, porque ChatViewModel siempre llama con
@@ -93,7 +127,7 @@ class TranslationService @Inject constructor(
             android.util.Log.d("TranslationService", "🌐 Requesting: $url")
 
             try {
-                val response = URL(url).readText()
+                val response = httpGet(url)
                 android.util.Log.d("TranslationService", "🌐 API Response: ${response.take(200)}")
                 
                 val json = JSONObject(response)
@@ -112,7 +146,7 @@ class TranslationService @Inject constructor(
                     return@withContext Result.failure(Exception("Respuesta inválida del servicio de traducción"))
                 }
                 
-                val translated = responseData.optString("translatedText", "")
+                val translated = decodeHtmlEntities(responseData.optString("translatedText", ""))
                 
                 if (translated.isBlank()) {
                     android.util.Log.e("TranslationService", "🌐 Blank translation received")
@@ -159,6 +193,32 @@ class TranslationService @Inject constructor(
     }
     
     /**
+     * GET con timeouts EXPLÍCITOS.
+     *
+     * CAUSA RAÍZ (fix): antes se usaba `URL(url).readText()`, que abre una
+     * `URLConnection` con timeout por defecto = 0, es decir INFINITO. Si MyMemory
+     * respondía lento o el DNS por Tor no resolvía, la corrutina se quedaba
+     * bloqueada para siempre y el indicador de "traduciendo…" no se apagaba nunca.
+     * Ese era el "las traducciones cargan infinitamente".
+     */
+    private fun httpGet(urlString: String): String {
+        val conn = (URL(urlString).openConnection() as java.net.HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10_000   // 10s para establecer conexión
+            readTimeout = 15_000      // 15s para leer la respuesta
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "NexusChat/6")
+        }
+        return try {
+            val stream = if (conn.responseCode in 200..299) conn.inputStream
+                         else conn.errorStream ?: conn.inputStream
+            stream.bufferedReader().use { it.readText() }
+        } finally {
+            conn.disconnect()
+        }
+    }
+
+    /**
      * Normaliza códigos de idioma a formato de 2 letras
      */
     private fun normalizeLanguageCode(code: String): String {
@@ -188,8 +248,8 @@ class TranslationService @Inject constructor(
             
             val encoded = URLEncoder.encode(text.take(200), "UTF-8")
             val url = "$baseUrl?q=$encoded&langpair=auto|en"
-            
-            val response = URL(url).readText()
+
+            val response = httpGet(url)
             val json = JSONObject(response)
             
             // Intentar obtener el idioma de responseDetails
@@ -218,29 +278,72 @@ class TranslationService @Inject constructor(
     }
     
     /**
-     * Detección heurística simple basada en caracteres
+     * Detección heurística por puntuación.
+     *
+     * La versión anterior devolvía el PRIMER idioma cuya lista de palabras
+     * comunes casara, y el español estaba el primero. Como "de", "que", "la" y
+     * "un" son palabras corrientes también en francés, portugués e italiano,
+     * cualquier texto en esas lenguas se detectaba como español y se acababa
+     * pidiendo a la API un `langpair=es|es`, que devuelve el original o una
+     * coincidencia sin sentido. Ésa era una de las causas de "traduce mal".
+     *
+     * Ahora se cuentan las coincidencias de TODOS los idiomas y gana el que más
+     * saque; sólo se cae al inglés si ninguno puntúa.
      */
     private fun detectLanguageHeuristic(text: String): String {
-        val sample = text.take(100).lowercase()
-        
-        return when {
-            // Detectar caracteres específicos de idiomas
-            sample.any { it in '가'..'힣' } -> "ko" // Coreano
-            sample.any { it in '\u4E00'..'\u9FFF' } -> "zh" // Chino
-            sample.any { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' } -> "ja" // Japonés
-            sample.any { it in '\u0400'..'\u04FF' } -> "ru" // Cirílico (Ruso)
-            sample.any { it in '\u0600'..'\u06FF' } -> "ar" // Árabe
-            
-            // Palabras comunes en diferentes idiomas
-            sample.contains(Regex("\\b(el|la|los|las|de|que|es|en|un|una)\\b")) -> "es" // Español
-            sample.contains(Regex("\\b(the|is|are|of|to|and|a|in|that|have)\\b")) -> "en" // Inglés
-            sample.contains(Regex("\\b(le|la|les|de|que|est|et|un|une|dans)\\b")) -> "fr" // Francés
-            sample.contains(Regex("\\b(der|die|das|ist|und|von|zu|den|dem)\\b")) -> "de" // Alemán
-            sample.contains(Regex("\\b(o|a|os|as|de|que|é|e|em|um|uma)\\b")) -> "pt" // Portugués
-            sample.contains(Regex("\\b(il|lo|la|di|che|è|e|un|una|per)\\b")) -> "it" // Italiano
-            
-            else -> "en" // Default a inglés
+        val sample = text.take(200).lowercase()
+
+        // Los alfabetos no latinos son inequívocos: no hace falta puntuar.
+        when {
+            sample.any { it in '가'..'힣' } -> return "ko"
+            sample.any { it in '぀'..'ゟ' || it in '゠'..'ヿ' } -> return "ja"
+            sample.any { it in '一'..'鿿' } -> return "zh"
+            sample.any { it in 'Ѐ'..'ӿ' } -> return "ru"
+            sample.any { it in '؀'..'ۿ' } -> return "ar"
         }
+
+        val stopWords = mapOf(
+            "es" to listOf("el", "la", "los", "las", "que", "es", "un", "una", "por", "con", "para", "pero", "como", "esta", "muy", "esto", "hola"),
+            "en" to listOf("the", "is", "are", "of", "to", "and", "in", "that", "have", "for", "with", "you", "this", "was", "it"),
+            "fr" to listOf("le", "les", "est", "et", "une", "dans", "pour", "pas", "vous", "avec", "sur", "ce", "qui", "bonjour"),
+            "de" to listOf("der", "die", "das", "ist", "und", "von", "zu", "den", "dem", "nicht", "mit", "auf", "ein", "eine"),
+            "pt" to listOf("os", "as", "nao", "não", "em", "uma", "para", "com", "mas", "isso", "voce", "você", "esta", "muito", "ola", "olá"),
+            "it" to listOf("il", "lo", "gli", "di", "che", "una", "per", "non", "sono", "con", "questo", "anche", "ciao")
+        )
+
+        // Se compara palabra a palabra: con `contains` el "de" de "desde" contaba
+        // como preposición suelta e inflaba la puntuación del español.
+        val words = sample.split(Regex("[^\\p{L}]+")).filter { it.isNotBlank() }.toSet()
+
+        val best = stopWords
+            .mapValues { (_, list) -> list.count { it in words } }
+            .filterValues { it > 0 }
+            .maxByOrNull { it.value }
+
+        return best?.key ?: "en"
+    }
+
+    /** Nombre del idioma para el prompt de la IA ("es" -> "Español"). */
+    private fun languageName(code: String): String =
+        SUPPORTED_LANGUAGES.entries.firstOrNull { it.value == code }?.key ?: code
+
+    /**
+     * MyMemory devuelve el texto con entidades HTML (&#39;, &quot;, &amp;).
+     * Sin decodificarlas, una traducción con un apóstrofo llegaba a pantalla como
+     * "don&#39;t" y parecía un fallo del traductor.
+     */
+    private fun decodeHtmlEntities(raw: String): String {
+        var out = raw
+            .replace("&amp;", "&")
+            .replace("&quot;", "\"")
+            .replace("&apos;", "'")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&nbsp;", " ")
+        out = Regex("&#(\\d{2,5});").replace(out) { match ->
+            match.groupValues[1].toIntOrNull()?.toChar()?.toString() ?: match.value
+        }
+        return out
     }
 
     companion object {

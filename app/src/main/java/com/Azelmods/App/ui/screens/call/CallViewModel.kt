@@ -80,11 +80,29 @@ class CallViewModel @Inject constructor(
     /** Evita procesar el offer/answer remoto más de una vez. */
     private var remoteOfferHandled = false
     private var remoteAnswerHandled = false
-    
-    init {
-        setupWebRTCCallbacks()
+
+    /** Cuelga la llamada si el otro extremo no contesta. */
+    private var ringingTimeoutJob: kotlinx.coroutines.Job? = null
+
+    private companion object {
+        /** Tiempo que suena una llamada antes de darse por perdida. */
+        const val RINGING_TIMEOUT_MS = 45_000L
     }
     
+    /**
+     * Registra los callbacks de señalización en el [WebRTCManager].
+     *
+     * NO se llama desde `init`. El WebRTCManager es un `@Singleton` con un único
+     * juego de listeners, y cada pantalla de llamada crea su propio
+     * `CallViewModel`: si todos los registraran al construirse, el ViewModel de
+     * la pantalla de llamada entrante —que sólo observa y tiene `currentCallId`
+     * nulo— pisaría los del ViewModel que sí conduce la conexión, y la oferta,
+     * la respuesta y los candidatos ICE dejarían de escribirse en Firebase. La
+     * llamada se quedaba sonando sin conectar nunca.
+     *
+     * Sólo lo invocan [startCall] y [acceptCall], que son los que crean de
+     * verdad una PeerConnection.
+     */
     private fun setupWebRTCCallbacks() {
         webRTCManager.onIceCandidateListener = { candidate ->
             currentCallId?.let { callId ->
@@ -226,6 +244,7 @@ class CallViewModel @Inject constructor(
         // Caller side: this VM owns the WebRTC session and must consume the `answer`.
         isCaller = true
         ownsWebRTCSession = true
+        setupWebRTCCallbacks()
         viewModelScope.launch {
             try {
                 val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
@@ -281,9 +300,30 @@ class CallViewModel @Inject constructor(
                 
                 // Create offer (writes to Firebase via onOfferCreatedListener)
                 webRTCManager.createOffer()
-                
+
+                startRingingTimeout()
+
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Cuelga si nadie contesta en [RINGING_TIMEOUT_MS].
+     *
+     * Sin esto, una llamada a alguien con el teléfono apagado —o cuyo push no
+     * llega— dejaba al emisor sonando indefinidamente, con el servicio en primer
+     * plano y el micrófono abierto, sin más salida que colgar a mano. El nodo de
+     * la llamada tampoco se cerraba nunca en la base de datos.
+     */
+    private fun startRingingTimeout() {
+        ringingTimeoutJob?.cancel()
+        ringingTimeoutJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(RINGING_TIMEOUT_MS)
+            if (!wasAccepted && currentCallId != null) {
+                android.util.Log.d("CallViewModel", "Sin respuesta tras ${RINGING_TIMEOUT_MS / 1000}s: se cuelga")
+                endCall()
             }
         }
     }
@@ -296,9 +336,12 @@ class CallViewModel @Inject constructor(
         // Callee side: this VM owns the WebRTC session and must consume the `offer`.
         isCaller = false
         ownsWebRTCSession = true
+        // currentCallId ANTES de registrar los callbacks: si un candidato ICE se
+        // generase entre ambas líneas, el listener lo descartaría en silencio.
+        currentCallId = callId
+        setupWebRTCCallbacks()
         viewModelScope.launch {
             try {
-                currentCallId = callId
 
                 // Update call status
                 databaseRepository.updateCallStatus(callId, CallStatus.ACCEPTED.name)
@@ -371,6 +414,7 @@ class CallViewModel @Inject constructor(
                             when (status?.uppercase()) {
                                 CallStatus.ACCEPTED.name -> {
                                     wasAccepted = true
+                                    ringingTimeoutJob?.cancel()
                                 }
                                 CallStatus.ENDED.name -> {
                                     // ── Detectar llamada perdida ──
@@ -441,19 +485,19 @@ class CallViewModel @Inject constructor(
     fun declineCall(callId: String) {
         viewModelScope.launch {
             try {
+                // Un solo cambio de estado: antes se escribía DECLINED dos veces
+                // y se construía un `endData` que nunca llegaba a usarse.
                 databaseRepository.updateCallStatus(callId, CallStatus.DECLINED.name)
-                val endData = mapOf(
-                    "endTime" to com.google.firebase.database.ServerValue.TIMESTAMP
-                )
-                databaseRepository.updateCallStatus(callId, "DECLINED")
+                ringingTimeoutJob?.cancel()
                 currentCallId = null
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
-    
+
     fun endCall() {
+        ringingTimeoutJob?.cancel()
         viewModelScope.launch {
             try {
                 currentCallId?.let { callId ->

@@ -337,15 +337,28 @@ fun AzelAIMessageBubble(message: AIMessage) {
             shape = RoundedCornerShape(18.dp),
             border = if (!isUser) null else BorderStroke(0.5.dp, BorderColor)
         ) {
-            SelectionContainer {
-                Text(
-                    text = message.content,
-                    color = TextPrimary,
-                    fontSize = 15.sp,
-                    lineHeight = 24.sp,
-                    fontFamily = if (message.content.contains("```")) FontFamily.Monospace else FontFamily.Default,
-                    modifier = Modifier.padding(12.dp)
-                )
+            // Los mensajes del usuario van tal cual: lo que escribió es lo que
+            // debe leer. Las respuestas del modelo pasan por el renderizador de
+            // markdown, que es el formato en el que llegan.
+            if (isUser) {
+                SelectionContainer {
+                    Text(
+                        text = message.content,
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        lineHeight = 24.sp,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            } else {
+                SelectionContainer {
+                    com.Azelmods.App.ui.components.MarkdownText(
+                        markdown = message.content,
+                        color = TextPrimary,
+                        accent = AzelPurple,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
         }
     }

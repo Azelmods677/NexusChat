@@ -3,6 +3,7 @@ package com.Azelmods.App.data.repository
 import android.net.Uri
 import android.util.Log
 import com.Azelmods.App.data.local.CacheManager
+import com.Azelmods.App.data.model.ChatSettings
 import com.Azelmods.App.data.security.encryption.E2EECryptoService
 import com.Azelmods.App.util.CrashlyticsLogger
 import com.google.firebase.auth.FirebaseAuth
@@ -443,8 +444,144 @@ class RealtimeDatabaseRepository @Inject constructor(
         database.child("chats").child(chatId).child(field).setValue(value).await()
     }
 
+    // ── AJUSTES DE CHAT POR USUARIO ──────────────────────────────────────────
+    //
+    // Fijar, silenciar y archivar son decisiones PERSONALES. Estaban guardadas
+    // en `chats/{chatId}/isPinned|isMuted|isArchived`, un nodo que comparten los
+    // dos participantes: silenciar una conversación se la silenciaba también al
+    // otro, y archivarla se la archivaba. Ahora viven en
+    // `chat_settings/{uid}/{chatId}`, que las reglas ya tenían reservado como
+    // privado de cada usuario desde hace versiones y que nadie llegó a usar.
+
+    /** Escucha los ajustes de todos los chats del usuario actual. */
+    fun observeChatSettings(userId: String): Flow<Map<String, ChatSettings>> = callbackFlow {
+        val ref = database.child("chat_settings").child(userId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val settings = snapshot.children.mapNotNull { child ->
+                    val chatId = child.key ?: return@mapNotNull null
+                    chatId to child.toChatSettings(chatId)
+                }.toMap()
+                trySend(settings)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // No se cierra el flujo: quedarse sin ajustes debe degradar a los
+                // valores por defecto, no dejar la lista de chats sin pintar.
+                Log.w("RealtimeDB", "No se pudieron leer los ajustes de chat: ${error.message}")
+                trySend(emptyMap())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    private fun DataSnapshot.toChatSettings(chatId: String) = ChatSettings(
+        chatId = chatId,
+        isPinned = child("isPinned").getValue(Boolean::class.java) ?: false,
+        isMuted = child("isMuted").getValue(Boolean::class.java) ?: false,
+        muteUntil = child("muteUntil").getValue(Long::class.java) ?: 0L,
+        isArchived = child("isArchived").getValue(Boolean::class.java) ?: false,
+        pinnedAt = child("pinnedAt").getValue(Long::class.java) ?: 0L
+    )
+
+    /** Lectura puntual, para quien no puede suscribirse (el servicio de notificaciones). */
+    suspend fun getChatSettings(userId: String, chatId: String): ChatSettings {
+        return runCatching {
+            database.child("chat_settings").child(userId).child(chatId).get().await()
+                .toChatSettings(chatId)
+        }.getOrDefault(ChatSettings(chatId = chatId))
+    }
+
+    suspend fun setChatPinned(chatId: String, pinned: Boolean) {
+        val userId = auth.currentUser?.uid ?: return
+        database.child("chat_settings").child(userId).child(chatId).updateChildren(
+            mapOf(
+                "isPinned" to pinned,
+                // Marca temporal para poder ordenar los fijados por antigüedad.
+                "pinnedAt" to if (pinned) System.currentTimeMillis() else 0L
+            )
+        ).await()
+    }
+
+    suspend fun setChatArchived(chatId: String, archived: Boolean) {
+        val userId = auth.currentUser?.uid ?: return
+        database.child("chat_settings").child(userId).child(chatId)
+            .child("isArchived").setValue(archived).await()
+    }
+
+    /**
+     * Silencia el chat hasta [muteUntil].
+     *
+     * @param muteUntil marca de tiempo en la que caduca; [ChatSettings.MUTE_ALWAYS]
+     *   para que no caduque. Pasar `null` lo reactiva.
+     */
+    suspend fun setChatMuted(chatId: String, muteUntil: Long?) {
+        val userId = auth.currentUser?.uid ?: return
+        database.child("chat_settings").child(userId).child(chatId).updateChildren(
+            mapOf(
+                "isMuted" to (muteUntil != null),
+                "muteUntil" to (muteUntil ?: 0L)
+            )
+        ).await()
+    }
+
+    /**
+     * Borra una conversación entera.
+     *
+     * ## Por qué no basta con quitar `chats/{chatId}`
+     *
+     * La pantalla de inicio no escucha `chats`: escucha el índice
+     * `userChats/{uid}` (ver [getUserChats]). Borrar sólo el nodo del chat dejaba
+     * el índice intacto, así que el listener no se disparaba y **la conversación
+     * seguía en la lista hasta reiniciar la app**: exactamente el "toco eliminar
+     * y no borra" que se reportó. Además el índice acumulaba entradas apuntando
+     * a chats que ya no existían.
+     *
+     * El orden es deliberado: primero se leen los miembros (después ya no se
+     * podrían), luego se limpian los índices —que es lo que refresca la interfaz—
+     * y por último el nodo del chat.
+     */
     suspend fun deleteChat(chatId: String) {
+        val members = runCatching {
+            database.child("chats").child(chatId).child("members").get().await()
+                .children.mapNotNull { it.key }
+        }.getOrDefault(emptyList())
+
+        // Si el nodo ya no existiera, todavía hay que limpiar el índice del
+        // usuario actual: si no, la entrada huérfana se queda para siempre.
+        val currentUserId = auth.currentUser?.uid
+        val toClean = (members + listOfNotNull(currentUserId)).distinct()
+
+        toClean.forEach { uid ->
+            runCatching {
+                database.child("userChats").child(uid).child(chatId).removeValue().await()
+            }.onFailure {
+                // Cada usuario sólo puede escribir su propio índice; que falle el
+                // del otro miembro es esperable y no debe abortar el borrado.
+                Log.d("RealtimeDB", "No se pudo limpiar userChats/$uid/$chatId: ${it.message}")
+            }
+        }
+
         database.child("chats").child(chatId).removeValue().await()
+    }
+
+    /**
+     * Vacía los mensajes de un chat pero conserva la conversación.
+     *
+     * Se borra el subárbol `messages` y se reinicia la vista previa, para que la
+     * lista de inicio no siga enseñando el último mensaje de algo que ya no
+     * existe.
+     */
+    suspend fun clearChatMessages(chatId: String) {
+        database.child("chats").child(chatId).child("messages").removeValue().await()
+        database.child("chats").child(chatId).updateChildren(
+            mapOf(
+                "lastMessage" to "",
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to ""
+            )
+        ).await()
     }
 
     /**
@@ -1240,12 +1377,44 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
     }
 
+    /**
+     * Publica la presencia del usuario actual.
+     *
+     * ## Por qué se escriben DOS campos
+     *
+     * En la base de datos convivían dos banderas distintas con el mismo
+     * significado aparente:
+     *
+     * - `online`, la de verdad: la escribía esta función y tenía un
+     *   `onDisconnect()` que la ponía a `false` al perderse la conexión.
+     * - `isOnline`, la que lee **toda la interfaz** (Home, chat, perfil,
+     *   llamadas, nueva conversación): se ponía a `true` al iniciar sesión y
+     *   nadie la ponía a `false` jamás.
+     *
+     * Resultado: todos los contactos aparecían permanentemente "en línea" y la
+     * "última vez" no se movía nunca. Ahora las dos se escriben juntas y las dos
+     * tienen `onDisconnect`, de modo que da igual cuál lea cada pantalla. Se
+     * mantienen ambas en lugar de renombrar una porque hay cuentas ya creadas
+     * con `isOnline` guardado, y migrarlas exigiría tocar los datos existentes.
+     */
     suspend fun updatePresence(isOnline: Boolean) {
         val userId = auth.currentUser?.uid ?: return
         val userPresenceRef = database.child("users").child(userId)
-        val presenceMap = mapOf("online" to isOnline, "lastSeen" to ServerValue.TIMESTAMP)
-        userPresenceRef.updateChildren(presenceMap).await()
-        if (isOnline) userPresenceRef.child("online").onDisconnect().setValue(false)
+        userPresenceRef.updateChildren(
+            mapOf(
+                "online" to isOnline,
+                "isOnline" to isOnline,
+                "lastSeen" to ServerValue.TIMESTAMP
+            )
+        ).await()
+
+        // onDisconnect lo ejecuta el SERVIDOR cuando el socket cae, así que
+        // cubre el cierre forzado de la app, la pérdida de red y el apagado del
+        // móvil: los tres casos en los que el cliente no puede avisar.
+        if (isOnline) {
+            userPresenceRef.child("online").onDisconnect().setValue(false)
+            userPresenceRef.child("isOnline").onDisconnect().setValue(false)
+        }
         userPresenceRef.child("lastSeen").onDisconnect().setValue(ServerValue.TIMESTAMP)
     }
 

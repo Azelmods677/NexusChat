@@ -49,6 +49,10 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
         // ══════════════════════════════════════════════════════════════
         com.Azelmods.App.util.NexusCrashHandler.install(this)
 
+        // Firma de autoría y anti-manipulación (Azel Mods). Inofensivo en debug y en
+        // release sin configurar; solo actúa ante un reempaquetado ajeno. Ver README.
+        com.Azelmods.App.data.security.IntegrityGuard.verify(this)
+
         // Firebase is initialised automatically by its ContentProvider before
         // Application.onCreate() is called. If you want explicit, ordered
         // initialisation via the App Startup library, register

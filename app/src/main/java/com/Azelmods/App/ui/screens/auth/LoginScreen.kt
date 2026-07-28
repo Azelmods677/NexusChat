@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -224,8 +225,41 @@ fun LoginScreen(
                 }
             }
             
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Acceso por número de teléfono (SMS). Tercera vía junto a correo y
+            // Google: hay gente sin cuenta de Google y gente que no quiere dar su
+            // correo, y hasta ahora no tenían por dónde entrar.
+            OutlinedButton(
+                onClick = { navController.navigate(Screen.PhoneLogin.route) },
+                enabled = !state.isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White
+                )
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Phone,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 12.dp)
+                    )
+                    Text(
+                        text = "Continuar con el teléfono",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             // Register link
             Row(
                 horizontalArrangement = Arrangement.Center,

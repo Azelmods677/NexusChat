@@ -268,6 +268,40 @@ class BackupManager @Inject constructor(
         }
     }
 
+    /**
+     * Nombre de fichero sugerido para exportar (legible y con extensión propia).
+     * Ej.: `NexusChat-2026-07-27_1530.azelback`
+     */
+    fun suggestedExportName(): String {
+        val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmm", java.util.Locale.US)
+            .format(java.util.Date())
+        return "NexusChat-$stamp$BACKUP_EXTENSION"
+    }
+
+    /** Fichero local de la copia recién creada (el que escribe [createBackup]). */
+    fun localBackupFile(backupId: String): File =
+        File(backupStorage.getLocalBackupsDir(), "$backupId.azelback")
+
+    /**
+     * Exporta una copia ya creada al destino que el usuario eligió con el selector
+     * del sistema (Storage Access Framework).
+     *
+     * CAUSA RAÍZ (fix "no exporta nada"): [createBackup] con destino LOCAL solo
+     * escribía el fichero en `Android/data/<pkg>/files/backups`, que en Android 11+
+     * NO es navegable desde la app Archivos. La copia existía, pero el usuario no
+     * podía verla en ningún sitio. Ahora, tras crearla, se copia al URI que el
+     * usuario escoge (Descargas, Drive, etc.), que es lo que "exportar" significa.
+     */
+    suspend fun exportBackupTo(backupId: String, destination: android.net.Uri): Boolean =
+        withContext(Dispatchers.IO) {
+            val file = localBackupFile(backupId)
+            if (!file.exists()) {
+                Log.e(TAG, "exportBackupTo: no existe la copia $backupId")
+                return@withContext false
+            }
+            backupStorage.saveToLocal(file, destination)
+        }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private suspend fun collectUserData(userId: String, includeMedia: Boolean): UserData = withContext(Dispatchers.IO) {

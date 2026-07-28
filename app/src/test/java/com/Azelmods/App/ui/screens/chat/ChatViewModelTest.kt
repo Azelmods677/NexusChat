@@ -49,6 +49,11 @@ class ChatViewModelTest : StringSpec({
     val userPreferences = mockk<com.Azelmods.App.data.preferences.UserPreferences>(relaxed = true)
     // Dependencia añadida en la v5 junto con el asistente del chat de bienvenida.
     val demoAccountManager = mockk<com.Azelmods.App.data.demo.DemoAccountManager>(relaxed = true)
+    // Dependencias de la v6: funciones de IA sobre el chat y realce de fotos.
+    val aiAssistService = mockk<com.Azelmods.App.data.ai.AiAssistService>(relaxed = true)
+    val aiFeaturePreferences = mockk<com.Azelmods.App.data.preferences.AiFeaturePreferences>(relaxed = true)
+    val photoEnhancer = mockk<com.Azelmods.App.utils.PhotoEnhancer>(relaxed = true)
+    val appContext = mockk<android.content.Context>(relaxed = true)
 
     // Helper that builds a ChatViewModel with the shared mocks.
     fun buildViewModel() = ChatViewModel(
@@ -59,7 +64,11 @@ class ChatViewModelTest : StringSpec({
         cacheManager = cacheManager,
         translationService = translationService,
         userPreferences = userPreferences,
-        demoAccountManager = demoAccountManager
+        demoAccountManager = demoAccountManager,
+        aiAssistService = aiAssistService,
+        aiFeaturePreferences = aiFeaturePreferences,
+        photoEnhancer = photoEnhancer,
+        appContext = appContext
     )
 
     // Mock FirebaseAuth
@@ -82,6 +91,18 @@ class ChatViewModelTest : StringSpec({
         // Mock backgroundRepository
         coEvery { backgroundRepository.loadBackground(any()) } returns Unit
         every { backgroundRepository.getBackground(any()) } returns MutableStateFlow(BackgroundConfig())
+
+        // Funciones de IA apagadas y sin proveedor: es el estado por defecto de
+        // la app, y así el `init` del ViewModel no arranca ninguna corrutina de
+        // sugerencias ni de traducción durante los tests.
+        every { aiAssistService.isAvailable() } returns false
+        every { aiFeaturePreferences.smartReplies } returns flowOf(false)
+        every { aiFeaturePreferences.autoTranslate } returns flowOf(false)
+        every { aiFeaturePreferences.conversationSummary } returns flowOf(false)
+        every { aiFeaturePreferences.toneSuggestions } returns flowOf(false)
+        every { aiFeaturePreferences.photoEnhance } returns flowOf(false)
+        every { aiFeaturePreferences.voiceTranscription } returns flowOf(false)
+        coEvery { aiFeaturePreferences.isPhotoEnhanceEnabled() } returns false
 
         Dispatchers.setMain(UnconfinedTestDispatcher())
     }

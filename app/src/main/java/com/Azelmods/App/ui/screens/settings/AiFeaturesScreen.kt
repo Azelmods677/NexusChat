@@ -30,7 +30,8 @@ import com.Azelmods.App.ui.theme.*
 @Composable
 fun AiFeaturesScreen(
     navController: NavController,
-    aiKeyViewModel: AiKeyViewModel = hiltViewModel()
+    aiKeyViewModel: AiKeyViewModel = hiltViewModel(),
+    aiFeaturesViewModel: AiFeaturesViewModel = hiltViewModel()
 ) {
     Scaffold(
         topBar = {
@@ -99,20 +100,12 @@ fun AiFeaturesScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // NOTA(features-ia): acá vivían 6 toggles (Smart Replies, Auto-Translate,
-            // Chat Summary, Tone Suggestions, Photo Enhancement, Voice Transcription)
-            // y chips de respuestas sugeridas que eran PURAMENTE decorativos:
-            // estado local con remember { mutableStateOf(false) } sin persistencia
-            // (se reseteaban al salir) y sin ningún efecto sobre la app.
-            // Se ocultan hasta que exista la implementación real. Para revivir cada uno hace falta:
-            //   1. Persistencia del toggle (DataStore vía un AiPreferencesRepository).
-            //   2. Lógica real detrás: Smart Replies/Summary/Tone → llamada a Gemini con
-            //      la API key del usuario (AiKeyStore); Auto-Translate → integrar
-            //      TranslationService al flujo de mensajes entrantes en ChatViewModel;
-            //      Voice Transcription → SpeechRecognizer o API externa.
-            //   3. Consumir el estado desde ChatScreen/ChatViewModel, no solo desde Settings.
-            // La UI previa está en el historial de git (AiFeatureCard + SuggestionChips).
-            
+            // Los seis interruptores. Fueron decorativos durante varias versiones
+            // (estado local con `remember`, sin persistencia ni efecto) y por eso
+            // se habían retirado de la interfaz. En la v6 tienen implementación
+            // real detrás y persisten en DataStore vía AiFeaturePreferences.
+            AiFeatureToggles(viewModel = aiFeaturesViewModel)
+
             // 🔑 API Key de Gemini
             GeminiApiKeySection(viewModel = aiKeyViewModel)
             

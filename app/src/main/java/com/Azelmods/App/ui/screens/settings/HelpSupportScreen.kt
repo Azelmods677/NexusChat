@@ -206,6 +206,61 @@ fun HelpSupportScreen(
                 onClick = { open(LICENSE_URL) }
             )
 
+            // ── AUTORÍA Y PROPIEDAD ──────────────────────────────────────────
+            // Aviso profesional de autoría. Va acompañado de una comprobación de
+            // firma en el binario (IntegrityGuard): la propiedad no depende solo de
+            // este texto, que cualquiera podría cambiar.
+            Surface(
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
+                color = DarkSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.VerifiedUser,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Plantilla desarrollada por ${com.Azelmods.App.data.security.IntegrityGuard.owner()}",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "NexusChat es una plantilla original diseñada y " +
+                            "desarrollada íntegramente por Azel Mods. Se distribuye bajo " +
+                            "licencia MIT: eres libre de usarla, estudiarla y construir sobre " +
+                            "ella, conservando este aviso de copyright y la atribución al autor.",
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "La autoría está firmada en el propio binario mediante verificación " +
+                            "criptográfica del certificado de la app. Reempaquetar o volver a " +
+                            "firmar el release con otra clave invalida esa firma.",
+                        color = Color.Gray.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        lineHeight = 16.sp
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        "© 2026 ${com.Azelmods.App.data.security.IntegrityGuard.owner()} · Licencia MIT",
+                        color = Color.Gray.copy(alpha = 0.6f),
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }

@@ -53,8 +53,19 @@ class HomeViewModel @Inject constructor(
     val backgroundConfig = backgroundManager.backgroundConfig
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    /**
+     * Ajustes personales por chat (fijado, silenciado, archivado).
+     *
+     * Se mantienen aparte de la lista de chats porque viven en otro nodo
+     * (`chat_settings/{uid}`) y cambian por su cuenta: al llegar unos ajustes
+     * nuevos hay que reaplicarlos sobre los chats ya cargados, sin releer
+     * Firebase entero.
+     */
+    private var chatSettings: Map<String, com.Azelmods.App.data.model.ChatSettings> = emptyMap()
+
     init {
         loadChats()
+        observeChatSettings()
         // Mark the current user as online — best-effort, failures are swallowed.
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { databaseRepository.updatePresence(isOnline = true) }
@@ -91,19 +102,52 @@ class HomeViewModel @Inject constructor(
     fun togglePin(chatId: String) {
         val chat = _state.value.chats.find { it.chatId == chatId } ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                databaseRepository.setChatBooleanField(chatId, "isPinned", !chat.isPinned)
-            }
+            runCatching { databaseRepository.setChatPinned(chatId, !chat.isPinned) }
         }
     }
 
-    fun toggleMute(chatId: String) {
+    /**
+     * Silencia el chat durante [durationMs], o lo reactiva si ya estaba
+     * silenciado.
+     *
+     * @param durationMs cuánto dura el silencio. [ChatSettings.MUTE_ALWAYS]
+     *   para que no caduque.
+     */
+    fun toggleMute(
+        chatId: String,
+        durationMs: Long = com.Azelmods.App.data.model.ChatSettings.MUTE_ALWAYS,
+        onResult: (String) -> Unit = {}
+    ) {
         val chat = _state.value.chats.find { it.chatId == chatId } ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                databaseRepository.setChatBooleanField(chatId, "isMuted", !chat.isMuted)
+            val muteUntil = if (chat.isMuted) {
+                null
+            } else if (durationMs == com.Azelmods.App.data.model.ChatSettings.MUTE_ALWAYS) {
+                com.Azelmods.App.data.model.ChatSettings.MUTE_ALWAYS
+            } else {
+                System.currentTimeMillis() + durationMs
             }
+            val mensaje = runCatching { databaseRepository.setChatMuted(chatId, muteUntil) }
+                .fold(
+                    onSuccess = { if (muteUntil == null) "Notificaciones reactivadas" else "Chat silenciado" },
+                    onFailure = { "No se pudo silenciar: ${it.message ?: "error"}" }
+                )
+            reportarEnMain(mensaje, onResult)
         }
+    }
+
+    /**
+     * Entrega el aviso al llamador SIEMPRE en el hilo principal.
+     *
+     * Estas funciones trabajan en [Dispatchers.IO] y la pantalla responde al
+     * callback con un `Toast`. Mostrar un Toast fuera del hilo principal lanza
+     * `RuntimeException: Can't toast on a thread that has not called
+     * Looper.prepare()`, así que llamar al callback directamente desde IO
+     * hacía que fijar, archivar, silenciar, vaciar y borrar cerraran la app.
+     * [toggleBlock] ya lo hacía bien; el resto se ha alineado con él.
+     */
+    private suspend fun reportarEnMain(mensaje: String, onResult: (String) -> Unit) {
+        withContext(Dispatchers.Main) { onResult(mensaje) }
     }
 
     /**
@@ -149,19 +193,97 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun archiveChat(chatId: String) {
+    /**
+     * Archiva o desarchiva. Antes solo sabía archivar (`isArchived = true`
+     * fijo), así que una conversación archivada por error solo se recuperaba
+     * editando la base de datos a mano, pese a que el filtro "Archivados" ya
+     * existía en esta misma pantalla.
+     */
+    fun toggleArchive(chatId: String, onResult: (String) -> Unit = {}) {
+        val chat = _state.value.chats.find { it.chatId == chatId } ?: return
+        val archivar = !chat.isArchived
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
-                databaseRepository.setChatBooleanField(chatId, "isArchived", true)
+            val mensaje = runCatching { databaseRepository.setChatArchived(chatId, archivar) }
+                .fold(
+                    onSuccess = {
+                        if (archivar) {
+                            "Archivada — la verás en el filtro «Archivados»"
+                        } else {
+                            "Conversación restaurada"
+                        }
+                    },
+                    onFailure = { "No se pudo archivar: ${it.message ?: "error"}" }
+                )
+            reportarEnMain(mensaje, onResult)
+        }
+    }
+
+    /** Escucha los ajustes personales y los reaplica sobre los chats cargados. */
+    private fun observeChatSettings() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            databaseRepository.observeChatSettings(userId).collect { settings ->
+                chatSettings = settings
+                val actualizados = _state.value.chats.map { chat ->
+                    val s = settings[chat.chatId]
+                    chat.copy(
+                        isPinned = s?.isPinned ?: false,
+                        isMuted = s?.isCurrentlyMuted() ?: false,
+                        isArchived = s?.isArchived ?: false
+                    )
+                }
+                _state.value = _state.value.copy(
+                    chats = actualizados,
+                    filteredChats = filterChats(
+                        chats = actualizados,
+                        query = _state.value.searchQuery,
+                        filter = _state.value.selectedFilter
+                    )
+                )
             }
         }
     }
 
-    fun deleteChat(chatId: String) {
+    /**
+     * Borra la conversación en el servidor y en el caché local.
+     *
+     * El `runCatching` de antes se tragaba el fallo sin dejar rastro: si las
+     * reglas denegaban el borrado, el usuario veía el chat intacto y no había
+     * forma de saber por qué. Ahora un fallo se informa por [onResult] y queda
+     * en el log.
+     */
+    fun deleteChat(chatId: String, onResult: (String) -> Unit = {}) {
         viewModelScope.launch(Dispatchers.IO) {
-            runCatching {
+            val mensaje = runCatching {
                 databaseRepository.deleteChat(chatId)
-            }
+                cacheManager.deleteChat(chatId)
+            }.fold(
+                // El listener de `userChats` refresca la lista solo; el aviso es
+                // para que el usuario sepa que la acción llegó a completarse.
+                onSuccess = { "Conversación eliminada" },
+                onFailure = { e ->
+                    android.util.Log.e("HomeVM", "No se pudo eliminar el chat $chatId", e)
+                    "No se pudo eliminar: ${e.message ?: "error desconocido"}"
+                }
+            )
+            reportarEnMain(mensaje, onResult)
+        }
+    }
+
+    /** Vacía los mensajes conservando la conversación. */
+    fun clearChat(chatId: String, onResult: (String) -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val mensaje = runCatching {
+                databaseRepository.clearChatMessages(chatId)
+                cacheManager.clearChatMessages(chatId)
+            }.fold(
+                onSuccess = { "Chat vaciado" },
+                onFailure = { e ->
+                    android.util.Log.e("HomeVM", "No se pudo vaciar el chat $chatId", e)
+                    "No se pudo vaciar: ${e.message ?: "error desconocido"}"
+                }
+            )
+            reportarEnMain(mensaje, onResult)
         }
     }
 
@@ -321,9 +443,14 @@ class HomeViewModel @Inject constructor(
         
         android.util.Log.d("HomeVM", "👥 Chat $chatId has ${members.size} members: $members")
 
-        val isPinned = data["isPinned"] as? Boolean ?: false
-        val isMuted = data["isMuted"] as? Boolean ?: false
-        val isArchived = data["isArchived"] as? Boolean ?: false
+        // Fijado, silenciado y archivado son AJUSTES DE ESTE USUARIO, no del
+        // chat: viven en chat_settings/{uid}/{chatId}. Antes se leían del nodo
+        // compartido `chats/{chatId}`, de modo que silenciar o archivar una
+        // conversación se la silenciaba o archivaba también a la otra persona.
+        val settings = chatSettings[chatId]
+        val isPinned = settings?.isPinned ?: false
+        val isMuted = settings?.isCurrentlyMuted() ?: false
+        val isArchived = settings?.isArchived ?: false
 
         val chatType = if ((data["type"] as? String) == "group" || 
                            (data["isGroup"] as? Boolean) == true ||

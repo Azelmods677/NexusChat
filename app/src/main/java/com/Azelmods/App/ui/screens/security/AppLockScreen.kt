@@ -64,6 +64,20 @@ fun AppLockScreen(
     val isErrorValue by viewModel.isError.collectAsState()
     val errorMessageValue by viewModel.errorMessage.collectAsState()
     val isBiometricEnabledValue by viewModel.isBiometricEnabled.collectAsState()
+    val requires2fa by viewModel.requires2fa.collectAsState()
+    val totpCode by viewModel.totpCode.collectAsState()
+
+    // Paso del segundo factor: el PIN/huella ya se validó y ahora se pide el código.
+    if (requires2fa) {
+        TwoFactorStep(
+            code = totpCode,
+            isError = isErrorValue,
+            errorMessage = errorMessageValue,
+            onCodeChange = viewModel::onTotpChange,
+            onVerify = { viewModel.verifyTotp(onUnlocked) }
+        )
+        return
+    }
     
     // Animación de shake para error
     val shakeOffset = remember { Animatable(0f) }
@@ -180,6 +194,93 @@ fun AppLockScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Segundo factor: entrada del código TOTP de 6 dígitos. Aparece SOLO después de que
+ * el PIN o la huella hayan sido correctos, de modo que exige de verdad los dos
+ * factores para desbloquear.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TwoFactorStep(
+    code: String,
+    isError: Boolean,
+    errorMessage: String,
+    onCodeChange: (String) -> Unit,
+    onVerify: () -> Unit
+) {
+    // Verifica solo cuando el usuario ha escrito los 6 dígitos.
+    LaunchedEffect(code) {
+        if (code.length == 6) {
+            delay(150)
+            onVerify()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Verificación en dos pasos",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Introduce el código de 6 dígitos de tu app de autenticación",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+            OutlinedTextField(
+                value = code,
+                onValueChange = onCodeChange,
+                singleLine = true,
+                isError = isError,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    color = Color.White,
+                    fontSize = 28.sp,
+                    letterSpacing = 8.sp,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold
+                ),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            AnimatedVisibility(visible = isError, enter = fadeIn(), exit = fadeOut()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Button(
+                onClick = onVerify,
+                enabled = code.length == 6,
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Verificar") }
         }
     }
 }
@@ -344,11 +445,27 @@ class AppLockViewModel @Inject constructor(
     
     private val _isBiometricEnabled = MutableStateFlow(false)
     val isBiometricEnabled: StateFlow<Boolean> = _isBiometricEnabled
-    
+
+    // Segundo factor: cuando el PIN/huella es correcto pero el 2FA está activo, el
+    // desbloqueo NO se concede todavía; la pantalla pasa a pedir el código TOTP.
+    private val _requires2fa = MutableStateFlow(false)
+    val requires2fa: StateFlow<Boolean> = _requires2fa
+
+    private val _totpCode = MutableStateFlow("")
+    val totpCode: StateFlow<String> = _totpCode
+
+    private var twoFactorEnabled = false
+
     init {
         viewModelScope.launch {
             _isBiometricEnabled.value = appLockManager.isBiometricEnabled()
+            twoFactorEnabled = appLockManager.is2faEnabled()
         }
+    }
+
+    fun onTotpChange(value: String) {
+        _totpCode.value = value.filter { it.isDigit() }.take(6)
+        _isError.value = false
     }
     
     fun addDigit(digit: Int) {
@@ -365,14 +482,24 @@ class AppLockViewModel @Inject constructor(
         }
     }
     
+    /**
+     * Verifica el PIN. Devuelve `true` SOLO si el desbloqueo es total. Si el PIN es
+     * correcto pero el 2FA está activo, no desbloquea: activa [requires2fa] para que
+     * la pantalla pida el código TOTP, y devuelve `false`.
+     */
     suspend fun verifyPin(): Boolean {
         val isCorrect = appLockManager.verifyPin(_pin.value)
-        
+
         return if (isCorrect) {
-            appLockManager.unlock()
             _pin.value = ""
             _isError.value = false
-            true
+            if (twoFactorEnabled) {
+                _requires2fa.value = true
+                false
+            } else {
+                appLockManager.unlock()
+                true
+            }
         } else {
             _isError.value = true
             _errorMessage.value = "PIN incorrecto. Inténtalo de nuevo."
@@ -382,6 +509,27 @@ class AppLockViewModel @Inject constructor(
                 _pin.value = ""
             }
             false
+        }
+    }
+
+    /** Comprueba el segundo factor. Desbloquea (y llama a [onSuccess]) solo si es válido. */
+    fun verifyTotp(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            if (appLockManager.verifyTotp(_totpCode.value)) {
+                appLockManager.unlock()
+                _totpCode.value = ""
+                _requires2fa.value = false
+                _isError.value = false
+                onSuccess()
+            } else {
+                _isError.value = true
+                _errorMessage.value = "Código de verificación incorrecto."
+                launch {
+                    delay(1500)
+                    _isError.value = false
+                    _totpCode.value = ""
+                }
+            }
         }
     }
     
@@ -400,8 +548,14 @@ class AppLockViewModel @Inject constructor(
                             result: androidx.biometric.BiometricPrompt.AuthenticationResult
                         ) {
                             viewModelScope.launch {
-                                appLockManager.unlock()
-                                onSuccess()
+                                // La huella es el primer factor: si hay 2FA, todavía
+                                // falta el código TOTP antes de conceder el acceso.
+                                if (twoFactorEnabled) {
+                                    _requires2fa.value = true
+                                } else {
+                                    appLockManager.unlock()
+                                    onSuccess()
+                                }
                             }
                         }
                         

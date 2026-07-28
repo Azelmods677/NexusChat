@@ -45,8 +45,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 500
-        versionName = "5.0.0"
+        versionCode = 600
+        versionName = "6.0.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
 
@@ -282,7 +282,11 @@ dependencies {
     implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
     
     // ── Signal Protocol (E2EE) ─────────────────────────────
-    implementation("org.signal:libsignal-android:0.40.1")
+    // libsignal-android se retiró en la v6: ninguna clase lo usaba ya.
+    // El cifrado real de la app es E2EECryptoService (ECDH P-256 + AES-256-GCM)
+    // sobre las primitivas del propio sistema; las clases que importaban
+    // libsignal (SignalKeyStore, PreKeyManager) eran andamiaje sin ejecutar.
+    // implementation("org.signal:libsignal-android:0.40.1")
 
     // ── Zoomable (fullscreen photos) ───────────────────────
     implementation("net.engawapg.lib:zoomable:1.6.2")

@@ -1,21 +1,47 @@
 package com.Azelmods.App.data.demo
 
+import java.text.Normalizer
+
 /**
  * 🤖 Azel Assistant — guion del chat de bienvenida.
  *
  * El chat demo NO usa un modelo de IA: es un asistente guionizado y determinista
- * cuyo objetivo es dar la bienvenida y hacer un recorrido por las funciones de la
- * app **mensaje a mensaje** (no un único bloque), para que el usuario pruebe la
- * experiencia de conversación real mientras aprende qué hace NexusChat.
+ * cuyo objetivo es dar la bienvenida y explicar **qué es NexusChat, por qué
+ * existe y qué hace**, mensaje a mensaje (no un único bloque), para que el
+ * usuario pruebe la experiencia de conversación real mientras aprende.
  *
- * [repliesFor] devuelve la LISTA de respuestas que el asistente enviará una a una,
- * con una pequeña pausa entre cada una (lo gestiona el ViewModel), en función de
- * palabras clave del mensaje del usuario. Si nada casa, avanza el "tour" por temas.
+ * ## Por qué se reescribió el emparejado de palabras
+ *
+ * La versión anterior decidía el tema con `texto.contains(clave)` sobre claves
+ * de dos letras. La entrada `"ia"` casaba dentro de **"histor*ia*s"**,
+ * **"grac*ia*s"**, **"famil*ia*"** o **"gu*ía*"**, y como esa rama iba antes que
+ * la de historias, preguntar por las historias respondía sobre proveedores de
+ * IA. Lo mismo ocurría con `"ok"` y `"stor"`. Ahora se compara contra **palabras
+ * completas** (o prefijos explícitos) sobre el texto normalizado sin acentos.
+ *
+ * ## Por qué el tour ya no da la vuelta
+ *
+ * `tourStep` hacía `steps[turnIndex % steps.size]`: al sexto mensaje el usuario
+ * volvía a leer el primer paso, y la sensación era la de un bot que se reinicia
+ * solo. Ahora el recorrido es finito y, al terminar, cae en un cierre estable
+ * que invita a preguntar por temas concretos.
  */
 object DemoAssistant {
 
     /** Identidad del bot (coincide con [DemoAccountManager]). */
     const val USER_ID = "demo_azel_assistant"
+
+    /**
+     * Mensajes que el bot envía al abrirse el chat, antes de que el usuario
+     * escriba nada. Responden a las tres preguntas que importan: qué es esto,
+     * por qué existe y qué se puede hacer aquí.
+     */
+    val welcome: List<String> = listOf(
+        "¡Hola! 👋 Soy Azel Assistant. Esto es un chat de verdad: lo que escribas viaja por la misma base de datos que cualquier otra conversación de la app.",
+        "*¿Qué es NexusChat?* Un mensajero completo —chats, grupos, llamadas e historias— que además trae dentro herramientas que normalmente viven en otras apps: navegador Tor, editor de código, terminal y un asistente de IA con tu propia clave.",
+        "*¿Por qué existe?* Porque casi todos los mensajeros te piden confiar en su palabra. Aquí el cifrado ocurre en tu dispositivo, la clave privada no sale de él, y el código está publicado para que lo compruebes en vez de creértelo.",
+        "*¿Qué puedo hacer?* Pregúntame por *cifrado*, *llamadas*, *historias*, *grupos*, *IA*, *Tor*, *traducción*, *privacidad*, *código* o *diseño*. Escribe *funciones* y te doy el índice completo. ✨"
+    )
 
     /**
      * Respuestas contextuales según el texto del usuario. Devuelve varias líneas
@@ -27,58 +53,120 @@ object DemoAssistant {
      *                   (0 = primero). Sirve para avanzar el tour sin repetir.
      */
     fun repliesFor(userText: String, turnIndex: Int): List<String> {
-        val t = userText.lowercase().trim()
+        val words = tokenize(userText)
 
-        fun matches(vararg keys: String) = keys.any { t.contains(it) }
+        /** Palabra exacta: "ia" casa con "ia", nunca dentro de "historias". */
+        fun word(vararg keys: String) = keys.any { key -> words.any { it == key } }
+
+        /** Prefijo de palabra: "cifr" casa con "cifrado" y "cifrar". */
+        fun starts(vararg keys: String) = keys.any { key -> words.any { it.startsWith(key) } }
 
         return when {
-            matches("hola", "buenas", "hey", "hello", "hi", "saludos") -> listOf(
-                "¡Hola! 👋 Soy Azel Assistant, tu guía dentro de NexusChat.",
-                "Escríbeme lo que quieras y te iré mostrando funciones una a una.",
-                "Prueba a preguntarme por: *cifrado*, *Tor*, *IA*, *historias* o *llamadas*. ✨"
+            // ── Índice de funciones ──
+            starts("funcion", "menu", "indice") || word("ayuda", "help", "opciones") -> listOf(
+                "Esto es lo que hay dentro, por bloques 👇",
+                "💬 *Comunicación* — chats 1:1, grupos, llamadas de voz y vídeo, historias de 24 h.",
+                "🔒 *Privacidad* — cifrado de extremo a extremo, navegación Tor, bloqueo con huella, bloqueo de contactos.",
+                "🛠️ *Herramientas* — asistente de IA, editor de código, terminal, traducción de mensajes.",
+                "🎨 *Personalización* — fondos propios, 25 acentos de color, tamaño de letra.",
+                "Escríbeme el nombre de cualquiera y te cuento el detalle."
             )
 
-            matches("cifr", "seguridad", "e2ee", "privac", "encrypt") -> listOf(
-                "🔒 Tus mensajes van cifrados de extremo a extremo (ECDH + AES-256-GCM).",
-                "El servidor solo guarda texto cifrado: ni yo ni nadie más puede leerlo.",
-                "La clave se genera en tu dispositivo. Ni siquiera sale de él."
+            // ── Identidad del proyecto ──
+            (starts("que") && (starts("nexus", "aplicacion") || word("es", "esto", "app"))) ||
+                (starts("para") && starts("sirve", "vale")) -> listOf(
+                "NexusChat es un mensajero con cifrado de extremo a extremo que además trae navegador Tor, editor de código, terminal y un asistente de IA.",
+                "La idea no es competir en número de usuarios, sino enseñar cómo se construye una app así de completa: también sirve de plantilla para desarrolladores.",
+                "Todo lo que ves —incluida esta conversación— funciona de verdad contra Firebase. Nada es una maqueta."
             )
 
-            matches("tor", "onion", "orbot", "anonim", "anónim") -> listOf(
+            (starts("porque", "porqu") || word("motivo", "razon")) &&
+                !starts("cifr", "llam", "histor", "traduc") -> listOf(
+                "Porque un mensajero que te pide confiar en su palabra no es privacidad, es marketing. 🙂",
+                "Aquí la clave privada se genera en tu dispositivo y no sale de él: el servidor guarda texto cifrado que no puede leer.",
+                "Y porque el código está publicado, así que cualquiera puede comprobar que hace lo que dice."
+            )
+
+            // ── Seguridad y privacidad ──
+            starts("cifr", "encript", "encrypt") || word("e2ee") -> listOf(
+                "🔒 Tus mensajes 1:1 van cifrados de extremo a extremo con ECDH (P-256) + AES-256-GCM.",
+                "La clave se deriva entre tu dispositivo y el del otro; el servidor solo almacena el resultado cifrado.",
+                "Aviso honesto: los *grupos* todavía NO van cifrados de extremo a extremo, y no hay secreto hacia adelante. Está escrito tal cual en Ajustes → Acerca de."
+            )
+
+            starts("privac", "segur", "anonim") -> listOf(
+                "🛡️ La privacidad aquí son cuatro cosas concretas, no un eslogan:",
+                "1) Cifrado de extremo a extremo en los chats 1:1.  2) Navegación por Tor con Orbot.",
+                "3) Bloqueo de la app con huella o PIN.  4) Bloqueo de contactos que aplican las reglas del servidor, no solo la interfaz.",
+                "Pregúntame por *cifrado* o *Tor* para el detalle de cada uno."
+            )
+
+            starts("tor", "onion", "orbot") -> listOf(
                 "🧅 Con Orbot instalado puedes navegar por Tor desde el navegador integrado.",
                 "Activa el *Modo anónimo* en Seguridad y podrás abrir sitios .onion.",
                 "Si Orbot no está corriendo, te aviso y te dejo el enlace para instalarlo."
             )
 
-            matches("ia", "ai", "gemini", "modelo", "asistente", "deepseek", "qwen", "openrouter", "ollama") -> listOf(
+            // ── Historias ──
+            // Antes esta rama iba DESPUÉS de la de IA y era inalcanzable:
+            // "historias" contiene "ia".
+            starts("histor", "stories", "estado") || word("story") -> listOf(
+                "📸 Las Historias duran 24 h y admiten foto, vídeo, texto, música y dibujo.",
+                "Ve a la pestaña *Stories* y toca el botón + para crear la tuya.",
+                "Puedes ver quién la ha visto y recibir reacciones con emoji."
+            )
+
+            starts("llam", "videollam", "call") || word("voz", "video") -> listOf(
+                "📞 Las llamadas de voz y vídeo son P2P con WebRTC: el audio y el vídeo van directos entre los dos dispositivos.",
+                "Desde un chat, toca el icono de teléfono o el de cámara para iniciarlas.",
+                "Si el otro no contesta, la llamada se cierra sola a los 45 segundos y queda el aviso de llamada perdida."
+            )
+
+            starts("grupo") -> listOf(
+                "👥 Puedes crear grupos desde *Nueva conversación* → *Nuevo grupo*.",
+                "Tienen administradores, permisos y ajustes propios.",
+                "Aviso honesto: los grupos NO usan cifrado de extremo a extremo todavía. Los mensajes 1:1 sí."
+            )
+
+            starts("traduc", "translat", "idioma") -> listOf(
+                "🌐 Mantén pulsado cualquier mensaje y elige *Traducir* para verlo en tu idioma.",
+                "El idioma de destino se configura en Ajustes → Idioma de traducción.",
+                "El original no se toca: la traducción aparece debajo y puedes ocultarla cuando quieras."
+            )
+
+            // "ia" y "ai" como PALABRAS, no como trozos de otra palabra.
+            word("ia", "ai", "gemini", "chatgpt", "openai", "deepseek", "qwen", "ollama", "openrouter", "mistral", "groq") ||
+                starts("inteligencia", "asistent", "modelo") -> listOf(
                 "🤖 En Ajustes → IA eliges proveedor, modelo y tu propia clave.",
                 "Funciona con Gemini, OpenAI, OpenRouter, DeepSeek, Mistral, Groq… y modelos locales con Ollama.",
-                "Con OpenRouter tienes de un tirón DeepSeek, Qwen Coder, GLM, Kimi y muchos más."
+                "La clave se guarda cifrada en tu dispositivo y las peticiones salen directas al proveedor: no pasan por ningún servidor intermedio."
             )
 
-            matches("histor", "stor", "estado") -> listOf(
-                "📸 Las Historias duran 24 h y admiten foto, vídeo, texto, música y dibujo.",
-                "Ve a la pestaña *Stories* y toca el botón + para crear la tuya."
-            )
-
-            matches("llam", "call", "video", "voz") -> listOf(
-                "📞 Las llamadas de voz y vídeo son P2P (WebRTC), directas entre dispositivos.",
-                "Desde un chat, toca el icono de teléfono o cámara para iniciar una."
-            )
-
-            matches("chat", "mensaje", "escrib", "contacto", "amigo") -> listOf(
-                "💬 Para hablar con alguien real: pulsa *Nueva conversación* y busca su usuario.",
-                "Los dos necesitáis cuenta en la app. También puedes crear grupos."
-            )
-
-            matches("codigo", "código", "editor", "program", "code", "terminal") -> listOf(
-                "💻 Hay un editor de código con resaltado (Kotlin, JS, React, JSON…) y una terminal.",
+            starts("codigo", "editor", "program", "terminal", "consola") || word("code") -> listOf(
+                "💻 Hay un editor de código con resaltado (Kotlin, JS, React, JSON…) y una terminal real.",
                 "Búscalos en el menú: son perfectos para trastear sin salir de la app."
             )
 
-            matches("gracias", "genial", "perfecto", "ok", "vale", "entendido") -> listOf(
+            // "disen" y no "diseñ": tokenize() ya ha quitado la tilde de la ñ.
+            starts("disen", "tema", "color", "fondo", "aparienc") -> listOf(
+                "🎨 La app usa el *Nexus Design System*: un solo violeta de marca, una escalera de superficies y tokens compartidos por todas las pantallas.",
+                "En Ajustes → Apariencia cambias el acento entre 25 colores, pones tu propio fondo (imagen o vídeo) y ajustas el tamaño de letra.",
+                "La pantalla de inicio es translúcida a propósito: el fondo que elijas se ve a través de las tarjetas."
+            )
+
+            starts("contact", "amigo", "convers", "escrib", "mensaj") || word("chat") -> listOf(
+                "💬 Para hablar con alguien real: pulsa *Nueva conversación* y busca su usuario.",
+                "Los dos necesitáis cuenta en la app. También puedes crear grupos o compartir tu QR."
+            )
+
+            starts("gracias", "genial", "perfecto", "entendido") || word("vale", "ok", "okey") -> listOf(
                 "¡Genial! 🚀 Sigo por aquí para lo que necesites.",
-                "Pregúntame por otra función cuando quieras."
+                "Escribe *funciones* cuando quieras volver al índice."
+            )
+
+            starts("hola", "buenas", "saludos") || word("hey", "hello", "hi") -> listOf(
+                "¡Hola otra vez! 👋 ¿Por dónde quieres seguir?",
+                "Prueba con *cifrado*, *llamadas*, *historias*, *IA* o *Tor*."
             )
 
             else -> tourStep(turnIndex)
@@ -86,28 +174,45 @@ object DemoAssistant {
     }
 
     /**
-     * Cuando el mensaje no casa con ninguna palabra clave, se avanza el tour por
-     * pasos para que cada respuesta sea distinta y el usuario descubra algo nuevo.
+     * Recorrido guiado para cuando el mensaje no casa con ningún tema.
+     *
+     * Es finito: al llegar al final se queda en el cierre en lugar de volver al
+     * principio, para que el bot no dé la sensación de reiniciarse.
      */
     private fun tourStep(turnIndex: Int): List<String> {
         val steps = listOf(
             listOf(
-                "Te leo. 👀 Mientras tanto, un dato: todo esto es un chat real, guardado en la base de datos.",
-                "Prueba a escribirme *cifrado*, *Tor*, *IA*, *historias* o *llamadas* y te cuento más."
+                "Te leo. 👀 Te sigo enseñando cosas mientras tanto.",
+                "🔒 Los mensajes 1:1 van cifrados de extremo a extremo. Escríbeme *cifrado* y te cuento con qué."
             ),
             listOf(
-                "🔒 ¿Sabías que tus mensajes van cifrados de extremo a extremo? Escríbeme *cifrado* para el detalle."
+                "📞 Las llamadas son P2P: el audio va directo entre los dos móviles, sin pasar por un servidor. Escríbeme *llamadas*."
             ),
             listOf(
-                "🤖 Puedes conectar tu propia IA (incluida local con Ollama). Escríbeme *IA* y te guío."
+                "🤖 Puedes conectar tu propia IA, incluso una local con Ollama, y la clave nunca sale de tu dispositivo. Escríbeme *IA*."
             ),
             listOf(
-                "🧅 Y si te va la privacidad, hay navegación por Tor. Escríbeme *Tor*."
+                "🧅 Y si te va la privacidad, hay navegación por Tor integrada. Escríbeme *Tor*."
             ),
             listOf(
-                "Cuando quieras hablar con alguien de verdad, usa *Nueva conversación*. ¡Disfruta NexusChat! 🚀"
+                "📸 También hay Historias de 24 h con foto, vídeo, texto y música. Escríbeme *historias*."
             )
         )
-        return steps[turnIndex % steps.size]
+        val closing = listOf(
+            "Ya te he enseñado lo esencial. 🚀 Escribe *funciones* para ver el índice completo, o el nombre de lo que te interese.",
+            "Y cuando quieras hablar con alguien de verdad, usa *Nueva conversación*."
+        )
+        return steps.getOrElse(turnIndex) { closing }
+    }
+
+    /**
+     * Divide el texto en palabras comparables: minúsculas, sin acentos y sin
+     * signos. Sin quitar acentos, "traducción" y "traduccion" serían temas
+     * distintos según cómo escriba cada usuario.
+     */
+    private fun tokenize(text: String): List<String> {
+        val normalized = Normalizer.normalize(text.lowercase(), Normalizer.Form.NFD)
+            .replace(Regex("\\p{Mn}+"), "")
+        return normalized.split(Regex("[^a-z0-9]+")).filter { it.isNotBlank() }
     }
 }

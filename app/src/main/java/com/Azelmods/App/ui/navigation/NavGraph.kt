@@ -96,7 +96,11 @@ fun NavGraph(
         composable(Screen.Register.route) {
             RegisterScreen(navController = navController)
         }
-        
+
+        composable(Screen.PhoneLogin.route) {
+            com.Azelmods.App.ui.screens.auth.PhoneLoginScreen(navController = navController)
+        }
+
         // Main
         composable(Screen.Home.route) {
             MainScreen(navController = navController)

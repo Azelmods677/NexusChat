@@ -12,6 +12,7 @@ object NavRoutes {
     const val SPLASH = "splash"
     const val LOGIN = "login"
     const val REGISTER = "register"
+    const val PHONE_LOGIN = "phone_login"
     
     // Main
     const val HOME = "home"

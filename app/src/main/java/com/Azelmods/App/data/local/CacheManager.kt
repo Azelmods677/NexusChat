@@ -87,6 +87,18 @@ class CacheManager @Inject constructor(
         chatDao.deleteAllChats()
     }
 
+    /**
+     * Borra del caché local una conversación y sus mensajes.
+     *
+     * Sin esto, borrar un chat lo quitaba del servidor pero no del disco: la
+     * pantalla de inicio pinta primero el caché y la conversación reaparecía en
+     * el siguiente arranque hasta que Firebase respondía.
+     */
+    suspend fun deleteChat(chatId: String) {
+        messageDao.deleteMessagesByChat(chatId)
+        chatDao.deleteChatById(chatId)
+    }
+
     // ════════════════════════════════════════════════════════════
     //  USERS
     // ════════════════════════════════════════════════════════════

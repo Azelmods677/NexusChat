@@ -8,11 +8,14 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.Azelmods.App.data.preferences.UserPreferences
 import com.Azelmods.App.data.preferences.ThemePreferences
 
@@ -20,20 +23,32 @@ import com.Azelmods.App.data.preferences.ThemePreferences
 fun getAccentColor(colorName: String): Color =
     AppTheme.getPrimaryColor(colorName)
 
-// Get typography based on font size preference
-@Composable
-fun getTypographyForSize(sizeName: String): androidx.compose.material3.Typography {
-    // Se aceptan todas las variantes que puede guardar FontSizeScreen (ES/EN, con o
-    // sin guion bajo). Antes "XLarge"/"ExtraLarge" no casaban con "EXTRA_LARGE" y el
-    // tamaño de fuente "Muy grande" no cambiaba nada.
-    val scaleFactor = when (sizeName.uppercase().replace(" ", "").replace("_", "")) {
+/**
+ * Factor de escala del tamaño de fuente elegido por el usuario.
+ *
+ * Es la ÚNICA fuente de verdad del escalado: se usa para escalar la densidad de
+ * fuente de toda la app (ver [NexusChatTheme]). Antes solo se escalaba la
+ * `Typography` de Material, pero casi todos los `Text(...)` de la app usan
+ * `fontSize = XX.sp` a pelo y no leen de la Typography, así que "Muy grande" no
+ * agrandaba nada visible (mensajes del chat, tarjetas de la home, etc.).
+ *
+ * Se aceptan todas las variantes que puede guardar FontSizeScreen (ES/EN, con o
+ * sin guion bajo) para tolerar valores heredados.
+ */
+fun fontScaleFor(sizeName: String): Float =
+    when (sizeName.uppercase().replace(" ", "").replace("_", "")) {
         "SMALL", "PEQUEÑO", "PEQUENO" -> 0.85f
         "MEDIUM", "MEDIANO", "NORMAL" -> 1.0f
         "LARGE", "GRANDE" -> 1.15f
         "EXTRALARGE", "XLARGE", "EXTRAGRANDE", "MUYGRANDE" -> 1.3f
         else -> 1.0f
     }
-    
+
+// Get typography based on font size preference
+@Composable
+fun getTypographyForSize(sizeName: String): androidx.compose.material3.Typography {
+    val scaleFactor = fontScaleFor(sizeName)
+
     return androidx.compose.material3.Typography(
         displayLarge = Typography.displayLarge.copy(fontSize = Typography.displayLarge.fontSize * scaleFactor),
         displayMedium = Typography.displayMedium.copy(fontSize = Typography.displayMedium.fontSize * scaleFactor),
@@ -97,9 +112,19 @@ fun NexusChatTheme(
     val accentColorName by userPreferences?.accentColor?.collectAsState() ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("Purple") }
     val accentColor = getAccentColor(accentColorName)
     
-    // Get user's font size preference
+    // Get user's font size preference.
+    // FIX "el tamaño de letra no hace efecto": antes solo se escalaba la Typography de
+    // Material, pero la inmensa mayoría de los `Text(...)` de la app fijan `fontSize` en
+    // sp a mano y no leen de la Typography, así que no cambiaban de tamaño. Ahora se
+    // escala la DENSIDAD DE FUENTE del árbol entero: todo `.sp` —de Typography o a
+    // mano— se agranda o encoge por igual. Se multiplica por el fontScale del sistema
+    // para respetar también la accesibilidad del dispositivo.
     val fontSizeName by userPreferences?.fontSize?.collectAsState() ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf("Medium") }
-    val typography = getTypographyForSize(fontSizeName)
+    val fontScale = fontScaleFor(fontSizeName)
+    val baseDensity = LocalDensity.current
+    val scaledDensity = remember(baseDensity.density, baseDensity.fontScale, fontScale) {
+        Density(density = baseDensity.density, fontScale = baseDensity.fontScale * fontScale)
+    }
 
     // Dark mode preference (en caliente).
     // FIX: antes NexusChatTheme ignoraba la preferencia y usaba siempre
@@ -120,10 +145,13 @@ fun NexusChatTheme(
         else -> createLightColorScheme(accentColor)
     }
 
+    // La Typography se pasa SIN escalar: el escalado lo hace la densidad de fuente de
+    // abajo, para no aplicar el factor dos veces sobre el texto que sí usa Typography.
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = typography,
-        shapes = Shapes,
-        content = content
-    )
+        typography = Typography,
+        shapes = Shapes
+    ) {
+        CompositionLocalProvider(LocalDensity provides scaledDensity, content = content)
+    }
 }

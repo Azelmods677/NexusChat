@@ -29,11 +29,15 @@ class AppLockPreferences @Inject constructor(
         private val KEY_PIN_HASH = stringPreferencesKey("pin_hash")
         private val KEY_BIOMETRIC = booleanPreferencesKey("biometric_enabled")
         private val KEY_AUTO_LOCK_MIN = intPreferencesKey("auto_lock_minutes")
+        // 2FA (TOTP): secreto Base32 y si el segundo factor está activo.
+        private val KEY_TOTP_SECRET = stringPreferencesKey("totp_secret")
+        private val KEY_2FA_ENABLED = booleanPreferencesKey("two_factor_enabled")
     }
 
     val isLockEnabled: Flow<Boolean> = dataStore.data.map { it[KEY_ENABLED] ?: false }
     val autoLockMinutes: Flow<Int> = dataStore.data.map { it[KEY_AUTO_LOCK_MIN] ?: 5 }
     val isBiometricEnabled: Flow<Boolean> = dataStore.data.map { it[KEY_BIOMETRIC] ?: false }
+    val is2faEnabled: Flow<Boolean> = dataStore.data.map { it[KEY_2FA_ENABLED] ?: false }
 
     suspend fun setLockEnabled(enabled: Boolean) {
         dataStore.edit { it[KEY_ENABLED] = enabled }
@@ -65,6 +69,30 @@ class AppLockPreferences @Inject constructor(
     }
 
     suspend fun hasPin(): Boolean = dataStore.data.first()[KEY_PIN_HASH] != null
+
+    // ── 2FA (TOTP) ────────────────────────────────────────────────────────────
+
+    /** Secreto TOTP en Base32, o null si aún no se ha configurado el 2FA. */
+    suspend fun getTotpSecret(): String? = dataStore.data.first()[KEY_TOTP_SECRET]
+
+    /** `true` si el segundo factor está activo (y por tanto hay secreto guardado). */
+    suspend fun is2faEnabledNow(): Boolean = dataStore.data.first()[KEY_2FA_ENABLED] ?: false
+
+    /** Guarda el secreto y activa el 2FA en una sola escritura. */
+    suspend fun enable2fa(secretBase32: String) {
+        dataStore.edit {
+            it[KEY_TOTP_SECRET] = secretBase32
+            it[KEY_2FA_ENABLED] = true
+        }
+    }
+
+    /** Desactiva el 2FA y borra el secreto para no dejar rastro reutilizable. */
+    suspend fun disable2fa() {
+        dataStore.edit {
+            it[KEY_2FA_ENABLED] = false
+            it.remove(KEY_TOTP_SECRET)
+        }
+    }
 
     private fun hashPin(pin: String): String {
         val salt = "nexus_chat_pin_v1"

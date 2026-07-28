@@ -95,6 +95,17 @@ class WebRTCManager @Inject constructor(
     }
     
     fun initializePeerConnection(isVideoCall: Boolean) {
+        // Este manager es un `@Singleton`: si la llamada anterior no se limpió
+        // del todo (la pantalla murió sin pasar por endCall, por ejemplo), aquí
+        // habría todavía una PeerConnection viva y un capturador con la cámara
+        // abierta. Reasignar encima los dejaba huérfanos, y la SEGUNDA
+        // videollamada de la sesión no conseguía abrir la cámara —ya ocupada por
+        // el capturador de la primera— y se quedaba sin imagen.
+        if (peerConnection != null || videoCapturer != null) {
+            Log.w(TAG, "Quedaba una sesión WebRTC previa: se limpia antes de crear la nueva")
+            cleanup()
+        }
+
         val iceServers = listOf(
             PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
             PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
@@ -396,19 +407,49 @@ class WebRTCManager @Inject constructor(
         videoCapturer?.switchCamera(null)
     }
     
+    /**
+     * Libera todo lo de la llamada actual.
+     *
+     * El ORDEN importa y no es el que había. Antes se destruían las pistas y el
+     * capturador primero y sólo al final se ponían los `StateFlow` a null: entre
+     * una cosa y otra la interfaz seguía suscrita a una `VideoTrack` ya
+     * destruida, y pintar sobre un objeto nativo liberado es un cierre inmediato
+     * de la app, no una excepción que estos `try/catch` puedan recoger.
+     *
+     * Ahora se avisa primero a la interfaz (flows a null → los renderers sueltan
+     * sus sinks), después se cierra la PeerConnection y sólo entonces se destruye
+     * lo que colgaba de ella.
+     */
     fun cleanup() {
+        // 1) La interfaz suelta las pistas ANTES de que dejen de existir.
+        _localVideoTrackFlow.value = null
+        _remoteVideoTrackFlow.value = null
+        _connectionState.value = null
+
+        // 2) Se corta la captura de cámara.
         try {
             videoCapturer?.stopCapture()
         } catch (e: Exception) {
             Log.w(TAG, "Error stopping video capture: ${e.message}")
         }
+
+        // 3) Se cierra la conexión, que es quien referencia las pistas.
+        try {
+            peerConnection?.close()
+            peerConnection?.dispose()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing peer connection: ${e.message}")
+        }
+        peerConnection = null
+
+        // 4) Ya sin dueños, se destruyen capturador y pistas.
         try {
             videoCapturer?.dispose()
         } catch (e: Exception) {
             Log.w(TAG, "Error disposing video capturer: ${e.message}")
         }
         videoCapturer = null
-        
+
         try {
             localVideoTrack?.dispose()
         } catch (e: Exception) {
@@ -421,31 +462,20 @@ class WebRTCManager @Inject constructor(
         }
         localVideoTrack = null
         localAudioTrack = null
-        
-        try {
-            peerConnection?.close()
-            peerConnection?.dispose()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error closing peer connection: ${e.message}")
-        }
-        peerConnection = null
-        
+
+        // 5) Contexto EGL del capturador.
         try {
             capturerEglBase?.release()
         } catch (e: Exception) {
             Log.w(TAG, "Error releasing capturer EglBase: ${e.message}")
         }
         capturerEglBase = null
-        
+
         synchronized(iceLock) {
             remoteDescriptionSet = false
             pendingIceCandidates.clear()
         }
-        
-        _localVideoTrackFlow.value = null
-        _remoteVideoTrackFlow.value = null
-        _connectionState.value = null
-        
+
         Log.d(TAG, "WebRTC cleaned up")
     }
 }

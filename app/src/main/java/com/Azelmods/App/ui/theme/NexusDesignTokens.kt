@@ -160,4 +160,57 @@ object NexusTokens {
         fun <T> springBouncy(): SpringSpec<T> =
             spring(dampingRatio = SPRING_DAMPING_LOW, stiffness = SPRING_STIFFNESS)
     }
+
+    // ── VIDRIO (v6) ─────────────────────────────────
+    //
+    // La pantalla de inicio es translúcida a propósito: el fondo que elige el
+    // usuario —imagen o vídeo— se ve a través de las tarjetas, y eso es parte de
+    // la identidad de la app, no un efecto accidental.
+    //
+    // Hasta la v5 cada pantalla se inventaba sus propios alfas
+    // (`Color.Black.copy(alpha = 0.42f)` aquí, `0.28f` allá, `0.35f` en otro
+    // sitio), así que dos superficies del mismo nivel se veían distintas según
+    // quién las hubiera escrito. Estos tokens fijan la escala: una superficie de
+    // vidrio elige un NIVEL, no un número.
+    object Glass {
+        /** Reposo: lo justo para separar del fondo sin taparlo. */
+        val Rest = Color(0x47000000)        // 28 %
+        /** Destacada: tarjetas con algo pendiente (no leídos, avisos). */
+        val Raised = Color(0x6B000000)      // 42 %
+        /** Modal: hojas y diálogos, donde sí hay que poder leer con comodidad. */
+        val Overlay = Color(0xD9000000)     // 85 %
+
+        /** Borde en reposo: apenas un filo de luz. */
+        val BorderRest = Color(0x1AFFFFFF)  // 10 %
+        /** Borde de superficie destacada, antes de teñirlo con el acento. */
+        val BorderRaised = Color(0x40FFFFFF) // 25 %
+
+        /** Grosor único de los bordes de vidrio. */
+        val BorderWidth = 1.dp
+        /** Ancho del raíl de acento que marca una tarjeta con novedades. */
+        val AccentRailWidth = 3.dp
+    }
+
+    // ── OPACIDAD DE TEXTO (v6) ──────────────────────
+    //
+    // Los mismos cuatro pesos de siempre, ahora nombrados por FUNCIÓN. Evita que
+    // "texto secundario" sea 0.5 en una pantalla y 0.45 en la de al lado.
+    object Alpha {
+        const val Full = 1.0f        // título, contenido principal
+        const val High = 0.92f       // contenido de una tarjeta destacada
+        const val Medium = 0.70f     // subtítulos, metadatos
+        const val Low = 0.50f        // vista previa en reposo
+        const val Faint = 0.30f      // deshabilitado
+    }
+
+    // ── ELEVACIÓN SEMÁNTICA (v6) ────────────────────
+    //
+    // [Elevation] son medidas; esto son decisiones. Una tarjeta no elige "6.dp",
+    // elige "destacada", y si mañana cambia el valor cambia en toda la app.
+    object Surface {
+        val CardRest = Elevation.sm       // 2.dp
+        val CardRaised = Elevation.lg     // 8.dp
+        val Sheet = Elevation.xl          // 16.dp
+        val CardRadius = Radius.xl        // 24.dp — el radio de tarjeta de Nexus
+    }
 }

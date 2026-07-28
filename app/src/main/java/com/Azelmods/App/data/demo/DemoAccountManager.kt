@@ -27,7 +27,7 @@ class DemoAccountManager @Inject constructor(
         private const val DEMO_USER_ID = "demo_azel_assistant"
         private const val DEMO_USER_NAME = "Azel Assistant"
         private const val DEMO_USERNAME = "@azel"
-        private const val DEMO_BIO = "I'm here to help you explore AzelGram features!"
+        private const val DEMO_BIO = "Estoy aquí para enseñarte lo que hace NexusChat"
         private const val DEMO_EMAIL = "azel.assistant@nexuschat.app"
     }
     
@@ -165,20 +165,12 @@ class DemoAccountManager @Inject constructor(
             // Todos los mensajes son DEL asistente. Antes habia uno falso atribuido al
             // usuario ("¡Genial! Voy a explorar la app"): poner palabras en boca de
             // alguien que no las escribio no es aceptable en produccion.
-            // Bienvenida CORTA y conversacional: el asistente responde de verdad a lo
-            // que escribas (ver DemoAssistant), así que aquí solo se abre la charla en
-            // vez de soltar todo el manual de golpe.
-            val welcomeTexts = listOf(
-                "¡Hola! 👋 Soy Azel Assistant, tu guía de bienvenida en NexusChat.",
-                "Este chat es real: los mensajes se guardan en la base de datos, igual " +
-                    "que en cualquier conversación. Escríbeme y te respondo.",
-                "Puedo enseñarte cada función. Prueba a escribirme una de estas palabras:\n" +
-                    "• *cifrado* — cómo protejo tus mensajes\n" +
-                    "• *Tor* — navegación anónima con Orbot\n" +
-                    "• *IA* — conectar tu propio proveedor y modelo\n" +
-                    "• *historias* · *llamadas* · *código*",
-                "¿Empezamos? Escríbeme lo que quieras. 🚀"
-            )
+            // El guion vive en DemoAssistant, junto al resto de respuestas del bot:
+            // tener dos copias del texto de bienvenida hacía que mejorar el guion
+            // no cambiara nada de lo que el usuario lee al abrir el chat.
+            // Responde a las tres preguntas de la guía: qué es NexusChat, por qué
+            // existe y qué se puede hacer con él.
+            val welcomeTexts = DemoAssistant.welcome
 
             welcomeTexts.forEachIndexed { index, body ->
                 val messageId = "demo_msg_${index + 1}"

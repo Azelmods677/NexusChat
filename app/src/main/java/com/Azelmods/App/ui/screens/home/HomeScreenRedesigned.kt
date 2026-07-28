@@ -9,6 +9,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+// horizontalScroll y rememberScrollState viven en androidx.compose.foundation,
+// NO en foundation.layout: el wildcard de layout de abajo no los trae.
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -41,6 +45,7 @@ import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.components.safeClickable
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.components.ReadReceiptIndicator
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.Azelmods.App.ui.theme.rememberThemeColor
 import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import com.google.firebase.auth.FirebaseAuth
@@ -72,6 +77,8 @@ fun HomeScreenRedesigned(
     val backgroundConfig by viewModel.backgroundConfig.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showMuteOptions by remember { mutableStateOf(false) }
     val themeColor = rememberThemeColor()
     val themeSecondaryColor = rememberThemeSecondaryColor()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -124,11 +131,17 @@ fun HomeScreenRedesigned(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                // Filter chips - IMPROVED VERSION
-            // Filter chips - IMPROVED VERSION
+            // Filtros. La fila SCROLLEA en horizontal: son cuatro
+            // (Todos / No leídos / Grupos / Archivados) y en una pantalla de
+            // 6" el cuarto se salía del borde sin posibilidad de alcanzarlo.
+            // Como archivar mueve la conversación justo a ese filtro, archivar
+            // equivalía a perder el chat: se iba a un sitio al que no se podía
+            // llegar. Con el scroll, y con el contador de archivados de abajo,
+            // el camino de vuelta existe.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -184,11 +197,43 @@ fun HomeScreenRedesigned(
                                 }
                                 
                                 Text(
-                                    text = filter.name,
+                                    // En castellano y no el nombre del enum en
+                                    // mayúsculas: el resto de la app está en
+                                    // castellano y "UNREAD"/"ARCHIVED" no dicen
+                                    // nada a quien no lea inglés.
+                                    text = when (filter) {
+                                        ChatFilter.ALL -> "Todos"
+                                        ChatFilter.UNREAD -> "No leídos"
+                                        ChatFilter.GROUPS -> "Grupos"
+                                        ChatFilter.ARCHIVED -> "Archivados"
+                                    },
                                     color = if (isSelected) Color.White else Color.Gray,
                                     fontSize = 15.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                 )
+
+                                // Cuántas conversaciones hay archivadas. Sin este
+                                // número, archivar parece que borra: no queda
+                                // rastro de que la conversación siga existiendo.
+                                if (filter == ChatFilter.ARCHIVED && !isSelected) {
+                                    val archivados = state.chats.count { it.isArchived }
+                                    if (archivados > 0) {
+                                        Surface(
+                                            shape = CircleShape,
+                                            color = themeColor,
+                                            modifier = Modifier.size(20.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = archivados.toString(),
+                                                    color = Color.White,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                                 
                                 // Badge count for unread
                                 if (filter == ChatFilter.UNREAD && !isSelected) {
@@ -325,25 +370,40 @@ fun HomeScreenRedesigned(
                 ) {
                     ChatActionItem(
                         icon = Icons.Default.PushPin,
-                        text = if (chat.isPinned) "Unpin Chat" else "Pin Chat",
+                        text = if (chat.isPinned) "No fijar" else "Fijar arriba",
                         onClick = {
                             viewModel.togglePin(chat.chatId)
                             showBottomSheet = false
                         }
                     )
                     ChatActionItem(
-                        icon = Icons.Default.NotificationsOff,
-                        text = if (chat.isMuted) "Unmute" else "Mute",
+                        icon = if (chat.isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                        text = if (chat.isMuted) "Reactivar notificaciones" else "Silenciar…",
                         onClick = {
-                            viewModel.toggleMute(chat.chatId)
-                            showBottomSheet = false
+                            if (chat.isMuted) {
+                                // Ya silenciado: reactivar directamente, sin
+                                // preguntar por una duración que no aplica.
+                                viewModel.toggleMute(chat.chatId) { message ->
+                                    android.widget.Toast
+                                        .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                        .show()
+                                }
+                                showBottomSheet = false
+                            } else {
+                                showBottomSheet = false
+                                showMuteOptions = true
+                            }
                         }
                     )
                     ChatActionItem(
-                        icon = Icons.Default.Archive,
-                        text = "Archive",
+                        icon = if (chat.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
+                        text = if (chat.isArchived) "Restaurar de archivados" else "Archivar",
                         onClick = {
-                            viewModel.archiveChat(chat.chatId)
+                            viewModel.toggleArchive(chat.chatId) { message ->
+                                android.widget.Toast
+                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                    .show()
+                            }
                             showBottomSheet = false
                         }
                     )
@@ -364,16 +424,118 @@ fun HomeScreenRedesigned(
                         )
                     }
                     ChatActionItem(
+                        icon = Icons.Default.CleaningServices,
+                        text = "Vaciar chat",
+                        onClick = {
+                            viewModel.clearChat(chat.chatId) { message ->
+                                android.widget.Toast
+                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                            showBottomSheet = false
+                        }
+                    )
+                    ChatActionItem(
                         icon = Icons.Default.Delete,
-                        text = "Delete",
+                        text = "Eliminar conversación",
                         textColor = ErrorRed,
                         onClick = {
-                            viewModel.deleteChat(chat.chatId)
+                            // Pide confirmación: el borrado quita la conversación
+                            // para AMBOS miembros y no se puede deshacer.
                             showBottomSheet = false
+                            showDeleteConfirm = true
                         }
                     )
                 }
             }
+        }
+    }
+
+    // Duración del silencio. Silenciar "para siempre" y no poder elegir un rato
+    // es lo que hace que la gente acabe silenciando un chat y olvidándose.
+    selectedChat?.let { chat ->
+        if (showMuteOptions) {
+            val opciones = listOf(
+                "1 hora" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_HOUR,
+                "8 horas" to com.Azelmods.App.data.model.ChatSettings.MUTE_8_HOURS,
+                "1 semana" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_WEEK,
+                "Hasta que lo reactive" to com.Azelmods.App.data.model.ChatSettings.MUTE_ALWAYS
+            )
+            AlertDialog(
+                onDismissRequest = { showMuteOptions = false },
+                icon = { Icon(Icons.Default.NotificationsOff, contentDescription = null) },
+                title = { Text("Silenciar conversación") },
+                text = {
+                    Column {
+                        Text(
+                            "Dejarás de recibir notificaciones de este chat. Las llamadas seguirán entrando.",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        opciones.forEach { (etiqueta, duracion) ->
+                            TextButton(
+                                onClick = {
+                                    showMuteOptions = false
+                                    viewModel.toggleMute(chat.chatId, duracion) { message ->
+                                        android.widget.Toast
+                                            .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                            .show()
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(etiqueta, modifier = Modifier.fillMaxWidth())
+                            }
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showMuteOptions = false }) { Text("Cancelar") }
+                },
+                containerColor = DarkSurface
+            )
+        }
+    }
+
+    // Confirmación de borrado. Va fuera del ModalBottomSheet a propósito: si
+    // viviera dentro, cerrar la hoja desmontaría el diálogo antes de que el
+    // usuario pudiera contestar.
+    selectedChat?.let { chat ->
+        if (showDeleteConfirm) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirm = false },
+                icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = ErrorRed) },
+                title = { Text("¿Eliminar la conversación?") },
+                text = {
+                    Text(
+                        "Se borrarán todos los mensajes para los dos participantes. " +
+                            "Esta acción no se puede deshacer.\n\n" +
+                            "Si solo quieres limpiar el historial, usa «Vaciar chat»."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteConfirm = false
+                            viewModel.deleteChat(chat.chatId) { message ->
+                                android.widget.Toast
+                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
+                                    .show()
+                            }
+                        }
+                    ) {
+                        Text("Eliminar", color = ErrorRed)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirm = false }) {
+                        Text("Cancelar")
+                    }
+                },
+                containerColor = DarkSurface
+            )
         }
     }
 }
@@ -437,29 +599,47 @@ fun ChatRow(
                     onClick = onClick,
                     onLongClick = onLongPress
                 ),
-            shape = RoundedCornerShape(20.dp),
-            // Translúcido a propósito: la Home deja ver el fondo/wallpaper del usuario.
-            // Un color opaco aquí rompería esa transparencia.
-            color = if (hasUnread) Color.Black.copy(alpha = 0.42f) else Color.Black.copy(alpha = 0.28f),
+            shape = RoundedCornerShape(NexusTokens.Surface.CardRadius),
+            // Translúcido a propósito: la Home deja ver el fondo/wallpaper del
+            // usuario y eso es parte de la identidad de la app. Los alfas ya no
+            // se escriben a mano aquí: salen de NexusTokens.Glass, que es donde
+            // se decide cuánto deja pasar cada nivel de superficie (v6).
+            color = if (hasUnread) NexusTokens.Glass.Raised else NexusTokens.Glass.Rest,
             border = BorderStroke(
-                width = 1.dp,
+                width = NexusTokens.Glass.BorderWidth,
                 brush = if (hasUnread) {
                     Brush.linearGradient(listOf(themeColor.copy(alpha = 0.85f), themeSecondaryColor.copy(alpha = 0.55f)))
                 } else {
-                    Brush.linearGradient(listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.04f)))
+                    Brush.linearGradient(
+                        listOf(NexusTokens.Glass.BorderRest, Color.White.copy(alpha = 0.04f))
+                    )
                 }
             ),
-            shadowElevation = if (hasUnread) 6.dp else 2.dp
+            shadowElevation = if (hasUnread) NexusTokens.Surface.CardRaised else NexusTokens.Surface.CardRest
         ) {
             // fillMaxWidth y NO fillMaxSize: la tarjeta ya no tiene altura fija sino
             // mínima, así que pedir el alto máximo dejaría la fila a merced de las
             // constraints del contenedor en lugar de ajustarse al contenido.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // ── Raíl de acento (v6) ───────────────────────────────────────────
+            // Barra vertical de marca en el borde izquierdo cuando hay algo
+            // pendiente: a un vistazo, y con un fondo de pantalla debajo, un
+            // borde de 1 dp y un contador al otro extremo no se ven.
+            //
+            // Va como CAPA dentro de un Box, no como primer hijo de un Row con
+            // `height(IntrinsicSize.Min)`. Esa era la versión anterior y
+            // crasheaba: AnimatedVisibility no sabe responder a una medición
+            // intrínseca ("Intrinsic measurements are not supported"), así que
+            // en cuanto la tarjeta se remedía —justo lo que pasa al fijar,
+            // archivar o borrar— la app se caía. Aquí el raíl se dibuja encima y
+            // toma la altura del contenido con matchParentSize, sin que nadie
+            // tenga que preguntar cuánto mide.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 // ── Avatar ────────────────────────────────────────────────────
                 // El anillo de gradiente solo aparece cuando hay mensajes sin leer:
                 // así el adorno significa algo en vez de ser decoración constante.
@@ -650,6 +830,25 @@ fun ChatRow(
                             }
                         }
                     }
+                    }
+                }
+
+                // Raíl superpuesto: matchParentSize copia la altura ya medida
+                // del Row, sin pedir medición intrínseca a nadie.
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = hasUnread,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(NexusTokens.Glass.AccentRailWidth)
+                            .background(
+                                Brush.verticalGradient(listOf(themeColor, themeSecondaryColor))
+                            )
+                    )
                 }
             }
         }

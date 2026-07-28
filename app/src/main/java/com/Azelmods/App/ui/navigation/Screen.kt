@@ -4,6 +4,7 @@ sealed class Screen(val route: String) {
     object Splash : Screen(NavRoutes.SPLASH)
     object Login : Screen(NavRoutes.LOGIN)
     object Register : Screen(NavRoutes.REGISTER)
+    object PhoneLogin : Screen(NavRoutes.PHONE_LOGIN)
     object Home : Screen(NavRoutes.HOME)
 
     object Chat : Screen(NavRoutes.CHAT) {

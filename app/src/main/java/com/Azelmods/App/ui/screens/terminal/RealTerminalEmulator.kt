@@ -31,9 +31,25 @@ class RealTerminalEmulator(private val context: Context) {
     
     private val _isRoot = MutableStateFlow(false)
     val isRoot: StateFlow<Boolean> = _isRoot.asStateFlow()
-    
+
     private var currentDirectory = Environment.getExternalStorageDirectory().absolutePath
     private val homeDirectory = Environment.getExternalStorageDirectory().absolutePath
+
+    /** Directorio actual, reactivo, para que la UI pinte el prompt real. */
+    private val _cwd = MutableStateFlow(currentDirectory)
+    val cwd: StateFlow<String> = _cwd.asStateFlow()
+
+    /** Historial de comandos, para las flechas ↑/↓ y el built-in `history`. */
+    private val _history = MutableStateFlow<List<String>>(emptyList())
+    val history: StateFlow<List<String>> = _history.asStateFlow()
+
+    /** Atajos de shell habituales que este emulador expande antes de ejecutar. */
+    private val aliases = mapOf(
+        "ll" to "ls -la",
+        "la" to "ls -a",
+        "l" to "ls",
+        ".." to "cd .."
+    )
     
     // Interactive shell instance
     private var shell: Shell? = null
@@ -111,49 +127,108 @@ class RealTerminalEmulator(private val context: Context) {
         _lines.value = _lines.value + TerminalLine(text, type)
     }
     
-    suspend fun execute(command: String) = withContext(Dispatchers.IO) {
-        if (command.isBlank()) return@withContext
-        
-        addLine("${if (_isRoot.value) "#" else "$"} $command", TerminalLine.Type.INPUT)
-        
-        val trimmedCommand = command.trim()
-        
+    suspend fun execute(rawCommand: String) = withContext(Dispatchers.IO) {
+        if (rawCommand.isBlank()) return@withContext
+
+        // Prompt con directorio corto, como una shell de verdad.
+        addLine("${promptSymbol()} ${shortCwd()} ${rawCommand.trim()}", TerminalLine.Type.INPUT)
+
+        // Historial: se guarda el comando tal cual (sin repetir el anterior).
+        if (_history.value.lastOrNull() != rawCommand.trim()) {
+            _history.value = (_history.value + rawCommand.trim()).takeLast(100)
+        }
+
+        // Expansión de alias sobre la primera palabra ("ll" -> "ls -la").
+        val trimmedCommand = expandAlias(rawCommand.trim())
+
         // Handle built-in commands
         when {
             trimmedCommand == "clear" || trimmedCommand == "cls" -> {
                 _lines.value = emptyList()
                 return@withContext
             }
-            
+
             trimmedCommand == "help" -> {
                 showHelp()
                 return@withContext
             }
-            
+
+            trimmedCommand == "history" -> {
+                if (_history.value.isEmpty()) addLine("(sin historial)", TerminalLine.Type.OUTPUT)
+                _history.value.forEachIndexed { i, cmd ->
+                    addLine("${(i + 1).toString().padStart(4)}  $cmd", TerminalLine.Type.OUTPUT)
+                }
+                return@withContext
+            }
+
+            trimmedCommand == "sysinfo" || trimmedCommand == "neofetch" -> {
+                showSysInfo()
+                return@withContext
+            }
+
             trimmedCommand.startsWith("cd ") -> {
                 handleCd(trimmedCommand.substring(3).trim())
                 return@withContext
             }
-            
+
             trimmedCommand == "cd" -> {
                 handleCd(homeDirectory)
                 return@withContext
             }
-            
+
             trimmedCommand == "pwd" -> {
                 addLine(currentDirectory, TerminalLine.Type.SUCCESS)
                 return@withContext
             }
-            
+
             trimmedCommand == "exit" -> {
                 addLine("Closing terminal...", TerminalLine.Type.WARNING)
                 shell?.close()
                 return@withContext
             }
         }
-        
+
         // Execute real command using libsu
         executeRealCommand(trimmedCommand)
+    }
+
+    /** Símbolo de prompt: `#` con root, `$` sin él. */
+    private fun promptSymbol(): String = if (_isRoot.value) "#" else "$"
+
+    /** Directorio actual acortado (~ para el home) para el prompt. */
+    private fun shortCwd(): String {
+        val dir = currentDirectory
+        return if (dir.startsWith(homeDirectory)) "~" + dir.removePrefix(homeDirectory) else dir
+    }
+
+    /** Expande el primer token si es un alias conocido. */
+    private fun expandAlias(command: String): String {
+        val firstToken = command.substringBefore(' ')
+        val alias = aliases[firstToken] ?: return command
+        val rest = command.removePrefix(firstToken)
+        return alias + rest
+    }
+
+    /** Ficha estilo neofetch con datos reales del dispositivo. */
+    private fun showSysInfo() {
+        val rt = Runtime.getRuntime()
+        val usedMem = (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024)
+        val maxMem = rt.maxMemory() / (1024 * 1024)
+        val storageDir = Environment.getExternalStorageDirectory()
+        val freeGb = storageDir.freeSpace / (1024.0 * 1024 * 1024)
+        val totalGb = storageDir.totalSpace / (1024.0 * 1024 * 1024)
+        val info = listOf(
+            "        _______        NexusChat Terminal",
+            "       / ____  \\       ─────────────────────",
+            "      | |    | |       Modelo    : ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}",
+            "      | |____| |       Android   : ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})",
+            "      |  ____  |       Arch      : ${android.os.Build.SUPPORTED_ABIS.firstOrNull() ?: "?"}",
+            "      | |    | |       Root      : ${if (_isRoot.value) "sí" else "no"}",
+            "      |_|    |_|       RAM (app) : ${usedMem} / ${maxMem} MB",
+            "                       Almacen.  : ${"%.1f".format(freeGb)} GB libres / ${"%.1f".format(totalGb)} GB",
+            "                       Kernel    : ${System.getProperty("os.version") ?: "?"}"
+        )
+        info.forEach { addLine(it, TerminalLine.Type.SUCCESS) }
     }
     
     private fun handleCd(path: String) {
@@ -167,6 +242,7 @@ class RealTerminalEmulator(private val context: Context) {
         
         if (newDir.exists() && newDir.isDirectory) {
             currentDirectory = newDir.absolutePath
+            _cwd.value = currentDirectory
             addLine(currentDirectory, TerminalLine.Type.SUCCESS)
         } else {
             addLine("cd: no such file or directory: $path", TerminalLine.Type.ERROR)
@@ -223,7 +299,12 @@ class RealTerminalEmulator(private val context: Context) {
               clear / cls       - Limpia la pantalla
               cd <dir>          - Cambia de directorio
               pwd               - Directorio actual
+              history           - Historial de comandos
+              sysinfo / neofetch- Ficha del dispositivo
               exit              - Cierra la terminal
+
+            ATAJOS (alias):
+              ll = ls -la    la = ls -a    l = ls
 
             COMANDOS DE ANDROID DISPONIBLES (sin root):
               ls [-la] [dir]    - Lista archivos

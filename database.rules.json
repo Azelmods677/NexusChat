@@ -32,10 +32,30 @@
           ".read": "auth != null",
           ".write": "auth != null && auth.uid === $uid"
         },
-        
+
         "lastSeen": {
           ".read": "auth != null",
           ".write": "auth != null && auth.uid === $uid"
+        },
+
+        /*
+          Claves publicas del cifrado de extremo a extremo.
+
+          Tienen que ser legibles por cualquier usuario autenticado: para
+          escribirle a alguien hay que derivar el secreto ECDH contra SU clave
+          publica. Publicar la clave publica no filtra nada; es exactamente para
+          lo que existe. La privada nunca sale del dispositivo.
+
+          Se declara el nodo de forma explicita aunque herede los permisos del
+          padre, porque es el unico sitio del arbol donde un permiso mal puesto
+          se manifiesta como "no se pudo descifrar" y no como un error de red.
+        */
+        "keys": {
+          ".read": "auth != null",
+          ".write": "auth != null && auth.uid === $uid",
+          "identityPublic": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 2048"
+          }
         }
       }
     },

@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,9 +48,27 @@ fun TerminalScreen(
     viewModel: TerminalViewModel = hiltViewModel()
 ) {
     val lines by viewModel.lines.collectAsState()
+    val isRoot by viewModel.isRoot.collectAsState()
+    val cwd by viewModel.cwd.collectAsState()
+    val history by viewModel.history.collectAsState()
     var input by remember { mutableStateOf("") }
+    // Índice de navegación por el historial con las flechas (-1 = línea nueva).
+    var historyIndex by remember { mutableStateOf(-1) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    // Prompt corto tipo shell: ~ para el home.
+    val home = remember { android.os.Environment.getExternalStorageDirectory().absolutePath }
+    val shortCwd = remember(cwd) { if (cwd.startsWith(home)) "~" + cwd.removePrefix(home) else cwd }
+    val promptSymbol = if (isRoot) "#" else "$"
+
+    fun run(cmd: String) {
+        if (cmd.isNotBlank()) {
+            viewModel.execute(cmd)
+            input = ""
+            historyIndex = -1
+        }
+    }
 
     LaunchedEffect(lines.size) {
         if (lines.isNotEmpty())
@@ -136,22 +156,16 @@ fun TerminalScreen(
 
             // Quick commands
             LazyRow(
-                modifier = Modifier.padding(4.dp),
+                modifier = Modifier.padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 val quickCmds = listOf(
-                    "help",
-                    "clear",
-                    "ls /sdcard",
-                    "df -h",
-                    "free",
-                    "ps",
-                    "date",
-                    "uname -a"
+                    "help", "sysinfo", "history", "clear",
+                    "ll", "ls /sdcard", "df -h", "free", "ps", "date", "uname -a"
                 )
                 items(quickCmds) { cmd ->
                     Surface(
-                        onClick = { viewModel.execute(cmd) },
+                        onClick = { run(cmd) },
                         shape = RoundedCornerShape(6.dp),
                         color = TerminalGreen.copy(0.1f),
                         border = BorderStroke(1.dp, TerminalGreen.copy(0.3f))
@@ -167,7 +181,32 @@ fun TerminalScreen(
                 }
             }
 
-            // Input row
+            // Fila de símbolos: caracteres difíciles de teclear en el teclado normal.
+            LazyRow(
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val symbols = listOf("/", "~", "-", "|", ">", ".", "*", "\"", "&")
+                items(symbols) { sym ->
+                    Surface(
+                        onClick = { input += sym },
+                        shape = RoundedCornerShape(6.dp),
+                        color = TerminalSurface,
+                        border = BorderStroke(1.dp, TerminalGreen.copy(0.2f))
+                    ) {
+                        Text(
+                            sym,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = TerminalAmber,
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            // Input row: prompt real (usuario/root + directorio) + flechas de historial.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -177,10 +216,12 @@ fun TerminalScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "$ ",
+                    "$shortCwd $promptSymbol ",
                     color = TerminalGreen,
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 15.sp
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
                 BasicTextField(
                     value = input,
@@ -193,24 +234,37 @@ fun TerminalScreen(
                     ),
                     cursorBrush = SolidColor(TerminalGreen),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(
-                        onSend = {
-                            if (input.isNotBlank()) {
-                                viewModel.execute(input)
-                                input = ""
-                            }
-                        }
-                    ),
+                    keyboardActions = KeyboardActions(onSend = { run(input) }),
                     singleLine = true
                 )
-                IconButton(
-                    onClick = {
-                        if (input.isNotBlank()) {
-                            viewModel.execute(input)
-                            input = ""
-                        }
+                // ↑ / ↓ recorren el historial de comandos.
+                if (history.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            val idx = if (historyIndex < 0) history.size - 1 else (historyIndex - 1).coerceAtLeast(0)
+                            historyIndex = idx
+                            input = history[idx]
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowUp, tint = TerminalGreen, contentDescription = "Anterior")
                     }
-                ) {
+                    IconButton(
+                        onClick = {
+                            if (historyIndex in 0 until history.size - 1) {
+                                historyIndex += 1
+                                input = history[historyIndex]
+                            } else {
+                                historyIndex = -1
+                                input = ""
+                            }
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowDown, tint = TerminalGreen, contentDescription = "Siguiente")
+                    }
+                }
+                IconButton(onClick = { run(input) }) {
                     Icon(
                         Icons.AutoMirrored.Filled.Send,
                         tint = TerminalGreen,
