@@ -495,6 +495,12 @@ quien parta de esta plantilla sepa exactamente qué tendría que construir por s
 - **Tema claro completo** — la infraestructura de tokens está lista desde la v4; falta
   repasar pantalla por pantalla.
 - **E2EE en grupos** — hoy solo se cifran de extremo a extremo los chats 1:1.
+- **Servidor TURN propio** — las llamadas usan los STUN públicos de Google y, como
+  respaldo para NAT restrictivos (redes corporativas, algunas 4G), el TURN **gratuito
+  y compartido** `openrelay.metered.ca`. Funciona para probar, pero si publicas una app
+  basada en esta plantilla **monta tu propio TURN** (coturn, Twilio, Metered de pago):
+  el gratuito no da garantías de disponibilidad y su tráfico pasa por un tercero. Se
+  cambia en un solo sitio, `WebRTCManager.kt` → `iceServers`.
 
 ## Novedades de la v6
 
