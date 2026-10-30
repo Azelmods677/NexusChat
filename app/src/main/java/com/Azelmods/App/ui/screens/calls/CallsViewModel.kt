@@ -121,8 +121,10 @@ class CallsViewModel @Inject constructor(
         val rawStatus = (data["status"] as? String)?.uppercase() ?: "ENDED"
         // "MISSED" no lo escribe nadie: una llamada entrante que terminó sin
         // llegar a conectarse ES una perdida para quien la recibía.
+        val neverConnected = connectedAt == null && durationSecs == 0L
         val status = when {
-            isIncoming && rawStatus == "ENDED" && connectedAt == null && durationSecs == 0L -> "MISSED"
+            isIncoming && rawStatus == "ENDED" && neverConnected -> "MISSED"
+            !isIncoming && rawStatus == "ENDED" && neverConnected -> "NO_ANSWER"
             else -> rawStatus
         }
 

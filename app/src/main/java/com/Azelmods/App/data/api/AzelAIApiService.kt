@@ -192,7 +192,7 @@ Guidelines:
             val activeCall = java.util.concurrent.atomic.AtomicReference<okhttp3.Call?>(null)
             launch {
                 try {
-                    requestQueue.enqueue {
+                    requestQueue.enqueue(rateLimit = false) {
                         openAiCompatStream(
                             provider = activeProvider,
                             messages = messages,
@@ -405,8 +405,9 @@ Guidelines:
         /** Instrucción de sistema propia (agentes); null = la del asistente. */
         systemPrompt: String? = null
     ): ChatResponse = withContext(Dispatchers.IO) {
-        // 🛡️ Wrapping con rate limiter + retry automático
-        requestQueue.enqueue {
+        // 🛡️ Reintentos automáticos; el espaciado entre peticiones solo con Gemini.
+        val geminiActive = !keyStore.getProvider().isOpenAiCompatible
+        requestQueue.enqueue(rateLimit = geminiActive) {
             chatCompletionInternal(model, messages, temperature, maxTokens, topP, systemPrompt)
         }
     }

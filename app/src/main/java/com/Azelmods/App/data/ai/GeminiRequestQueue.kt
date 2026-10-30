@@ -22,13 +22,20 @@ class GeminiRequestQueue @Inject constructor(
     // Reintentos automáticos con backoff exponencial
     suspend fun <T> enqueue(
         maxRetries: Int = 3,
+        /**
+         * Espaciado de 4,5 s entre peticiones: pensado para la capa gratuita de
+         * Gemini (15 peticiones/minuto). Otros proveedores y los modelos locales
+         * no lo necesitan; aplicárselo hacía que un equipo de agentes (≈10
+         * consultas) esperase ~45 s de más sin motivo.
+         */
+        rateLimit: Boolean = true,
         block: suspend () -> T
     ): T {
         var lastException: Exception? = null
 
         repeat(maxRetries) { attempt ->
             try {
-                return rateLimiter.executeWithRateLimit { block() }
+                return if (rateLimit) rateLimiter.executeWithRateLimit { block() } else block()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 // El usuario pulsó "Detener" o cerró la pantalla: nada que reintentar.
                 throw e

@@ -126,6 +126,14 @@
 -keep class androidx.webkit.** { *; }
 -keepclassmembers class androidx.webkit.** { *; }
 
+# ── Proveedores TLS opcionales ──────────────────────────────────
+# BouncyCastle ya no es dependencia directa. OkHttp y otras librerías lo
+# referencian de forma OPCIONAL (lo usan solo si está presente); sin estas
+# líneas R8 aborta el build de release por "missing class".
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**
+-dontwarn org.openjsse.**
+
 # ── Signal Protocol ─────────────────────────────────────────────
 -keep class org.signal.** { *; }
 -keep class org.whispersystems.** { *; }

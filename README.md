@@ -56,10 +56,11 @@
 16. [Preguntas frecuentes](#preguntas-frecuentes)
 
 **Historial**
-17. [Novedades de la v6](#novedades-de-la-v6)
-18. [Novedades de la v5](#novedades-de-la-v5)
-19. [Autoría](#autoría)
-20. [Licencia](#licencia)
+17. [Novedades de la v6.1](#novedades-de-la-v61)
+18. [Novedades de la v6](#novedades-de-la-v6)
+19. [Novedades de la v5](#novedades-de-la-v5)
+20. [Autoría](#autoría)
+21. [Licencia](#licencia)
 
 ---
 
@@ -560,8 +561,15 @@ manuales.
 
 - **WebRTC P2P**: el audio y el vídeo viajan directos entre dispositivos.
 - **Señalización sobre Firebase**, con historial de llamadas y aviso de perdidas.
-- **STUN** (servidores públicos de Google) + **TURN** de respaldo para NAT restrictivos.
+- **STUN/TURN configurables en remoto** (`config/webrtc/iceServers`, ver [Compilar el
+  proyecto](#servidor-turn-propio)); sin configuración usa los STUN de Google y un TURN público.
 - **Buffer de candidatos ICE** sincronizado (ver [Decisiones de ingeniería](#decisiones-de-ingeniería)).
+- **Fases visibles**: llamando, conectando, conectado, reconectando y motivo de fin (colgó,
+  rechazada, sin respuesta, conexión perdida). El cronómetro cuenta desde que conecta.
+- **Notificación de llamada del sistema** (CallStyle) con tono repetido, pantalla completa con
+  el móvil bloqueado y «Colgar»/«Silenciar» operativos desde la llamada en curso.
+- **Audio bien enrutado**: auricular, altavoz o Bluetooth, y sensor de proximidad en voz.
+- **Modo anónimo**: el medio va por TURN para que el otro participante no vea tu IP.
 - Cámara frontal/trasera, silenciar, altavoz y colgado automático a los 45 s sin respuesta.
 - Permisos pedidos según el tipo: micrófono para voz, micrófono + cámara solo para vídeo.
 
@@ -578,7 +586,7 @@ El usuario elige **proveedor, modelo y clave**. La app no impone ninguno.
 | Tipo | Proveedores soportados |
 |---|---|
 | **Nativo** | Google Gemini (con streaming SSE real) |
-| **Compatibles OpenAI** | OpenAI · OpenRouter · DeepSeek · Mistral · Groq |
+| **Compatibles OpenAI** | OpenAI · OpenRouter · DeepSeek · Mistral · Groq (también con streaming SSE) |
 | **Locales** | Ollama · LM Studio · vLLM · llama.cpp · cualquier endpoint propio |
 
 - La clave se guarda **cifrada** (`EncryptedSharedPreferences` + Android Keystore).
@@ -587,6 +595,30 @@ El usuario elige **proveedor, modelo y clave**. La app no impone ninguno.
   hay listas de modelos obsoletas.
 - **Rate limiting** y **reintentos con backoff exponencial** ante cuota agotada.
 - **Markdown renderizado** en las respuestas: encabezados, listas, citas, código y separadores.
+
+### Agentes de IA
+
+Pestaña **Agentes** dentro de Azel IA: en vez de una respuesta, un equipo que **trabaja** y se
+deja ver mientras lo hace.
+
+| Agente | Herramientas |
+|---|---|
+| 🔎 Investigador | Búsqueda web · Wikipedia · leer páginas · fecha |
+| 💻 Programador | Calculadora · leer páginas |
+| 📊 Analista | Calculadora · fecha |
+| 🧭 Planificador | Fecha · calculadora · búsqueda web |
+| ✍️ Redactor · 🌍 Traductor | Solo razonamiento |
+
+- **Equipos** (investigación, desarrollo, planificación, contenido): un 🎯 coordinador
+  planifica, los especialistas trabajan en cadena con el resultado de los anteriores y un 🧐
+  revisor entrega la respuesta final.
+- **En vivo**: cada agente es un nodo animado (anillo que gira al pensar, insignia de la
+  herramienta en uso), con el plan, el registro de pensamientos, llamadas a herramientas y
+  resultados, y la respuesta final con copiar, compartir y «seguir en el chat».
+- **Funciona con cualquier proveedor** (Gemini, OpenAI, OpenRouter, DeepSeek, Groq, Ollama…):
+  el protocolo es JSON en texto, no el formato de herramientas de cada uno.
+- **Seguro por diseño**: la calculadora no evalúa código; la lectura de páginas bloquea la red
+  local y las IP privadas; `.onion` solo con Tor activo, y con Tor activo los agentes salen por Tor.
 
 ### Las seis funciones de IA sobre tus chats
 
@@ -615,7 +647,15 @@ Todas **apagadas de fábrica**. Las cuatro primeras requieren proveedor configur
 ### Navegación anónima (Tor / Orbot)
 
 - Navegador integrado que enruta por **Tor** delegando en **Orbot** como proxy local.
-- **SOCKS5 (9050)** con resolución de nombres en el proxy — imprescindible para `.onion`.
+- **Orbot se enciende desde NexusChat** (API de intents de Orbot) y se usan los puertos que
+  anuncia, no unos fijos.
+- **Conexión verificada** con `check.torproject.org`: IP de salida y modo proxy o VPN.
+- **Cierre seguro**: si Orbot cae, la app no sale a internet sin Tor y no hay fugas de DNS.
+- **Cobertura honesta**: navegador, IA, agentes y archivos van por Tor; los mensajes en tiempo
+  real de Firebase solo con el modo VPN de Orbot.
+- Navegador endurecido: WebRTC bloqueado (fuga de IP), sin cookies de terceros, datos
+  borrados al salir y botón «Nueva identidad».
+- **SOCKS5** con resolución de nombres en el proxy — imprescindible para `.onion`.
 - **Detección en tiempo real**: si arrancas Orbot con el navegador ya abierto, se entera solo
   y recarga con el proxy aplicado.
 - Diagnóstico que distingue causas reales: Orbot caído, dirección **v2 muerta** (Tor las
@@ -805,6 +845,31 @@ cp keystore.properties.example keystore.properties
 `keystore.properties` está en `.gitignore`: las credenciales nunca viajan al repositorio. Si
 el archivo no existe, el build de release avisa y firma con la clave de debug.
 
+### Servidor TURN propio
+
+Los servidores de las llamadas se leen de `config/webrtc/iceServers` en Realtime Database (los
+clientes solo pueden leerlo). Créalo desde la consola de Firebase:
+
+```json
+{
+  "config": {
+    "webrtc": {
+      "iceServers": [
+        { "urls": "stun:stun.l.google.com:19302" },
+        { "urls": ["turn:turn.tudominio.com:3478", "turns:turn.tudominio.com:5349"],
+          "username": "usuario", "credential": "clave" }
+      ]
+    }
+  }
+}
+```
+
+Después de cambiar las reglas o las funciones, despliégalas:
+
+```bash
+firebase deploy --only database,functions
+```
+
 ### Modelos de IA locales
 
 Para usar Ollama u otro servidor local desde un móvil físico:
@@ -848,10 +913,10 @@ plantilla sepa exactamente qué tendría que construir por su cuenta.
 - **Tema claro completo** — la infraestructura de tokens está lista desde la v4; falta
   repasar pantalla por pantalla.
 - **E2EE en grupos** — hoy solo se cifran de extremo a extremo los chats 1:1.
-- **Servidor TURN propio** — las llamadas usan los STUN públicos de Google y, como respaldo
-  para NAT restrictivos, un TURN **gratuito y compartido**. Funciona para probar, pero si
-  publicas una app basada en esta plantilla **monta tu propio TURN** (coturn, Twilio, Metered
-  de pago). Se cambia en un solo sitio: `WebRTCManager.kt` → `iceServers`.
+- **Servidor TURN propio** — sin configuración, las llamadas usan los STUN públicos de Google
+  y un TURN **gratuito y compartido**. Para publicar, **monta tu propio TURN** (coturn,
+  Twilio, Metered de pago) y ponlo en la base de datos, sin recompilar: ver
+  [Servidor TURN propio](#servidor-turn-propio).
 - **Cobertura de tests** — el proyecto tiene pruebas unitarias de ViewModels, navegación y
   contraste de la paleta, pero la cobertura es parcial frente al tamaño del código.
 
@@ -930,6 +995,22 @@ por `IntegrityGuard` (ver [Integridad y anti-manipulación](#integridad-y-anti-m
 </details>
 
 ---
+
+## Novedades de la v6.1
+
+Revisión para producción centrada en lo que más se usa: llamadas, IA y Tor.
+
+- **Llamadas fiables**: se corrigió la carrera oferta/respuesta que dejaba llamadas en
+  «Conectando…», «Aceptar» desde la notificación funciona en Android 12+, la pantalla se cierra
+  cuando el otro cuelga, colgar y silenciar desde la notificación actúan de verdad y la llamada
+  perdida le llega a quien no la cogió.
+- **Agentes de IA** que se ven trabajar, y chat con streaming real en todos los proveedores,
+  botón Detener y sin cortes a los 60 s.
+- **Tor verificado**: Orbot se enciende desde la app, conexión comprobada con el Proyecto Tor,
+  cierre seguro sin fugas de DNS y navegador sin fuga de IP por WebRTC.
+- **CI en verde** en todas las ramas y dependencias muertas fuera del APK.
+
+El detalle está en el [CHANGELOG](CHANGELOG.md).
 
 ## Novedades de la v6
 

@@ -389,7 +389,7 @@ private fun callStatusLabel(status: String): String = when (status.uppercase()) 
     "MISSED" -> "Perdida"
     "DECLINED" -> "Rechazada"
     "ENDED", "CONNECTED" -> "Finalizada"
-    "CALLING", "RINGING" -> "Sin respuesta"
+    "CALLING", "RINGING", "NO_ANSWER" -> "Sin respuesta"
     "ACCEPTED" -> "Aceptada"
     else -> status.lowercase().replaceFirstChar { it.uppercase() }
 }
