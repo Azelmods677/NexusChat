@@ -92,16 +92,10 @@ fun TorBrowserScreenNew(
     // que WebView invoca en el executor de larga vida de ProxyManager (hilo de background).
     val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
 
-    // ── PASO 1: Cargar la URL inicial (clearnet, sin depender de Tor) una sola vez ──
-    LaunchedEffect(isWebViewReady) {
-        if (!isWebViewReady) return@LaunchedEffect
-        try {
-            webView?.loadUrl(DEFAULT_HOMEPAGE)
-            Log.d(TAG, "✓ URL inicial cargada: $DEFAULT_HOMEPAGE")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error cargando URL inicial", e)
-        }
-    }
+    // ── PASO 1: la página inicial se carga DESPUÉS de saber si hay Tor (paso 2) ──
+    // Antes se cargaba DuckDuckGo por la red normal nada más abrir y solo después
+    // se activaba el proxy: la primera visita de cada sesión salía con la IP real.
+    var initialPageLoaded by remember { mutableStateOf(false) }
 
     // ── PASO 2: Detectar Orbot y aplicar el proxy de forma asíncrona ──
     // Se vuelve a ejecutar cuando cambia [recheckTrigger] (botón Recargar), así el
@@ -133,8 +127,8 @@ fun TorBrowserScreenNew(
                     // del nombre la hace Tor en el otro extremo, que es la única
                     // manera de resolver una dirección .onion.
                     proxyRule = when {
-                        hasSocks -> "socks5://$ORBOT_HTTP_HOST:$ORBOT_SOCKS_PORT"
-                        hasHttp -> "http://$ORBOT_HTTP_HOST:$ORBOT_HTTP_PORT"
+                        hasSocks -> "socks5://$ORBOT_HTTP_HOST:${OrbotDetector.socksPort}"
+                        hasHttp -> "http://$ORBOT_HTTP_HOST:${OrbotDetector.httpPort}"
                         else -> null
                     }
                     torReady = proxyRule != null
@@ -150,14 +144,24 @@ fun TorBrowserScreenNew(
                         proxyEnabled = true
                         browsingMode = "tor"
                         Log.d(TAG, "✓ Proxy Tor activo")
+                        // La primera página, ya por Tor: el buscador en su versión .onion.
+                        if (!initialPageLoaded) {
+                            initialPageLoaded = true
+                            webView?.loadUrl(TOR_HOMEPAGE)
+                        } else {
+                            webView?.reload()
+                        }
                     }
                 }
-                if (result is ProxyResult.Applied) {
-                    Log.d(TAG, "✓ Proxy Tor aplicado — recargando...")
-                    // Recargar la página con proxy activo
-                    webView?.reload()
+                if (result !is ProxyResult.Applied && !initialPageLoaded) {
+                    initialPageLoaded = true
+                    webView?.loadUrl(DEFAULT_HOMEPAGE)
                 }
             } else if (recheckTrigger == 0) {
+                if (!initialPageLoaded) {
+                    initialPageLoaded = true
+                    webView?.loadUrl(DEFAULT_HOMEPAGE)
+                }
                 // Solo avisamos una vez al abrir; no molestamos en cada recarga.
                 Log.d(TAG, "🌐 Proxy Tor no disponible — modo directo")
                 scope.launch {
@@ -194,7 +198,15 @@ fun TorBrowserScreenNew(
     DisposableEffect(Unit) {
         onDispose {
             clearOrbotProxy()
-            Log.d(TAG, "Proxy Tor limpiado al salir del navegador")
+            // Navegación privada de verdad: al salir no quedan cookies, caché,
+            // almacenamiento web ni historial que vinculen una sesión con la siguiente.
+            webView?.let { wv ->
+                wipeBrowsingData(wv)
+                (wv.parent as? android.view.ViewGroup)?.removeView(wv)
+                wv.destroy()
+            }
+            webView = null
+            Log.d(TAG, "Proxy Tor limpiado y datos de navegación borrados al salir")
         }
     }
 
@@ -221,7 +233,25 @@ fun TorBrowserScreenNew(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás", tint = Color.White)
+                    }
+                },
+                actions = {
+                    // Comprobar en la web oficial del Proyecto Tor.
+                    IconButton(onClick = { webView?.loadUrl("https://check.torproject.org/") }) {
+                        Icon(Icons.Default.VerifiedUser, contentDescription = "Comprobar Tor", tint = Color.White)
+                    }
+                    // Nueva identidad: borra todo rastro de la sesión y empieza de cero.
+                    IconButton(onClick = {
+                        webView?.let { wv ->
+                            wipeBrowsingData(wv)
+                            wv.loadUrl(if (proxyEnabled) TOR_HOMEPAGE else DEFAULT_HOMEPAGE)
+                        }
+                        scope.launch {
+                            snackbarHostState.showSnackbar("🧹 Nueva identidad: cookies, caché e historial borrados")
+                        }
+                    }) {
+                        Icon(Icons.Default.CleaningServices, contentDescription = "Nueva identidad", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -500,8 +530,43 @@ private const val ORBOT_HTTP_HOST = "127.0.0.1"
 /** Puerto del proxy HTTP de Orbot */
 private const val ORBOT_HTTP_PORT = 8118
 
-/** Puerto SOCKS5 de Orbot (para verificación) */
-private const val ORBOT_SOCKS_PORT = 9050
+/** Buscador por Tor: DuckDuckGo en su dirección .onion v3 oficial. */
+private const val TOR_HOMEPAGE = "https://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion/"
+
+/**
+ * Se inyecta al principio de cada página. Con el proxy de WebView el tráfico
+ * HTTP va por Tor, pero WebRTC habla UDP directamente con servidores STUN y
+ * revela la IP REAL a cualquier web que lo pida (fuga clásica de los
+ * navegadores con proxy). Tor Browser lo desactiva; aquí igual.
+ */
+private const val PRIVACY_SCRIPT = """
+(function () {
+  try {
+    ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel', 'RTCSessionDescription', 'RTCIceCandidate']
+      .forEach(function (k) {
+        try { Object.defineProperty(window, k, { value: undefined, writable: false, configurable: false }); }
+        catch (e) { try { window[k] = undefined; } catch (e2) {} }
+      });
+    if (navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia = function () { return Promise.reject(new Error('Bloqueado')); };
+      navigator.mediaDevices.enumerateDevices = function () { return Promise.resolve([]); };
+    }
+  } catch (e) {}
+})();
+"""
+
+/** Borra cookies, caché, almacenamiento web, formularios e historial. */
+private fun wipeBrowsingData(webView: WebView) {
+    runCatching {
+        webView.stopLoading()
+        webView.clearCache(true)
+        webView.clearHistory()
+        webView.clearFormData()
+        android.webkit.CookieManager.getInstance().removeAllCookies(null)
+        android.webkit.CookieManager.getInstance().flush()
+        android.webkit.WebStorage.getInstance().deleteAllData()
+    }.onFailure { Log.w(TAG, "No se pudieron borrar todos los datos de navegación: ${it.message}") }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PROXY CONFIG — AndroidX WebKit oficial API
@@ -875,6 +940,32 @@ private fun WebView.setupWebView(
             loadWithOverviewMode = true
             layoutAlgorithm = android.webkit.WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING
             userAgentString = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.230 Mobile Safari/537.36"
+            // Navegación privada: sin Safe Browsing (envía a Google huellas de
+            // cada URL), sin autocompletar formularios y sin geolocalización.
+            safeBrowsingEnabled = false
+            javaScriptCanOpenWindowsAutomatically = false
+        }
+        // Sin cookies de terceros: impide el rastreo entre sitios.
+        android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+
+        // Bloqueo de WebRTC (fuga de IP real) en todas las páginas y marcos.
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            runCatching {
+                androidx.webkit.WebViewCompat.addDocumentStartJavaScript(this, PRIVACY_SCRIPT, setOf("*"))
+            }.onFailure { Log.w(TAG, "No se pudo inyectar el script de privacidad: ${it.message}") }
+        }
+
+        // Ni cámara ni micrófono ni ubicación para las webs.
+        webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onPermissionRequest(request: android.webkit.PermissionRequest?) {
+                request?.deny()
+            }
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: android.webkit.GeolocationPermissions.Callback?
+            ) {
+                callback?.invoke(origin, false, false)
+            }
         }
 
         webViewClient = object : android.webkit.WebViewClient() {

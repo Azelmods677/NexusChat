@@ -52,7 +52,7 @@ fun TorCircuitInfo(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Circuit Information",
+                    text = "Conexión Tor",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -65,7 +65,7 @@ fun TorCircuitInfo(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "New Identity",
+                        contentDescription = "Comprobar de nuevo",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -75,7 +75,7 @@ fun TorCircuitInfo(
             
             // Circuit ID
             CircuitInfoRow(
-                label = "Circuit ID",
+                label = "Proxy",
                 value = circuitInfo.circuitId
             )
             
@@ -83,7 +83,7 @@ fun TorCircuitInfo(
             
             // Entry Node
             CircuitInfoRow(
-                label = "Entry Node",
+                label = "Entrada",
                 value = circuitInfo.entryNode,
                 description = "Your connection enters Tor here"
             )
@@ -92,7 +92,7 @@ fun TorCircuitInfo(
             
             // Middle Node
             CircuitInfoRow(
-                label = "Middle Node",
+                label = "Red",
                 value = circuitInfo.middleNode,
                 description = "Traffic is relayed through this node"
             )
@@ -101,7 +101,7 @@ fun TorCircuitInfo(
             
             // Exit Node
             CircuitInfoRow(
-                label = "Exit Node",
+                label = "Salida",
                 value = circuitInfo.exitNode,
                 description = "Your traffic exits Tor from here"
             )
@@ -110,7 +110,7 @@ fun TorCircuitInfo(
             
             // Bandwidth
             CircuitInfoRow(
-                label = "Bandwidth",
+                label = "Ancho de banda",
                 value = formatBandwidth(circuitInfo.bandwidth)
             )
             
@@ -139,8 +139,9 @@ fun TorCircuitInfo(
             
             // Info text
             Text(
-                text = "Creating a new identity will establish a new circuit with different nodes, " +
-                        "making it harder to track your activity.",
+                text = circuitInfo.checkMessage.ifBlank {
+                    "La salida se comprueba con check.torproject.org: es la IP que ven las webs."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray,
                 fontSize = 11.sp

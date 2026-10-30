@@ -18,8 +18,19 @@ object OrbotDetector {
     private const val TAG = "OrbotDetector"
     private const val ORBOT_PACKAGE = "org.torproject.android"
     private const val ORBOT_PACKAGE_ALT = "org.torproject.orbot"  // F-Droid, older versions
-    private const val SOCKS5_PORT = 9050
-    private const val HTTP_PROXY_PORT = 8118
+    const val DEFAULT_SOCKS_PORT = 9050
+    const val DEFAULT_HTTP_PORT = 8118
+
+    /**
+     * Puertos reales de Orbot. Empiezan en los de por defecto y los actualiza
+     * [OrbotIntents] cuando Orbot anuncia los suyos (cambia de puerto si el 9050
+     * está ocupado por otra app).
+     */
+    @Volatile
+    var socksPort: Int = DEFAULT_SOCKS_PORT
+
+    @Volatile
+    var httpPort: Int = DEFAULT_HTTP_PORT
     // ✅ FIX: Aumentar timeout para dispositivos lentos y Orbot iniciando
     private const val TIMEOUT_MS = 3000  // 3 segundos (antes: 1.5s)
 
@@ -50,11 +61,11 @@ object OrbotDetector {
      * Verifica si el proxy SOCKS5 de Orbot (127.0.0.1:9050) está accesible.
      * Si este puerto responde, Orbot está funcionando y Tor está conectado.
      */
-    fun isSocksProxyAvailable(): Boolean {
+    fun isSocksProxyAvailable(timeoutMs: Int = TIMEOUT_MS): Boolean {
         return try {
             Socket().use { socket ->
-                socket.connect(InetSocketAddress("127.0.0.1", SOCKS5_PORT), TIMEOUT_MS)
-                Log.d(TAG, "✓ Proxy SOCKS5 de Orbot disponible (puerto $SOCKS5_PORT)")
+                socket.connect(InetSocketAddress("127.0.0.1", socksPort), timeoutMs)
+                Log.d(TAG, "✓ Proxy SOCKS5 de Orbot disponible (puerto $socksPort)")
                 true
             }
         } catch (e: Exception) {
@@ -72,8 +83,8 @@ object OrbotDetector {
     fun isHttpProxyAvailable(): Boolean {
         return try {
             Socket().use { socket ->
-                socket.connect(InetSocketAddress("127.0.0.1", HTTP_PROXY_PORT), TIMEOUT_MS)
-                Log.d(TAG, "✓ Proxy HTTP de Orbot disponible (puerto $HTTP_PROXY_PORT)")
+                socket.connect(InetSocketAddress("127.0.0.1", httpPort), TIMEOUT_MS)
+                Log.d(TAG, "✓ Proxy HTTP de Orbot disponible (puerto $httpPort)")
                 true
             }
         } catch (e: Exception) {

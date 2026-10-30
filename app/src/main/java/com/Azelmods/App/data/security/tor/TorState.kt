@@ -75,5 +75,15 @@ data class TorCircuitInfo(
     val middleNode: String,
     val exitNode: String,
     val circuitId: String,
-    val bandwidth: Long
+    val bandwidth: Long,
+    /** IP con la que te ve internet (la del nodo de salida), si ya se comprobó. */
+    val exitIp: String? = null,
+    /** true si check.torproject.org confirmó que el tráfico sale por Tor. */
+    val verified: Boolean = false,
+    /** true si Orbot está en modo VPN (toda la app, Firebase incluido, va por Tor). */
+    val vpnMode: Boolean = false,
+    /** Puerto SOCKS real de Orbot. */
+    val socksPort: Int = 9050,
+    /** Texto de la última comprobación (o por qué no se pudo verificar). */
+    val checkMessage: String = ""
 )

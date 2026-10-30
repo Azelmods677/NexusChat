@@ -49,9 +49,6 @@ class TorDnsResolver @Inject constructor() : Dns {
     companion object {
         private const val TAG = "TorDnsResolver"
 
-        /** Puerto SOCKS5 de Orbot */
-        private const val ORBOT_SOCKS_PORT = 9050
-
         /** Host de Orbot (siempre localhost) */
         private const val ORBOT_HOST = "127.0.0.1"
 
@@ -95,31 +92,24 @@ class TorDnsResolver @Inject constructor() : Dns {
         }
 
         // ── Modo Tor activo: evitar DNS leaks ──
+        // El propio dispositivo se resuelve normal: no sale a la red.
+        if (hostname == "localhost" || hostname.startsWith("127.")) {
+            return Dns.SYSTEM.lookup(hostname)
+        }
         Log.d(TAG, "🔒 Resolving $hostname through Tor (SOCKS5)")
 
-        return try {
-            // Verificar que Orbot esté alcanzable
-            val testSocket = Socket()
-            try {
-                testSocket.connect(
-                    InetSocketAddress(ORBOT_HOST, ORBOT_SOCKS_PORT),
-                    1000
-                )
-            } catch (e: Exception) {
-                Log.w(TAG, "Orbot SOCKS proxy not available, falling back to system DNS", e)
-                return Dns.SYSTEM.lookup(hostname)
-            } finally {
-                testSocket.close()
-            }
-
-            // Retornar loopback para que OkHttp abra socket SOCKS
-            listOf(InetAddress.getByName(LOOPBACK_IP))
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Tor DNS resolution failed for $hostname", e)
-            // Fallback seguro: sistema DNS (con riesgo de leak)
-            Log.w(TAG, "⚠️ Falling back to system DNS — posible DNS leak para $hostname")
-            Dns.SYSTEM.lookup(hostname)
+        // Si Orbot no responde se FALLA en vez de preguntar al DNS del sistema.
+        // Antes se caía al DNS del operador "por si acaso", que es justo la fuga
+        // que esta clase existe para evitar: con el modo anónimo activo, mejor una
+        // petición fallida que revelar a qué dominio se conecta el usuario.
+        if (!isOrbotAvailable()) {
+            throw java.net.UnknownHostException(
+                "Tor no está disponible (Orbot no responde): no se resuelve $hostname para no filtrar el DNS"
+            )
         }
+        // Marcador: con proxy SOCKS, OkHttp no usa esta IP; el nombre lo resuelve
+        // el nodo de salida de Tor.
+        return listOf(InetAddress.getByName(LOOPBACK_IP))
     }
 
     /**
@@ -129,7 +119,7 @@ class TorDnsResolver @Inject constructor() : Dns {
         return try {
             Socket().use { socket ->
                 socket.connect(
-                    InetSocketAddress(ORBOT_HOST, ORBOT_SOCKS_PORT),
+                    InetSocketAddress(ORBOT_HOST, OrbotDetector.socksPort),
                     1000
                 )
                 true

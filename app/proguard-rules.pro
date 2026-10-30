@@ -126,16 +126,9 @@
 -keep class androidx.webkit.** { *; }
 -keepclassmembers class androidx.webkit.** { *; }
 
-# ── BouncyCastle ────────────────────────────────────────────────
--keep class org.bouncycastle.** { *; }
--dontwarn org.bouncycastle.**
-
 # ── Signal Protocol ─────────────────────────────────────────────
 -keep class org.signal.** { *; }
 -keep class org.whispersystems.** { *; }
-
-# ── NetCipher (Orbot proxy) ────────────────────────────────────
--keep class info.guardianproject.netcipher.** { *; }
 
 # ── libsu (Root) ────────────────────────────────────────────────
 -keep class com.topjohnwu.superuser.** { *; }
@@ -215,12 +208,3 @@
 # ── Prevent R8 from removing entire packages ────────────────────
 -keep class com.Azelmods.App.** { *; }
 
-# ── zip4j ────────────────────────────────────────────────────────
--keep class net.lingala.zip4j.** { *; }
--dontwarn net.lingala.zip4j.**
-
-# ── smali / dexlib2 ─────────────────────────────────────────────
--keep class org.smali.** { *; }
--keep class org.jf.** { *; }
--dontwarn org.smali.**
--dontwarn org.jf.**

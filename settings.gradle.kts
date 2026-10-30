@@ -11,9 +11,9 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Solo para libsu (terminal). El repositorio de Guardian Project se retiró:
+        // ninguna dependencia lo usaba y era un origen más de código sin firmar.
         maven { url = uri("https://jitpack.io") }
-        // Guardian Project repository for Tor binaries
-        maven { url = uri("https://raw.githubusercontent.com/guardianproject/gpmaven/master") }
     }
 }
 

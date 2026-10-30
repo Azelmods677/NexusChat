@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class TorProxySelector(
     private val orbotHost: String = "127.0.0.1",
-    private val orbotPort: Int = 9050
+    orbotPort: Int = 9050
 ) : ProxySelector() {
 
     companion object {
@@ -35,14 +35,16 @@ class TorProxySelector(
         private val PROXY_SCHEMES = setOf("http", "https", "ws", "wss")
     }
 
-    /** Dirección SOCKS5 de Orbot — inicializada lazy con los parámetros del constructor */
-    private val socksAddress: InetSocketAddress by lazy {
-        InetSocketAddress(orbotHost, orbotPort)
-    }
+    /**
+     * Proxy SOCKS5 de Orbot. Se reconstruye si Orbot anuncia otro puerto (lo
+     * cambia cuando el 9050 está ocupado), en vez de quedarse fijo en el de
+     * arranque.
+     */
+    @Volatile
+    private var socksProxy: Proxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress(orbotHost, orbotPort))
 
-    /** Proxy SOCKS5 listo para usar */
-    private val socksProxy: Proxy by lazy {
-        Proxy(Proxy.Type.SOCKS, socksAddress)
+    fun setSocksPort(port: Int) {
+        socksProxy = Proxy(Proxy.Type.SOCKS, InetSocketAddress(orbotHost, port))
     }
 
     /** Indica si el enrutamiento Tor está activo */
@@ -111,8 +113,11 @@ class TorProxySelector(
 
         if (isTorEnabled) {
             val scheme = uri.scheme?.lowercase() ?: ""
-            // Solo enrutamos http, https y ws/wss a través de Tor
-            if (scheme in PROXY_SCHEMES) {
+            // Solo enrutamos http, https y ws/wss a través de Tor. El propio
+            // dispositivo (localhost, 127.x, el anfitrión del emulador) NO: Tor no
+            // puede llegar a él, y un modelo de IA local (Ollama con adb reverse)
+            // dejaba de responder en cuanto se activaba el modo anónimo.
+            if (scheme in PROXY_SCHEMES && !isLoopback(uri.host)) {
                 return listOf(socksProxy)
             }
         }
@@ -124,6 +129,11 @@ class TorProxySelector(
         }
 
         return listOf(Proxy.NO_PROXY)
+    }
+
+    private fun isLoopback(host: String?): Boolean {
+        val h = host?.lowercase()?.trim('[', ']') ?: return false
+        return h == "localhost" || h.startsWith("127.") || h == "::1" || h == "10.0.2.2"
     }
 
     /**

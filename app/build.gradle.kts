@@ -45,8 +45,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 600
-        versionName = "6.0.0"
+        versionCode = 610
+        versionName = "6.1.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
 
@@ -269,17 +269,18 @@ dependencies {
     // ── WebRTC ─────────────────────────────────────────────
     implementation("io.getstream:stream-webrtc-android:1.1.3")
 
-    // ── Security: Tor Integration ──────────────────────────
-    implementation("info.guardianproject.netcipher:netcipher-webkit:2.1.0")
-
-    // ── Security: Payload Generator ────────────────────────
-    implementation("net.lingala.zip4j:zip4j:2.11.5")
-    implementation("org.smali:dexlib2:2.5.2")
-    implementation("org.smali:baksmali:2.5.2")
-
-    // ── Cryptography 2026 ──────────────────────────────────
-    implementation("org.bouncycastle:bcprov-jdk18on:1.78.1")
-    implementation("org.bouncycastle:bcpkix-jdk18on:1.78.1")
+    // ── Tor ────────────────────────────────────────────────
+    // La integración con Orbot usa su API pública de intents (OrbotIntents) y el
+    // ProxyController de androidx.webkit: NetCipher ya no hace falta.
+    //
+    // Retiradas en esta versión porque NINGUNA clase las usaba y las reglas
+    // -keep de R8 las metían enteras en el APK de release:
+    //   - zip4j, dexlib2 y baksmali (un antiguo "generador de payloads"; además
+    //     de peso muerto, una librería para reescribir APKs es una señal de
+    //     alerta en la revisión de Google Play),
+    //   - BouncyCastle (bcprov/bcpkix): el cifrado usa las primitivas del
+    //     sistema (E2EECryptoService, BackupEncryptor),
+    //   - netcipher-webkit.
     
     // ── Signal Protocol (E2EE) ─────────────────────────────
     // libsignal-android se retiró en la v6: ninguna clase lo usaba ya.

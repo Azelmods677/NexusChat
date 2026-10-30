@@ -68,6 +68,13 @@ class MainActivity : ComponentActivity() {
     
     @Inject
     lateinit var appLockManager: com.Azelmods.App.data.security.AppLockManager
+
+    // Lazy: TorService solo se crea si el usuario dejó activado el modo anónimo.
+    @Inject
+    lateinit var torService: dagger.Lazy<com.Azelmods.App.data.security.tor.TorService>
+
+    @Inject
+    lateinit var torPreferences: com.Azelmods.App.data.security.tor.TorPreferences
     
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install splash screen before super.onCreate()
@@ -78,6 +85,14 @@ class MainActivity : ComponentActivity() {
         // ✅ Enable edge-to-edge (modern approach - no systemuicontroller)
         enableEdgeToEdge()
         
+        // ── Modo anónimo: si el usuario lo dejó activado, se restaura YA, antes de
+        // que la app haga peticiones. Antes solo se restauraba al abrir la pantalla
+        // de seguridad y, hasta entonces, todo salía sin Tor. ──
+        if (torPreferences.isAnonymousModeEnabled()) {
+            runCatching { torService.get().restoreIfEnabled(torPreferences) }
+                .onFailure { Log.e(TAG, "No se pudo restaurar el modo anónimo", it) }
+        }
+
         // ── Handle incoming-call navigation coming from a notification ──
         handleCallIntent(intent)
         handleDeepLink(intent)

@@ -20,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SecurityViewModel @Inject constructor(
     private val securityRepository: SecurityRepository,
-    private val torPreferences: com.Azelmods.App.data.security.tor.TorPreferences
+    private val torPreferences: com.Azelmods.App.data.security.tor.TorPreferences,
+    private val torService: com.Azelmods.App.data.security.tor.TorService
 ) : ViewModel() {
 
     val torState: StateFlow<TorState> = securityRepository.getTorState()
@@ -121,6 +122,19 @@ class SecurityViewModel @Inject constructor(
                 addLog("Error: ${e.message}")
             }
         }
+    }
+
+    /** Vuelve a preguntar a check.torproject.org si salimos por Tor y con qué IP. */
+    fun verifyTor() {
+        addLog("Comprobando la salida por Tor…")
+        torService.verifyConnection()
+    }
+
+    /** Pide a Orbot que arranque Tor sin salir de NexusChat. */
+    fun requestOrbotStart(context: android.content.Context): Boolean {
+        val sent = com.Azelmods.App.data.security.tor.OrbotIntents.requestStart(context)
+        addLog(if (sent) "Petición enviada a Orbot para iniciar Tor" else "No se pudo contactar con Orbot")
+        return sent
     }
 
     /**

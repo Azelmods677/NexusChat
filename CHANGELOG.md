@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/Azelmods677/NexusChat">
-    <img src="https://img.shields.io/badge/Version-3.0.1-7F52FF?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-6.1.0-7F52FF?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
   </a>
   <a href="https://github.com/Azelmods677/NexusChat/releases">
     <img src="https://img.shields.io/github/v/release/Azelmods677/NexusChat?style=for-the-badge&logo=github&color=00E676&labelColor=0d1117" alt="Latest Release" />
@@ -17,7 +17,8 @@
 </p>
 
 <p align="center">
-  <a href="#v301">🆕 v3.0.1</a> ·
+  <a href="#v610">🆕 v6.1.0</a> ·
+  <a href="#v301">v3.0.1</a> ·
   <a href="#v300">🚀 v3.0.0</a> ·
   <a href="#v220">🔧 v2.2.0</a> ·
   <a href="#v210">⚡ v2.1.0</a> ·
@@ -26,6 +27,37 @@
 </p>
 
 </div>
+
+---
+
+<a id="v610"></a>
+
+## 🆕 v6.1.0 — Llamadas fiables, agentes de IA y Tor verificado
+
+### 📞 Llamadas
+- **Conexión**: el receptor creaba la respuesta antes de aplicar la oferta y la llamada podía quedarse en «Conectando…» para siempre. Candidatos ICE aplicados una sola vez. STUN/TURN configurables en `config/webrtc/iceServers` sin publicar otra versión.
+- **Flujo**: fases visibles (llamando, conectando, conectado, reconectando), la pantalla se cierra cuando el otro cuelga o rechaza, cronómetro desde que conecta, duración real en el historial y filtro de **perdidas** que por fin funciona.
+- **Notificaciones**: «Aceptar» funciona en Android 12+, estilo de llamada del sistema con tono repetido que se retira al contestar/rechazar/colgar, pantalla completa con el móvil bloqueado (`USE_FULL_SCREEN_INTENT`). «Colgar» y «Silenciar» de la llamada en curso actúan de verdad. La llamada perdida llega a quien no la cogió.
+- **Audio**: auricular, altavoz y Bluetooth correctos; sensor de proximidad en llamadas de voz.
+- **Privacidad**: con el modo anónimo, el medio va por TURN y el otro no ve tu IP.
+
+### 🤖 Azel IA y agentes
+- **Agentes de IA** (pestaña nueva): seis agentes y cuatro equipos que buscan en la web, leen páginas, calculan y se reparten el trabajo. Se ve cada paso en vivo: quién piensa, qué herramienta usa, qué encontró y el resultado final.
+- Streaming real con todos los proveedores, botón **Detener**, límites por inactividad (sin cortes a los 60 s), Gemini 2.5 sin respuestas vacías, cabecera con el proveedor y modelo reales y selector de modelo.
+
+### 🧅 Tor / Orbot
+- Orbot se enciende desde NexusChat (API de intents) y se usan sus puertos reales.
+- Verificación real con `check.torproject.org`: IP de salida, modo proxy o VPN.
+- Cierre seguro: si Orbot cae, la app no sale a internet sin Tor; sin fugas de DNS.
+- Modo anónimo restaurado al abrir la app (antes solo al entrar en Seguridad).
+- Navegador: WebRTC bloqueado (fuga de IP), primera página por Tor (buscador .onion), sin cookies de terceros, datos borrados al salir y botón «Nueva identidad».
+
+### 🏭 Producción
+- CI en todas las ramas y en verde (fallaba por la ruta del APK con splits por ABI).
+- Retiradas dependencias que no usaba ningún código (zip4j, smali, BouncyCastle, NetCipher).
+- Reglas: solo puedes crear llamadas en las que eres el emisor.
+
+<br>
 
 ---
 
