@@ -49,20 +49,29 @@ private val UserBubble = NexusTokens.Color.BgElevated
 @Composable
 fun AzelAIScreen(
     onBack: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     viewModel: AzelAIViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    // 0 = chat, 1 = agentes
+    var selectedTab by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+
+    // Al volver de Ajustes → IA, la cabecera refleja el proveedor/modelo nuevo.
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        viewModel.refreshProviderStatus()
+    }
     
     var showClearDialog by remember { mutableStateOf(false) }
     var showStatsDialog by remember { mutableStateOf(false) }
     var showSidebar by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     
-    LaunchedEffect(state.messages.size) {
-        if (state.messages.isNotEmpty()) {
-            listState.animateScrollToItem(state.messages.lastIndex)
+    LaunchedEffect(state.messages.size, state.streamingContent.length / 200) {
+        val total = listState.layoutInfo.totalItemsCount
+        if (state.messages.isNotEmpty() && total > 0) {
+            listState.animateScrollToItem(total - 1)
         }
     }
     
@@ -80,14 +89,31 @@ fun AzelAIScreen(
                 onClear = { showClearDialog = true },
                 onStats = { showStatsDialog = true },
                 onToggleSidebar = { showSidebar = !showSidebar },
-                currentChatTitle = state.currentChatTitle,
-                isConnected = true // SIEMPRE CONECTADO
+                currentChatTitle = if (selectedTab == 1) "Agentes de IA" else state.currentChatTitle,
+                providerName = state.providerName,
+                providerModel = state.providerModel,
+                isConfigured = state.isProviderConfigured,
+                geminiModels = if (state.providerName.contains("Gemini")) state.availableModels else emptyList(),
+                onSelectModel = viewModel::selectModel,
+                onOpenSettings = onOpenSettings,
+                selectedTab = selectedTab,
+                onSelectTab = { selectedTab = it; showSidebar = false }
             )
         },
         containerColor = BgDark,
         contentWindowInsets = WindowInsets(0) // Edge-to-Edge: control manual de insets
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).navigationBarsPadding()) {
+            if (selectedTab == 1) {
+                com.Azelmods.App.ui.screens.azelai.agents.AgentsPanel(
+                    geminiModel = state.selectedModel,
+                    onOpenSettings = onOpenSettings,
+                    onSendToChat = { goal, answer ->
+                        viewModel.importAgentResult(goal, answer)
+                        selectedTab = 0
+                    }
+                )
+            } else
             Row(modifier = Modifier.fillMaxSize()) {
                 AnimatedVisibility(
                     visible = showSidebar,
@@ -113,8 +139,13 @@ fun AzelAIScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             if (state.messages.isEmpty()) {
-                                item { AzelAIWelcome() }
-                                item { AzelAIQuickTools(viewModel) }
+                                item { AzelAIWelcome(isConfigured = state.isProviderConfigured, onOpenSettings = onOpenSettings) }
+                                item {
+                                    AzelAIQuickTools(
+                                        onPick = { prompt -> inputText = prompt },
+                                        onOpenAgents = { selectedTab = 1 }
+                                    )
+                                }
                             }
                             
                             items(
@@ -139,7 +170,7 @@ fun AzelAIScreen(
                                 item {
                                     AzelAIThinkingBubble(
                                         elapsedMs = state.thinkingElapsedMs,
-                                        timeoutMs = 60_000L
+                                        timeoutMs = AzelAIViewModel.FIRST_TOKEN_TIMEOUT_MS
                                     )
                                 }
                             }
@@ -165,13 +196,14 @@ fun AzelAIScreen(
                     AzelAIInputBar(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        isThinking = state.isThinking,
+                        isThinking = state.isThinking || state.isStreaming,
                         onSend = {
                             if (inputText.isNotBlank()) {
                                 viewModel.sendMessage(inputText.trim())
                                 inputText = ""
                             }
-                        }
+                        },
+                        onStop = viewModel::stopGeneration
                     )
                 }
             }
@@ -202,56 +234,159 @@ fun AzelAITopBar(
     onStats: () -> Unit,
     onToggleSidebar: () -> Unit,
     currentChatTitle: String,
-    isConnected: Boolean
+    providerName: String,
+    providerModel: String,
+    isConfigured: Boolean,
+    geminiModels: List<com.Azelmods.App.data.api.AIModel>,
+    onSelectModel: (String) -> Unit,
+    onOpenSettings: () -> Unit,
+    selectedTab: Int,
+    onSelectTab: (Int) -> Unit
 ) {
+    var showModels by remember { mutableStateOf(false) }
     Surface(
         color = BgDark,
         border = BorderStroke(0.5.dp, BorderColor)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onToggleSidebar) {
-                Icon(Icons.Default.Menu, "Menu", tint = TextSecondary)
-            }
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = TextPrimary)
-            }
-            
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                Text(
-                    text = currentChatTitle.ifEmpty { "Azel IA" },
-                    color = TextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(7.dp).clip(CircleShape)
-                            .background(NexusTokens.Color.Online) // SIEMPRE VERDE
-                    )
-                    Spacer(Modifier.width(6.dp))
+        Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás", tint = TextPrimary)
+                }
+                if (selectedTab == 0) {
+                    IconButton(onClick = onToggleSidebar) {
+                        Icon(Icons.Default.Menu, "Conversaciones", tint = TextSecondary)
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
                     Text(
-                        text = "API Key Activa",
-                        color = TextSecondary,
-                        fontSize = 11.sp
+                        text = currentChatTitle.ifEmpty { "Azel IA" },
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    // Estado REAL del proveedor (antes era un "API Key Activa" fijo en
+                    // verde aunque no hubiera ninguna clave). Si es Gemini, tocarlo
+                    // abre el selector de modelo; si falta configuración, los ajustes.
+                    Box {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .clickable {
+                                    when {
+                                        !isConfigured -> onOpenSettings()
+                                        geminiModels.isNotEmpty() -> showModels = true
+                                        else -> onOpenSettings()
+                                    }
+                                }
+                                .padding(vertical = 2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier.size(7.dp).clip(CircleShape)
+                                    .background(if (isConfigured) NexusTokens.Color.Online else NexusTokens.Color.Warning)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (isConfigured) {
+                                    listOf(providerName, providerModel).filter { it.isNotBlank() }.joinToString(" · ")
+                                        .ifBlank { "IA lista" }
+                                } else "Sin configurar — toca para añadir tu clave",
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (isConfigured && geminiModels.isNotEmpty()) {
+                                Icon(Icons.Default.ArrowDropDown, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showModels,
+                            onDismissRequest = { showModels = false },
+                            containerColor = SurfaceDark
+                        ) {
+                            geminiModels.forEach { model ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(model.id, color = TextPrimary, fontSize = 14.sp)
+                                            Text(model.description, color = TextSecondary, fontSize = 11.sp)
+                                        }
+                                    },
+                                    onClick = {
+                                        onSelectModel(model.id)
+                                        showModels = false
+                                    },
+                                    trailingIcon = {
+                                        if (model.id == providerModel) Icon(Icons.Default.Check, null, tint = AzelPurple)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (selectedTab == 0) {
+                    IconButton(onClick = onStats) { Icon(Icons.Default.Insights, "Uso", tint = AzelPurple) }
+                    IconButton(onClick = onClear) { Icon(Icons.Default.DeleteOutline, "Borrar historial", tint = TextSecondary) }
+                } else {
+                    IconButton(onClick = onOpenSettings) { Icon(Icons.Default.Settings, "Ajustes de IA", tint = TextSecondary) }
                 }
             }
-            
-            IconButton(onClick = onStats) { Icon(Icons.Default.AutoAwesome, null, tint = AzelPurple) }
-            IconButton(onClick = onClear) { Icon(Icons.Default.DeleteOutline, null, tint = TextSecondary) }
+
+            // Pestañas Chat / Agentes
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 10.dp)
+                    .clip(RoundedCornerShape(NexusTokens.Radius.pill))
+                    .background(SurfaceDark)
+                    .padding(3.dp)
+            ) {
+                listOf(
+                    Triple(0, Icons.Default.ChatBubbleOutline, "Chat"),
+                    Triple(1, Icons.Default.Hub, "Agentes")
+                ).forEach { (index, icon, label) ->
+                    val selected = selectedTab == index
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(NexusTokens.Radius.pill))
+                            .background(
+                                if (selected) Brush.linearGradient(listOf(AzelPurple.copy(alpha = 0.9f), AzelBlue.copy(alpha = 0.7f)))
+                                else Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+                            )
+                            .clickable { onSelectTab(index) }
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(icon, null, tint = if (selected) Color.White else TextSecondary, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            label,
+                            color = if (selected) Color.White else TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun AzelAIWelcome() {
+fun AzelAIWelcome(isConfigured: Boolean = true, onOpenSettings: () -> Unit = {}) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 60.dp, bottom = 32.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 48.dp, bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -261,7 +396,7 @@ fun AzelAIWelcome() {
         ) {
             Icon(Icons.Outlined.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(NexusTokens.IconSize.lg))
         }
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(28.dp))
         Text(
             "¿En qué puedo ayudarte?",
             color = TextPrimary,
@@ -270,33 +405,52 @@ fun AzelAIWelcome() {
             textAlign = TextAlign.Center,
             letterSpacing = (-0.5).sp
         )
+        // Texto honesto: antes prometía que la IA "evitaba cualquier filtro ético",
+        // lo cual era falso (se usan los filtros por defecto del proveedor) y es
+        // motivo de rechazo en Google Play.
         Text(
-            "Azel IA esta desarollada para evitar cualquier tipo de filtro etico  por lo cual puede preguntar con confianza",
+            "Escribe, resume, traduce, programa o pregunta lo que necesites. " +
+                "Usa tu propio proveedor de IA y tus conversaciones se guardan en tu cuenta.",
             color = TextSecondary,
             fontSize = 15.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 16.dp, start = 24.dp, end = 24.dp),
+            modifier = Modifier.padding(top = 14.dp, start = 24.dp, end = 24.dp),
             lineHeight = 22.sp
         )
+        if (!isConfigured) {
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onOpenSettings,
+                colors = ButtonDefaults.buttonColors(containerColor = AzelPurple),
+                shape = RoundedCornerShape(NexusTokens.Radius.pill)
+            ) {
+                Icon(Icons.Default.Key, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Configurar mi IA")
+            }
+        }
     }
 }
 
 @Composable
-fun AzelAIQuickTools(viewModel: AzelAIViewModel) {
+fun AzelAIQuickTools(onPick: (String) -> Unit, onOpenAgents: () -> Unit) {
+    // Antes cada atajo ENVIABA al instante una frase incompleta ("Mejora el estilo
+    // de este texto:" sin texto). Ahora rellena el cuadro y el usuario completa.
     val items = listOf(
-        Triple("✨", "Mejorar redacción", "Mejora el estilo y la claridad de este texto:"),
-        Triple("🧠", "Explicar concepto", "Explícame de forma sencilla y profunda el concepto de:"),
-        Triple("💻", "Optimizar código", "Analiza y optimiza este código para mejorar su eficiencia:"),
-        Triple("🛡️", "Análisis de seguridad", "Realiza un análisis exhaustivo de seguridad sobre:")
+        Triple("✨", "Mejorar redacción", "Mejora el estilo y la claridad de este texto:\n\n"),
+        Triple("🧠", "Explicar concepto", "Explícame de forma sencilla el concepto de "),
+        Triple("💻", "Revisar código", "Revisa este código, encuentra errores y propón mejoras:\n\n"),
+        Triple("🌍", "Traducir", "Traduce al inglés manteniendo el tono:\n\n")
     )
-    
+
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
         items.chunked(2).forEach { rowItems ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 rowItems.forEach { (emoji, title, prompt) ->
                     Surface(
                         modifier = Modifier.weight(1f).padding(bottom = 12.dp)
-                            .clickable { viewModel.sendMessage(prompt) },
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { onPick(prompt) },
                         color = Color.Transparent,
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(0.5.dp, BorderColor)
@@ -308,6 +462,29 @@ fun AzelAIQuickTools(viewModel: AzelAIViewModel) {
                         }
                     }
                 }
+            }
+        }
+        // Acceso directo a los agentes.
+        Surface(
+            modifier = Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(onClick = onOpenAgents),
+            color = AzelPurple.copy(alpha = 0.10f),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(0.5.dp, AzelPurple.copy(alpha = 0.5f))
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("🤖", fontSize = 22.sp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Agentes de IA", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Investigan, calculan y se reparten el trabajo. Míralos trabajar en vivo.",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = AzelPurple)
             }
         }
     }
@@ -369,7 +546,8 @@ fun AzelAIInputBar(
     value: String,
     onValueChange: (String) -> Unit,
     isThinking: Boolean,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    onStop: () -> Unit = {}
 ) {
     // Professional gradient animation for send button
     val infiniteTransition = rememberInfiniteTransition(label = "send_glow")
@@ -457,8 +635,9 @@ fun AzelAIInputBar(
                     shape = CircleShape,
                     color = Color.Transparent,
                     onClick = {
-                        if (value.isNotBlank() && !isThinking) {
-                            onSend()
+                        when {
+                            isThinking -> onStop()
+                            value.isNotBlank() -> onSend()
                         }
                     }
                 ) {
@@ -477,11 +656,20 @@ fun AzelAIInputBar(
                         contentAlignment = Alignment.Center
                     ) {
                         if (isThinking) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                color = Color.White,
-                                strokeWidth = 2.5.dp
-                            )
+                            // Botón "Detener": corta la respuesta y conserva lo escrito.
+                            Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(34.dp),
+                                    color = AzelPurple,
+                                    strokeWidth = 2.dp
+                                )
+                                Icon(
+                                    Icons.Default.Stop,
+                                    contentDescription = "Detener",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         } else {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,

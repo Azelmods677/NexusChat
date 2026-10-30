@@ -118,6 +118,12 @@ class AzelAIRepository @Inject constructor(
      * 🔍 VERIFICAR SALUD DE LA API
      */
     suspend fun checkApiHealth() = apiService.checkHealth()
+
+    /** true si el proveedor activo tiene clave/URL suficientes para responder. */
+    fun isProviderConfigured(): Boolean = apiService.isConfigured()
+
+    /** (Proveedor, modelo) activos para mostrarlos en la cabecera. */
+    fun activeProviderSummary(selectedGeminiModel: String) = apiService.activeProviderSummary(selectedGeminiModel)
     
     /**
      * Obtener historial en tiempo real desde Firebase

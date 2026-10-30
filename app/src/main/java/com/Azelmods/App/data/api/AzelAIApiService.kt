@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -50,16 +51,24 @@ class AzelAIApiService @Inject constructor(
 
         private const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
         
-        // Modelos disponibles en Gemini
+        // Modelos disponibles en Gemini. La familia 1.5 se retiró de la API: elegirla
+        // devolvía 404, así que ya no se ofrece.
         const val GEMINI_3_1_PRO_PREVIEW = "gemini-3.1-pro-preview"
+        const val GEMINI_2_5_PRO = "gemini-2.5-pro"
         const val GEMINI_2_5_FLASH = "gemini-2.5-flash"
+        const val GEMINI_2_5_FLASH_LITE = "gemini-2.5-flash-lite"
         const val GEMINI_2_0_FLASH = "gemini-2.0-flash"
-        const val GEMINI_1_5_PRO = "gemini-1.5-pro"
-        const val GEMINI_1_5_FLASH = "gemini-1.5-flash"
-        
+
         // Configuración por defecto
         private const val DEFAULT_MODEL = GEMINI_2_5_FLASH
-        private const val MAX_TOKENS = 1024
+        // Los modelos 2.5 "piensan" y ese razonamiento CUENTA contra
+        // maxOutputTokens. Con el tope anterior (1024) muchas preguntas se comían
+        // el presupuesto pensando y la respuesta llegaba cortada o vacía ("La API
+        // no devolvió ninguna respuesta").
+        private const val MAX_TOKENS = 8192
+        // Tope para proveedores OpenAI-compatibles: varios (y muchos modelos
+        // locales) rechazan con 400 un max_tokens mayor que su ventana de salida.
+        private const val OPENAI_COMPAT_MAX_TOKENS = 4096
         private const val TEMPERATURE = 0.7f
         private const val TOP_P = 0.95f
         private const val MAX_CONTEXT_MESSAGES = 8
@@ -83,6 +92,22 @@ class AzelAIApiService @Inject constructor(
 
     /** `true` si hay una API key disponible (de usuario o de BuildConfig). */
     fun hasApiKey(): Boolean = resolveApiKey().isNotEmpty()
+
+    /**
+     * `true` si el proveedor activo tiene lo necesario para responder. Lo usa la
+     * pantalla de IA para decir la verdad en vez de un "API Key activa" fijo.
+     */
+    fun isConfigured(): Boolean {
+        val provider = keyStore.getProvider()
+        return if (provider.isOpenAiCompatible) keyStore.isProviderUsable() else hasApiKey()
+    }
+
+    /** Nombre del proveedor y modelo activos, p. ej. ("OpenRouter", "deepseek/deepseek-chat"). */
+    fun activeProviderSummary(selectedGeminiModel: String = DEFAULT_MODEL): Pair<String, String> {
+        val provider = keyStore.getProvider()
+        val model = if (provider.isOpenAiCompatible) keyStore.getModel() else selectedGeminiModel
+        return provider.displayName to model
+    }
 
     /** Devuelve la API key activa o lanza una excepción reconocible si falta. */
     private fun requireApiKey(): String {
@@ -151,32 +176,43 @@ Guidelines:
         maxTokens: Int = MAX_TOKENS,
         topP: Float = TOP_P,
         frequencyPenalty: Float = 0f, // No aplica directo en Gemini general config
-        presencePenalty: Float = 0f   // No aplica directo en Gemini general config
+        presencePenalty: Float = 0f,  // No aplica directo en Gemini general config
+        /** Instrucción de sistema propia (agentes); null = la del asistente. */
+        systemPrompt: String? = null
     ): Flow<StreamResponse> = callbackFlow {
         val channel: SendChannel<StreamResponse> = this
         val activeSource = java.util.concurrent.atomic.AtomicReference<EventSource?>(null)
 
-        // El streaming de abajo es SSE con el formato de Gemini. Un proveedor
-        // OpenAI-compatible no entiende ese endpoint, así que se resuelve con una
-        // llamada normal y se emite la respuesta completa de una vez. Se pierde el
-        // efecto de escritura progresiva, no la funcionalidad.
+        // Los proveedores OpenAI-compatibles tienen su propio streaming SSE
+        // (`stream: true`). La lectura es bloqueante, así que va en una corrutina
+        // hija; awaitClose cancela la llamada HTTP si el usuario pulsa "Detener" o
+        // sale de la pantalla, lo que corta la lectura al instante.
         val activeProvider = keyStore.getProvider()
         if (activeProvider.isOpenAiCompatible) {
-            try {
-                val response = requestQueue.enqueue {
-                    openAiCompatCompletion(activeProvider, messages, temperature, maxTokens, topP)
+            val activeCall = java.util.concurrent.atomic.AtomicReference<okhttp3.Call?>(null)
+            launch {
+                try {
+                    requestQueue.enqueue {
+                        openAiCompatStream(
+                            provider = activeProvider,
+                            messages = messages,
+                            temperature = temperature,
+                            maxTokens = maxTokens,
+                            topP = topP,
+                            systemPrompt = systemPrompt,
+                            onCall = { activeCall.set(it) }
+                        ) { delta -> channel.trySend(StreamResponse.Content(delta)) }
+                    }
+                    channel.trySend(StreamResponse.Done)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.e(TAG, "❌ Error con ${activeProvider.displayName}", e)
+                    channel.trySend(StreamResponse.Error(e.message ?: "Error del proveedor de IA"))
                 }
-                channel.trySend(StreamResponse.Content(response.content))
-                channel.trySend(StreamResponse.Done)
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ Error con ${activeProvider.displayName}", e)
-                channel.trySend(StreamResponse.Error(e.message ?: "Error del proveedor de IA"))
+                channel.close()
             }
-            close()
-            // callbackFlow exige awaitClose antes de que termine el bloque, incluso si
-            // ya se cerró: sin esto lanza IllegalStateException en ejecución. Tras
-            // close() retorna de inmediato.
-            awaitClose { }
+            awaitClose { runCatching { activeCall.getAndSet(null)?.cancel() } }
             return@callbackFlow
         }
 
@@ -192,6 +228,7 @@ Guidelines:
                     temperature = temperature,
                     maxTokens = maxTokens,
                     topP = topP,
+                    systemPrompt = systemPrompt,
                     channel = channel,
                     sourceRef = activeSource
                 )
@@ -226,6 +263,7 @@ Guidelines:
         temperature: Float,
         maxTokens: Int,
         topP: Float,
+        systemPrompt: String?,
         channel: SendChannel<StreamResponse>,
         sourceRef: java.util.concurrent.atomic.AtomicReference<EventSource?>
     ): Unit = suspendCancellableCoroutine { cont ->
@@ -238,7 +276,8 @@ Guidelines:
             messages = messages,
             temperature = temperature,
             maxTokens = maxTokens,
-            topP = topP
+            topP = topP,
+            systemPrompt = systemPrompt
         ).toString()
 
         val url = "$BASE_URL/$model:streamGenerateContent?alt=sse&key=${requireApiKey()}"
@@ -280,12 +319,13 @@ Guidelines:
                             val content = candidate.optJSONObject("content")
                             val parts = content?.optJSONArray("parts")
 
-                            if (parts != null && parts.length() > 0) {
-                                val text = parts.getJSONObject(0).optString("text")
-                                if (text.isNotEmpty()) {
-                                    receivedContent.set(true)
-                                    channel.trySend(StreamResponse.Content(text))
-                                }
+                            // Un trozo puede traer varias partes; antes solo se leía la
+                            // primera y se perdía texto. Las partes `thought` son el
+                            // razonamiento interno del modelo: no se muestran.
+                            val text = extractText(parts)
+                            if (text.isNotEmpty()) {
+                                receivedContent.set(true)
+                                channel.trySend(StreamResponse.Content(text))
                             }
 
                             val finishReason = candidate.optString("finishReason", "")
@@ -361,11 +401,13 @@ Guidelines:
         maxTokens: Int = MAX_TOKENS,
         topP: Float = TOP_P,
         frequencyPenalty: Float = 0f,
-        presencePenalty: Float = 0f
+        presencePenalty: Float = 0f,
+        /** Instrucción de sistema propia (agentes); null = la del asistente. */
+        systemPrompt: String? = null
     ): ChatResponse = withContext(Dispatchers.IO) {
         // 🛡️ Wrapping con rate limiter + retry automático
         requestQueue.enqueue {
-            chatCompletionInternal(model, messages, temperature, maxTokens, topP)
+            chatCompletionInternal(model, messages, temperature, maxTokens, topP, systemPrompt)
         }
     }
     
@@ -377,7 +419,8 @@ Guidelines:
         messages: List<Message>,
         temperature: Float,
         maxTokens: Int,
-        topP: Float
+        topP: Float,
+        systemPrompt: String? = null
     ): ChatResponse {
         // Si el usuario eligió un proveedor OpenAI-compatible, se enruta ahí: mismo
         // contrato para OpenAI, OpenRouter, DeepSeek, Mistral, Groq, Ollama y
@@ -385,7 +428,7 @@ Guidelines:
         // :generateContent con un esquema distinto.
         val provider = keyStore.getProvider()
         if (provider.isOpenAiCompatible) {
-            return openAiCompatCompletion(provider, messages, temperature, maxTokens, topP)
+            return openAiCompatCompletion(provider, messages, temperature, maxTokens, topP, systemPrompt)
         }
 
         try {
@@ -395,7 +438,8 @@ Guidelines:
                 messages = messages,
                 temperature = temperature,
                 maxTokens = maxTokens,
-                topP = topP
+                topP = topP,
+                systemPrompt = systemPrompt
             ).toString()
             
             val url = "$BASE_URL/$model:generateContent?key=${requireApiKey()}"
@@ -425,9 +469,14 @@ Guidelines:
             }
             
             val firstChoice = candidates.getJSONObject(0)
-            val contentObj = firstChoice.getJSONObject("content")
-            val parts = contentObj.getJSONArray("parts")
-            val content = parts.getJSONObject(0).getString("text")
+            val content = extractText(firstChoice.optJSONObject("content")?.optJSONArray("parts"))
+            if (content.isBlank()) {
+                val reason = firstChoice.optString("finishReason", "")
+                throw Exception(
+                    if (reason == "SAFETY") "Gemini bloqueó la respuesta por sus filtros de seguridad"
+                    else "Gemini devolvió una respuesta vacía${if (reason.isNotBlank()) " ($reason)" else ""}"
+                )
+            }
             
             val usage = jsonResponse.optJSONObject("usageMetadata")
             val totalTokens = usage?.optInt("totalTokenCount", 0) ?: 0
@@ -458,7 +507,8 @@ Guidelines:
         messages: List<Message>,
         temperature: Float,
         maxTokens: Int,
-        topP: Float
+        topP: Float,
+        systemPrompt: String? = null
     ): ChatResponse {
         val baseUrl = keyStore.getBaseUrl()
         val model = keyStore.getModel()
@@ -484,10 +534,10 @@ Guidelines:
             baseUrl = baseUrl,
             apiKey = apiKey,
             model = model,
-            systemPrompt = getSystemPrompt(),
+            systemPrompt = systemPrompt ?: getSystemPrompt(),
             messages = mapped,
             temperature = temperature,
-            maxTokens = maxTokens,
+            maxTokens = maxTokens.coerceAtMost(OPENAI_COMPAT_MAX_TOKENS),
             topP = topP
         )
 
@@ -500,6 +550,60 @@ Guidelines:
         )
     }
 
+    /** Versión en streaming de [openAiCompatCompletion]. */
+    private fun openAiCompatStream(
+        provider: com.Azelmods.App.data.ai.AiProvider,
+        messages: List<Message>,
+        temperature: Float,
+        maxTokens: Int,
+        topP: Float,
+        systemPrompt: String?,
+        onCall: (okhttp3.Call) -> Unit,
+        onDelta: (String) -> Unit
+    ): Int {
+        val baseUrl = keyStore.getBaseUrl()
+        val model = keyStore.getModel()
+        val apiKey = if (provider.allowsEmptyKey) keyStore.getApiKey().orEmpty() else requireApiKey()
+
+        if (baseUrl.isBlank()) {
+            throw Exception("Configura la URL del proveedor ${provider.displayName} en Ajustes de IA")
+        }
+        if (model.isBlank()) {
+            throw Exception("Configura el modelo de ${provider.displayName} en Ajustes de IA")
+        }
+
+        val mapped = messages.takeLast(MAX_CONTEXT_MESSAGES).map { msg ->
+            val role = if (msg.role == "assistant") "assistant" else "user"
+            role to msg.content
+        }
+        Log.d(TAG, "🚀 Streaming vía ${provider.displayName}: $model")
+        return OpenAiCompatClient.chatCompletionStream(
+            client = client,
+            baseUrl = baseUrl,
+            apiKey = apiKey,
+            model = model,
+            systemPrompt = systemPrompt ?: getSystemPrompt(),
+            messages = mapped,
+            temperature = temperature,
+            maxTokens = maxTokens.coerceAtMost(OPENAI_COMPAT_MAX_TOKENS),
+            topP = topP,
+            onCall = onCall,
+            onDelta = onDelta
+        )
+    }
+
+    /** Une el texto visible de las partes de Gemini, sin el razonamiento interno. */
+    private fun extractText(parts: JSONArray?): String {
+        if (parts == null) return ""
+        val sb = StringBuilder()
+        for (i in 0 until parts.length()) {
+            val part = parts.optJSONObject(i) ?: continue
+            if (part.optBoolean("thought", false)) continue
+            if (part.has("text") && !part.isNull("text")) sb.append(part.optString("text"))
+        }
+        return sb.toString()
+    }
+
     /**
      * 🔧 CONSTRUIR REQUEST BODY PARA GEMINI
      */
@@ -507,14 +611,15 @@ Guidelines:
         messages: List<Message>,
         temperature: Float,
         maxTokens: Int,
-        topP: Float
+        topP: Float,
+        systemPrompt: String? = null
     ): JSONObject {
         val requestBody = JSONObject()
         
-        // System instruction (neutral assistant)
+        // System instruction (neutral assistant, o la del agente)
         val systemInstruction = JSONObject().apply {
             put("role", "system")
-            put("parts", JSONArray().put(JSONObject().apply { put("text", getSystemPrompt()) }))
+            put("parts", JSONArray().put(JSONObject().apply { put("text", systemPrompt ?: getSystemPrompt()) }))
         }
         requestBody.put("systemInstruction", systemInstruction)
         
@@ -548,11 +653,11 @@ Guidelines:
      * 📊 OBTENER MODELOS DISPONIBLES EN GEMINI
      */
     fun getAvailableModels(): List<AIModel> = listOf(
-        AIModel(GEMINI_3_1_PRO_PREVIEW, description = "✨ Gemini 3.1 Pro (Preview) - Inteligencia Suprema", parameters = 0),
-        AIModel(GEMINI_2_5_FLASH, description = "⚡ Gemini 2.5 Flash - Muy Rápido y Eficiente (Recomendado)", parameters = 0),
-        AIModel(GEMINI_2_0_FLASH, description = "⚡ Gemini 2.0 Flash - Rápido y capaz", parameters = 0),
-        AIModel(GEMINI_1_5_PRO, description = "🚀 Modelo clásico más avanzado", parameters = 0),
-        AIModel(GEMINI_1_5_FLASH, description = "💡 Modelo eficiente para tareas rápidas", parameters = 0)
+        AIModel(GEMINI_2_5_FLASH, description = "Gemini 2.5 Flash — rápido y capaz (recomendado)", parameters = 0),
+        AIModel(GEMINI_2_5_PRO, description = "Gemini 2.5 Pro — el más potente para tareas complejas", parameters = 0),
+        AIModel(GEMINI_2_5_FLASH_LITE, description = "Gemini 2.5 Flash-Lite — el más económico", parameters = 0),
+        AIModel(GEMINI_3_1_PRO_PREVIEW, description = "Gemini 3.1 Pro (preview) — si tu clave tiene acceso", parameters = 0),
+        AIModel(GEMINI_2_0_FLASH, description = "Gemini 2.0 Flash — generación anterior", parameters = 0)
     )
     
     /**
@@ -588,14 +693,16 @@ Guidelines:
                 Log.w(TAG, "Health check omitido: no hay API key configurada")
                 return@withContext false
             }
-            val url = "$BASE_URL/gemini-1.5-flash?key=$key"
+            // Lista de modelos (1 resultado): valida la clave sin depender de un
+            // modelo concreto. Antes se consultaba gemini-1.5-flash, retirado, y
+            // la comprobación fallaba siempre.
+            val url = "$BASE_URL?pageSize=1&key=$key"
             val request = Request.Builder()
                 .url(url)
                 .get()
                 .build()
             
-            val response = client.newCall(request).execute()
-            response.isSuccessful
+            client.newCall(request).execute().use { it.isSuccessful }
         } catch (e: Exception) {
             Log.e(TAG, "Health check failed", e)
             false

@@ -10,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.produceIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -27,7 +28,11 @@ data class AzelAIState(
     val currentChatTitle: String = "",
     val selectedModel: String = AzelAIApiService.GEMINI_2_5_FLASH,
     val availableModels: List<com.Azelmods.App.data.api.AIModel> = emptyList(),
-    val thinkingElapsedMs: Long = 0L
+    val thinkingElapsedMs: Long = 0L,
+    /** Proveedor y modelo reales (no un "API Key activa" fijo). */
+    val providerName: String = "",
+    val providerModel: String = "",
+    val isProviderConfigured: Boolean = true
 )
 
 @HiltViewModel
@@ -35,15 +40,12 @@ class AzelAIViewModel @Inject constructor(
     private val repository: AzelAIRepository
 ) : ViewModel() {
     
-    companion object {
-        private const val TAG = "AzelAIViewModel"
-    }
-    
     private fun currentUserId(): String =
         FirebaseAuth.getInstance().currentUser?.uid ?: ""
     
     private var messagesCollectJob: Job? = null
     private var thinkingTimerJob: Job? = null
+    private var sendJob: Job? = null
     
     private val _state = MutableStateFlow(AzelAIState())
     val state: StateFlow<AzelAIState> = _state.asStateFlow()
@@ -55,6 +57,7 @@ class AzelAIViewModel @Inject constructor(
         if (currentUserId().isNotEmpty()) {
             Log.d(TAG, "🚀 Initializing AzelAIViewModel for user: ${currentUserId()}")
             loadAvailableModels()
+            refreshProviderStatus()
             startNewChat()
             loadChatHistory()
             checkApiHealth()
@@ -78,7 +81,23 @@ class AzelAIViewModel @Inject constructor(
      */
     fun selectModel(modelId: String) {
         _state.update { it.copy(selectedModel = modelId) }
+        refreshProviderStatus()
         Log.d(TAG, "🔄 Model changed to: $modelId")
+    }
+
+    /**
+     * Relee proveedor, modelo y si hay clave. La pantalla lo llama al volver de
+     * los ajustes de IA para que la cabecera refleje el cambio al momento.
+     */
+    fun refreshProviderStatus() {
+        val (name, model) = repository.activeProviderSummary(_state.value.selectedModel)
+        _state.update {
+            it.copy(
+                providerName = name,
+                providerModel = model,
+                isProviderConfigured = repository.isProviderConfigured()
+            )
+        }
     }
     
     /**
@@ -202,47 +221,50 @@ class AzelAIViewModel @Inject constructor(
     
     /**
      * 💬 ENVIAR MENSAJE CON STREAMING
+     *
+     * Plazos: antes había un tope FIJO de 60 s para toda la respuesta, así que una
+     * respuesta larga que seguía llegando se cortaba a la mitad con "Tiempo de
+     * espera agotado". Ahora el límite es de inactividad: [FIRST_TOKEN_TIMEOUT_MS]
+     * para el primer trozo y [IDLE_TIMEOUT_MS] entre trozos; mientras el modelo
+     * siga escribiendo, la respuesta no se corta.
      */
     fun sendMessage(content: String, useStreaming: Boolean = true) {
         if (content.isBlank() || _state.value.isThinking || _state.value.isStreaming) {
             Log.w(TAG, "⚠️ Cannot send message: blank or already processing")
             return
         }
-        
-        viewModelScope.launch {
+
+        sendJob = viewModelScope.launch {
+            val partial = StringBuilder()
             try {
                 val userId = currentUserId()
                 if (userId.isEmpty()) {
                     throw Exception("Usuario no autenticado")
                 }
-                
+                if (!repository.isProviderConfigured()) {
+                    throw IllegalStateException(com.Azelmods.App.data.api.AzelAIApiService.API_KEY_MISSING)
+                }
+
                 val currentChatId = _state.value.currentChatId
                 val chatPath = "$userId/$currentChatId"
-                
-                // Actualizar título si es el primer mensaje
+
                 if (_state.value.messages.isEmpty()) {
                     updateChatTitle(content)
                 }
-                
-                // Agregar mensaje del usuario a la UI INMEDIATAMENTE
+
                 val userMsg = AIMessage(
                     id = "user_${System.currentTimeMillis()}",
                     content = content,
                     role = "user",
                     timestamp = System.currentTimeMillis()
                 )
-                
-                // Actualizar UI con mensaje del usuario
-                val currentMessages = _state.value.messages.toMutableList()
-                currentMessages.add(userMsg)
-                _state.update { it.copy(messages = currentMessages) }
-                
-                // IMPORTANTE: Activar isThinking DESPUÉS de agregar el mensaje del usuario
-                // para que el scroll automático funcione y el usuario vea el indicador
-                kotlinx.coroutines.delay(100) // Pequeño delay para que la UI se actualice
+                _state.update { it.copy(messages = it.messages + userMsg) }
+
+                // isThinking DESPUÉS de añadir el mensaje para que el scroll automático
+                // llegue al final y se vea el indicador.
+                kotlinx.coroutines.delay(100)
                 _state.update { it.copy(isThinking = true, isStreaming = useStreaming, streamingContent = "", error = null, thinkingElapsedMs = 0L) }
-                
-                // 🕐 Iniciar timer que cuenta el tiempo de espera (para indicador visual de timeout)
+
                 thinkingTimerJob?.cancel()
                 thinkingTimerJob = viewModelScope.launch {
                     while (_state.value.isThinking) {
@@ -250,144 +272,143 @@ class AzelAIViewModel @Inject constructor(
                         _state.update { it.copy(thinkingElapsedMs = it.thinkingElapsedMs + 250) }
                     }
                 }
-                Log.d(TAG, "💬 Sending message (streaming: $useStreaming): ${content.take(50)}...")
-                
-                // Intentar guardar en Firebase (opcional)
+
                 try {
                     repository.saveMessage(chatPath, userMsg)
-                    Log.d(TAG, "✅ User message saved to Firebase")
                 } catch (e: Exception) {
                     Log.e(TAG, "⚠️ Failed to save user message to Firebase: ${e.message}")
-                    // Continuar sin guardar en Firebase
                 }
-                
+
                 val history = _state.value.messages
                 val selectedModel = _state.value.selectedModel
-                
-                Log.d(TAG, "🚀 Calling API with model: $selectedModel")
-                
+                var tokens = 0
+
                 if (useStreaming) {
-                    var fullResponse = ""
-                    // 🔧 Add 60-second timeout to prevent infinite loading
-                    kotlinx.coroutines.withTimeout(60_000L) {
-                        repository.sendMessageStream(content, history, selectedModel)
-                            .collect { chunk ->
-                                if (chunk.isNotEmpty()) {
-                                    fullResponse += chunk
-                                    _state.update { it.copy(streamingContent = fullResponse) }
-                                    Log.d(TAG, "📥 Streaming chunk received: ${chunk.take(50)}...")
-                                }
+                    var firstChunk = true
+                    repository.sendMessageStream(content, history, selectedModel)
+                        .timeoutBetweenChunks(FIRST_TOKEN_TIMEOUT_MS, IDLE_TIMEOUT_MS) { firstChunk }
+                        .collect { chunk ->
+                            if (chunk.isNotEmpty()) {
+                                firstChunk = false
+                                partial.append(chunk)
+                                _state.update { it.copy(streamingContent = partial.toString()) }
                             }
-                    }
-                    
-                    Log.d(TAG, "✅ Streaming complete. Total length: ${fullResponse.length}")
-                    
-                    if (fullResponse.isNotEmpty()) {
-                        val aiMsg = AIMessage(
-                            id = "ai_${System.currentTimeMillis()}",
-                            content = fullResponse,
-                            role = "assistant",
-                            timestamp = System.currentTimeMillis(),
-                            tokens = fullResponse.split(" ").size,
-                            model = selectedModel
-                        )
-                        
-                        // Actualizar UI con respuesta de la IA
-                        val updatedMessages = _state.value.messages.toMutableList()
-                        updatedMessages.add(aiMsg)
-                        _state.update { it.copy(messages = updatedMessages) }
-                        
-                        // Intentar guardar en Firebase (opcional)
-                        try {
-                            repository.saveMessage(chatPath, aiMsg)
-                            Log.d(TAG, "✅ AI streaming response saved to Firebase")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "⚠️ Failed to save AI response to Firebase: ${e.message}")
-                            // Continuar sin guardar en Firebase
                         }
-                    } else {
-                        Log.w(TAG, "⚠️ Empty response from API")
-                        throw Exception("La API no devolvió ninguna respuesta")
-                    }
                 } else {
-                    // MODO NO-STREAMING
-                    Log.d(TAG, "📡 Calling non-streaming API...")
-                    val (aiResponse, tokens) = kotlinx.coroutines.withTimeout(60_000L) {
+                    val (aiResponse, usedTokens) = kotlinx.coroutines.withTimeoutOrNull(FIRST_TOKEN_TIMEOUT_MS) {
                         repository.sendMessage(content, history, selectedModel).getOrThrow()
-                    }
-                    Log.d(TAG, "✅ API response received: ${aiResponse.take(100)}... (tokens: $tokens)")
-                    
-                    val aiMsg = AIMessage(
-                        id = "ai_${System.currentTimeMillis()}",
-                        content = aiResponse,
-                        role = "assistant",
-                        timestamp = System.currentTimeMillis(),
-                        tokens = tokens,
-                        model = selectedModel
-                    )
-                    
-                    // Actualizar UI con respuesta de la IA
-                    val updatedMessages = _state.value.messages.toMutableList()
-                    updatedMessages.add(aiMsg)
-                    _state.update { it.copy(messages = updatedMessages) }
-                    
-                    // Intentar guardar en Firebase (opcional)
-                    try {
-                        repository.saveMessage(chatPath, aiMsg)
-                        Log.d(TAG, "✅ AI response saved to Firebase (tokens: $tokens)")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "⚠️ Failed to save AI response to Firebase: ${e.message}")
-                        // Continuar sin guardar en Firebase
-                    }
+                    } ?: throw AiResponseTimeoutException()
+                    partial.append(aiResponse)
+                    tokens = usedTokens
                 }
-                
-                // Actualizar historial de chats (con try-catch)
-                try {
-                    repository.updateChatHistory(userId, currentChatId, _state.value.currentChatTitle, content)
-                } catch (e: Exception) {
-                    Log.e(TAG, "⚠️ Failed to update chat history: ${e.message}")
-                    // Continuar sin actualizar historial
-                }
-                
-            } catch (e: Exception) {
-                    CrashlyticsLogger.recordException(e, "ai", "sendMessage", "Error sending message")
-                Log.e(TAG, "❌ Error sending message", e)
-                val errorMessage = when {
-                    e.message?.contains("no autenticado", ignoreCase = true) == true -> 
-                        "Debes iniciar sesión para usar la IA"
-                    e is java.net.UnknownHostException -> "Sin conexión a internet"
-                    e is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
-                    e is java.net.ConnectException -> "No se pudo conectar al servidor"
-                    e.message?.contains("401") == true -> "API Key inválida o expirada"
-                    e.message?.contains("403") == true -> "Acceso denegado"
-                    e.message?.contains("429") == true -> "Límite de solicitudes excedido"
-                    e.message?.contains("500") == true || e.message?.contains("502") == true || e.message?.contains("503") == true -> 
-                        "Servidor temporalmente no disponible"
-                    else -> "Error: ${e.message ?: "Desconocido"}"
-                }
-                
-                _state.update { it.copy(error = errorMessage) }
-                
-                // Agregar mensaje de error a la UI
-                val errorMsg = AIMessage(
-                    id = "error_${System.currentTimeMillis()}",
-                    content = "❌ $errorMessage\n\nPor favor intenta de nuevo.",
+
+                val fullResponse = partial.toString()
+                if (fullResponse.isBlank()) throw Exception("La IA no devolvió ninguna respuesta")
+
+                val aiMsg = AIMessage(
+                    id = "ai_${System.currentTimeMillis()}",
+                    content = fullResponse,
                     role = "assistant",
                     timestamp = System.currentTimeMillis(),
-                    error = true
+                    tokens = if (tokens > 0) tokens else fullResponse.split(" ").size,
+                    model = _state.value.providerModel.ifBlank { selectedModel }
                 )
-                
-                val updatedMessages = _state.value.messages.toMutableList()
-                updatedMessages.add(errorMsg)
-                _state.update { it.copy(messages = updatedMessages) }
+                _state.update { it.copy(messages = it.messages + aiMsg) }
+
+                try {
+                    repository.saveMessage(chatPath, aiMsg)
+                } catch (e: Exception) {
+                    Log.e(TAG, "⚠️ Failed to save AI response to Firebase: ${e.message}")
+                }
+                try {
+                    repository.updateChatHistory(userId, currentChatId, _state.value.currentChatTitle, content)
+                    loadChatHistory()
+                } catch (e: Exception) {
+                    Log.e(TAG, "⚠️ Failed to update chat history: ${e.message}")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // "Detener": se conserva lo que ya había escrito la IA.
+                if (partial.isNotEmpty()) {
+                    val stopped = AIMessage(
+                        id = "ai_${System.currentTimeMillis()}",
+                        content = partial.toString() + "\n\n_(respuesta detenida)_",
+                        role = "assistant",
+                        timestamp = System.currentTimeMillis()
+                    )
+                    _state.update { it.copy(messages = it.messages + stopped) }
+                }
+                throw e
+            } catch (e: Exception) {
+                CrashlyticsLogger.recordException(e, "ai", "sendMessage", "Error sending message")
+                Log.e(TAG, "❌ Error sending message", e)
+                showSendError(mapError(e))
             } finally {
                 thinkingTimerJob?.cancel()
                 _state.update { it.copy(isThinking = false, isStreaming = false, streamingContent = "", thinkingElapsedMs = 0L) }
-                Log.d(TAG, "🏁 Message sending complete")
             }
         }
     }
-    
+
+    /**
+     * Trae el resultado de los agentes a la conversación actual, para poder
+     * seguir preguntando sobre él en el chat ("Seguir en el chat").
+     */
+    fun importAgentResult(goal: String, answer: String) {
+        if (answer.isBlank()) return
+        val userId = currentUserId()
+        val now = System.currentTimeMillis()
+        val userMsg = AIMessage(id = "user_$now", content = "🤖 Tarea para los agentes: $goal", role = "user", timestamp = now)
+        val aiMsg = AIMessage(id = "ai_${now + 1}", content = answer, role = "assistant", timestamp = now + 1)
+        if (_state.value.messages.isEmpty()) updateChatTitle(goal)
+        _state.update { it.copy(messages = it.messages + userMsg + aiMsg) }
+        if (userId.isEmpty()) return
+        val chatId = _state.value.currentChatId
+        viewModelScope.launch {
+            runCatching {
+                repository.saveMessage("$userId/$chatId", userMsg)
+                repository.saveMessage("$userId/$chatId", aiMsg)
+                repository.updateChatHistory(userId, chatId, _state.value.currentChatTitle, goal)
+                loadChatHistory()
+            }.onFailure { Log.w(TAG, "No se pudo guardar el resultado de los agentes: ${it.message}") }
+        }
+    }
+
+    /** Corta la respuesta en curso (botón "Detener"). */
+    fun stopGeneration() {
+        sendJob?.cancel()
+    }
+
+    private fun showSendError(errorMessage: String) {
+        val errorMsg = AIMessage(
+            id = "error_${System.currentTimeMillis()}",
+            content = "❌ $errorMessage",
+            role = "assistant",
+            timestamp = System.currentTimeMillis(),
+            error = true
+        )
+        _state.update { it.copy(error = errorMessage, messages = it.messages + errorMsg) }
+    }
+
+    private fun mapError(e: Exception): String {
+        val msg = e.message.orEmpty()
+        return when {
+            e is AiResponseTimeoutException -> e.message.orEmpty()
+            msg == com.Azelmods.App.data.api.AzelAIApiService.API_KEY_MISSING ->
+                "No hay ninguna IA configurada. Añade tu clave o un modelo local en Ajustes → IA."
+            msg.contains("no autenticado", ignoreCase = true) -> "Debes iniciar sesión para usar la IA"
+            e is java.net.UnknownHostException -> "Sin conexión a internet"
+            e is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
+            e is java.net.ConnectException -> "No se pudo conectar con el servidor de IA"
+            msg.contains("401") -> "API key inválida o caducada"
+            msg.contains("403") -> "Acceso denegado por el proveedor"
+            msg.contains("404") -> "El modelo elegido no existe en este proveedor"
+            msg.contains("429") -> "Límite de uso del proveedor alcanzado. Espera un momento."
+            msg.contains("500") || msg.contains("502") || msg.contains("503") ->
+                "El proveedor de IA no está disponible ahora mismo"
+            else -> msg.ifBlank { "Error desconocido" }
+        }
+    }
+
     /**
      * 🗑️ LIMPIAR HISTORIAL
      */
@@ -420,14 +441,56 @@ class AzelAIViewModel @Inject constructor(
     
     /**
      * 🔄 REINTENTAR ÚLTIMO MENSAJE
+     *
+     * Quita el mensaje de error y la pregunta que lo provocó antes de reenviarla:
+     * antes la pregunta se añadía otra vez y el historial quedaba duplicado.
      */
     fun retryLastMessage() {
-        val lastUserMessage = _state.value.messages
-            .lastOrNull { it.role == "user" && !it.error }
-        
-        if (lastUserMessage != null) {
-            Log.d(TAG, "🔄 Retrying last message")
-            sendMessage(lastUserMessage.content)
+        val messages = _state.value.messages
+        val lastUserIndex = messages.indexOfLast { it.role == "user" && !it.error }
+        if (lastUserIndex < 0) return
+        val lastUserMessage = messages[lastUserIndex]
+        Log.d(TAG, "🔄 Retrying last message")
+        _state.update { it.copy(messages = messages.take(lastUserIndex), error = null) }
+        sendMessage(lastUserMessage.content)
+    }
+
+    companion object {
+        private const val TAG = "AzelAIViewModel"
+        /** Margen para el primer trozo: modelos grandes y locales tardan en arrancar. */
+        const val FIRST_TOKEN_TIMEOUT_MS = 90_000L
+        /** Silencio máximo entre trozos una vez que la respuesta ha empezado. */
+        const val IDLE_TIMEOUT_MS = 45_000L
+    }
+}
+
+/** La IA se quedó callada más tiempo del permitido. */
+class AiResponseTimeoutException :
+    Exception("La IA no respondió a tiempo. Comprueba tu conexión o prueba otro modelo.")
+
+/**
+ * Lanza [AiResponseTimeoutException] si el flujo pasa más de [firstMs] sin emitir
+ * nada al principio, o más de [idleMs] entre dos trozos.
+ *
+ * Es una excepción normal y no la `TimeoutCancellationException` de `withTimeout`
+ * a propósito: esa es una cancelación y, al cruzar el canal, se confundiría con
+ * que el usuario pulsó "Detener".
+ */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
+internal fun <T> kotlinx.coroutines.flow.Flow<T>.timeoutBetweenChunks(
+    firstMs: Long,
+    idleMs: Long,
+    isFirst: () -> Boolean
+): kotlinx.coroutines.flow.Flow<T> = kotlinx.coroutines.flow.channelFlow {
+    val upstream = this@timeoutBetweenChunks.produceIn(this)
+    while (true) {
+        val limit = if (isFirst()) firstMs else idleMs
+        val result = kotlinx.coroutines.withTimeoutOrNull(limit) { upstream.receiveCatching() }
+            ?: throw AiResponseTimeoutException()
+        if (result.isClosed) {
+            result.exceptionOrNull()?.let { throw it }
+            break
         }
+        send(result.getOrThrow())
     }
 }

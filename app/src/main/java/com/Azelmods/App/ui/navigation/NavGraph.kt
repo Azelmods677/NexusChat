@@ -383,7 +383,8 @@ fun NavGraph(
         // Azel IA - Asistente de IA
         composable(Screen.AzelAI.route) {
             com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onOpenSettings = { navController.navigate(Screen.AiFeatures.route) }
             )
         }
         

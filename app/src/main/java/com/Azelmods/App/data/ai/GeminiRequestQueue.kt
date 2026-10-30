@@ -29,15 +29,16 @@ class GeminiRequestQueue @Inject constructor(
         repeat(maxRetries) { attempt ->
             try {
                 return rateLimiter.executeWithRateLimit { block() }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // El usuario pulsó "Detener" o cerró la pantalla: nada que reintentar.
+                throw e
             } catch (e: Exception) {
                 lastException = e
-                val isRateLimit = e.message?.let { msg ->
-                    msg.contains("429") ||
-                    msg.contains("quota") ||
-                    msg.contains("RESOURCE_EXHAUSTED") ||
-                    msg.contains("rate") ||
-                    msg.contains("limit")
-                } == true
+                // Solo cuenta como límite de uso lo que de verdad lo es. Antes bastaba
+                // con que el mensaje contuviera "rate" o "limit": un error de
+                // "generate…" o de "max_tokens limit" se reintentaba 3 veces con
+                // 20 s de espera antes de mostrar un fallo que era definitivo.
+                val isRateLimit = isRateLimitError(e.message)
 
                 if (isRateLimit && attempt < maxRetries - 1) {
                     // Backoff: 5s, 15s, 30s
@@ -54,5 +55,15 @@ class GeminiRequestQueue @Inject constructor(
             }
         }
         throw lastException ?: Exception("Max retries exceeded")
+    }
+
+    private fun isRateLimitError(message: String?): Boolean {
+        val msg = message?.lowercase() ?: return false
+        return "429" in msg ||
+            "quota" in msg ||
+            "resource_exhausted" in msg ||
+            "rate limit" in msg ||
+            "rate_limit" in msg ||
+            "too many requests" in msg
     }
 }

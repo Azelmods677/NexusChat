@@ -1,6 +1,7 @@
 package com.Azelmods.App.data.api
 
 import android.util.Log
+import okhttp3.Call
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -93,11 +94,117 @@ object OpenAiCompatClient {
             }
 
             val message = choices.getJSONObject(0).optJSONObject("message")
-            val content = message?.optString("content").orEmpty()
+            val content = message?.stringOrEmpty("content").orEmpty()
             if (content.isBlank()) throw Exception("La respuesta del proveedor venía vacía")
 
             val totalTokens = json.optJSONObject("usage")?.optInt("total_tokens", 0) ?: 0
             return Result(content = content, totalTokens = totalTokens)
+        }
+    }
+
+    /**
+     * Igual que [chatCompletion] pero con `stream: true`: entrega la respuesta a
+     * trozos en [onDelta] según la genera el modelo (Server-Sent Events, el mismo
+     * formato en OpenAI, OpenRouter, DeepSeek, Groq, Mistral, Ollama…).
+     *
+     * Antes los proveedores OpenAI-compatibles se pedían sin streaming y la
+     * respuesta aparecía de golpe tras esperar a que terminara entera: con
+     * respuestas largas o modelos locales eran decenas de segundos con la pantalla
+     * "pensando" sin dar señales de vida.
+     *
+     * Si el servidor ignora `stream` y contesta un JSON normal, se entrega entero
+     * en un solo trozo. [onCall] recibe la llamada HTTP para poder cancelarla
+     * (botón "Detener").
+     *
+     * @return tokens totales si el proveedor los informa; 0 si no.
+     */
+    fun chatCompletionStream(
+        client: OkHttpClient,
+        baseUrl: String,
+        apiKey: String,
+        model: String,
+        systemPrompt: String,
+        messages: List<Pair<String, String>>,
+        temperature: Float,
+        maxTokens: Int,
+        topP: Float,
+        onCall: (Call) -> Unit = {},
+        onDelta: (String) -> Unit
+    ): Int {
+        require(baseUrl.isNotBlank()) { "La URL base del proveedor está vacía" }
+        require(model.isNotBlank()) { "No hay modelo configurado para este proveedor" }
+
+        val messagesArray = JSONArray().apply {
+            if (systemPrompt.isNotBlank()) {
+                put(JSONObject().put("role", "system").put("content", systemPrompt))
+            }
+            messages.forEach { (role, content) ->
+                put(JSONObject().put("role", role).put("content", content))
+            }
+        }
+        val body = JSONObject().apply {
+            put("model", model)
+            put("messages", messagesArray)
+            put("temperature", temperature.toDouble())
+            put("max_tokens", maxTokens)
+            put("top_p", topP.toDouble())
+            put("stream", true)
+        }.toString()
+
+        val requestBuilder = Request.Builder()
+            .url("$baseUrl/chat/completions")
+            .addHeader("Accept", "text/event-stream")
+            .post(body.toRequestBody("application/json".toMediaType()))
+        if (apiKey.isNotBlank()) requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+
+        val call = client.newCall(requestBuilder.build())
+        onCall(call)
+
+        call.execute().use { response ->
+            if (!response.isSuccessful) {
+                val detail = extractErrorMessage(response.body?.string())
+                Log.e(TAG, "HTTP ${response.code} de $baseUrl (stream) — $detail")
+                throw Exception("Error del proveedor (${response.code}): $detail")
+            }
+            val responseBody = response.body ?: throw Exception("Respuesta vacía del proveedor")
+
+            val contentType = response.header("Content-Type").orEmpty()
+            if (!contentType.contains("event-stream", ignoreCase = true)) {
+                // El servidor no hace streaming: respuesta completa en JSON.
+                val raw = responseBody.string()
+                val json = JSONObject(raw)
+                val choices = json.optJSONArray("choices")
+                val content = choices?.optJSONObject(0)?.optJSONObject("message")
+                    ?.stringOrEmpty("content").orEmpty()
+                if (content.isBlank()) throw Exception("La respuesta del proveedor venía vacía")
+                onDelta(content)
+                return json.optJSONObject("usage")?.optInt("total_tokens", 0) ?: 0
+            }
+
+            val source = responseBody.source()
+            var totalTokens = 0
+            var gotContent = false
+            while (true) {
+                val line = source.readUtf8Line() ?: break
+                if (!line.startsWith("data:")) continue
+                val data = line.removePrefix("data:").trim()
+                if (data.isEmpty()) continue
+                if (data == "[DONE]") break
+
+                val json = runCatching { JSONObject(data) }.getOrNull() ?: continue
+                json.optJSONObject("error")?.let { error ->
+                    throw Exception("Error del proveedor: ${error.stringOrEmpty("message").ifBlank { "desconocido" }}")
+                }
+                val choice = json.optJSONArray("choices")?.optJSONObject(0)
+                val text = choice?.optJSONObject("delta")?.stringOrEmpty("content").orEmpty()
+                if (text.isNotEmpty()) {
+                    gotContent = true
+                    onDelta(text)
+                }
+                json.optJSONObject("usage")?.let { totalTokens = it.optInt("total_tokens", totalTokens) }
+            }
+            if (!gotContent) throw Exception("La respuesta del proveedor venía vacía")
+            return totalTokens
         }
     }
 
@@ -171,4 +278,13 @@ object OpenAiCompatClient {
                 ?: raw.take(200)
         }.getOrElse { raw.take(200) }
     }
+
+    /**
+     * `optString` de Android devuelve el texto "null" cuando el valor es JSON
+     * null, y varios proveedores mandan `"content": null` en el primer trozo del
+     * stream o en modelos de razonamiento. Sin esto, "null" acababa pegado al
+     * principio de la respuesta.
+     */
+    private fun JSONObject.stringOrEmpty(key: String): String =
+        if (isNull(key)) "" else optString(key, "")
 }
