@@ -5,6 +5,8 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  # Permite relanzar el CI a mano desde la pestaña Actions.
+  workflow_dispatch:
 
 # Si se empujan varios commits seguidos, cancela la ejecucion anterior en vez de
 # encolarlas: interesa el resultado del ultimo commit, no el de todos.
