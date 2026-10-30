@@ -1,35 +1,51 @@
 package com.Azelmods.App.ui.screens.call
 
-import android.Manifest
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.Azelmods.App.data.model.CallType
-import com.Azelmods.App.ui.components.safeClickable
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.Azelmods.App.service.CallNotifications
+import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.theme.NexusTokens
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalPermissionsApi::class)
+/**
+ * Llamada entrante a pantalla completa.
+ *
+ * Cambios respecto a la versión anterior:
+ * - Ya no pide la cámara en una llamada de VOZ (los permisos los pide la
+ *   pantalla de la llamada al contestar, y solo los necesarios).
+ * - Se cierra sola si quien llama cuelga: antes se quedaba "sonando" y vibrando
+ *   para siempre aunque la llamada ya no existiera.
+ * - Al contestar o rechazar se retira la notificación (y su tono).
+ * - Se quitó "Recordarme", que en realidad solo rechazaba la llamada.
+ */
 @Composable
 fun IncomingCallScreen(
     callId: String,
@@ -37,24 +53,13 @@ fun IncomingCallScreen(
     navController: NavController,
     viewModel: CallViewModel = hiltViewModel()
 ) {
-    // Permission check
-    val permissions = rememberMultiplePermissionsState(
-        listOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.CAMERA
-        )
-    )
+    val context = LocalContext.current
+    val view = LocalView.current
+    val isVideoCall = callType.equals("video", ignoreCase = true)
 
-    LaunchedEffect(Unit) {
-        if (!permissions.allPermissionsGranted) {
-            permissions.launchMultiplePermissionRequest()
-        }
-    }
+    val contact by viewModel.contactProfile.collectAsState()
+    val endReason by viewModel.endReason.collectAsState()
 
-    val contactState by viewModel.contactProfile.collectAsState()
-
-    // Load call data from Firebase to extract caller info
-    // and start listening for status changes (missed call detection)
     LaunchedEffect(callId) {
         if (callId.isNotBlank()) {
             viewModel.loadContactProfileFromCall(callId)
@@ -62,43 +67,48 @@ fun IncomingCallScreen(
         }
     }
 
-    val contact = contactState
-    val view = LocalView.current
+    // Quien llama colgó (o se rechazó desde la notificación): fuera.
+    LaunchedEffect(endReason) {
+        if (endReason != null) {
+            CallNotifications.cancelIncoming(context, callId)
+            delay(1_200)
+            navController.popBackStack()
+        }
+    }
 
-    // Haptic feedback loop
-    LaunchedEffect(Unit) {
-        while (true) {
+    // Vibración suave mientras suena (la notificación ya pone el tono).
+    LaunchedEffect(endReason) {
+        while (endReason == null) {
             view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
             delay(2000)
         }
     }
 
-    // Animated gradient background
-    val infiniteTransition = rememberInfiniteTransition(label = "bg")
-    val angle by infiniteTransition.animateFloat(
+    val transition = rememberInfiniteTransition(label = "incoming")
+    val ring by transition.animateFloat(
         initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(20000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "angle"
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2_000, easing = LinearEasing), RepeatMode.Restart),
+        label = "ring"
     )
+    val bob by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+        label = "bob"
+    )
+
+    val name = contact?.name?.takeIf { it.isNotBlank() } ?: "…"
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.surface
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(
-                        x = 1000f * kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat(),
-                        y = 1000f * kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat()
+                Brush.verticalGradient(
+                    listOf(
+                        NexusTokens.Color.Primary.copy(alpha = 0.35f),
+                        NexusTokens.Color.BgBase,
+                        NexusTokens.Color.BgDeep
                     )
                 )
             )
@@ -106,266 +116,161 @@ fun IncomingCallScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(32.dp),
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 32.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
-
-            // Call type text
+            Spacer(Modifier.height(40.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (isVideoCall) Icons.Default.Videocam else Icons.Default.Call,
+                    contentDescription = null,
+                    tint = NexusTokens.Color.TextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = endReason?.label
+                        ?: if (isVideoCall) "Videollamada entrante" else "Llamada de voz entrante",
+                    color = NexusTokens.Color.TextSecondary,
+                    fontSize = 14.sp
+                )
+            }
+            Spacer(Modifier.height(12.dp))
             Text(
-                text = if (callType == "video") "Incoming Video Call" else "Incoming Audio Call",
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 14.sp
+                text = name,
+                color = NexusTokens.Color.TextPrimary,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center
             )
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Lock, null, tint = NexusTokens.Color.Success, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Cifrada de extremo a extremo", color = NexusTokens.Color.TextMuted, fontSize = 12.sp)
+            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.weight(1f))
 
-            // Contact name
-            Text(
-                text = contact?.name ?: "Anónimo",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Animated avatar with rings
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(200.dp)
-            ) {
-                // Three expanding rings
-                repeat(3) { index ->
-                    val ringTransition = rememberInfiniteTransition(label = "ring$index")
-                    val scale by ringTransition.animateFloat(
-                        initialValue = 1f,
-                        targetValue = 1.8f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(2000, delayMillis = index * 200),
-                            repeatMode = RepeatMode.Restart
-                        ),
-                        label = "scale"
-                    )
-                    val alpha by ringTransition.animateFloat(
-                        initialValue = 0.3f,
-                        targetValue = 0f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(2000, delayMillis = index * 200),
-                            repeatMode = RepeatMode.Restart
-                        ),
-                        label = "alpha"
-                    )
-
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(240.dp)) {
+                repeat(3) { i ->
+                    val progress = (ring + i / 3f) % 1f
                     Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .scale(scale)
-                            .alpha(alpha)
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
-                                ),
-                                CircleShape
-                            )
+                        Modifier
+                            .size(150.dp)
+                            .scale(1f + progress * 0.6f)
+                            .clip(CircleShape)
+                            .background(NexusTokens.Color.PrimaryLight.copy(alpha = (1f - progress) * 0.22f))
                     )
                 }
-
-                // Pulsing avatar
-                val pulseTransition = rememberInfiniteTransition(label = "pulse")
-                val pulseScale by pulseTransition.animateFloat(
-                    initialValue = 1f,
-                    targetValue = 1.06f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(1000),
-                        repeatMode = RepeatMode.Reverse
-                    ),
-                    label = "pulse"
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .scale(pulseScale),
-                    shape = CircleShape,
-                    color = Color.Transparent
+                Box(
+                    Modifier
+                        .size(150.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Brush.linearGradient(NexusTokens.Gradient.Brand), CircleShape)
+                        .padding(4.dp)
                 ) {
-                    Box(
-                        modifier = Modifier.background(
-                            Brush.linearGradient(
-                                listOf(
-                                    Color(contact?.name?.hashCode() ?: 0 or 0xFF000000.toInt()),
-                                    Color((contact?.name?.hashCode() ?: 0 shl 8) or 0xFF000000.toInt())
-                                )
-                            )
-                        ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = contact?.name?.take(1)?.uppercase() ?: "?",
-                            color = Color.White,
-                            fontSize = 40.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    UserAvatar(name = name, photoUrl = contact?.photoUrl, size = 142.dp)
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
 
-            // Side actions
+            // Responder con un mensaje: rechaza y abre el chat.
+            IncomingSideAction(
+                icon = Icons.AutoMirrored.Filled.Message,
+                label = "Responder con mensaje",
+                onClick = {
+                    if (callId.isNotBlank()) viewModel.declineCall(callId)
+                    val peerId = contact?.uid?.takeIf { it.isNotBlank() }
+                    if (peerId != null) {
+                        navController.navigate("chat/$peerId") {
+                            popUpTo("incoming_call/$callId/$callType") { inclusive = true }
+                        }
+                    } else {
+                        navController.navigateUp()
+                    }
+                }
+            )
+
+            Spacer(Modifier.height(36.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                SideActionButton(
-                    icon = Icons.AutoMirrored.Filled.Message,
-                    label = "Message",
+                IncomingMainAction(
+                    icon = Icons.Default.CallEnd,
+                    label = "Rechazar",
+                    color = NexusTokens.Color.Error,
+                    enabled = endReason == null,
                     onClick = {
-                        // Reply with a message: decline the call and open the chat.
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
                         if (callId.isNotBlank()) viewModel.declineCall(callId)
-                        val peerId = contact?.uid?.takeIf { it.isNotBlank() }
-                        if (peerId != null) {
-                            navController.navigate("chat/$peerId") {
+                    }
+                )
+                IncomingMainAction(
+                    icon = if (isVideoCall) Icons.Default.Videocam else Icons.Default.Call,
+                    label = "Contestar",
+                    color = NexusTokens.Color.Success,
+                    enabled = endReason == null,
+                    modifier = Modifier.offset(y = (-6 * bob).dp),
+                    onClick = {
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+                        if (callId.isNotBlank()) {
+                            CallNotifications.cancelIncoming(context, callId)
+                            // La pantalla de llamada (que es la que muestra el medio)
+                            // es la que contesta y es dueña de la conexión.
+                            navController.navigate("active_call/$callId/${if (isVideoCall) "video" else "audio"}?isCaller=false") {
                                 popUpTo("incoming_call/$callId/$callType") { inclusive = true }
                             }
-                        } else {
-                            navController.navigateUp()
                         }
                     }
                 )
-
-                SideActionButton(
-                    icon = Icons.Default.Alarm,
-                    label = "Remind me",
-                    onClick = {
-                        // Dismiss the incoming call (declines) and go back.
-                        if (callId.isNotBlank()) viewModel.declineCall(callId)
-                        navController.navigateUp()
-                    }
-                )
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Main action buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                // Decline button
-                val declineScale by animateFloatAsState(
-                    targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
-                    label = "decline"
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .scale(declineScale)
-                        .safeClickable {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                            // Decline: update Firebase status and navigate back
-                            if (callId.isNotBlank()) {
-                                viewModel.declineCall(callId)
-                            }
-                            navController.navigateUp()
-                        },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.error
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.CallEnd,
-                            contentDescription = "Decline",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                // Accept button
-                val acceptScale by animateFloatAsState(
-                    targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
-                    label = "accept"
-                )
-
-                Surface(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .scale(acceptScale)
-                        .safeClickable {
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-                            try {
-                                if (callId.isNotBlank() && callType.isNotBlank()) {
-                                    // Navigate to active_call as the CALLEE (isCaller=false).
-                                    // ActiveCallScreen will perform acceptCall() there so the
-                                    // WebRTC session is owned by the screen that displays it
-                                    // (this IncomingCallScreen VM is destroyed on navigation).
-                                    navController.navigate("active_call/$callId/$callType?isCaller=false") {
-                                        popUpTo("incoming_call/$callId/$callType") { inclusive = true }
-                                    }
-                                }
-                            } catch (e: Exception) { }
-                        },
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.Call,
-                            contentDescription = "Accept",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-fun SideActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun IncomingMainAction(
+    icon: ImageVector,
     label: String,
+    color: Color,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.safeClickable(onClick = onClick)
-    ) {
-        Surface(
-            modifier = Modifier.size(56.dp),
-            shape = CircleShape,
-            color = Color.White.copy(alpha = 0.2f)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+        FilledIconButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.size(76.dp),
+            colors = IconButtonDefaults.filledIconButtonColors(
+                containerColor = color,
+                contentColor = Color.White,
+                disabledContainerColor = color.copy(alpha = 0.35f)
+            )
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    contentDescription = label,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            Icon(icon, contentDescription = label, modifier = Modifier.size(34.dp))
         }
+        Spacer(Modifier.height(8.dp))
+        Text(label, color = NexusTokens.Color.TextPrimary, fontSize = 14.sp)
+    }
+}
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = label,
-            color = Color.White,
-            fontSize = 12.sp
-        )
+@Composable
+private fun IncomingSideAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        colors = ButtonDefaults.textButtonColors(contentColor = NexusTokens.Color.TextSecondary)
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, fontSize = 14.sp)
     }
 }

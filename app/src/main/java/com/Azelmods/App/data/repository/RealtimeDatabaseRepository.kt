@@ -17,8 +17,10 @@ import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 import javax.inject.Singleton
 
-@Suppress("UNCHECKED_CAST")
+/** Estados con los que una llamada ya no admite cambios. */
+private val TERMINAL_CALL_STATUSES = setOf("ENDED", "DECLINED", "MISSED", "FAILED", "BUSY")
 
+@Suppress("UNCHECKED_CAST")
 @Singleton
 class RealtimeDatabaseRepository @Inject constructor(
     private val e2eeCryptoService: E2EECryptoService
@@ -1085,28 +1087,70 @@ class RealtimeDatabaseRepository @Inject constructor(
         database.child("calls").child(callId).child("iceCandidates").push().setValue(candidate).await()
     }
 
-    fun listenToIceCandidates(callId: String): Flow<List<Map<String, Any>>> = callbackFlow {
+    /**
+     * Candidatos ICE del nodo de la llamada, UNO A UNO según llegan.
+     *
+     * La versión anterior emitía la lista acumulada en cada `onChildAdded`, y el
+     * ViewModel aplicaba la lista entera cada vez: el primer candidato se añadía
+     * N veces, el segundo N-1… Con 20-30 candidatos por llamada eran cientos de
+     * `addIceCandidate` repetidos durante el arranque de la conexión.
+     */
+    fun observeIceCandidates(callId: String): Flow<Map<String, Any>> = callbackFlow {
         val ref = database.child("calls").child(callId).child("iceCandidates")
         val listener = object : ChildEventListener {
-            val candidates = mutableListOf<Map<String, Any>>()
+            @Suppress("UNCHECKED_CAST")
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                (snapshot.value as? Map<String, Any>)?.let {
-                    candidates.add(it)
-                    trySend(candidates.toList())
-                }
+                (snapshot.value as? Map<String, Any>)?.let { trySend(it) }
             }
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onChildRemoved(snapshot: DataSnapshot) {}
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {}
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
         }
         ref.addChildEventListener(listener)
         awaitClose { ref.removeEventListener(listener) }
     }
 
-    suspend fun endCall(callId: String) {
-        database.child("calls").child(callId).child("status").setValue("ENDED").await()
-        database.child("calls").child(callId).child("endedAt").setValue(ServerValue.TIMESTAMP).await()
+    /** Marca el instante en que el medio quedó conectado (base de la duración real). */
+    suspend fun markCallConnected(callId: String) {
+        val ref = database.child("calls").child(callId)
+        // Solo la primera vez: una reconexión no debe reiniciar el contador.
+        val already = ref.child("connectedAt").get().await().exists()
+        if (!already) {
+            ref.updateChildren(
+                mapOf(
+                    "status" to "CONNECTED",
+                    "connectedAt" to ServerValue.TIMESTAMP
+                )
+            ).await()
+        }
+    }
+
+    /**
+     * Cierra la llamada.
+     *
+     * - No pisa un estado final: si el otro ya la rechazó (DECLINED) o la terminó,
+     *   se respeta. Antes el emisor escribía ENDED encima de DECLINED y el
+     *   historial mostraba "terminada" en vez de "rechazada".
+     * - Escribe `endTime` (lo que lee el historial; antes se escribía `endedAt` y la
+     *   duración nunca aparecía), `endedBy` y `durationSec` medida desde que el
+     *   medio se conectó, no desde que empezó a sonar.
+     */
+    suspend fun endCall(callId: String, endedBy: String? = auth.currentUser?.uid, durationSec: Long? = null) {
+        val ref = database.child("calls").child(callId)
+        val status = runCatching { ref.child("status").get().await().getValue(String::class.java) }.getOrNull()
+        if (status in TERMINAL_CALL_STATUSES) return
+
+        val updates = mutableMapOf<String, Any>(
+            "status" to "ENDED",
+            "endTime" to ServerValue.TIMESTAMP,
+            "endedAt" to ServerValue.TIMESTAMP
+        )
+        if (!endedBy.isNullOrBlank()) updates["endedBy"] = endedBy
+        if (durationSec != null && durationSec > 0) updates["durationSec"] = durationSec
+        ref.updateChildren(updates).await()
     }
 
     suspend fun uploadFile(uri: Uri, folder: String, fileName: String): String {

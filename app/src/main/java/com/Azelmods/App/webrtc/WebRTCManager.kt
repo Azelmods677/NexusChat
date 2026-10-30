@@ -44,6 +44,25 @@ class WebRTCManager @Inject constructor(
     
     private val _connectionState = MutableStateFlow<PeerConnection.PeerConnectionState?>(null)
     val connectionState: StateFlow<PeerConnection.PeerConnectionState?> = _connectionState.asStateFlow()
+
+    // Estado del micrófono y la cámara. Vive aquí, en el singleton, y no en el
+    // ViewModel de la pantalla: así el botón "Silenciar" de la notificación de la
+    // llamada (CallService) y el de la pantalla actúan sobre la MISMA pista y se
+    // ven el uno al otro. Antes la notificación solo cambiaba su propio icono y el
+    // micrófono seguía abierto.
+    private val _micEnabled = MutableStateFlow(true)
+    val micEnabled: StateFlow<Boolean> = _micEnabled.asStateFlow()
+
+    private val _cameraEnabled = MutableStateFlow(true)
+    val cameraEnabled: StateFlow<Boolean> = _cameraEnabled.asStateFlow()
+
+    /** Id de la llamada que tiene ahora mismo una PeerConnection viva (o null). */
+    private val _activeCallId = MutableStateFlow<String?>(null)
+    val activeCallId: StateFlow<String?> = _activeCallId.asStateFlow()
+
+    /** Cámara frontal en uso (para decidir si se espeja la vista previa). */
+    private val _isFrontCamera = MutableStateFlow(true)
+    val isFrontCamera: StateFlow<Boolean> = _isFrontCamera.asStateFlow()
     
     // Callbacks
     var onIceCandidateListener: ((IceCandidate) -> Unit)? = null
@@ -94,7 +113,23 @@ class WebRTCManager @Inject constructor(
         Log.d(TAG, "PeerConnectionFactory initialized")
     }
     
-    fun initializePeerConnection(isVideoCall: Boolean) {
+    /**
+     * Crea la PeerConnection de una llamada.
+     *
+     * @param iceServers servidores STUN/TURN. Llegan de [IceServerProvider], que
+     *   los lee de la configuración remota (`config/webrtc/iceServers`) para poder
+     *   poner un TURN propio en producción sin publicar otra versión de la app.
+     * @param relayOnly fuerza que TODO el medio pase por el TURN. Se usa con el
+     *   modo anónimo activo: sin esto, WebRTC anuncia al otro participante las IP
+     *   reales del dispositivo (candidatos host/srflx), que es justo lo que el modo
+     *   anónimo pretende ocultar.
+     */
+    fun initializePeerConnection(
+        isVideoCall: Boolean,
+        callId: String? = null,
+        iceServers: List<PeerConnection.IceServer> = IceServerProvider.DEFAULT_ICE_SERVERS,
+        relayOnly: Boolean = false
+    ) {
         // Este manager es un `@Singleton`: si la llamada anterior no se limpió
         // del todo (la pantalla murió sin pasar por endCall, por ejemplo), aquí
         // habría todavía una PeerConnection viva y un capturador con la cámara
@@ -106,24 +141,12 @@ class WebRTCManager @Inject constructor(
             cleanup()
         }
 
-        val iceServers = listOf(
-            PeerConnection.IceServer.builder("stun:stun.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun1.l.google.com:19302").createIceServer(),
-            PeerConnection.IceServer.builder("stun:stun2.l.google.com:19302").createIceServer(),
-            // Free TURN servers for NAT traversal (corporate networks, 4G, etc.)
-            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:80")
-                .setUsername("openrelayproject")
-                .setPassword("openrelayproject")
-                .createIceServer(),
-            PeerConnection.IceServer.builder("turn:openrelay.metered.ca:443")
-                .setUsername("openrelayproject")
-                .setPassword("openrelayproject")
-                .createIceServer()
-        )
-        
         val rtcConfig = PeerConnection.RTCConfiguration(iceServers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             continualGatheringPolicy = PeerConnection.ContinualGatheringPolicy.GATHER_CONTINUALLY
+            bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE
+            rtcpMuxPolicy = PeerConnection.RtcpMuxPolicy.REQUIRE
+            if (relayOnly) iceTransportsType = PeerConnection.IceTransportsType.RELAY
         }
         
         val observer = object : PeerConnection.Observer {
@@ -202,6 +225,10 @@ class WebRTCManager @Inject constructor(
             remoteDescriptionSet = false
             pendingIceCandidates.clear()
         }
+        _micEnabled.value = true
+        _cameraEnabled.value = isVideoCall
+        _isFrontCamera.value = true
+        _activeCallId.value = callId
         
         // Create local media tracks
         createLocalMediaTracks(isVideoCall)
@@ -232,6 +259,7 @@ class WebRTCManager @Inject constructor(
                 ?: enumerator.deviceNames.firstOrNull()
             
             cameraName?.let {
+                _isFrontCamera.value = enumerator.isFrontFacing(it)
                 videoCapturer = enumerator.createCapturer(it, null) as? CameraVideoCapturer
                 val capEgl = EglBase.create()
                 capturerEglBase = capEgl
@@ -336,21 +364,33 @@ class WebRTCManager @Inject constructor(
         }
     }
     
+    /**
+     * Aplica la descripción remota.
+     *
+     * Con una OFERTA, la respuesta se crea DENTRO de `onSetSuccess`. Antes el
+     * ViewModel llamaba a `createAnswer()` justo después de `setRemoteDescription()`,
+     * pero las dos operaciones son asíncronas: si `createAnswer` llegaba primero
+     * WebRTC la rechazaba ("no remote description") y el receptor nunca respondía.
+     * La llamada se quedaba en "Conectando…" para siempre en dispositivos rápidos.
+     */
     fun setRemoteDescription(sdp: String, type: String) {
+        val isOffer = type == "offer"
         val sessionDescription = SessionDescription(
-            if (type == "offer") SessionDescription.Type.OFFER else SessionDescription.Type.ANSWER,
+            if (isOffer) SessionDescription.Type.OFFER else SessionDescription.Type.ANSWER,
             sdp
         )
-        
+
         peerConnection?.setRemoteDescription(object : SdpObserver {
             override fun onCreateSuccess(p0: SessionDescription?) {}
             override fun onSetSuccess() {
                 Log.d(TAG, "Remote description set successfully")
                 // Flush any ICE candidates that arrived before the remote description was ready.
                 flushPendingIceCandidates()
+                if (isOffer) createAnswer()
             }
             override fun onCreateFailure(error: String?) {}
             override fun onSetFailure(error: String?) {
+                CrashlyticsLogger.warn("webrtc", "setRemoteDesc", "Failed: $error")
                 Log.e(TAG, "Failed to set remote description: $error")
             }
         }, sessionDescription)
@@ -397,14 +437,26 @@ class WebRTCManager @Inject constructor(
     
     fun toggleAudio(enabled: Boolean) {
         localAudioTrack?.setEnabled(enabled)
+        _micEnabled.value = enabled
     }
-    
+
+    /** Invierte el micrófono (lo usa el botón de la notificación de la llamada). */
+    fun toggleMic() = toggleAudio(!_micEnabled.value)
+
     fun toggleVideo(enabled: Boolean) {
         localVideoTrack?.setEnabled(enabled)
+        _cameraEnabled.value = enabled
     }
-    
+
     fun switchCamera() {
-        videoCapturer?.switchCamera(null)
+        videoCapturer?.switchCamera(object : CameraVideoCapturer.CameraSwitchHandler {
+            override fun onCameraSwitchDone(isFrontCamera: Boolean) {
+                _isFrontCamera.value = isFrontCamera
+            }
+            override fun onCameraSwitchError(error: String?) {
+                Log.w(TAG, "No se pudo cambiar de cámara: $error")
+            }
+        })
     }
     
     /**
@@ -425,6 +477,7 @@ class WebRTCManager @Inject constructor(
         _localVideoTrackFlow.value = null
         _remoteVideoTrackFlow.value = null
         _connectionState.value = null
+        _activeCallId.value = null
 
         // 2) Se corta la captura de cámara.
         try {
@@ -475,6 +528,8 @@ class WebRTCManager @Inject constructor(
             remoteDescriptionSet = false
             pendingIceCandidates.clear()
         }
+        _micEnabled.value = true
+        _cameraEnabled.value = true
 
         Log.d(TAG, "WebRTC cleaned up")
     }

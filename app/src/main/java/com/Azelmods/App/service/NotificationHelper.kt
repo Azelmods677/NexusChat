@@ -94,8 +94,8 @@ object NotificationHelper {
 
         val notificationBuilder = NotificationCompat.Builder(context, NexusFirebaseMessagingService.CHANNEL_MISSED_CALLS)
             .setSmallIcon(android.R.drawable.ic_menu_call)
-            .setContentTitle("Missed call")
-            .setContentText("From $callerName")
+            .setContentTitle("Llamada perdida")
+            .setContentText("De $callerName")
             .setSubText("Nexus Chat")
             .setLargeIcon(largeIcon)
             .setContentIntent(pendingIntent)
@@ -107,7 +107,7 @@ object NotificationHelper {
         if (callBackPendingIntent != null) {
             notificationBuilder.addAction(
                 android.R.drawable.ic_menu_call,
-                "Call back",
+                "Devolver llamada",
                 callBackPendingIntent
             )
         }

@@ -182,11 +182,20 @@
       }
     },
 
+    /*
+      Configuracion remota de solo lectura (servidores STUN/TURN de las llamadas
+      en config/webrtc/iceServers). La escribe el administrador desde la consola.
+    */
+    "config": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
     "calls": {
       ".indexOn": ["callerId", "receiverId"],
       "$callId": {
         ".read": "auth != null && (data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
-        ".write": "auth != null && (!data.exists() || data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
+        ".write": "auth != null && ((!data.exists() && newData.child('callerId').val() === auth.uid) || data.child('callerId').val() === auth.uid || data.child('receiverId').val() === auth.uid)",
         ".validate": "newData.hasChildren(['callerId', 'receiverId', 'callType'])"
       }
     },

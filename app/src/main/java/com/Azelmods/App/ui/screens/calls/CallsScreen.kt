@@ -81,22 +81,22 @@ fun CallsScreen(
         val call = selectedCallDetails!!
         AlertDialog(
             onDismissRequest = { selectedCallDetails = null },
-            title = { Text(text = "Call Details") },
+            title = { Text(text = "Detalles de la llamada") },
             text = {
                 Column {
-                    Text(text = "Name: ${call.userName}")
-                    Text(text = "Type: ${call.callType}")
-                    Text(text = "Direction: ${if (call.isIncoming) "Incoming" else "Outgoing"}")
-                    Text(text = "Status: ${call.status}")
+                    Text(text = "Contacto: ${call.userName}")
+                    Text(text = "Tipo: ${if (call.callType == "VIDEO") "Videollamada" else "Voz"}")
+                    Text(text = "Dirección: ${if (call.isIncoming) "Entrante" else "Saliente"}")
+                    Text(text = "Estado: ${callStatusLabel(call.status)}")
                     if (call.duration != null) {
-                        Text(text = "Duration: ${call.duration}")
+                        Text(text = "Duración: ${call.duration}")
                     }
-                    Text(text = "Time: ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(call.startTime))}")
+                    Text(text = "Fecha: ${java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(call.startTime))}")
                 }
             },
             confirmButton = {
                 TextButton(onClick = { selectedCallDetails = null }) {
-                    Text("Close")
+                    Text("Cerrar")
                 }
             },
             containerColor = DarkSurface,
@@ -114,7 +114,7 @@ fun CallsScreen(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search calls...", color = Color.Gray) },
+                            placeholder = { Text("Buscar llamadas…", color = Color.Gray) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
@@ -147,7 +147,7 @@ fun CallsScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "Calls",
+                            text = "Llamadas",
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp
                         )
@@ -191,7 +191,7 @@ fun CallsScreen(
                     FilterChip(
                         selected = selectedFilter == filter,
                         onClick = { selectedFilter = filter },
-                        label = { Text(filter) },
+                        label = { Text(if (filter == "Missed") "Perdidas" else "Todas") },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = Color.White
@@ -226,14 +226,14 @@ fun CallsScreen(
                             tint = Color.Gray
                         )
                         Text(
-                            text = if (searchQuery.isNotEmpty()) "No results found" else if (selectedFilter == "Missed") "No missed calls" else "No calls yet",
+                            text = if (searchQuery.isNotEmpty()) "Sin resultados" else if (selectedFilter == "Missed") "No tienes llamadas perdidas" else "Aún no hay llamadas",
                             color = Color.Gray,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium
                         )
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = "Tap the + button to start a call",
+                                text = "Pulsa + para empezar una llamada",
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -351,7 +351,7 @@ fun CallItemRow(
                 
                 if (call.duration != null) {
                     Text(
-                        text = " � ${call.duration}",
+                        text = " · ${call.duration}",
                         color = Color.Gray,
                         fontSize = 14.sp
                     )
@@ -365,7 +365,7 @@ fun CallItemRow(
         ) {
             Icon(
                 imageVector = if (call.callType == "VIDEO") Icons.Default.Videocam else Icons.Default.Phone,
-                contentDescription = "Call",
+                contentDescription = "Llamar",
                 tint = MaterialTheme.colorScheme.primary
             )
         }
@@ -382,4 +382,14 @@ private fun formatCallTime(timestamp: Long): String {
         diff < 172800_000 -> "Yesterday"
         else -> "${diff / 86400_000}d ago"
     }
+}
+
+/** Texto legible del estado guardado en la base de datos. */
+private fun callStatusLabel(status: String): String = when (status.uppercase()) {
+    "MISSED" -> "Perdida"
+    "DECLINED" -> "Rechazada"
+    "ENDED", "CONNECTED" -> "Finalizada"
+    "CALLING", "RINGING" -> "Sin respuesta"
+    "ACCEPTED" -> "Aceptada"
+    else -> status.lowercase().replaceFirstChar { it.uppercase() }
 }

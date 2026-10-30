@@ -328,10 +328,17 @@ exports.onCallEnded = functions.database
         const callerId = after.callerId;
         const receiverId = after.receiverId;
 
-        // Encontrar quién no respondió (el que no colgó)
-        const missedUserId = after.endedBy === callerId ? receiverId : callerId;
+        // Desde CALLING/RINGING solo se llega a ENDED si el EMISOR colgó o se agotó
+        // el tiempo de timbre (si el receptor rechaza, el estado es DECLINED). Así
+        // que quien se pierde la llamada es siempre el receptor.
+        //
+        // Antes se calculaba con `after.endedBy`, que el cliente no escribía nunca:
+        // el resultado era que el aviso de "llamada perdida" le llegaba AL QUE
+        // LLAMABA y nunca al que no la cogió.
+        const missedUserId = receiverId;
+        if (!missedUserId) return null;
 
-        let callerName = "Someone";
+        let callerName = after.callerName || "Alguien";
         try {
             const userSnapshot = await db.ref(`/users/${callerId}/displayName`).once("value");
             callerName = userSnapshot.val() || callerName;
@@ -339,33 +346,33 @@ exports.onCallEnded = functions.database
             // ignore
         }
 
-        // Obtener FCM tokens del usuario que perdió la llamada
         const fcmTokens = await getFcmTokens(missedUserId);
 
-        for (const token of fcmTokens) {
-            try {
-                await admin.messaging().send({
+        // DATA-ONLY: la app construye la notificación con el mismo tag/id que usa
+        // cuando detecta la perdida en primer plano (sin duplicados) y, sobre todo,
+        // retira la notificación de llamada entrante, que si no seguiría sonando.
+        const results = await Promise.allSettled(
+            fcmTokens.map((token) =>
+                admin.messaging().send({
                     token: token,
-                    notification: {
-                        title: "Missed call",
-                        body: `From ${callerName}`,
-                    },
                     data: {
                         type: "missed_call",
                         callId: callId,
-                        callerId: callerId,
+                        callerId: callerId || "",
                         callerName: callerName,
+                        callerPhotoUrl: after.callerPhotoUrl || "",
+                        callType: after.callType || "AUDIO",
                     },
                     android: {
                         priority: "high",
-                        notification: {
-                            channelId: "nexus_missed_calls",
-                        },
                     },
-                });
-            } catch (e) {
-                console.error(`❌ Failed to send missed call notification:`, e);
-            }
+                })
+            )
+        );
+
+        const failCount = results.filter((r) => r.status === "rejected").length;
+        if (failCount > 0) {
+            console.error(`❌ ${failCount} missed-call push(es) failed for ${callId}`);
         }
 
         return null;
@@ -440,6 +447,10 @@ exports.onCallCreate = functions.database
                     data: dataPayload,
                     android: {
                         priority: "high",
+                        // Una llamada que llega tarde ya no se puede contestar: si el
+                        // dispositivo estaba sin red, que FCM la descarte en vez de
+                        // hacerlo sonar minutos después.
+                        ttl: 45 * 1000,
                     },
                     apns: {
                         headers: {

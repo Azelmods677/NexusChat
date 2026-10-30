@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,11 +51,8 @@ class MainActivity : ComponentActivity() {
      */
     private val callNavRequest = mutableStateOf<CallNavRequest?>(null)
 
-    data class CallNavRequest(
-        val target: String,   // "incoming_call"
-        val callId: String,
-        val callType: String  // "audio" / "video"
-    )
+    /** Destino pedido por una notificación; Compose lo consume y navega. */
+    data class CallNavRequest(val route: String)
 
     @Inject
     lateinit var userPreferences: UserPreferences
@@ -203,22 +201,32 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            // ── Navigate to the incoming-call screen when launched from a
-                            //    call notification's full-screen intent. ──
+                            // ── Destinos pedidos por notificaciones (llamadas, mensajes…) ──
                             val pendingCall by callNavRequest
                             LaunchedEffect(pendingCall) {
                                 pendingCall?.let { req ->
-                                    if (req.callId.isNotBlank()) {
-                                        try {
-                                            navController.navigate(
-                                                "${req.target}/${req.callId}/${req.callType}"
-                                            )
-                                        } catch (e: Exception) {
-                                            Log.e(TAG, "Failed to navigate to call screen: ${e.message}", e)
-                                        }
+                                    try {
+                                        navController.navigate(req.route) { launchSingleTop = true }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Failed to navigate to ${req.route}: ${e.message}", e)
                                     }
                                     callNavRequest.value = null
                                 }
+                            }
+
+                            // La pantalla de llamada puede verse sobre la pantalla de
+                            // bloqueo y encenderla, pero SOLO mientras se está en ella:
+                            // activarlo para toda la actividad dejaría la app entera
+                            // accesible con el teléfono bloqueado.
+                            DisposableEffect(navController) {
+                                val listener = androidx.navigation.NavController.OnDestinationChangedListener { _, destination, _ ->
+                                    val route = destination.route.orEmpty()
+                                    val inCall = route.startsWith("incoming_call") || route.startsWith("active_call")
+                                    setShowWhenLocked(inCall)
+                                    setTurnScreenOn(inCall)
+                                }
+                                navController.addOnDestinationChangedListener(listener)
+                                onDispose { navController.removeOnDestinationChangedListener(listener) }
                             }
                         }
                     }
@@ -234,22 +242,44 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Extracts incoming-call navigation extras (set by the FCM service / call
-     * notification full-screen intent) and stores them so Compose can navigate.
+     * Traduce los extras de las notificaciones (llamada entrante, contestar desde
+     * la notificación, mensaje, llamada perdida…) a una ruta de navegación.
+     *
+     * Antes solo se atendía "incoming_call": tocar la notificación de un mensaje
+     * o de una llamada perdida abría la app en la pantalla de inicio sin más.
      */
     private fun handleCallIntent(intent: Intent?) {
         try {
             val navTo = intent?.getStringExtra("navigate_to") ?: return
-            if (navTo == "incoming_call") {
-                val callId = intent.getStringExtra("callId") ?: return
-                if (callId.isBlank()) return
-                val callType = intent.getStringExtra("callType") ?: "audio"
-                callNavRequest.value = CallNavRequest(
-                    target = "incoming_call",
-                    callId = callId,
-                    callType = callType
-                )
+            val callType = when (intent.getStringExtra("callType")?.lowercase()) {
+                "video" -> "video"
+                else -> "audio"
             }
+            val route = when (navTo) {
+                com.Azelmods.App.service.CallNotifications.NAV_INCOMING_CALL -> {
+                    val callId = intent.getStringExtra("callId")?.takeIf { it.isNotBlank() } ?: return
+                    "incoming_call/$callId/$callType"
+                }
+                com.Azelmods.App.service.CallNotifications.NAV_ACCEPT_CALL -> {
+                    val callId = intent.getStringExtra("callId")?.takeIf { it.isNotBlank() } ?: return
+                    com.Azelmods.App.service.CallNotifications.cancelIncoming(this, callId)
+                    "active_call/$callId/$callType?isCaller=false"
+                }
+                "chat" -> {
+                    val peer = intent.getStringExtra("senderId")?.takeIf { it.isNotBlank() } ?: return
+                    "chat/$peer"
+                }
+                "call_back" -> {
+                    val contactId = intent.getStringExtra("contactId")?.takeIf { it.isNotBlank() } ?: return
+                    "active_call/$contactId/audio?isCaller=true"
+                }
+                "calls" -> "calls"
+                "azel_ai" -> "azel_ai"
+                else -> return
+            }
+            // Consumido: si la actividad se recrea no se vuelve a navegar.
+            intent.removeExtra("navigate_to")
+            callNavRequest.value = CallNavRequest(route)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse call intent: ${e.message}", e)
         }

@@ -81,6 +81,11 @@ fun SplashScreen(
     // Navigate when auth state is determined
     LaunchedEffect(state.isAuthenticated) {
         state.isAuthenticated?.let { isAuth ->
+            // Si una notificación ya llevó a otra pantalla (p. ej. una llamada
+            // entrante con la app cerrada), no se navega: el popUpTo(splash)
+            // inclusive cerraría también esa pantalla y se colgaría la llamada.
+            // Cuando el usuario vuelva atrás, el splash reaparece y navega.
+            if (navController.currentDestination?.route != Screen.Splash.route) return@let
             if (isAuth) {
                 navController.navigate(Screen.Home.route) {
                     popUpTo(Screen.Splash.route) { inclusive = true }

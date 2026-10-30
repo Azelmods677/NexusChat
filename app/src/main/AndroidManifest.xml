@@ -51,6 +51,16 @@
 
     <!-- Vibration for notifications -->
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!--
+        Llamada entrante a pantalla completa con el teléfono bloqueado. Sin este
+        permiso Android ignora el fullScreenIntent desde la API 29 y la llamada
+        solo aparece como un aviso pequeño que es fácil no ver.
+    -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+
+    <!-- Sensor de proximidad en llamadas de voz (apagar la pantalla junto a la oreja) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     
     <!-- Biometric authentication for app lock -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
@@ -134,7 +144,7 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/notification_accent" />
 
-        <!-- Call Notification Receiver (Accept/Decline from notification) -->
+        <!-- Botón "Rechazar" de la notificación de llamada entrante -->
         <receiver
             android:name=".service.CallNotificationReceiver"
             android:exported="false" />

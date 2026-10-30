@@ -2,574 +2,615 @@ package com.Azelmods.App.ui.screens.call
 
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.Azelmods.App.data.model.CallData
 import com.Azelmods.App.data.model.CallStatus
 import com.Azelmods.App.data.model.CallType
 import com.Azelmods.App.data.model.User
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
+import com.Azelmods.App.data.security.tor.TorService
+import com.Azelmods.App.data.security.tor.TorState
+import com.Azelmods.App.service.CallNotifications
 import com.Azelmods.App.service.NotificationHelper
 import com.Azelmods.App.services.CallService
+import com.Azelmods.App.webrtc.CallAudioRouter
+import com.Azelmods.App.webrtc.IceServerProvider
 import com.Azelmods.App.webrtc.WebRTCManager
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.webrtc.PeerConnection
 import org.webrtc.VideoTrack
 import javax.inject.Inject
+
+/** En qué punto está la llamada, para que la interfaz diga algo honesto. */
+enum class CallPhase {
+    /** Preparando: creando la llamada, pidiendo servidores ICE… */
+    STARTING,
+    /** Emisor: sonando en el otro teléfono. */
+    RINGING,
+    /** Aceptada: negociando la conexión de medios. */
+    CONNECTING,
+    /** Audio/vídeo fluyendo. */
+    CONNECTED,
+    /** Se perdió la red un momento; WebRTC intenta recuperarla. */
+    RECONNECTING,
+    ENDED
+}
+
+/** Por qué terminó: decide el texto final y si hay que escribir en la base de datos. */
+enum class CallEndReason {
+    HANGUP, REMOTE_HANGUP, DECLINED, NO_ANSWER, CONNECTION_LOST, UNAVAILABLE, ERROR;
+
+    val label: String
+        get() = when (this) {
+            HANGUP -> "Llamada finalizada"
+            REMOTE_HANGUP -> "El contacto colgó"
+            DECLINED -> "Llamada rechazada"
+            NO_ANSWER -> "Sin respuesta"
+            CONNECTION_LOST -> "Se perdió la conexión"
+            UNAVAILABLE -> "La llamada ya no está disponible"
+            ERROR -> "No se pudo completar la llamada"
+        }
+}
 
 @HiltViewModel
 class CallViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val databaseRepository: RealtimeDatabaseRepository,
-    private val webRTCManager: WebRTCManager
+    private val webRTCManager: WebRTCManager,
+    private val audioRouter: CallAudioRouter,
+    private val iceServerProvider: IceServerProvider,
+    private val torService: TorService
 ) : ViewModel() {
-    
-    // Contact profile state for call screens
+
+    private companion object {
+        const val TAG = "CallViewModel"
+
+        /** Tiempo que suena una llamada antes de darse por perdida. */
+        val RINGING_TIMEOUT_MS = CallNotifications.RING_TIMEOUT_MS - 5_000L
+
+        /** Margen para que WebRTC recupere una conexión caída antes de colgar. */
+        const val RECONNECT_GRACE_MS = 20_000L
+
+        /**
+         * Ámbito que sobrevive al ViewModel: la escritura del fin de la llamada
+         * debe completarse aunque la pantalla ya se haya cerrado.
+         */
+        val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    }
+
+    // ── Estado para la interfaz ──────────────────────────────────────────
     private val _contactProfile = MutableStateFlow<User?>(null)
     val contactProfile: StateFlow<User?> = _contactProfile.asStateFlow()
-    
-    // Call state
-    private val _callData = MutableStateFlow<CallData?>(null)
-    val callData: StateFlow<CallData?> = _callData.asStateFlow()
-    
-    private val _isAudioEnabled = MutableStateFlow(true)
-    val isAudioEnabled: StateFlow<Boolean> = _isAudioEnabled.asStateFlow()
-    
-    private val _isVideoEnabled = MutableStateFlow(true)
-    val isVideoEnabled: StateFlow<Boolean> = _isVideoEnabled.asStateFlow()
-    
-    private val _isSpeakerOn = MutableStateFlow(false)
-    val isSpeakerOn: StateFlow<Boolean> = _isSpeakerOn.asStateFlow()
-    
-    // WebRTC video tracks
+
+    private val _phase = MutableStateFlow(CallPhase.STARTING)
+    val phase: StateFlow<CallPhase> = _phase.asStateFlow()
+
+    private val _endReason = MutableStateFlow<CallEndReason?>(null)
+    val endReason: StateFlow<CallEndReason?> = _endReason.asStateFlow()
+
+    /** `SystemClock.elapsedRealtime()` del momento en que el medio conectó. */
+    private val _connectedAt = MutableStateFlow<Long?>(null)
+    val connectedAt: StateFlow<Long?> = _connectedAt.asStateFlow()
+
+    /** true si el medio va forzado por TURN para no revelar la IP (modo anónimo). */
+    private val _isRelayOnly = MutableStateFlow(false)
+    val isRelayOnly: StateFlow<Boolean> = _isRelayOnly.asStateFlow()
+
+    val isAudioEnabled: StateFlow<Boolean> = webRTCManager.micEnabled
+    val isVideoEnabled: StateFlow<Boolean> = webRTCManager.cameraEnabled
+    val isSpeakerOn: StateFlow<Boolean> = audioRouter.speakerOn
+    val isFrontCamera: StateFlow<Boolean> = webRTCManager.isFrontCamera
+
     val localVideoTrack: StateFlow<VideoTrack?> = webRTCManager.localVideoTrackFlow
     val remoteVideoTrack: StateFlow<VideoTrack?> = webRTCManager.remoteVideoTrackFlow
     val connectionState = webRTCManager.connectionState
-    
+
+    // ── Estado interno ────────────────────────────────────────────────────
     private var currentCallId: String? = null
-    /**
-     * Indica si la llamada fue aceptada en algún momento.
-     * Si el estado cambia a ENDED sin que esto sea true, es una llamada perdida.
-     */
+    private var isVideoCall = false
+
+    /** Evita arrancar dos veces (recomposición, vuelta a la pantalla…). */
+    private var started = false
+
+    /** Si la llamada llegó a aceptarse (para distinguir las perdidas). */
     private var wasAccepted = false
-    /** Nombre de quien llama (guardado para notificación de llamada perdida) */
+
     private var callStartCallerName = ""
-    /** Foto de quien llama (guardada para notificación de llamada perdida) */
     private var callStartCallerPhotoUrl: String? = null
-    /** ID del contacto para devolver la llamada */
     private var callStartOtherUserId: String? = null
-    /** Si este ViewModel está actuando como receptor (para detectar llamadas perdidas) */
+
+    /** Pantalla de llamada entrante: solo observa, no tiene conexión propia. */
     private var isReceiverSide = false
 
     /**
-     * true  -> este ViewModel inició la llamada (caller): debe consumir el `answer`.
-     * false -> este ViewModel contesta la llamada (callee): debe consumir el `offer`.
+     * true  -> este ViewModel inició la llamada (caller): consume el `answer`.
+     * false -> este ViewModel contesta la llamada (callee): consume el `offer`.
      */
     private var isCaller = false
+
     /**
      * true cuando este ViewModel ha creado realmente una PeerConnection WebRTC
      * (startCall o acceptCall). Sólo en ese caso debe limpiar el WebRTCManager
      * compartido al destruirse, para no romper la llamada de otra pantalla.
      */
     private var ownsWebRTCSession = false
-    /** Evita procesar el offer/answer remoto más de una vez. */
     private var remoteOfferHandled = false
     private var remoteAnswerHandled = false
 
-    /** Cuelga la llamada si el otro extremo no contesta. */
-    private var ringingTimeoutJob: kotlinx.coroutines.Job? = null
+    private var ringingTimeoutJob: Job? = null
+    private var reconnectJob: Job? = null
+    private var listenersStarted = false
 
-    private companion object {
-        /** Tiempo que suena una llamada antes de darse por perdida. */
-        const val RINGING_TIMEOUT_MS = 45_000L
-    }
-    
+    private fun myUid(): String = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
     /**
      * Registra los callbacks de señalización en el [WebRTCManager].
      *
      * NO se llama desde `init`. El WebRTCManager es un `@Singleton` con un único
      * juego de listeners, y cada pantalla de llamada crea su propio
      * `CallViewModel`: si todos los registraran al construirse, el ViewModel de
-     * la pantalla de llamada entrante —que sólo observa y tiene `currentCallId`
-     * nulo— pisaría los del ViewModel que sí conduce la conexión, y la oferta,
-     * la respuesta y los candidatos ICE dejarían de escribirse en Firebase. La
-     * llamada se quedaba sonando sin conectar nunca.
-     *
-     * Sólo lo invocan [startCall] y [acceptCall], que son los que crean de
-     * verdad una PeerConnection.
+     * la pantalla de llamada entrante —que sólo observa— pisaría los del
+     * ViewModel que sí conduce la conexión, y la oferta, la respuesta y los
+     * candidatos ICE dejarían de escribirse en Firebase.
      */
     private fun setupWebRTCCallbacks() {
         webRTCManager.onIceCandidateListener = { candidate ->
             currentCallId?.let { callId ->
-                viewModelScope.launch {
-                    try {
-                        val candidateMap = mapOf(
-                            "sdp" to candidate.sdp,
-                            "sdpMid" to candidate.sdpMid,
-                            "sdpMLineIndex" to candidate.sdpMLineIndex,
-                            "userId" to (FirebaseAuth.getInstance().currentUser?.uid ?: "")
+                appScope.launch {
+                    runCatching {
+                        databaseRepository.addIceCandidate(
+                            callId,
+                            mapOf(
+                                "sdp" to candidate.sdp,
+                                "sdpMid" to candidate.sdpMid,
+                                "sdpMLineIndex" to candidate.sdpMLineIndex,
+                                "userId" to myUid()
+                            )
                         )
-                        databaseRepository.addIceCandidate(callId, candidateMap)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    }.onFailure { Log.w(TAG, "No se pudo enviar un candidato ICE: ${it.message}") }
                 }
             }
         }
-        
         webRTCManager.onOfferCreatedListener = { offer ->
             currentCallId?.let { callId ->
-                viewModelScope.launch {
-                    try {
-                        databaseRepository.setCallOffer(callId, offer)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                appScope.launch {
+                    runCatching { databaseRepository.setCallOffer(callId, offer) }
+                        .onFailure { Log.e(TAG, "No se pudo enviar la oferta", it) }
                 }
             }
         }
-        
         webRTCManager.onAnswerCreatedListener = { answer ->
             currentCallId?.let { callId ->
-                viewModelScope.launch {
-                    try {
-                        databaseRepository.setCallAnswer(callId, answer)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                appScope.launch {
+                    runCatching { databaseRepository.setCallAnswer(callId, answer) }
+                        .onFailure { Log.e(TAG, "No se pudo enviar la respuesta", it) }
                 }
             }
         }
     }
-    
+
+    // ── Perfil del contacto ───────────────────────────────────────────────
+
     /**
-     * Load contact profile from a call ID.
-     * First fetches the call data from Firebase to extract the other participant's ID,
-     * then loads their full profile.
-     * Almacena [callStartCallerName] y [callStartCallerPhotoUrl] para usarlos
-     * en la notificación de llamada perdida.
+     * Carga el perfil del otro participante a partir del id de la llamada y
+     * guarda nombre/foto para la notificación de llamada perdida.
      */
     fun loadContactProfileFromCall(callId: String) {
-        viewModelScope.launch {
-            try {
-                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        viewModelScope.launch { resolveContactFromCall(callId) }
+    }
 
-                // Step 1: Get call data to find who the caller/receiver is
-                val callData = databaseRepository.getCallData(callId)
-                if (callData == null) {
-                    _contactProfile.value = User(
-                        uid = callId,
-                        name = "Unknown",
-                        username = "",
-                        email = ""
-                    )
-                    return@launch
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun resolveContactFromCall(callId: String): Map<String, Any>? {
+        return try {
+            val currentUserId = myUid()
+            val callData = databaseRepository.getCallData(callId)
+            if (callData == null) {
+                if (_contactProfile.value == null) {
+                    _contactProfile.value = User(uid = "", name = "Desconocido", username = "", email = "")
                 }
+                return null
+            }
 
-                val callerId     = callData["callerId"] as? String ?: ""
-                val receiverId   = callData["receiverId"] as? String ?: ""
-                val callerName   = callData["callerName"] as? String ?: ""
-                val callerPhoto  = callData["callerPhotoUrl"] as? String
+            val callerId = callData["callerId"] as? String ?: ""
+            val receiverId = callData["receiverId"] as? String ?: ""
+            callStartCallerName = (callData["callerName"] as? String).orEmpty().ifBlank { "Desconocido" }
+            callStartCallerPhotoUrl = (callData["callerPhotoUrl"] as? String)?.takeIf { it.isNotBlank() }
 
-                // Store the other user's ID for "Call back" action
-                callStartOtherUserId = if (currentUserId == callerId && receiverId.isNotBlank()) {
-                    receiverId
-                } else if (currentUserId == receiverId && callerId.isNotBlank()) {
-                    callerId
-                } else null
+            val contactId = when (currentUserId) {
+                callerId -> receiverId
+                receiverId -> callerId
+                else -> ""
+            }.takeIf { it.isNotBlank() }
+            callStartOtherUserId = contactId
 
-                // Store caller info for missed call notification
-                callStartCallerName = callerName.ifBlank { "Unknown" }
-                callStartCallerPhotoUrl = callerPhoto
-
-                // Step 2: Determine the "other" participant ID
-                val contactId = when {
-                    currentUserId == callerId && receiverId.isNotBlank() -> receiverId
-                    currentUserId == receiverId && callerId.isNotBlank() -> callerId
-                    else -> {
-                        // Can't determine, use callerName as fallback
-                        _contactProfile.value = User(
-                            uid = callId,
-                            name = callStartCallerName,
-                            username = "",
-                            email = ""
-                        )
-                        return@launch
-                    }
-                }
-
-                // Step 3: Fetch full user profile
-                val userData = databaseRepository.getUserById(contactId)
-                if (userData != null) {
-                    _contactProfile.value = User(
-                        uid = userData["uid"] as? String ?: contactId,
-                        name = userData["displayName"] as? String ?: userData["name"] as? String ?: callStartCallerName,
-                        username = userData["username"] as? String ?: "",
-                        email = userData["email"] as? String ?: "",
-                        photoUrl = userData["photoUrl"] as? String,
-                        bio = userData["bio"] as? String ?: "",
-                        isOnline = userData["isOnline"] as? Boolean ?: false,
-                        lastSeen = userData["lastSeen"] as? Long ?: 0L
-                    )
-                } else {
-                    _contactProfile.value = User(
-                        uid = contactId,
-                        name = callStartCallerName,
-                        username = "",
-                        email = ""
-                    )
-                }
-
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _contactProfile.value = User(
-                    uid = callId,
-                    name = "Unknown",
+            val userData = contactId?.let { databaseRepository.getUserById(it) }
+            _contactProfile.value = if (userData != null) {
+                userData.toUser(contactId.orEmpty())
+            } else {
+                User(
+                    uid = contactId.orEmpty(),
+                    name = callStartCallerName,
                     username = "",
-                    email = ""
+                    email = "",
+                    photoUrl = callStartCallerPhotoUrl
                 )
             }
+            callData
+        } catch (e: Exception) {
+            Log.e(TAG, "No se pudo cargar el contacto de la llamada", e)
+            if (_contactProfile.value == null) {
+                _contactProfile.value = User(uid = "", name = "Desconocido", username = "", email = "")
+            }
+            null
         }
     }
-    
-    /**
-     * Start a new call (caller side)
-     */
+
+    private fun Map<String, Any>.toUser(fallbackId: String): User = User(
+        uid = this["uid"] as? String ?: fallbackId,
+        name = displayNameOf(this) ?: "Anónimo",
+        username = this["username"] as? String ?: "",
+        email = this["email"] as? String ?: "",
+        photoUrl = (this["photoUrl"] as? String)?.takeIf { it.isNotBlank() },
+        bio = this["bio"] as? String ?: "",
+        isOnline = this["isOnline"] as? Boolean ?: false,
+        lastSeen = (this["lastSeen"] as? Number)?.toLong() ?: 0L
+    )
+
+    private fun displayNameOf(data: Map<String, Any>?): String? =
+        (data?.get("displayName") as? String)?.takeIf { it.isNotBlank() }
+            ?: (data?.get("name") as? String)?.takeIf { it.isNotBlank() }
+            ?: (data?.get("username") as? String)?.takeIf { it.isNotBlank() }
+
+    // ── Emisor ────────────────────────────────────────────────────────────
+
     fun startCall(contactId: String, callType: CallType) {
-        // Caller side: this VM owns the WebRTC session and must consume the `answer`.
+        if (started) return
+        started = true
         isCaller = true
         ownsWebRTCSession = true
+        isVideoCall = callType == CallType.VIDEO
+        _phase.value = CallPhase.STARTING
         setupWebRTCCallbacks()
+
         viewModelScope.launch {
             try {
-                val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
-                    ?: throw Exception("User not authenticated")
-                
+                val currentUserId = myUid().ifBlank { throw IllegalStateException("Sin sesión") }
+
                 val currentUser = databaseRepository.getUserById(currentUserId)
                 val contactUser = databaseRepository.getUserById(contactId)
+                if (contactUser != null) _contactProfile.value = contactUser.toUser(contactId)
+                val contactName = displayNameOf(contactUser) ?: "Anónimo"
 
-                // Populate the contact profile for the call UI directly from the
-                // contact's user record (the caller passes a userId, not a callId,
-                // so loadContactProfileFromCall cannot resolve it).
-                if (contactUser != null) {
-                    _contactProfile.value = User(
-                        uid = contactUser["uid"] as? String ?: contactId,
-                        name = contactUser["displayName"] as? String
-                            ?: contactUser["name"] as? String ?: "Anónimo",
-                        username = contactUser["username"] as? String ?: "",
-                        email = contactUser["email"] as? String ?: "",
-                        photoUrl = contactUser["photoUrl"] as? String,
-                        bio = contactUser["bio"] as? String ?: "",
-                        isOnline = contactUser["isOnline"] as? Boolean ?: false,
-                        lastSeen = contactUser["lastSeen"] as? Long ?: 0L
-                    )
-                }
-                
-                // Create call data
                 val callData = mapOf(
                     "callerId" to currentUserId,
-                    "callerName" to (currentUser?.get("name") as? String ?: "Anónimo"),
+                    "callerName" to (displayNameOf(currentUser) ?: "Anónimo"),
                     "callerPhotoUrl" to (currentUser?.get("photoUrl") as? String ?: ""),
                     "receiverId" to contactId,
-                    "receiverName" to (contactUser?.get("name") as? String ?: "Anónimo"),
+                    "receiverName" to contactName,
                     "receiverPhotoUrl" to (contactUser?.get("photoUrl") as? String ?: ""),
                     "callType" to callType.name,
                     "status" to CallStatus.CALLING.name,
                     "startTime" to System.currentTimeMillis()
                 )
-                
-                // Create call in Firebase
+
                 val callId = databaseRepository.createCall(callData)
                 currentCallId = callId
-                
-                // Initialize WebRTC FIRST so the connection exists before any
-                // remote candidates/answer can arrive.
-                webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
-                
-                // Start foreground service
-                startCallService(callId, callType, contactUser?.get("name") as? String ?: "Anónimo")
-                
-                // Register signaling listeners BEFORE creating the offer, so we never
-                // miss the answer or ICE candidates from the callee.
+
+                // WebRTC ANTES de escuchar: la conexión debe existir cuando lleguen
+                // la respuesta y los candidatos del otro lado.
+                preparePeerConnection(callId)
+                startCallService(callId, callType, contactName)
                 listenToCallUpdates(callId)
-                
-                // Create offer (writes to Firebase via onOfferCreatedListener)
                 webRTCManager.createOffer()
 
+                if (_endReason.value == null) _phase.value = CallPhase.RINGING
                 startRingingTimeout()
-
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "No se pudo iniciar la llamada", e)
+                endCall(CallEndReason.ERROR)
             }
         }
     }
 
     /**
-     * Cuelga si nadie contesta en [RINGING_TIMEOUT_MS].
-     *
-     * Sin esto, una llamada a alguien con el teléfono apagado —o cuyo push no
-     * llega— dejaba al emisor sonando indefinidamente, con el servicio en primer
-     * plano y el micrófono abierto, sin más salida que colgar a mano. El nodo de
-     * la llamada tampoco se cerraba nunca en la base de datos.
+     * Cuelga si nadie contesta. Sin esto, una llamada a alguien con el teléfono
+     * apagado dejaba al emisor sonando indefinidamente con el micrófono abierto.
      */
     private fun startRingingTimeout() {
         ringingTimeoutJob?.cancel()
         ringingTimeoutJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(RINGING_TIMEOUT_MS)
-            if (!wasAccepted && currentCallId != null) {
-                android.util.Log.d("CallViewModel", "Sin respuesta tras ${RINGING_TIMEOUT_MS / 1000}s: se cuelga")
-                endCall()
+            delay(RINGING_TIMEOUT_MS)
+            if (!wasAccepted && _endReason.value == null) {
+                Log.d(TAG, "Sin respuesta tras ${RINGING_TIMEOUT_MS / 1000}s: se cuelga")
+                endCall(CallEndReason.NO_ANSWER)
             }
         }
     }
-    
-    /**
-     * Accept incoming call (receiver side)
-     */
+
+    // ── Receptor ──────────────────────────────────────────────────────────
+
     fun acceptCall(callId: String, callType: CallType) {
+        if (started) return
+        started = true
         wasAccepted = true
-        // Callee side: this VM owns the WebRTC session and must consume the `offer`.
         isCaller = false
         ownsWebRTCSession = true
+        isVideoCall = callType == CallType.VIDEO
         // currentCallId ANTES de registrar los callbacks: si un candidato ICE se
         // generase entre ambas líneas, el listener lo descartaría en silencio.
         currentCallId = callId
+        _phase.value = CallPhase.CONNECTING
         setupWebRTCCallbacks()
+        CallNotifications.cancelIncoming(context, callId)
+
         viewModelScope.launch {
             try {
+                val callData = resolveContactFromCall(callId)
+                val status = (callData?.get("status") as? String)?.uppercase()
+                if (callData == null || status in setOf("ENDED", "DECLINED", "MISSED", "FAILED")) {
+                    // El emisor colgó mientras se pulsaba "Aceptar".
+                    endCall(CallEndReason.UNAVAILABLE)
+                    return@launch
+                }
 
-                // Update call status
                 databaseRepository.updateCallStatus(callId, CallStatus.ACCEPTED.name)
-
-                // Initialize WebRTC FIRST so the offer/ICE candidates can be applied.
-                webRTCManager.initializePeerConnection(callType == CallType.VIDEO)
-
-                // Start foreground service
-                val contactName = _contactProfile.value?.name ?: "Anónimo"
-                startCallService(callId, callType, contactName)
-
-                // Always (re)start the signaling listener for this VM. The listener
-                // registered by observeIncomingCall() lives on a different VM instance
-                // (the IncomingCallScreen), so this VM needs its own.
+                preparePeerConnection(callId)
+                startCallService(callId, callType, _contactProfile.value?.name ?: callStartCallerName)
                 listenToCallUpdates(callId)
-
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "No se pudo contestar la llamada", e)
+                endCall(CallEndReason.ERROR)
             }
         }
     }
 
     /**
-     * Start listening to an incoming call BEFORE accepting it.
-     * Esto permite detectar si quien llama cuelga antes de que respondamos
-     * y mostrar la notificación de llamada perdida.
-     *
-     * Debe llamarse desde IncomingCallScreen al cargar el perfil.
+     * La pantalla de llamada entrante escucha la llamada ANTES de contestar para
+     * cerrarse (y avisar de la perdida) si quien llama cuelga.
      */
     fun observeIncomingCall(callId: String) {
+        if (isReceiverSide) return
         isReceiverSide = true
+        currentCallId = callId
         listenToCallUpdates(callId)
     }
 
+    fun declineCall(callId: String) {
+        if (_endReason.value != null) return
+        _endReason.value = CallEndReason.DECLINED
+        _phase.value = CallPhase.ENDED
+        CallNotifications.cancelIncoming(context, callId)
+        appScope.launch {
+            runCatching { databaseRepository.updateCallStatus(callId, CallStatus.DECLINED.name) }
+                .onFailure { Log.w(TAG, "No se pudo rechazar la llamada: ${it.message}") }
+        }
+    }
+
+    // ── Conexión ──────────────────────────────────────────────────────────
+
+    private suspend fun preparePeerConnection(callId: String) {
+        val servers = iceServerProvider.getIceServers()
+        // Modo anónimo (Tor) activo → todo el medio por TURN, para que el otro
+        // participante no vea la IP real. Solo si hay TURN: sin él no conectaría.
+        val anonymous = torService.torState.value is TorState.Connected
+        val relayOnly = anonymous && iceServerProvider.hasTurn(servers)
+        _isRelayOnly.value = relayOnly
+
+        withContext(Dispatchers.Main) {
+            webRTCManager.initializePeerConnection(isVideoCall, callId, servers, relayOnly)
+            audioRouter.start(isVideoCall)
+        }
+        observeConnectionState()
+    }
+
+    private fun observeConnectionState() {
+        viewModelScope.launch {
+            webRTCManager.connectionState.collect { state ->
+                if (_endReason.value != null || state == null) return@collect
+                when (state) {
+                    PeerConnection.PeerConnectionState.CONNECTED -> {
+                        reconnectJob?.cancel()
+                        _phase.value = CallPhase.CONNECTED
+                        if (_connectedAt.value == null) {
+                            _connectedAt.value = SystemClock.elapsedRealtime()
+                            currentCallId?.let { id ->
+                                appScope.launch { runCatching { databaseRepository.markCallConnected(id) } }
+                            }
+                        }
+                    }
+                    PeerConnection.PeerConnectionState.CONNECTING -> {
+                        if (_phase.value != CallPhase.RECONNECTING && _phase.value != CallPhase.RINGING) {
+                            _phase.value = CallPhase.CONNECTING
+                        }
+                    }
+                    PeerConnection.PeerConnectionState.DISCONNECTED -> {
+                        _phase.value = CallPhase.RECONNECTING
+                        scheduleConnectionLoss()
+                    }
+                    PeerConnection.PeerConnectionState.FAILED -> {
+                        // Sin reinicio de ICE no hay vuelta atrás: mejor decirlo que
+                        // dejar al usuario mirando una llamada muda.
+                        endCall(CallEndReason.CONNECTION_LOST)
+                    }
+                    else -> Unit
+                }
+            }
+        }
+    }
+
+    private fun scheduleConnectionLoss() {
+        if (reconnectJob?.isActive == true) return
+        reconnectJob = viewModelScope.launch {
+            delay(RECONNECT_GRACE_MS)
+            if (_phase.value == CallPhase.RECONNECTING && _endReason.value == null) {
+                endCall(CallEndReason.CONNECTION_LOST)
+            }
+        }
+    }
+
     /**
-     * Escucha los cambios en la llamada.
-     *
-     * @param isReceiverSide Si es true, detecta llamadas perdidas
-     *                       (cuando status cambia a ENDED sin haber sido ACCEPTED).
+     * Escucha el nodo de la llamada (señalización + estado) y sus candidatos ICE.
      */
     private fun listenToCallUpdates(callId: String) {
+        if (listenersStarted) return
+        listenersStarted = true
+
         viewModelScope.launch {
             try {
-                databaseRepository.listenToCall(callId).collect { callData ->
-                    callData?.let { data ->
-                        try {
-                            // ── WebRTC signaling (only if this VM drives the connection) ──
-                            if (ownsWebRTCSession) {
-                                if (isCaller) {
-                                    // Caller consumes the answer ONLY. It must never
-                                    // re-apply its own offer.
-                                    val answer = data["answer"] as? String
-                                    if (answer != null && !remoteAnswerHandled) {
-                                        remoteAnswerHandled = true
-                                        webRTCManager.setRemoteDescription(answer, "answer")
-                                    }
-                                } else {
-                                    // Callee consumes the offer ONLY, then creates an answer.
-                                    val offer = data["offer"] as? String
-                                    if (offer != null && !remoteOfferHandled) {
-                                        remoteOfferHandled = true
-                                        webRTCManager.setRemoteDescription(offer, "offer")
-                                        webRTCManager.createAnswer()
-                                    }
-                                }
-                            }
-
-                            // Handle status changes
-                            val status = data["status"] as? String
-                            when (status?.uppercase()) {
-                                CallStatus.ACCEPTED.name -> {
-                                    wasAccepted = true
-                                    ringingTimeoutJob?.cancel()
-                                }
-                                CallStatus.ENDED.name -> {
-                                    // ── Detectar llamada perdida ──
-                                    if (isReceiverSide && !wasAccepted) {
-                                        NotificationHelper.showMissedCallNotification(
-                                            context = context,
-                                            callId = callId,
-                                            callerName = callStartCallerName.ifBlank { "Unknown" },
-                                            callerPhotoUrl = callStartCallerPhotoUrl,
-                                            callerId = callStartOtherUserId
-                                        )
-                                    }
-                                    endCall()
-                                }
-                                CallStatus.DECLINED.name -> {
-                                    // Si el receptor rechazó activamente, no es "perdida"
-                                    // pero aún así limpiamos
-                                    endCall()
-                                }
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+                databaseRepository.listenToCall(callId).collect { data ->
+                    if (data == null) {
+                        if (_endReason.value == null && ownsWebRTCSession) endCall(CallEndReason.UNAVAILABLE)
+                        return@collect
                     }
+                    handleSignaling(data)
+                    handleStatus(callId, data)
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Se perdió la escucha de la llamada", e)
             }
         }
 
-        // Listen to ICE candidates
         viewModelScope.launch {
             try {
-                databaseRepository.listenToIceCandidates(callId).collect { candidates ->
-                    // Only apply remote candidates when this VM owns a peer connection.
+                val me = myUid()
+                databaseRepository.observeIceCandidates(callId).collect { candidateData ->
+                    // Solo aplica candidatos quien tiene una PeerConnection propia.
                     if (!ownsWebRTCSession) return@collect
-                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                    candidates.forEach { candidateData ->
-                        try {
-                            val userId = candidateData["userId"] as? String
-                            // Only add candidates from the other user
-                            if (userId != currentUserId) {
-                                val candidate = com.Azelmods.App.data.model.IceCandidate(
-                                    sdp = candidateData["sdp"] as? String ?: "",
-                                    sdpMid = candidateData["sdpMid"] as? String ?: "",
-                                    sdpMLineIndex = (candidateData["sdpMLineIndex"] as? Long)?.toInt() ?: 0,
-                                    userId = userId ?: ""
-                                )
-                                webRTCManager.addIceCandidate(candidate)
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }
+                    val userId = candidateData["userId"] as? String
+                    if (userId == me) return@collect
+                    webRTCManager.addIceCandidate(
+                        com.Azelmods.App.data.model.IceCandidate(
+                            sdp = candidateData["sdp"] as? String ?: "",
+                            sdpMid = candidateData["sdpMid"] as? String ?: "",
+                            sdpMLineIndex = (candidateData["sdpMLineIndex"] as? Number)?.toInt() ?: 0,
+                            userId = userId ?: ""
+                        )
+                    )
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-    
-    /**
-     * End call
-     */
-    /**
-     * Decline incoming call (receiver side)
-     */
-    fun declineCall(callId: String) {
-        viewModelScope.launch {
-            try {
-                // Un solo cambio de estado: antes se escribía DECLINED dos veces
-                // y se construía un `endData` que nunca llegaba a usarse.
-                databaseRepository.updateCallStatus(callId, CallStatus.DECLINED.name)
-                ringingTimeoutJob?.cancel()
-                currentCallId = null
-            } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Se perdió la escucha de candidatos ICE", e)
             }
         }
     }
 
-    fun endCall() {
+    private fun handleSignaling(data: Map<String, Any>) {
+        if (!ownsWebRTCSession) return
+        if (isCaller) {
+            // El emisor consume SOLO la respuesta; nunca su propia oferta.
+            val answer = data["answer"] as? String
+            if (answer != null && !remoteAnswerHandled) {
+                remoteAnswerHandled = true
+                webRTCManager.setRemoteDescription(answer, "answer")
+            }
+        } else {
+            // El receptor consume SOLO la oferta; la respuesta se crea cuando
+            // WebRTC confirma la descripción remota (ver WebRTCManager).
+            val offer = data["offer"] as? String
+            if (offer != null && !remoteOfferHandled) {
+                remoteOfferHandled = true
+                webRTCManager.setRemoteDescription(offer, "offer")
+            }
+        }
+    }
+
+    private fun handleStatus(callId: String, data: Map<String, Any>) {
+        when ((data["status"] as? String)?.uppercase()) {
+            CallStatus.ACCEPTED.name, CallStatus.CONNECTED.name -> {
+                wasAccepted = true
+                ringingTimeoutJob?.cancel()
+                if (isCaller && _phase.value == CallPhase.RINGING) _phase.value = CallPhase.CONNECTING
+            }
+            CallStatus.ENDED.name -> {
+                if (_endReason.value != null) return
+                val endedByMe = (data["endedBy"] as? String) == myUid()
+                // ── Llamada perdida: el emisor colgó antes de que contestáramos ──
+                if (isReceiverSide && !wasAccepted && !ownsWebRTCSession) {
+                    CallNotifications.cancelIncoming(context, callId)
+                    val name = callStartCallerName.ifBlank { _contactProfile.value?.name ?: "Desconocido" }
+                    val photo = callStartCallerPhotoUrl
+                    val otherId = callStartOtherUserId
+                    // La notificación descarga la foto: nunca en el hilo principal.
+                    appScope.launch {
+                        NotificationHelper.showMissedCallNotification(
+                            context = context,
+                            callId = callId,
+                            callerName = name,
+                            callerPhotoUrl = photo,
+                            callerId = otherId
+                        )
+                    }
+                }
+                endCall(if (endedByMe) CallEndReason.HANGUP else CallEndReason.REMOTE_HANGUP)
+            }
+            CallStatus.DECLINED.name -> {
+                if (_endReason.value == null) endCall(CallEndReason.DECLINED)
+            }
+        }
+    }
+
+    // ── Fin ───────────────────────────────────────────────────────────────
+
+    /**
+     * Termina la llamada. Es idempotente: la pueden pedir el botón, el otro
+     * extremo, el temporizador o la pérdida de conexión, y solo cuenta la primera.
+     */
+    fun endCall(reason: CallEndReason = CallEndReason.HANGUP) {
+        if (_endReason.value != null) return
+        _endReason.value = reason
+        _phase.value = CallPhase.ENDED
         ringingTimeoutJob?.cancel()
-        viewModelScope.launch {
-            try {
-                currentCallId?.let { callId ->
-                    databaseRepository.endCall(callId)
+        reconnectJob?.cancel()
+
+        val callId = currentCallId
+        val durationSec = _connectedAt.value?.let { (SystemClock.elapsedRealtime() - it) / 1000 }
+        // Lo remoto ya está cerrado si fue el otro quien colgó o rechazó; aun así
+        // endCall() del repositorio no pisa un estado final, así que es seguro.
+        if (callId != null && reason != CallEndReason.DECLINED && reason != CallEndReason.UNAVAILABLE) {
+            appScope.launch {
+                withTimeoutOrNull(10_000L) {
+                    runCatching { databaseRepository.endCall(callId, myUid(), durationSec) }
+                        .onFailure { Log.w(TAG, "No se pudo cerrar la llamada en la base de datos: ${it.message}") }
                 }
-                
-                // Stop foreground service
-                stopCallService()
-                
-                // Cleanup WebRTC only if this VM owns the active session.
-                if (ownsWebRTCSession) {
-                    webRTCManager.cleanup()
-                    ownsWebRTCSession = false
-                }
-                
-                currentCallId = null
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
             }
         }
+        releaseMedia()
     }
-    
-    /**
-     * Toggle audio on/off
-     */
-    fun toggleAudio() {
-        val newState = !_isAudioEnabled.value
-        _isAudioEnabled.value = newState
-        webRTCManager.toggleAudio(newState)
-    }
-    
-    /**
-     * Toggle video on/off
-     */
-    fun toggleVideo() {
-        val newState = !_isVideoEnabled.value
-        _isVideoEnabled.value = newState
-        webRTCManager.toggleVideo(newState)
-    }
-    
-    /**
-     * Switch camera (front/back)
-     */
-    fun switchCamera() {
-        webRTCManager.switchCamera()
-    }
-    
-    /**
-     * Toggle speaker on/off
-     */
-    fun toggleSpeaker() {
-        val newState = !_isSpeakerOn.value
-        _isSpeakerOn.value = newState
-        // Enrutamiento de audio real (antes el botón de altavoz no hacía nada).
-        // minSdk 31 → API de dispositivos de comunicación.
-        try {
-            val am = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-            am.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
-            if (newState) {
-                val speaker = am.availableCommunicationDevices.firstOrNull {
-                    it.type == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
-                }
-                if (speaker != null) am.setCommunicationDevice(speaker)
-            } else {
-                am.clearCommunicationDevice()
-            }
-        } catch (e: Exception) {
-            android.util.Log.w("CallViewModel", "No se pudo cambiar el altavoz: ${e.message}")
+
+    private fun releaseMedia() {
+        CallNotifications.cancelIncoming(context, currentCallId)
+        if (ownsWebRTCSession) {
+            stopCallService()
+            webRTCManager.cleanup()
+            audioRouter.stop()
+            ownsWebRTCSession = false
         }
     }
-    
+
+    // ── Controles ─────────────────────────────────────────────────────────
+
+    fun toggleAudio() = webRTCManager.toggleMic()
+
+    fun toggleVideo() = webRTCManager.toggleVideo(!webRTCManager.cameraEnabled.value)
+
+    fun switchCamera() = webRTCManager.switchCamera()
+
+    fun toggleSpeaker() = audioRouter.toggleSpeaker()
+
     private fun startCallService(callId: String, callType: CallType, contactName: String) {
         val intent = Intent(context, CallService::class.java).apply {
             action = CallService.ACTION_START_CALL
@@ -577,25 +618,24 @@ class CallViewModel @Inject constructor(
             putExtra(CallService.EXTRA_CALL_TYPE, callType.name.lowercase())
             putExtra(CallService.EXTRA_CONTACT_NAME, contactName)
         }
-        context.startForegroundService(intent)
+        runCatching { context.startForegroundService(intent) }
+            .onFailure { Log.e(TAG, "No se pudo iniciar el servicio de llamada", it) }
     }
-    
+
     private fun stopCallService() {
         val intent = Intent(context, CallService::class.java).apply {
             action = CallService.ACTION_END_CALL
         }
-        context.startService(intent)
+        runCatching { context.startService(intent) }
     }
-    
+
     override fun onCleared() {
         super.onCleared()
-        // Only tear down the shared WebRTCManager if this VM actually owns the
-        // active call. Otherwise (e.g. the IncomingCallScreen observer VM being
-        // destroyed while navigating to ActiveCallScreen) we would kill the
-        // peer connection that another screen just created.
-        if (ownsWebRTCSession) {
-            webRTCManager.cleanup()
-            ownsWebRTCSession = false
+        // Si la pantalla que conduce la llamada desaparece sin colgar (la tarea se
+        // cerró, el sistema la destruyó…), la llamada no puede seguir: se cierra
+        // también en la base de datos para que el otro no se quede hablando solo.
+        if (ownsWebRTCSession && _endReason.value == null) {
+            endCall(CallEndReason.HANGUP)
         }
     }
 }

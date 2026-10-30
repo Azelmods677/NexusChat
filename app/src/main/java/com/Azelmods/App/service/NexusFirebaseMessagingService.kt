@@ -60,8 +60,6 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
 
         // ── Actions ────────────────────────────────────────────
         private const val ACTION_REPLY      = "com.Azelmods.App.ACTION_REPLY"
-        private const val ACTION_ACCEPT_CALL = "com.Azelmods.App.ACTION_ACCEPT_CALL"
-        private const val ACTION_DECLINE_CALL = "com.Azelmods.App.ACTION_DECLINE_CALL"
         private const val ACTION_MARK_READ   = "com.Azelmods.App.ACTION_MARK_READ"
     }
 
@@ -150,79 +148,18 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     // ╚══════════════════════════════════════════════════════════╝
     private fun showIncomingCallNotification(data: Map<String, String>) {
         val callId      = data["callId"] ?: return
-        val callerName  = data["callerName"] ?: "Anónimo"
-        val callerPhoto = data["callerPhotoUrl"]
+        val callerName  = data["callerName"]?.takeIf { it.isNotBlank() } ?: "Anónimo"
         val callType    = data["callType"] ?: "AUDIO"
 
-        val callTypeLabel = if (callType == "VIDEO") "Video call" else "Audio call"
-
-        // ── Full screen intent (abre IncomingCallScreen) ──
-        val fullScreenIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("navigate_to", "incoming_call")
-            putExtra("callId", callId)
-            putExtra("callType", callType.lowercase())
-        }
-        val fullScreenPendingIntent = PendingIntent.getActivity(
-            this, callId.hashCode(), fullScreenIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        // onMessageReceived ya corre en un hilo de fondo: descargar la foto aquí
+        // no bloquea la interfaz.
+        CallNotifications.showIncoming(
+            context = this,
+            callId = callId,
+            callerName = callerName,
+            callType = callType,
+            callerPhoto = loadContactPhoto(data["callerPhotoUrl"])
         )
-
-        // ── Accept action ──
-        val acceptIntent = Intent(this, CallNotificationReceiver::class.java).apply {
-            action = ACTION_ACCEPT_CALL
-            putExtra("callId", callId)
-            putExtra("callType", callType.lowercase())
-        }
-        val acceptPendingIntent = PendingIntent.getBroadcast(
-            this, callId.hashCode() + 1, acceptIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-
-        // ── Decline action ──
-        val declineIntent = Intent(this, CallNotificationReceiver::class.java).apply {
-            action = ACTION_DECLINE_CALL
-            putExtra("callId", callId)
-        }
-        val declinePendingIntent = PendingIntent.getBroadcast(
-            this, callId.hashCode() + 2, declineIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-        )
-
-        // ── Call ringtone ──
-        val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-
-        // ── Build notification ──
-        val notification = NotificationCompat.Builder(this, CHANNEL_CALLS)
-            .setSmallIcon(if (callType == "VIDEO") android.R.drawable.ic_menu_camera else android.R.drawable.ic_menu_call)
-            .setContentTitle(callerName)
-            .setContentText("Incoming $callTypeLabel…")
-            .setSubText("Nexus Chat")
-            .setLargeIcon(loadContactPhoto(callerPhoto))
-            .setFullScreenIntent(fullScreenPendingIntent, true) // 👈 muestra como llamada entrante (full screen)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setSound(ringtoneUri)
-            .setVibrate(longArrayOf(0, 1000, 500, 1000, 500, 1000)) // patrón de llamada
-            .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                "Decline",
-                declinePendingIntent
-            )
-            .addAction(
-                android.R.drawable.ic_menu_call,
-                "Accept",
-                acceptPendingIntent
-            )
-            .build()
-
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        // ID único basado en callId para poder actualizar/eliminar después
-        manager.notify("incoming_calls", callId.hashCode(), notification)
-
         Log.d(TAG, "📞 Incoming call notification shown for: $callerName")
     }
 
@@ -230,33 +167,21 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     // ║  MISSED CALL NOTIFICATION                               ║
     // ╚══════════════════════════════════════════════════════════╝
     private fun showMissedCallNotification(data: Map<String, String>) {
-        val callerName = data["callerName"] ?: "Anónimo"
-        val callerPhoto = data["callerPhotoUrl"]
         val callId = data["callId"] ?: ""
+        // El emisor colgó o se agotó el tiempo: el tono de la llamada entrante debe
+        // callar YA, esté o no la app abierta.
+        CallNotifications.cancelIncoming(this, callId)
 
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("navigate_to", "calls")
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, callId.hashCode(), openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        // Mismo tag e id que usa la app cuando detecta la llamada perdida con la
+        // pantalla abierta: si llegan las dos vías, la segunda reemplaza a la
+        // primera en vez de duplicarla.
+        NotificationHelper.showMissedCallNotification(
+            context = this,
+            callId = callId,
+            callerName = data["callerName"]?.takeIf { it.isNotBlank() } ?: "Anónimo",
+            callerPhotoUrl = data["callerPhotoUrl"],
+            callerId = data["callerId"]
         )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_MISSED_CALLS)
-            .setSmallIcon(android.R.drawable.ic_menu_call)
-            .setContentTitle("Missed call")
-            .setContentText("From $callerName")
-            .setSubText("Nexus Chat")
-            .setLargeIcon(loadContactPhoto(callerPhoto))
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify("missed_calls", callId.hashCode(), notification)
     }
 
     // ╔══════════════════════════════════════════════════════════╗
@@ -272,11 +197,11 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
 
         // ── Determinar texto a mostrar según el tipo de media ──
         val displayText = when (mediaType) {
-            "IMAGE"    -> "📷 Photo"
+            "IMAGE"    -> "📷 Foto"
             "VIDEO"    -> "🎥 Video"
-            "AUDIO"    -> "🎤 Voice message"
-            "DOCUMENT" -> "📄 Document"
-            "LOCATION" -> "📍 Location"
+            "AUDIO"    -> "🎤 Mensaje de voz"
+            "DOCUMENT" -> "📄 Documento"
+            "LOCATION" -> "📍 Ubicación"
             "STICKER"  -> "Sticker"
             else       -> body
         }
@@ -311,7 +236,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         // ── Quick Reply (RemoteInput) ──
-        val replyLabel = "Reply"
+        val replyLabel = "Responder"
         val remoteInput = RemoteInput.Builder(KEY_TEXT_REPLY)
             .setLabel(replyLabel)
             .build()
@@ -346,7 +271,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
 
         val markReadAction = NotificationCompat.Action.Builder(
             R.drawable.ic_notification,
-            "Mark as read",
+            "Marcar como leído",
             markReadPendingIntent
         ).build()
 
@@ -397,7 +322,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
         val summary = NotificationCompat.Builder(this, CHANNEL_MESSAGES)
             .setSmallIcon(R.drawable.ic_notification)
             .setStyle(NotificationCompat.InboxStyle()
-                .setSummaryText("New messages"))
+                .setSummaryText("Mensajes nuevos"))
             .setGroup(NOTIFICATION_GROUP_MESSAGES)
             .setGroupSummary(true)
             .setAutoCancel(true)
@@ -409,7 +334,7 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     // ║  STORY NOTIFICATION                                     ║
     // ╚══════════════════════════════════════════════════════════╝
     private fun showStoryNotification(data: Map<String, String>) {
-        val title = data["title"] ?: "New Story"
+        val title = data["title"] ?: "Nueva historia"
         val body  = data["body"]  ?: ""
 
         val notification = NotificationCompat.Builder(this, CHANNEL_STORIES)

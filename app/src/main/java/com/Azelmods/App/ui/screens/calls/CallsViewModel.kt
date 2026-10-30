@@ -100,18 +100,31 @@ class CallsViewModel @Inject constructor(
             is Number -> t.toLong()
             else -> System.currentTimeMillis()
         }
-        val endTime = when (val t = data["endTime"]) {
+        val endTime = when (val t = data["endTime"] ?: data["endedAt"]) {
             is Long -> t
             is Number -> t.toLong()
             else -> null
         }
-        val durationMs = if (endTime != null && endTime > startTime) endTime - startTime else 0L
-        val duration = if (durationMs > 0) {
-            val sec = durationMs / 1000
-            val min = sec / 60
-            val rem = sec % 60
-            if (min > 0) "${min}m ${rem}s" else "${rem}s"
+        val connectedAt = (data["connectedAt"] as? Number)?.toLong()
+        // Duración real: la que mide el cliente desde que el medio conecta. Para
+        // llamadas antiguas se estima con connectedAt/endTime; si la llamada nunca
+        // llegó a conectarse NO tiene duración (antes se contaba el timbre).
+        val durationSecs = (data["durationSec"] as? Number)?.toLong()
+            ?: if (connectedAt != null && endTime != null && endTime > connectedAt) (endTime - connectedAt) / 1000 else 0L
+        val duration = if (durationSecs > 0) {
+            val min = durationSecs / 60
+            val rem = durationSecs % 60
+            if (min > 0) "${min} min ${rem} s" else "${rem} s"
         } else null
+
+        val isIncoming = receiverId == currentUserId
+        val rawStatus = (data["status"] as? String)?.uppercase() ?: "ENDED"
+        // "MISSED" no lo escribe nadie: una llamada entrante que terminó sin
+        // llegar a conectarse ES una perdida para quien la recibía.
+        val status = when {
+            isIncoming && rawStatus == "ENDED" && connectedAt == null && durationSecs == 0L -> "MISSED"
+            else -> rawStatus
+        }
 
         return CallHistoryItem(
             callId = callId,
@@ -119,11 +132,11 @@ class CallsViewModel @Inject constructor(
             userName = userName,
             userPhotoUrl = photoUrl,
             callType = data["callType"] as? String ?: "AUDIO",
-            status = data["status"] as? String ?: "ENDED",
+            status = status,
             startTime = startTime,
             endTime = endTime,
             duration = duration,
-            isIncoming = receiverId == currentUserId
+            isIncoming = isIncoming
         )
     }
 

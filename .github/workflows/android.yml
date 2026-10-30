@@ -48,11 +48,15 @@ jobs:
       - name: Pruebas unitarias
         run: ./gradlew testDebugUnitTest --stacktrace
 
+      # Con los splits por ABI activos (app/build.gradle.kts) no existe un
+      # app-debug.apk: salen app-universal-debug.apk y uno por arquitectura.
+      # Buscar el nombre fijo era lo que ponia el CI en rojo aunque el codigo
+      # compilase y los tests pasasen.
       - name: Publicar el APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       # Los informes de test solo son utiles cuando algo ha fallado.
