@@ -1,104 +1,91 @@
 package com.Azelmods.App.ui.screens.settings
 
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import com.Azelmods.App.i18n.tr
+
+import android.app.Activity
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.Help
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.Azelmods.App.BuildConfig
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
+import com.Azelmods.App.i18n.AppLanguage
+import com.Azelmods.App.i18n.I18n
 import com.Azelmods.App.ui.components.AutoTutorial
+import com.Azelmods.App.ui.components.NexusDivider
+import com.Azelmods.App.ui.components.NexusSectionHeader
+import com.Azelmods.App.ui.components.NexusTopBar
 import com.Azelmods.App.ui.navigation.Screen
-import com.Azelmods.App.ui.theme.*
+import com.Azelmods.App.ui.theme.NexusTokens
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+
+private val TileBlue = Color(0xFF60A5FA)
+private val TileGreen = Color(0xFF34D399)
+private val TileViolet = Color(0xFFA78BFA)
+private val TileOrange = Color(0xFFFB923C)
+private val TilePink = Color(0xFFF472B6)
+private val TileCyan = Color(0xFF22D3EE)
+private val TileAmber = Color(0xFFFBBF24)
+private val TileSlate = Color(0xFF94A3B8)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    navController: NavController
+    navController: NavController,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val tutorialPreferences = remember { TutorialPreferences(context) }
     var showLogoutDialog by remember { mutableStateOf(false) }
-    
-    // Load actual user data from Realtime Database
-    var actualUserName by remember { mutableStateOf("") }
-    var actualUserPhoto by remember { mutableStateOf<String?>(null) }
-    
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    val userId = remember { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid.orEmpty() }
+    var userName by remember { mutableStateOf("") }
+    var userHandle by remember { mutableStateOf("") }
+    var userPhoto by remember { mutableStateOf<String?>(null) }
+    var userColor by remember { mutableIntStateOf(-1) }
+
     LaunchedEffect(Unit) {
-        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return@LaunchedEffect
+        if (userId.isBlank()) return@LaunchedEffect
         withContext(Dispatchers.IO) {
-            try {
+            runCatching {
                 val snapshot = com.google.firebase.database.FirebaseDatabase.getInstance().reference
-                    .child("users").child(uid)
-                    .get()
-                    .await()
-                val name = snapshot.child("displayName").getValue(String::class.java)
-                val photo = snapshot.child("photoUrl").getValue(String::class.java)
-                if (!name.isNullOrBlank()) actualUserName = name
-                if (!photo.isNullOrBlank()) actualUserPhoto = photo
-            } catch (e: Exception) {
-                android.util.Log.e("SettingsScreen", "Error loading user data", e)
-            }
+                    .child("users").child(userId).get().await()
+                userName = snapshot.child("displayName").getValue(String::class.java).orEmpty()
+                userHandle = snapshot.child("username").getValue(String::class.java).orEmpty()
+                userPhoto = snapshot.child("photoUrl").getValue(String::class.java)?.takeIf { it.isNotBlank() }
+                userColor = snapshot.child("profileColor").getValue(Int::class.java) ?: -1
+            }.onFailure { android.util.Log.e("SettingsScreen", "No se pudo cargar el perfil", it) }
         }
     }
-    
-    // Show tutorial on first visit
-    AutoTutorial(
-        feature = AppFeature.SETTINGS,
-        tutorialPreferences = tutorialPreferences
-    )
-    
+
+    AutoTutorial(feature = AppFeature.SETTINGS, tutorialPreferences = tutorialPreferences)
+
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
-                )
-            )
-        },
-        containerColor = DarkBackground
+        topBar = { NexusTopBar(title = tr("Ajustes"), onBack = { navController.popBackStack() }) },
+        containerColor = NexusTokens.Color.BgBase
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -106,319 +93,162 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // PREMIUM PROFILE HEADER
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = DarkSurface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(0.3f))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .clickable {
-                            try {
-                                navController.navigate(Screen.Profile.createRoute(""))
-                            } catch (e: Exception) {
-                                android.util.Log.e("SettingsScreen", "Navigation error: ${e.message}")
-                            }
-                        },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Avatar with animated gradient ring
-                    Box(contentAlignment = Alignment.Center) {
-                        // Animated gradient ring
-                        val rotation by rememberInfiniteTransition(label = "ring").animateFloat(
-                            initialValue = 0f,
-                            targetValue = 360f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(3000, easing = LinearEasing),
-                                repeatMode = RepeatMode.Restart
-                            ),
-                            label = "ring_rotation"
-                        )
-                        
-                        Canvas(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .rotate(rotation)
-                        ) {
-                            drawArc(
-                                brush = Brush.sweepGradient(
-                                    listOf(
-                                        PurpleBright, 
-                                        CyanAccent,
-                                        PurpleBright
-                                    )
-                                ),
-                                startAngle = 0f,
-                                sweepAngle = 360f,
-                                useCenter = false,
-                                style = Stroke(
-                                    width = 3.dp.toPx(),
-                                    cap = StrokeCap.Round
-                                )
-                            )
-                        }
-                        
-                        // Avatar image/initials
-                        Surface(
-                            modifier = Modifier.size(56.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                // Load user photo if available
-                                if (actualUserPhoto != null) {
-                                    coil3.compose.AsyncImage(
-                                        model = actualUserPhoto,
-                                        contentDescription = "Profile",
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(CircleShape),
-                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                                    )
-                                } else {
-                                    Text(
-                                        text = actualUserName.take(1).uppercase().ifEmpty { "?" },
-                                        color = Color.White,
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = actualUserName.ifBlank { "Usuario" },
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Color.White
-                        )
-                        Text(
-                            text = if (actualUserName.isNotBlank()) actualUserName else "Usando Nexus Chat",
-                            fontSize = 13.sp,
-                            color = Color.White.copy(0.5f),
-                            maxLines = 1
-                        )
-                        
-                        // Online status
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(7.dp)
-                                    .background(NeonGreen, CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "En línea",
-                                fontSize = 11.sp,
-                                color = NeonGreen
-                            )
-                        }
-                    }
-                    
-                    // Settings gear (animated)
-                    IconButton(onClick = { /* already on settings */ }) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+            SettingsDashboard(
+                userName = userName,
+                userHandle = userHandle,
+                userPhoto = userPhoto,
+                userColor = userColor,
+                userId = userId,
+                onOpenProfile = { navController.navigate(Screen.Profile.createRoute(userId)) },
+                onOpenAbout = { navController.navigate(Screen.SettingsAbout.route) },
+                onOpenSecurity = { navController.navigate(Screen.Security.route) }
+            )
+
+            SettingsSection(title = tr("Cuenta y privacidad")) {
+                SettingsEntry(Icons.Outlined.WorkspacePremium, TileAmber, "Premium", "Insignia, colores exclusivos y galería sin límite") {
+                    navController.navigate(Screen.Premium.route)
+                }
+                SettingsEntry(Icons.Outlined.Brush, TilePink, "Personalizar perfil", "Color, aro y portada") {
+                    navController.navigate(Screen.ProfileCustomize.route)
+                }
+                SettingsEntry(Icons.Outlined.Person, TileBlue, "Cuenta", "Nombre, usuario, teléfono y correo") {
+                    navController.navigate(Screen.SettingsAccount.route)
+                }
+                SettingsEntry(Icons.Outlined.Lock, TileGreen, "Privacidad", "Última conexión, confirmaciones, bloqueados") {
+                    navController.navigate(Screen.SettingsPrivacy.route)
+                }
+                SettingsEntry(Icons.Outlined.Security, TileViolet, "Seguridad y Tor", "Modo anónimo, fantasma, bloqueo y copias") {
+                    navController.navigate(Screen.Security.route)
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Premium banner
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clickable {
-                        try {
-                            navController.navigate(Screen.Premium.route)
-                        } catch (e: Exception) {
-                            android.util.Log.e("SettingsScreen", "Navigation error: ${e.message}")
-                        }
-                    },
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        tint = GoldPremium,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Upgrade to Premium",
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Unlock all features",
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                    }
-                    
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = Color.Gray
-                    )
+
+            SettingsSection(title = tr("Preferencias")) {
+                SettingsEntry(Icons.Outlined.Notifications, TileOrange, "Notificaciones", "Sonido, vibración y vista previa") {
+                    navController.navigate(Screen.SettingsNotifications.route)
+                }
+                SettingsEntry(Icons.Outlined.Palette, TilePink, "Apariencia", "Color de acento, aros, letra y fondo") {
+                    navController.navigate(Screen.SettingsAppearance.route)
+                }
+                SettingsEntry(Icons.Outlined.Language, TileCyan, "Idioma de la app", I18n.selected(context).label) {
+                    showLanguageDialog = true
+                }
+                SettingsEntry(Icons.Outlined.Translate, TileCyan, "Idioma de traducción", "A qué idioma se traducen los mensajes") {
+                    navController.navigate("translation_language")
+                }
+                SettingsEntry(Icons.Outlined.Storage, TileAmber, "Almacenamiento y datos", "Descarga automática y espacio usado") {
+                    navController.navigate(Screen.SettingsStorage.route)
                 }
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Settings sections
-            SettingsSection(title = "Account") {
-                SettingsItem(
-                    icon = Icons.Default.Person,
-                    title = "Account",
-                    onClick = { navController.navigate(Screen.SettingsAccount.route) }
+
+            SettingsSection(title = tr("Herramientas")) {
+                SettingsEntry(Icons.Outlined.SmartToy, TileViolet, "Inteligencia artificial", "Proveedor, modelo y funciones en los chats") {
+                    navController.navigate(Screen.AiFeatures.route)
+                }
+                SettingsEntry(Icons.Outlined.Code, TileGreen, "Editor de código", "Pestañas, búsqueda y ejecución") {
+                    navController.navigate("code_editor")
+                }
+                SettingsEntry(Icons.Outlined.Terminal, TileSlate, "Terminal", "Sesión de shell real del dispositivo") {
+                    navController.navigate("terminal")
+                }
+            }
+
+            SettingsSection(title = tr("Información")) {
+                SettingsEntry(Icons.AutoMirrored.Outlined.Help, TileBlue, "Ayuda", "Guías de cada función") {
+                    navController.navigate(Screen.SettingsHelp.route)
+                }
+                SettingsEntry(Icons.Outlined.Info, TileSlate, "Acerca de", "Versión ${BuildConfig.VERSION_NAME} y datos del dispositivo") {
+                    navController.navigate(Screen.SettingsAbout.route)
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            SettingsGroup {
+                SettingsEntry(
+                    icon = Icons.AutoMirrored.Outlined.Logout,
+                    color = NexusTokens.Color.Error,
+                    title = tr("Cerrar sesión"),
+                    subtitle = null,
+                    titleColor = NexusTokens.Color.Error,
+                    onClick = { showLogoutDialog = true }
                 )
             }
-            
-            SettingsSection(title = "Privacy & Security") {
-                SettingsItem(
-                    icon = Icons.Default.Lock,
-                    title = "Privacy & Security",
-                    onClick = { navController.navigate(Screen.SettingsPrivacy.route) }
-                )
-                SettingsItem(
-                    icon = Icons.Default.Security,
-                    title = "Security Tools",
-                    badge = "ADVANCED",
-                    onClick = { navController.navigate(Screen.Security.route) }
-                )
-            }
-            
-            SettingsSection(title = "Features") {
-                SettingsItem(
-                    icon = Icons.Default.AutoAwesome,
-                    title = "AI Features",
-                    badge = "NEW",
-                    onClick = { navController.navigate(Screen.AiFeatures.route) }
-                )
-                SettingsItem(
-                    icon = Icons.Default.Notifications,
-                    title = "Notifications",
-                    onClick = { navController.navigate(Screen.SettingsNotifications.route) }
-                )
-                SettingsItem(
-                    icon = Icons.Default.Translate,
-                    title = "Translation Language",
-                    onClick = { navController.navigate("translation_language") }
-                )
-                SettingsItem(
-                    icon = Icons.Default.Code,
-                    title = "Code Editor",
-                    onClick = { navController.navigate("code_editor") }
-                )
-            }
-            
-            SettingsSection(title = "Appearance") {
-                SettingsItem(
-                    icon = Icons.Default.Palette,
-                    title = "Appearance",
-                    onClick = { navController.navigate(Screen.SettingsAppearance.route) }
-                )
-            }
-            
-            SettingsSection(title = "Storage") {
-                SettingsItem(
-                    icon = Icons.Default.Storage,
-                    title = "Storage & Data",
-                    onClick = { navController.navigate(Screen.SettingsStorage.route) }
-                )
-            }
-            
-            SettingsSection(title = "Support") {
-                SettingsItem(
-                    icon = Icons.AutoMirrored.Filled.Help,
-                    title = "Help & Support",
-                    onClick = { navController.navigate(Screen.SettingsHelp.route) }
-                )
-                SettingsItem(
-                    icon = Icons.Default.Info,
-                    title = "About Nexus Chat",
-                    onClick = { navController.navigate(Screen.SettingsAbout.route) }
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Logout button
-            TextButton(
-                onClick = { showLogoutDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Text(
-                    text = "Logout",
-                    color = Color.Red,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
         }
     }
-    
-    // Logout confirmation dialog
+
+    if (showLanguageDialog) {
+        LanguageDialog(
+            current = I18n.selected(context),
+            onSelect = { language ->
+                showLanguageDialog = false
+                (context as? Activity)?.let { I18n.select(it, language) }
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Logout") },
-            text = { Text("Are you sure you want to logout?") },
+            title = { Text(tr("¿Cerrar sesión?")) },
+            text = {
+                Text(
+                    tr("Dejarás de recibir mensajes en este dispositivo hasta que vuelvas a entrar."),
+                    color = NexusTokens.Color.TextSecondary
+                )
+            },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showLogoutDialog = false
-                        try {
-                            navController.navigate(Screen.Login.route) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        } catch (e: Exception) {
-                            android.util.Log.e("SettingsScreen", "Logout navigation error: ${e.message}")
+                TextButton(onClick = {
+                    showLogoutDialog = false
+                    // Antes este botón solo navegaba al login: la sesión seguía abierta y
+                    // al reabrir la app se entraba como si nada.
+                    viewModel.logout {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
                         }
                     }
-                ) {
-                    Text("Logout", color = Color.Red)
+                }) {
+                    Text(tr("Cerrar sesión"), color = NexusTokens.Color.Error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
-                }
-            }
+                TextButton(onClick = { showLogoutDialog = false }) { Text(tr("Cancelar")) }
+            },
+            containerColor = NexusTokens.Color.BgSurface
         )
     }
+}
+
+@Composable
+private fun LanguageDialog(current: AppLanguage, onSelect: (AppLanguage) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Idioma de la app")) },
+        text = {
+            Column {
+                AppLanguage.entries.forEach { language ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(NexusTokens.Radius.sm))
+                            .clickable { onSelect(language) }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = language == current,
+                            onClick = { onSelect(language) },
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(language.label, color = NexusTokens.Color.TextPrimary)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } },
+        containerColor = NexusTokens.Color.BgSurface
+    )
 }
 
 @Composable
@@ -427,84 +257,60 @@ fun SettingsSection(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column {
-        Text(
-            text = title,
-            color = MaterialTheme.colorScheme.primary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-        
-        Surface(
-            color = DarkSurface,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column {
-                content()
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
+        NexusSectionHeader(title)
+        SettingsGroup(content)
     }
 }
 
+/** Secciones agrupadas en una tarjeta. */
 @Composable
-fun SettingsItem(
+private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 12.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(NexusTokens.Radius.xl))
+            .background(NexusTokens.Color.BgSurface),
+        content = content
+    )
+}
+
+/** Entrada de ajustes con descripción: dice qué hay dentro sin tener que abrirla. */
+@Composable
+private fun SettingsEntry(
     icon: ImageVector,
+    color: Color,
     title: String,
-    badge: String? = null,
+    subtitle: String?,
+    titleColor: Color = NexusTokens.Color.TextPrimary,
     onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                try {
-                    onClick()
-                } catch (e: Exception) {
-                    android.util.Log.e("SettingsScreen", "Click error: ${e.message}")
-                }
-            }
-            .padding(16.dp),
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-        )
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 16.sp,
-            modifier = Modifier.weight(1f)
-        )
-        
-        if (badge != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.primary,
-                shape = MaterialTheme.shapes.small
-            ) {
+        SettingsIconTile(icon, color)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = titleColor)
+            if (!subtitle.isNullOrBlank()) {
                 Text(
-                    text = badge,
-                    color = Color.White,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NexusTokens.Color.TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            
-            Spacer(modifier = Modifier.width(8.dp))
         }
-        
         Icon(
-            Icons.Default.ChevronRight,
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
             contentDescription = null,
-            tint = Color.Gray
+            tint = NexusTokens.Color.TextDisabled,
+            modifier = Modifier.size(20.dp)
         )
     }
 }

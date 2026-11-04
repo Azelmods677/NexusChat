@@ -80,9 +80,13 @@ data class TorCircuitInfo(
     val exitIp: String? = null,
     /** true si check.torproject.org confirmó que el tráfico sale por Tor. */
     val verified: Boolean = false,
-    /** true si Orbot está en modo VPN (toda la app, Firebase incluido, va por Tor). */
-    val vpnMode: Boolean = false,
-    /** Puerto SOCKS real de Orbot. */
+    /** Motor que está poniendo Tor. */
+    val engine: TorEngine = TorEngine.EMBEDDED,
+    /** true si la conexión de mensajes de Firebase ya se abrió a través de Tor. */
+    val messagingViaTor: Boolean = false,
+    /** false si los servidores de Firebase están rechazando esta salida de Tor. */
+    val firebaseReachable: Boolean = true,
+    /** Puerto SOCKS real. */
     val socksPort: Int = 9050,
     /** Texto de la última comprobación (o por qué no se pudo verificar). */
     val checkMessage: String = ""

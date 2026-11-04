@@ -33,6 +33,7 @@ class ThemePreferences @Inject constructor(
         private const val KEY_CHAT_BACKGROUND = "chat_background"
         private const val KEY_MESSAGE_STYLE = "message_style"
         private const val KEY_TAB_ORDER = "tab_order"
+        private const val KEY_AVATAR_RINGS = "avatar_rings"
         private const val KEY_VIDEO_WALLPAPER_URI = "video_wallpaper_uri"
         
         // Default colors
@@ -140,6 +141,13 @@ class ThemePreferences @Inject constructor(
      * Gets the custom tab order
      * Returns list of indices representing the order
      */
+    /** Aro de color alrededor de los avatares de la lista de chats. */
+    fun areAvatarRingsEnabled(): Boolean = prefs.getBoolean(KEY_AVATAR_RINGS, true)
+
+    fun setAvatarRingsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_AVATAR_RINGS, enabled).apply()
+    }
+
     fun getTabOrder(): List<Int> {
         val orderString = prefs.getString(KEY_TAB_ORDER, DEFAULT_TAB_ORDER) ?: DEFAULT_TAB_ORDER
         return orderString.split(",").mapNotNull { it.toIntOrNull() }

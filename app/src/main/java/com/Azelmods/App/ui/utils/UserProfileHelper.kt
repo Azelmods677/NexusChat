@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.utils
 
+import com.Azelmods.App.i18n.tr
+
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
 
@@ -16,7 +18,7 @@ object UserProfileHelper {
             ?: user?.email?.substringBefore("@")
                 ?.replaceFirstChar { it.uppercaseChar() }
             ?: user?.phoneNumber?.takeLast(4)?.let { "User •••$it" }
-            ?: "Anónimo"
+            ?: tr("Anónimo")
 
     fun getDisplayNameFromSnapshot(snapshot: DataSnapshot): String =
         snapshot.child("displayName").getValue(String::class.java)
@@ -25,7 +27,7 @@ object UserProfileHelper {
                 ?.trim()?.takeIf { it.isNotBlank() }
             ?: snapshot.child("email").getValue(String::class.java)
                 ?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() }
-            ?: "Anónimo"
+            ?: tr("Anónimo")
 
     /**
      * Resolves a display name from already-fetched fields (e.g. Realtime DB map).
@@ -38,7 +40,7 @@ object UserProfileHelper {
         displayName?.trim()?.takeIf { it.isNotBlank() }
             ?: name?.trim()?.takeIf { it.isNotBlank() }
             ?: email?.substringBefore("@")?.replaceFirstChar { it.uppercaseChar() }
-            ?: "Anónimo"
+            ?: tr("Anónimo")
 
     fun getPhotoUrl(user: FirebaseUser?): String? =
         user?.photoUrl?.toString()?.takeIf { it.isNotBlank() }

@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.calls
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
@@ -90,7 +92,7 @@ class CallsViewModel @Inject constructor(
         val userName = (otherUser?.get("displayName") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (otherUser?.get("username") as? String)
-            ?: "Anónimo"
+            ?: tr("Anónimo")
         val photoUrl = (otherUser?.get("photoUrl") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (otherUser?.get("profilePhotoUrl") as? String)

@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.profile
 
+import com.Azelmods.App.i18n.tr
+
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -67,10 +69,10 @@ fun EditProfileScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Account") },
+                title = { Text(tr("Cuenta")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"))
                     }
                 },
                 actions = {
@@ -84,7 +86,7 @@ fun EditProfileScreen(
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
-                            Text("Save", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text(tr("Guardar"), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     }
                 },
@@ -137,7 +139,7 @@ fun EditProfileScreen(
                         ) {
                             Icon(
                                 Icons.Default.CameraAlt,
-                                contentDescription = "Change photo",
+                                contentDescription = tr("Cambiar foto"),
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -147,7 +149,7 @@ fun EditProfileScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     
                     Text(
-                        text = "Change Profile Photo",
+                        text = tr("Cambiar foto de perfil"),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
@@ -163,7 +165,7 @@ fun EditProfileScreen(
                     // Display Name
                     ProfileEditField(
                         icon = Icons.Default.Person,
-                        label = "Display Name",
+                        label = tr("Nombre visible"),
                         value = state.displayName,
                         onValueChange = { viewModel.updateDisplayName(it) },
                         singleLine = true
@@ -174,7 +176,7 @@ fun EditProfileScreen(
                     // Username
                     ProfileEditField(
                         icon = Icons.Default.AlternateEmail,
-                        label = "Username",
+                        label = tr("Usuario"),
                         value = state.username,
                         onValueChange = { viewModel.updateUsername(it) },
                         singleLine = true,
@@ -186,7 +188,7 @@ fun EditProfileScreen(
                     // Bio
                     ProfileEditField(
                         icon = Icons.Default.Info,
-                        label = "Bio",
+                        label = tr("Bio"),
                         value = state.bio,
                         onValueChange = { viewModel.updateBio(it) },
                         singleLine = false,
@@ -199,7 +201,7 @@ fun EditProfileScreen(
                     // Phone Number
                     ProfileEditField(
                         icon = Icons.Default.Phone,
-                        label = "Phone Number",
+                        label = tr("Teléfono"),
                         value = state.phoneNumber,
                         onValueChange = { viewModel.updatePhoneNumber(it) },
                         singleLine = true,
@@ -211,7 +213,7 @@ fun EditProfileScreen(
                     // Email
                     ProfileEditField(
                         icon = Icons.Default.Email,
-                        label = "Email",
+                        label = tr("Correo"),
                         value = state.email,
                         onValueChange = { viewModel.updateEmail(it) },
                         singleLine = true,
@@ -222,7 +224,7 @@ fun EditProfileScreen(
                     
                     // Danger Zone
                     Text(
-                        text = "Danger Zone",
+                        text = tr("Zona de peligro"),
                         color = Color.Red,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
@@ -254,7 +256,7 @@ fun EditProfileScreen(
                             Spacer(modifier = Modifier.width(16.dp))
                             
                             Text(
-                                text = "Change Password",
+                                text = tr("Cambiar contraseña"),
                                 color = Color.White,
                                 fontSize = 16.sp,
                                 modifier = Modifier.weight(1f)

@@ -1,4 +1,6 @@
 package com.Azelmods.App.ui.screens.settings
+
+import com.Azelmods.App.i18n.tr
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -65,10 +67,10 @@ fun StorageDataScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Storage & Data", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(tr("Almacenamiento y datos"), color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -86,7 +88,7 @@ fun StorageDataScreen(
         ) {
             // Storage usage with real-time data
             Text(
-                text = "Storage Usage",
+                text = tr("Uso del almacenamiento"),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -143,7 +145,7 @@ fun StorageDataScreen(
             }
             
             SettingsItem(
-                title = "Clear Cache",
+                title = tr("Vaciar caché"),
                 subtitle = "Liberar ${formatBytes(cacheSize)}",
                 icon = Icons.Default.CleaningServices,
                 onClick = { 
@@ -156,7 +158,7 @@ fun StorageDataScreen(
             
             // Auto-download
             Text(
-                text = "Auto-Download Media",
+                text = tr("Descarga automática"),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -164,24 +166,24 @@ fun StorageDataScreen(
             )
             
             SettingsSwitchItem(
-                title = "Photos",
-                subtitle = "Auto-download photos",
+                title = tr("Fotos"),
+                subtitle = tr("Descargar fotos automáticamente"),
                 icon = Icons.Default.Photo,
                 checked = autoDownloadPhotos,
                 onCheckedChange = { viewModel.setAutoDownloadPhotos(it) }
             )
             
             SettingsSwitchItem(
-                title = "Videos",
-                subtitle = "Auto-download videos",
+                title = tr("Vídeos"),
+                subtitle = tr("Descargar vídeos automáticamente"),
                 icon = Icons.Default.VideoLibrary,
                 checked = autoDownloadVideos,
                 onCheckedChange = { viewModel.setAutoDownloadVideos(it) }
             )
             
             SettingsSwitchItem(
-                title = "Files",
-                subtitle = "Auto-download documents",
+                title = tr("Archivos"),
+                subtitle = tr("Descargar documentos automáticamente"),
                 icon = Icons.AutoMirrored.Filled.InsertDriveFile,
                 checked = autoDownloadFiles,
                 onCheckedChange = { viewModel.setAutoDownloadFiles(it) }
@@ -191,7 +193,7 @@ fun StorageDataScreen(
             
             // Network usage
             Text(
-                text = "Network Usage",
+                text = tr("Uso de red"),
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -199,15 +201,15 @@ fun StorageDataScreen(
             )
             
             SettingsItem(
-                title = "Data Usage",
-                subtitle = "View data consumption",
+                title = tr("Uso de datos"),
+                subtitle = tr("Ver el consumo de datos"),
                 icon = Icons.Default.DataUsage,
                 onClick = { showDataUsageDialog = true }
             )
             
             SettingsSwitchItem(
-                title = "Low Data Mode",
-                subtitle = "Reduce media auto-download",
+                title = tr("Modo de ahorro de datos"),
+                subtitle = tr("Reduce la descarga automática"),
                 icon = Icons.Default.DataSaverOn,
                 checked = lowDataMode,
                 onCheckedChange = { viewModel.setLowDataMode(it) }
@@ -219,21 +221,21 @@ fun StorageDataScreen(
     if (showDataUsageDialog) {
         AlertDialog(
             onDismissRequest = { showDataUsageDialog = false },
-            title = { Text("Data Usage", color = Color.White) },
+            title = { Text(tr("Uso de datos"), color = Color.White) },
             text = {
                 Column {
-                    Text("Approximate data consumption:", color = Color.Gray)
+                    Text(tr("Consumo aproximado de datos:"), color = Color.Gray)
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Cache size: ${formatBytes(cacheSize)}", color = Color.White)
                     Text("Storage used: ${formatBytes(usedStorage)}", color = Color.White)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Low Data Mode ${if (lowDataMode) "enabled" else "disabled"}", color = Color.Gray, fontSize = 12.sp)
-                    Text("When enabled, photos and videos will not auto-download.", color = Color.Gray, fontSize = 12.sp)
+                    Text(tr("Si lo activas, las fotos y los vídeos no se descargan solos."), color = Color.Gray, fontSize = 12.sp)
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showDataUsageDialog = false }) {
-                    Text("Close", color = MaterialTheme.colorScheme.primary)
+                    Text(tr("Cerrar"), color = MaterialTheme.colorScheme.primary)
                 }
             },
             containerColor = DarkSurface

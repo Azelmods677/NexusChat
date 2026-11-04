@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -94,14 +96,14 @@ fun StickerPicker(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Stickers",
+                    text = tr("Stickers"),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
 
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = tr("Cerrar"), tint = Color.White)
                 }
             }
 
@@ -147,9 +149,9 @@ fun StickerPicker(
                         )
                         Text(
                             text = when (selectedCategory) {
-                                StickerCategory.RECENT -> "No hay stickers recientes"
-                                StickerCategory.FAVORITES -> "No hay stickers favoritos"
-                                else -> "Pack vacío"
+                                StickerCategory.RECENT -> tr("No hay stickers recientes")
+                                StickerCategory.FAVORITES -> tr("No hay stickers favoritos")
+                                else -> tr("Pack vacío")
                             },
                             color = Color.Gray,
                             fontSize = 14.sp
@@ -223,7 +225,7 @@ fun StickerPicker(
                         ) {
                             Icon(
                                 if (favoriteStickers.contains(sticker)) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Favorite"
+                                contentDescription = tr("Favoritos")
                             )
                         }
 
@@ -236,7 +238,7 @@ fun StickerPicker(
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         ) {
-                            Text("Enviar")
+                            Text(tr("Enviar"))
                         }
                     }
                 }

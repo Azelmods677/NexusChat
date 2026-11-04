@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.call
 
+import com.Azelmods.App.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
@@ -10,8 +12,7 @@ import com.Azelmods.App.data.model.CallStatus
 import com.Azelmods.App.data.model.CallType
 import com.Azelmods.App.data.model.User
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
-import com.Azelmods.App.data.security.tor.TorService
-import com.Azelmods.App.data.security.tor.TorState
+import com.Azelmods.App.data.security.tor.AnonymityPolicy
 import com.Azelmods.App.service.CallNotifications
 import com.Azelmods.App.service.NotificationHelper
 import com.Azelmods.App.services.CallService
@@ -53,17 +54,18 @@ enum class CallPhase {
 
 /** Por qué terminó: decide el texto final y si hay que escribir en la base de datos. */
 enum class CallEndReason {
-    HANGUP, REMOTE_HANGUP, DECLINED, NO_ANSWER, CONNECTION_LOST, UNAVAILABLE, ERROR;
+    HANGUP, REMOTE_HANGUP, DECLINED, NO_ANSWER, CONNECTION_LOST, UNAVAILABLE, NO_RELAY, ERROR;
 
     val label: String
         get() = when (this) {
-            HANGUP -> "Llamada finalizada"
-            REMOTE_HANGUP -> "El contacto colgó"
-            DECLINED -> "Llamada rechazada"
-            NO_ANSWER -> "Sin respuesta"
-            CONNECTION_LOST -> "Se perdió la conexión"
-            UNAVAILABLE -> "La llamada ya no está disponible"
-            ERROR -> "No se pudo completar la llamada"
+            NO_RELAY -> tr("En modo anónimo no se puede llamar sin servidor de retransmisión")
+            HANGUP -> tr("Llamada finalizada")
+            REMOTE_HANGUP -> tr("El contacto colgó")
+            DECLINED -> tr("Llamada rechazada")
+            NO_ANSWER -> tr("Sin respuesta")
+            CONNECTION_LOST -> tr("Se perdió la conexión")
+            UNAVAILABLE -> tr("La llamada ya no está disponible")
+            ERROR -> tr("No se pudo completar la llamada")
         }
 }
 
@@ -74,7 +76,7 @@ class CallViewModel @Inject constructor(
     private val webRTCManager: WebRTCManager,
     private val audioRouter: CallAudioRouter,
     private val iceServerProvider: IceServerProvider,
-    private val torService: TorService
+    private val ringback: com.Azelmods.App.webrtc.CallRingback
 ) : ViewModel() {
 
     private companion object {
@@ -115,6 +117,9 @@ class CallViewModel @Inject constructor(
     val isVideoEnabled: StateFlow<Boolean> = webRTCManager.cameraEnabled
     val isSpeakerOn: StateFlow<Boolean> = audioRouter.speakerOn
     val isFrontCamera: StateFlow<Boolean> = webRTCManager.isFrontCamera
+
+    /** Contexto gráfico común: los renderers deben usar el mismo que la cámara y el decodificador. */
+    val eglContext get() = webRTCManager.eglContext
 
     val localVideoTrack: StateFlow<VideoTrack?> = webRTCManager.localVideoTrackFlow
     val remoteVideoTrack: StateFlow<VideoTrack?> = webRTCManager.remoteVideoTrackFlow
@@ -262,10 +267,11 @@ class CallViewModel @Inject constructor(
 
     private fun Map<String, Any>.toUser(fallbackId: String): User = User(
         uid = this["uid"] as? String ?: fallbackId,
-        name = displayNameOf(this) ?: "Anónimo",
+        name = displayNameOf(this) ?: tr("Anónimo"),
         username = this["username"] as? String ?: "",
         email = this["email"] as? String ?: "",
         photoUrl = (this["photoUrl"] as? String)?.takeIf { it.isNotBlank() },
+        profileColor = (this["profileColor"] as? Number)?.toInt() ?: -1,
         bio = this["bio"] as? String ?: "",
         isOnline = this["isOnline"] as? Boolean ?: false,
         lastSeen = (this["lastSeen"] as? Number)?.toLong() ?: 0L
@@ -287,6 +293,13 @@ class CallViewModel @Inject constructor(
         _phase.value = CallPhase.STARTING
         setupWebRTCCallbacks()
 
+        // El tono acompaña exactamente a la fase de timbre: al contestar, colgar o fallar, para.
+        viewModelScope.launch {
+            _phase.collect { phase ->
+                if (phase == CallPhase.RINGING) ringback.start() else ringback.stop()
+            }
+        }
+
         viewModelScope.launch {
             try {
                 val currentUserId = myUid().ifBlank { throw IllegalStateException("Sin sesión") }
@@ -294,11 +307,11 @@ class CallViewModel @Inject constructor(
                 val currentUser = databaseRepository.getUserById(currentUserId)
                 val contactUser = databaseRepository.getUserById(contactId)
                 if (contactUser != null) _contactProfile.value = contactUser.toUser(contactId)
-                val contactName = displayNameOf(contactUser) ?: "Anónimo"
+                val contactName = displayNameOf(contactUser) ?: tr("Anónimo")
 
                 val callData = mapOf(
                     "callerId" to currentUserId,
-                    "callerName" to (displayNameOf(currentUser) ?: "Anónimo"),
+                    "callerName" to (displayNameOf(currentUser) ?: tr("Anónimo")),
                     "callerPhotoUrl" to (currentUser?.get("photoUrl") as? String ?: ""),
                     "receiverId" to contactId,
                     "receiverName" to contactName,
@@ -314,6 +327,7 @@ class CallViewModel @Inject constructor(
                 // WebRTC ANTES de escuchar: la conexión debe existir cuando lleguen
                 // la respuesta y los candidatos del otro lado.
                 preparePeerConnection(callId)
+                if (_endReason.value != null) return@launch
                 startCallService(callId, callType, contactName)
                 listenToCallUpdates(callId)
                 webRTCManager.createOffer()
@@ -370,6 +384,7 @@ class CallViewModel @Inject constructor(
 
                 databaseRepository.updateCallStatus(callId, CallStatus.ACCEPTED.name)
                 preparePeerConnection(callId)
+                if (_endReason.value != null) return@launch
                 startCallService(callId, callType, _contactProfile.value?.name ?: callStartCallerName)
                 listenToCallUpdates(callId)
             } catch (e: Exception) {
@@ -405,10 +420,14 @@ class CallViewModel @Inject constructor(
 
     private suspend fun preparePeerConnection(callId: String) {
         val servers = iceServerProvider.getIceServers()
-        // Modo anónimo (Tor) activo → todo el medio por TURN, para que el otro
-        // participante no vea la IP real. Solo si hay TURN: sin él no conectaría.
-        val anonymous = torService.torState.value is TorState.Connected
-        val relayOnly = anonymous && iceServerProvider.hasTurn(servers)
+        // Modo anónimo → todo el medio por TURN, para que el otro participante no vea la IP
+        // real. Vale desde que se enciende, aunque Tor aún esté conectando. WebRTC no pasa
+        // por Tor: sin TURN la llamada iría directa, así que no se hace.
+        val relayOnly = AnonymityPolicy.active
+        if (relayOnly && !iceServerProvider.hasTurn(servers)) {
+            endCall(CallEndReason.NO_RELAY)
+            return
+        }
         _isRelayOnly.value = relayOnly
 
         withContext(Dispatchers.Main) {
@@ -541,7 +560,7 @@ class CallViewModel @Inject constructor(
                 // ── Llamada perdida: el emisor colgó antes de que contestáramos ──
                 if (isReceiverSide && !wasAccepted && !ownsWebRTCSession) {
                     CallNotifications.cancelIncoming(context, callId)
-                    val name = callStartCallerName.ifBlank { _contactProfile.value?.name ?: "Desconocido" }
+                    val name = callStartCallerName.ifBlank { _contactProfile.value?.name ?: tr("Desconocido") }
                     val photo = callStartCallerPhotoUrl
                     val otherId = callStartOtherUserId
                     // La notificación descarga la foto: nunca en el hilo principal.
@@ -592,6 +611,7 @@ class CallViewModel @Inject constructor(
     }
 
     private fun releaseMedia() {
+        ringback.stop()
         CallNotifications.cancelIncoming(context, currentCallId)
         if (ownsWebRTCSession) {
             stopCallService()

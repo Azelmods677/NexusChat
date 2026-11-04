@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.call
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -7,7 +9,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -17,11 +18,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -30,10 +34,49 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import coil3.compose.AsyncImage
 import com.Azelmods.App.service.CallNotifications
+import com.Azelmods.App.ui.components.AvatarRing
+import com.Azelmods.App.ui.components.ProfileColors
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.theme.NexusTokens
 import kotlinx.coroutines.delay
+
+/**
+ * Fondo de las llamadas: la foto de la persona, desenfocada y oscurecida, teñida con su color.
+ * Se reconoce quién es antes de leer el nombre.
+ */
+@Composable
+internal fun CallBackdrop(photoUrl: String?, colors: List<Color>) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(NexusTokens.Color.BgDeep)
+    ) {
+        if (!photoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(44.dp)
+                    .alpha(0.55f)
+            )
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to colors.first().copy(alpha = 0.34f),
+                        0.45f to Color.Black.copy(alpha = 0.25f),
+                        1f to Color.Black.copy(alpha = 0.88f)
+                    )
+                )
+        )
+    }
+}
 
 /**
  * Llamada entrante a pantalla completa.
@@ -99,20 +142,10 @@ fun IncomingCallScreen(
     )
 
     val name = contact?.name?.takeIf { it.isNotBlank() } ?: "…"
+    val colors = ProfileColors.forUser(contact?.uid ?: name, contact?.profileColor ?: -1)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        NexusTokens.Color.Primary.copy(alpha = 0.35f),
-                        NexusTokens.Color.BgBase,
-                        NexusTokens.Color.BgDeep
-                    )
-                )
-            )
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        CallBackdrop(photoUrl = contact?.photoUrl, colors = colors)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -132,7 +165,7 @@ fun IncomingCallScreen(
                 Spacer(Modifier.width(6.dp))
                 Text(
                     text = endReason?.label
-                        ?: if (isVideoCall) "Videollamada entrante" else "Llamada de voz entrante",
+                        ?: if (isVideoCall) tr("Videollamada entrante") else tr("Llamada de voz entrante"),
                     color = NexusTokens.Color.TextSecondary,
                     fontSize = 14.sp
                 )
@@ -149,7 +182,7 @@ fun IncomingCallScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Lock, null, tint = NexusTokens.Color.Success, modifier = Modifier.size(12.dp))
                 Spacer(Modifier.width(4.dp))
-                Text("Cifrada de extremo a extremo", color = NexusTokens.Color.TextMuted, fontSize = 12.sp)
+                Text(tr("Cifrada de extremo a extremo"), color = NexusTokens.Color.TextMuted, fontSize = 12.sp)
             }
 
             Spacer(Modifier.weight(1f))
@@ -162,18 +195,15 @@ fun IncomingCallScreen(
                             .size(150.dp)
                             .scale(1f + progress * 0.6f)
                             .clip(CircleShape)
-                            .background(NexusTokens.Color.PrimaryLight.copy(alpha = (1f - progress) * 0.22f))
+                            .background(colors.last().copy(alpha = (1f - progress) * 0.3f))
                     )
                 }
-                Box(
-                    Modifier
-                        .size(150.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, Brush.linearGradient(NexusTokens.Gradient.Brand), CircleShape)
-                        .padding(4.dp)
-                ) {
-                    UserAvatar(name = name, photoUrl = contact?.photoUrl, size = 142.dp)
-                }
+                UserAvatar(
+                    name = name,
+                    photoUrl = contact?.photoUrl,
+                    size = 150.dp,
+                    ring = AvatarRing(colors, width = 3.dp, rotating = true)
+                )
             }
 
             Spacer(Modifier.weight(1f))
@@ -181,7 +211,7 @@ fun IncomingCallScreen(
             // Responder con un mensaje: rechaza y abre el chat.
             IncomingSideAction(
                 icon = Icons.AutoMirrored.Filled.Message,
-                label = "Responder con mensaje",
+                label = tr("Responder con mensaje"),
                 onClick = {
                     if (callId.isNotBlank()) viewModel.declineCall(callId)
                     val peerId = contact?.uid?.takeIf { it.isNotBlank() }
@@ -204,7 +234,7 @@ fun IncomingCallScreen(
             ) {
                 IncomingMainAction(
                     icon = Icons.Default.CallEnd,
-                    label = "Rechazar",
+                    label = tr("Rechazar"),
                     color = NexusTokens.Color.Error,
                     enabled = endReason == null,
                     onClick = {
@@ -214,7 +244,7 @@ fun IncomingCallScreen(
                 )
                 IncomingMainAction(
                     icon = if (isVideoCall) Icons.Default.Videocam else Icons.Default.Call,
-                    label = "Contestar",
+                    label = tr("Contestar"),
                     color = NexusTokens.Color.Success,
                     enabled = endReason == null,
                     modifier = Modifier.offset(y = (-6 * bob).dp),

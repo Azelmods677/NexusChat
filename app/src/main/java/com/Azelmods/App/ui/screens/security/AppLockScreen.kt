@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.security
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -118,14 +120,14 @@ fun AppLockScreen(
             // Icono de bloqueo
             Icon(
                 imageVector = Icons.Default.Lock,
-                contentDescription = "Lock",
+                contentDescription = tr("Bloquear"),
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
             
             // Título
             Text(
-                text = "Aplicación Bloqueada",
+                text = tr("Aplicación Bloqueada"),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -133,7 +135,7 @@ fun AppLockScreen(
             
             // Subtítulo
             Text(
-                text = "Ingresa tu PIN para desbloquear",
+                text = tr("Ingresa tu PIN para desbloquear"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 textAlign = TextAlign.Center
@@ -240,14 +242,14 @@ private fun TwoFactorStep(
                 tint = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = "Verificación en dos pasos",
+                text = tr("Verificación en dos pasos"),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Introduce el código de 6 dígitos de tu app de autenticación",
+                text = tr("Introduce el código de 6 dígitos de tu app de autenticación"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 textAlign = TextAlign.Center
@@ -280,7 +282,7 @@ private fun TwoFactorStep(
                 onClick = onVerify,
                 enabled = code.length == 6,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Verificar") }
+            ) { Text(tr("Verificar")) }
         }
     }
 }

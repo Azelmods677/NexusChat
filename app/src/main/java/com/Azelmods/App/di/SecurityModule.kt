@@ -1,8 +1,10 @@
 package com.Azelmods.App.di
 
 import android.content.Context
+import com.Azelmods.App.data.security.tor.EmbeddedTor
 import com.Azelmods.App.data.security.tor.FirebaseProxyConfigurator
 import com.Azelmods.App.data.security.tor.TorDnsResolver
+import com.Azelmods.App.data.security.tor.TorPreferences
 import com.Azelmods.App.data.security.tor.TorService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -31,9 +33,11 @@ object SecurityModule {
     fun provideTorService(
         @ApplicationContext context: Context,
         torDnsResolver: TorDnsResolver,
-        firebaseProxyConfigurator: FirebaseProxyConfigurator
+        firebaseProxyConfigurator: FirebaseProxyConfigurator,
+        embeddedTor: EmbeddedTor,
+        preferences: TorPreferences
     ): TorService {
-        return TorService(context, torDnsResolver, firebaseProxyConfigurator)
+        return TorService(context, torDnsResolver, firebaseProxyConfigurator, embeddedTor, preferences)
     }
 
     @Provides

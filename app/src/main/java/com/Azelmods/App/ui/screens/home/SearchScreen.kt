@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.home
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -102,11 +104,11 @@ fun SearchScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester),
-                        placeholder = { Text("Search chats, contacts, messages...") },
+                        placeholder = { Text(tr("Buscar chats, contactos y mensajes…")) },
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Clear")
+                                    Icon(Icons.Default.Close, contentDescription = tr("Borrar"))
                                 }
                             }
                         },
@@ -121,7 +123,7 @@ fun SearchScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -148,22 +150,22 @@ fun SearchScreen(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("All") }
+                        text = { Text(tr("Todo")) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Chats") }
+                        text = { Text(tr("Chats")) }
                     )
                     Tab(
                         selected = selectedTab == 2,
                         onClick = { selectedTab = 2 },
-                        text = { Text("Contacts") }
+                        text = { Text(tr("Contactos")) }
                     )
                     Tab(
                         selected = selectedTab == 3,
                         onClick = { selectedTab = 3 },
-                        text = { Text("Messages") }
+                        text = { Text(tr("Mensajes")) }
                     )
                 }
             }
@@ -187,7 +189,7 @@ fun SearchScreen(
                                 tint = Color.Gray
                             )
                             Text(
-                                text = "Search for chats, contacts, or messages",
+                                text = tr("Busca chats, contactos o mensajes"),
                                 color = Color.Gray,
                                 fontSize = 16.sp
                             )
@@ -218,12 +220,12 @@ fun SearchScreen(
                                 tint = Color.Gray
                             )
                             Text(
-                                text = "No results found",
+                                text = tr("Sin resultados"),
                                 color = Color.Gray,
                                 fontSize = 16.sp
                             )
                             Text(
-                                text = "Try a different search term",
+                                text = tr("Prueba con otras palabras"),
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -362,7 +364,7 @@ fun ContactSearchResultItem(
         
         Icon(
             Icons.Default.PersonAdd,
-            contentDescription = "Add contact",
+            contentDescription = tr("Añadir contacto"),
             tint = MaterialTheme.colorScheme.primary
         )
     }

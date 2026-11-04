@@ -1,41 +1,47 @@
 package com.Azelmods.App.ui.screens.stories
 
-import androidx.compose.animation.core.*
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
 import com.Azelmods.App.ui.components.AutoTutorial
+import com.Azelmods.App.ui.components.NexusDivider
+import com.Azelmods.App.ui.components.NexusEmptyState
+import com.Azelmods.App.ui.components.NexusSectionHeader
+import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.navigation.Screen
-import com.Azelmods.App.ui.theme.*
+import com.Azelmods.App.ui.theme.NexusTokens
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+/**
+ * Historias en forma de lista: tu historia arriba y, debajo, las de tus contactos
+ * separadas en recientes y vistas. Cada anillo dice una sola cosa: si queda algo por ver.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoriesScreen(
@@ -44,17 +50,10 @@ fun StoriesScreen(
 ) {
     val context = LocalContext.current
     val tutorialPreferences = remember { TutorialPreferences(context) }
-
-    // ── Lifecycle-aware state collection ──────────────────────────────────────
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    // Show tutorial on first visit
-    AutoTutorial(
-        feature = AppFeature.STORIES,
-        tutorialPreferences = tutorialPreferences
-    )
+    AutoTutorial(feature = AppFeature.STORIES, tutorialPreferences = tutorialPreferences)
 
-    // Show error toast
     LaunchedEffect(state.error) {
         state.error?.let { error ->
             android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show()
@@ -62,374 +61,209 @@ fun StoriesScreen(
         }
     }
 
+    val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    val others = state.stories.filter { it.userId != currentUserId }
+    val mine = state.stories.firstOrNull { it.userId == currentUserId }
+    val recent = others.filterNot { it.isViewed }
+    val viewed = others.filter { it.isViewed }
+
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Stories",
+                        tr("Historias"),
                         style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold
+                        color = NexusTokens.Color.TextPrimary
                     )
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = Color.White
-                ),
-                modifier = Modifier.statusBarsPadding() // Edge-to-Edge: respeta barra de estado
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0) // Edge-to-Edge: control manual de insets
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate(Screen.CreateStory.route) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(2.dp, 2.dp, 2.dp, 2.dp)
+            ) {
+                Icon(Icons.Default.PhotoCamera, contentDescription = tr("Crear historia"))
+            }
+        },
+        containerColor = Color.Transparent
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .consumeWindowInsets(paddingValues) // Edge-to-Edge: consume los insets del Scaffold
-                .navigationBarsPadding() // Edge-to-Edge: respeta barra de navegación
-                .padding(horizontal = 16.dp) // Padding general de 16dp
         ) {
-            // ── Stories horizontal scroll ──────────────────────────────────────
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 20.dp), // Aumentado para que respire más
-                horizontalArrangement = Arrangement.spacedBy(16.dp), // Espaciado aumentado
-                contentPadding = PaddingValues(horizontal = 0.dp) // Ya tenemos padding general
-            ) {
-                // Your story bubble — shows the logged-in user's own profile photo
-                item {
-                    YourStoryItem(
-                        currentUserPhotoUrl = state.currentUserPhotoUrl,
-                        onClick = {
-                            navController.navigate(Screen.CreateStory.route)
-                        }
-                    )
+            item(key = "my_story") {
+                MyStoryRow(
+                    photoUrl = state.currentUserPhotoUrl,
+                    hasStory = mine != null,
+                    onClick = {
+                        if (mine != null) navController.navigate(Screen.StoryViewer.createRoute(mine.userId))
+                        else navController.navigate(Screen.CreateStory.route)
+                    },
+                    onAdd = { navController.navigate(Screen.CreateStory.route) }
+                )
+            }
+
+            when {
+                state.isLoading -> item(key = "loading") {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 64.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
 
-                // Real stories from Firebase 
-                if (!state.isLoading) {
-                    items(state.stories) { story ->
-                        StoryItem(
-                            story = story,
-                            onClick = {
-                                navController.navigate(
-                                    Screen.StoryViewer.createRoute(story.userId)
-                                )
+                others.isEmpty() -> item(key = "empty") {
+                    Box(Modifier.fillParentMaxHeight(0.7f)) {
+                        NexusEmptyState(
+                            icon = Icons.Outlined.AutoStories,
+                            title = tr("Sin historias nuevas"),
+                            body = "Cuando tus contactos publiquen algo, aparecerá aquí durante 24 horas."
+                        )
+                    }
+                }
+
+                else -> {
+                    if (recent.isNotEmpty()) {
+                        item(key = "h_recent") { NexusSectionHeader(tr("Recientes")) }
+                        items(recent, key = { "r_${it.storyId}" }) { story ->
+                            StoryRow(story) {
+                                navController.navigate(Screen.StoryViewer.createRoute(story.userId))
                             }
-                        )
+                        }
                     }
-                }
-            }
-
-            // ── Body: loading indicator OR content ──────────────────────────
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                when {
-                    state.isLoading -> {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                    }
-
-                    state.stories.isEmpty() -> {
-                        // ── Improved empty state ────────────────────────────
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.padding(32.dp)
-                        ) {
-                            Text(
-                                text = "📖",
-                                fontSize = 64.sp
-                            )
-                            Text(
-                                text = "No stories yet",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Tap your avatar to share a moment",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    if (viewed.isNotEmpty()) {
+                        item(key = "h_viewed") { NexusSectionHeader(tr("Vistas")) }
+                        items(viewed, key = { "v_${it.storyId}" }) { story ->
+                            StoryRow(story) {
+                                navController.navigate(Screen.StoryViewer.createRoute(story.userId))
+                            }
                         }
                     }
                 }
             }
+            item(key = "bottom_space") { Spacer(Modifier.height(88.dp)) }
         }
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Your Story bubble
-// ───────────────────────────────────────────────────────────────────────────
-
 @Composable
-fun YourStoryItem(
-    currentUserPhotoUrl: String?,
-    onClick: () -> Unit
+private fun MyStoryRow(
+    photoUrl: String?,
+    hasStory: Boolean,
+    onClick: () -> Unit,
+    onAdd: () -> Unit
 ) {
-    val context = LocalContext.current
-
-    // Slow, calm rotation so the "add your story" ring feels inviting.
-    val infiniteTransition = rememberInfiniteTransition(label = "your_story_ring")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(6000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "your_ring_rotation"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(80.dp)
-            .padding(4.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier.size(68.dp),
-            contentAlignment = Alignment.Center
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Subtle gradient ring to distinguish "your" bubble
-            Box(
-                modifier = Modifier
-                    .size(68.dp)
-                    .graphicsLayer { rotationZ = rotation }
-                    .clip(CircleShape)
-                    .background(
-                        Brush.sweepGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-                            )
-                        )
-                    )
-            )
-
-            // White gap between ring and avatar
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(Color.Transparent)
-            )
-
-            // Profile photo or placeholder
-            if (!currentUserPhotoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(currentUserPhotoUrl)
-                        .crossfade(300)
-                        .build(),
-                    contentDescription = "Your profile photo",
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
+            Box(modifier = Modifier.size(58.dp)) {
+                StoryAvatar(name = "Tú", photoUrl = photoUrl, ringColor = if (hasStory) NexusTokens.Color.Hairline else null)
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
+                        .align(Alignment.BottomEnd)
+                        .size(22.dp)
                         .clip(CircleShape)
-                        .background(DarkSurface),
+                        .background(MaterialTheme.colorScheme.primary)
+                        .border(2.dp, NexusTokens.Color.BgBase, CircleShape)
+                        .clickable(onClick = onAdd),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "You",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = tr("Añadir historia"),
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
-
-            // Add (+) badge
-            Box(
-                modifier = Modifier
-                    .size(22.dp)
-                    .align(Alignment.BottomEnd)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary)
-                    .border(1.5.dp, Color.Black, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Add Story",
-                    tint = Color.White,
-                    modifier = Modifier.size(14.dp)
+            Spacer(Modifier.width(14.dp))
+            Column {
+                Text(
+                    tr("Mi historia"),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = NexusTokens.Color.TextPrimary
+                )
+                Text(
+                    if (hasStory) tr("Toca para verla") else tr("Comparte algo durante 24 horas"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NexusTokens.Color.TextMuted
                 )
             }
         }
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = "Your Story",
-            color = Color.White,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1
-        )
+        NexusDivider()
     }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Contact story bubble
-// ───────────────────────────────────────────────────────────────────────────
+@Composable
+private fun StoryRow(story: StoryItemData, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        StoryAvatar(
+            name = story.userName,
+            photoUrl = story.userPhotoUrl,
+            ringColor = if (story.isViewed) NexusTokens.Color.BgHigh else MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = story.userName.ifBlank { "Usuario" },
+                style = MaterialTheme.typography.titleMedium,
+                color = NexusTokens.Color.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = formatStoryTime(story.timestamp),
+                style = MaterialTheme.typography.bodySmall,
+                color = NexusTokens.Color.TextMuted
+            )
+        }
+    }
+}
 
 @Composable
-fun StoryItem(
-    story: StoryItemData,
-    onClick: () -> Unit
-) {
-    val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "story_ring")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "ring_rotation"
-    )
-    // Subtle "breathing" pulse so unread rings feel alive (premium detail).
-    val pulse by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "ring_pulse"
-    )
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(80.dp)
-            .padding(4.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier.size(68.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Animated rotating rainbow ring (unviewed) or grey ring (viewed)
-            if (!story.isViewed) {
-                androidx.compose.foundation.Canvas(
-                    modifier = Modifier
-                        .size(68.dp)
-                        .graphicsLayer {
-                            rotationZ = rotation
-                            scaleX = pulse
-                            scaleY = pulse
-                        }
-                ) {
-                    drawArc(
-                        brush = Brush.sweepGradient(
-                            listOf(
-                                PurpleBright,
-                                CyanAccent,
-                                RosePink,
-                                NeonGreen,
-                                GoldPremium,
-                                CyanAccent,
-                                PurpleBright
-                            )
-                        ),
-                        startAngle = 0f,
-                        sweepAngle = 360f,
-                        useCenter = false,
-                        style = androidx.compose.ui.graphics.drawscope.Stroke(
-                            width = 3.5.dp.toPx(),
-                            cap = androidx.compose.ui.graphics.StrokeCap.Round
-                        )
-                    )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(68.dp)
-                        .clip(CircleShape)
-                        .background(Color.Gray.copy(alpha = 0.3f))
-                )
-            }
-
-            // White gap
+private fun StoryAvatar(name: String, photoUrl: String?, ringColor: Color?) {
+    Box(modifier = Modifier.size(58.dp), contentAlignment = Alignment.Center) {
+        if (ringColor != null) {
             Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(Color.Transparent)
+                Modifier
+                    .fillMaxSize()
+                    .border(2.dp, ringColor, CircleShape)
             )
-
-            // Avatar: real photo or initial fallback
-            if (!story.userPhotoUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(story.userPhotoUrl)
-                        .crossfade(300)
-                        .build(),
-                    contentDescription = "Profile photo of ${story.userName}",
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                val initial = story.userName
-                    .takeIf { it.isNotBlank() }
-                    ?.take(1)
-                    ?.uppercase()
-                    ?: "?"
-
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.secondary
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = initial,
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
         }
+        UserAvatar(name = name.ifBlank { "?" }, photoUrl = photoUrl, size = 50.dp)
+    }
+}
 
-        Spacer(modifier = Modifier.height(6.dp))
-
-        val displayName = story.userName
-            .ifBlank { "User" }
-            .let { if (it.length > 12) it.take(11) + "…" else it }
-
-        Text(
-            text = displayName,
-            color = if (story.isViewed) Color.Gray else Color.White,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (story.isViewed) FontWeight.Normal else FontWeight.Medium,
-            maxLines = 1
-        )
+private fun formatStoryTime(timestamp: Long): String {
+    val minutes = (System.currentTimeMillis() - timestamp) / 60_000
+    return when {
+        minutes < 1 -> tr("Ahora mismo")
+        minutes < 60 -> "Hace $minutes min"
+        minutes < 24 * 60 -> "Hace ${minutes / 60} h"
+        else -> SimpleDateFormat("d MMM, HH:mm", Locale.forLanguageTag("es")).format(Date(timestamp))
     }
 }

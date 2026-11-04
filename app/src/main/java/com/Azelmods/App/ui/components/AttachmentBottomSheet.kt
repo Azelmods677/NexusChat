@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -68,7 +70,7 @@ fun AttachmentBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = "Adjuntar archivo",
+                text = tr("Adjuntar archivo"),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -83,7 +85,7 @@ fun AttachmentBottomSheet(
             ) {
                 AttachmentOption(
                     icon = Icons.Default.PhotoLibrary,
-                    label = "Galería",
+                    label = tr("Galería"),
                     color = Purple,
                     onClick = {
                         onAttachmentSelected(AttachmentType.GALLERY)
@@ -93,7 +95,7 @@ fun AttachmentBottomSheet(
                 
                 AttachmentOption(
                     icon = Icons.Default.CameraAlt,
-                    label = "Cámara",
+                    label = tr("Cámara"),
                     color = Pink,
                     onClick = {
                         onAttachmentSelected(AttachmentType.CAMERA)
@@ -103,7 +105,7 @@ fun AttachmentBottomSheet(
                 
                 AttachmentOption(
                     icon = Icons.Default.Description,
-                    label = "Documento",
+                    label = tr("Documento"),
                     color = Teal,
                     onClick = {
                         onAttachmentSelected(AttachmentType.DOCUMENT)
@@ -120,7 +122,7 @@ fun AttachmentBottomSheet(
             ) {
                 AttachmentOption(
                     icon = Icons.Default.Videocam,
-                    label = "Video",
+                    label = tr("Video"),
                     color = ErrorRed,
                     onClick = {
                         onAttachmentSelected(AttachmentType.VIDEO)
@@ -130,7 +132,7 @@ fun AttachmentBottomSheet(
 
                 AttachmentOption(
                     icon = Icons.Default.Mic,
-                    label = "Audio",
+                    label = tr("Audio"),
                     color = NexusTokens.Color.Gold,
                     onClick = {
                         onAttachmentSelected(AttachmentType.AUDIO)
@@ -140,7 +142,7 @@ fun AttachmentBottomSheet(
                 
                 AttachmentOption(
                     icon = Icons.Default.LocationOn,
-                    label = "Ubicación",
+                    label = tr("Ubicación"),
                     color = Success,
                     onClick = {
                         onAttachmentSelected(AttachmentType.LOCATION)
@@ -150,7 +152,7 @@ fun AttachmentBottomSheet(
                 
                 AttachmentOption(
                     icon = Icons.Default.Person,
-                    label = "Contacto",
+                    label = tr("Contacto"),
                     color = Info,
                     onClick = {
                         onAttachmentSelected(AttachmentType.CONTACT)

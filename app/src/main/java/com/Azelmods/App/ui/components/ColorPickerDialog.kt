@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -61,7 +63,7 @@ fun ColorPickerDialog(
             ) {
                 // Title
                 Text(
-                    text = "Seleccionar Color",
+                    text = tr("Seleccionar Color"),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -80,7 +82,7 @@ fun ColorPickerDialog(
                 // Hex input
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Código Hex",
+                        text = tr("Código Hex"),
                         fontSize = 14.sp,
                         color = Color.Gray
                     )
@@ -124,7 +126,7 @@ fun ColorPickerDialog(
                 
                 // Preset colors grid
                 Text(
-                    text = "Colores Predefinidos",
+                    text = tr("Colores Predefinidos"),
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -177,7 +179,7 @@ fun ColorPickerDialog(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Cancelar")
+                        Text(tr("Cancelar"))
                     }
                     
                     Button(
@@ -187,7 +189,7 @@ fun ColorPickerDialog(
                             containerColor = RedDeep
                         )
                     ) {
-                        Text("Aplicar")
+                        Text(tr("Aplicar"))
                     }
                 }
             }

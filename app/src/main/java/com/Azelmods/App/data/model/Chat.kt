@@ -16,6 +16,8 @@ data class Chat(
     // Additional fields for UI compatibility
     val contactName: String = "",
     val contactPhotoUrl: String? = null,
+    /** Color de perfil elegido por el contacto, o -1 si no eligió ninguno. */
+    val contactColor: Int = -1,
     val isOnline: Boolean = false,
     val isPinned: Boolean = false,
     val isMuted: Boolean = false,

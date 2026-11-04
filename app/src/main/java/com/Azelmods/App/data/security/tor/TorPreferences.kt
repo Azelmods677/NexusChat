@@ -30,6 +30,8 @@ class TorPreferences @Inject constructor(
         private const val KEY_ANONYMOUS_MODE_ENABLED = "anonymous_mode_enabled"
         private const val KEY_BRIDGE_ADDRESSES = "bridge_addresses"
         private const val KEY_USE_BRIDGES = "use_bridges"
+        private const val KEY_ENGINE = "tor_engine"
+        private const val KEY_GHOST_MODE = "ghost_mode"
         private const val BRIDGE_SEPARATOR = "|||"
     }
     
@@ -52,6 +54,21 @@ class TorPreferences @Inject constructor(
         return prefs.getBoolean(KEY_ANONYMOUS_MODE_ENABLED, false)
     }
     
+    fun isGhostModeEnabled(): Boolean = prefs.getBoolean(KEY_GHOST_MODE, false)
+
+    fun setGhostModeEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GHOST_MODE, enabled).apply()
+    }
+
+    /** Motor elegido. Por defecto el integrado: el modo anónimo funciona sin instalar nada. */
+    fun getEngine(): TorEngine =
+        runCatching { TorEngine.valueOf(prefs.getString(KEY_ENGINE, null) ?: TorEngine.EMBEDDED.name) }
+            .getOrDefault(TorEngine.EMBEDDED)
+
+    fun setEngine(engine: TorEngine) {
+        prefs.edit().putString(KEY_ENGINE, engine.name).apply()
+    }
+
     /**
      * Saves bridge configuration
      * Requirement 23.2: Save bridge configuration to SharedPreferences

@@ -182,15 +182,10 @@ class LoginViewModelTest : StringSpec({
 private fun createViewModel(
     loginUseCase: LoginUseCase,
     googleLoginUseCase: GoogleLoginUseCase
-): LoginViewModel {
-    val credentialManager = mockk<androidx.credentials.CredentialManager>(relaxed = true)
-    val context = mockk<android.content.Context>(relaxed = true)
-
-    return LoginViewModel(
-        loginUseCase = loginUseCase,
-        googleLoginUseCase = googleLoginUseCase,
-        credentialManager = credentialManager,
-        googleClientId = "test-client-id",
-        context = context
-    )
-}
+): LoginViewModel = LoginViewModel(
+    loginUseCase = loginUseCase,
+    googleLoginUseCase = googleLoginUseCase,
+    googleIdTokenProvider = mockk(relaxed = true),
+    torPreferences = mockk(relaxed = true),
+    torService = mockk(relaxed = true)
+)

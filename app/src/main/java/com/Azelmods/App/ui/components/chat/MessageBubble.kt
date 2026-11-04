@@ -1,936 +1,862 @@
 package com.Azelmods.App.ui.components.chat
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import com.Azelmods.App.i18n.tr
+
+import android.content.Intent
+import android.net.Uri
+import android.view.WindowManager
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
+import androidx.compose.material.icons.automirrored.outlined.Reply
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import coil3.compose.AsyncImage
 import com.Azelmods.App.data.model.Message
-import com.Azelmods.App.data.model.MessageStatus
 import com.Azelmods.App.ui.components.ReadReceiptIndicator
-import com.Azelmods.App.ui.components.safeClickable
+import com.Azelmods.App.ui.theme.NexusTokens
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
-import java.util.*
-import com.Azelmods.App.ui.theme.NexusTokens
-import com.Azelmods.App.ui.theme.PurpleLight
-import com.Azelmods.App.ui.theme.ErrorRed
-import com.Azelmods.App.ui.theme.DarkElevated
-import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.DarkBubbleLight
-import com.Azelmods.App.ui.theme.DarkBubbleDeep
+import java.util.Date
+import java.util.Locale
+
+private val BubbleMaxWidth = 300.dp
+private val QuickReactions = listOf("❤️", "👍", "😂", "😮", "😢", "🙏")
 
 /**
- * MessageBubble — Componente de burbuja de mensaje premium.
+ * Burbuja de mensaje. Plana y legible: el color distingue lo enviado de lo recibido y no
+ * hay sombras, brillos ni animaciones por mensaje.
  *
- * Características:
- * - Esquinas adaptativas: la punta es menos redondeada que el resto
- * - Colores diferenciados: gradiente vibrante (enviado) vs oscuro sutil (recibido)
- * - Soporte para imágenes/GIFs con Coil AsyncImage
- * - Reacciones emoji con animación spring
- * - Animación de entrada fade + slide
- * - Sombra sutil con color dinámico según dark mode
- * - Indicador de lectura, marca "editado", timestamps
- * - Opciones: responder, editar, eliminar
+ * Tocar un medio lo abre. Mantener pulsado abre las acciones (reaccionar, responder,
+ * copiar, traducir, editar, eliminar).
  */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MessageBubble(
     message: Message,
     isOwnMessage: Boolean,
-    onLongPress: () -> Unit = {},
+    repliedMessage: Message? = null,
+    autoplayVideos: Boolean = false,
+    serverNow: () -> Long = { System.currentTimeMillis() },
+    onReply: () -> Unit = {},
     onReactionClick: (String) -> Unit = {},
     onImageClick: ((String, String, String) -> Unit)? = null,
-    themeColor: Color = MaterialTheme.colorScheme.primary,
-    themeSecondaryColor: Color = MaterialTheme.colorScheme.secondary,
     onDeleteClick: ((Boolean) -> Unit)? = null,
     onEditClick: (() -> Unit)? = null,
-    onMessageViewed: (() -> Unit)? = null,  // Callback when ephemeral message is viewed
+    onMessageViewed: (() -> Unit)? = null,
+    onViewOnceClosed: (() -> Unit)? = null,
     translatedText: String? = null,
     isTranslating: Boolean = false,
     onTranslate: (() -> Unit)? = null
 ) {
-    var showReactionPicker by remember { mutableStateOf(false) }
-    var showMessageOptions by remember { mutableStateOf(false) }
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
-    val quickReactions = listOf("❤️", "👍", "😂", "😮", "😢", "🙏")
-
-    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val hasViewed = currentUserId in message.viewedBy
-    val isDeleted = message.deletedFor[currentUserId] == true
-    val isDeletedForEveryone = message.deletedForEveryone
-
-    val timeSinceMessage = System.currentTimeMillis() - message.timestamp
-    val canEdit = isOwnMessage && timeSinceMessage < 15 * 60 * 1000 && message.mediaType == null && !isDeletedForEveryone
-    val canDeleteForEveryone = isOwnMessage && timeSinceMessage < 48 * 60 * 60 * 1000 && !isDeletedForEveryone
-
-    // ── Entry animation: fade + slide ──
-    var visible by remember(message.messageId) { mutableStateOf(false) }
-    LaunchedEffect(message.messageId) {
-        visible = true
+    if (message.mediaType == "SYSTEM") {
+        SystemNotice(message.content)
+        return
     }
 
-    val offsetX by animateDpAsState(
-        targetValue = if (visible) 0.dp else if (isOwnMessage) 50.dp else (-50).dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "slide_${message.messageId}"
-    )
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    var showActions by remember { mutableStateOf(false) }
+    var confirmDeleteForAll by remember { mutableStateOf(false) }
+    var viewOnceOpen by remember { mutableStateOf(false) }
 
-    val entryAlpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(300),
-        label = "fade_${message.messageId}"
-    )
+    val now = System.currentTimeMillis()
+    val canEdit = isOwnMessage && now - message.timestamp < 15 * 60 * 1000 &&
+        message.mediaType == null && !message.deletedForEveryone && !message.isEphemeral
+    val canDeleteForEveryone = isOwnMessage && now - message.timestamp < 48 * 60 * 60 * 1000 &&
+        !message.deletedForEveryone
+
+    // Un mensaje temporal de texto o medio empieza su cuenta atrás cuando se ve en pantalla.
+    // Los de una sola vista no: esos se marcan al abrirlos a propósito.
+    val me = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+    LaunchedEffect(message.messageId, message.viewedAt) {
+        if (message.isEphemeral && !message.isViewOnce && !isOwnMessage && message.viewedAt == 0L && me !in message.viewedBy) {
+            delay(800)
+            onMessageViewed?.invoke()
+        }
+    }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .offset(x = offsetX)
-            .graphicsLayer { this.alpha = entryAlpha },
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
     ) {
-        // ── Deleted message placeholder ──
-        if (isDeletedForEveryone) {
-            Surface(
+        if (message.deletedForEveryone) {
+            Row(
                 modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .padding(vertical = 4.dp),
-                shape = RoundedCornerShape(18.dp),
-                color = DarkElevated.copy(alpha = 0.5f)
+                    .widthIn(max = BubbleMaxWidth)
+                    .clip(RoundedCornerShape(NexusTokens.Radius.lg))
+                    .background(NexusTokens.Color.BgSurface)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Block,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Este mensaje fue eliminado",
-                        color = Color.Gray,
-                        fontSize = 13.sp,
-                        fontStyle = FontStyle.Italic
-                    )
-                }
+                Icon(Icons.Outlined.Block, null, tint = NexusTokens.Color.TextMuted, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    tr("Mensaje eliminado"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = NexusTokens.Color.TextMuted
+                )
             }
             return@Column
         }
 
-        Column {
-            // ── Premium Message Bubble ──
-            // Adaptive corners: the "tip" pointing to sender is less rounded
-            val bubbleShape = if (isOwnMessage) {
-                RoundedCornerShape(
-                    topStart = 18.dp, topEnd = 18.dp,
-                    bottomStart = 18.dp, bottomEnd = 4.dp
+        val shape = if (isOwnMessage) {
+            RoundedCornerShape(14.dp, 14.dp, 4.dp, 14.dp)
+        } else {
+            RoundedCornerShape(14.dp, 14.dp, 14.dp, 4.dp)
+        }
+        val background = if (isOwnMessage) MaterialTheme.colorScheme.primaryContainer else NexusTokens.Color.BgElevated
+        val isEmojiOnly = message.mediaType == null && !message.isViewOnce && message.content.isEmojiOnly()
+        val edgeToEdgeMedia = message.mediaType in setOf("IMAGE", "GIF", "VIDEO", "GIF_VIDEO") && !message.isViewOnce
+
+        Column(
+            modifier = Modifier
+                .widthIn(max = BubbleMaxWidth)
+                .clip(shape)
+                .then(if (isEmojiOnly) Modifier else Modifier.background(background))
+                .combinedClickable(
+                    onClick = {
+                        if (message.isViewOnce && !isOwnMessage) {
+                            viewOnceOpen = true
+                            onMessageViewed?.invoke()
+                        }
+                    },
+                    onLongClick = { showActions = true }
                 )
+                .padding(if (edgeToEdgeMedia) 3.dp else 0.dp)
+        ) {
+            if (repliedMessage != null) ReplyQuote(repliedMessage, isOwnMessage)
+            if (message.replyTo?.startsWith("story:") == true) StoryReplyQuote()
+
+            if (message.isViewOnce) {
+                ViewOncePlaceholder(isOwnMessage = isOwnMessage)
             } else {
-                RoundedCornerShape(
-                    topStart = 4.dp, topEnd = 18.dp,
-                    bottomStart = 18.dp, bottomEnd = 18.dp
+                MediaContent(
+                    message = message,
+                    autoplayVideos = autoplayVideos,
+                    onImageClick = { url ->
+                        onImageClick?.invoke(
+                            url,
+                            if (isOwnMessage) tr("Tú") else tr("Contacto"),
+                            formatTime(message.timestamp)
+                        )
+                    },
+                    onLongPress = { showActions = true }
                 )
-            }
-            
-            // ── Countdown timer for self-destructing messages ──
-            var remainingSeconds by remember(message.messageId, message.selfDestructAt) {
-                mutableStateOf(calculateRemainingSeconds(message.selfDestructAt))
-            }
-            
-            LaunchedEffect(message.messageId, message.selfDestructAt) {
-                if (message.isEphemeral && message.selfDestructAt > 0) {
-                    while (remainingSeconds > 0) {
-                        delay(1000)
-                        remainingSeconds = calculateRemainingSeconds(message.selfDestructAt)
+
+                val text = if (message.mediaType == "DOCUMENT" || message.mediaType == "LOCATION") "" else message.content
+                if (text.isNotEmpty()) {
+                    var expanded by remember(message.messageId) { mutableStateOf(false) }
+                    val isLong = text.length > LONG_MESSAGE_CHARS
+                    Text(
+                        text = text,
+                        style = if (isEmojiOnly) {
+                            MaterialTheme.typography.displaySmall.copy(fontSize = 40.sp, lineHeight = 46.sp)
+                        } else {
+                            MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 21.sp)
+                        },
+                        color = NexusTokens.Color.TextPrimary,
+                        maxLines = if (isLong && !expanded) COLLAPSED_LINES else Int.MAX_VALUE,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp)
+                    )
+                    if (isLong) {
+                        Text(
+                            if (expanded) tr("Leer menos") else tr("Leer más"),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(start = 12.dp, end = 12.dp, top = 4.dp)
+                                .clickable { expanded = !expanded }
+                        )
                     }
                 }
-            }            // ── Track view-once message being seen ──
-            val isViewOnceEphemeral = message.isEphemeral && message.isViewOnce
 
-            // Report view for view-once / ephemeral messages when they appear on screen
-            LaunchedEffect(message.messageId) {
-                if (message.isEphemeral && !isOwnMessage && !(currentUserId in message.viewedBy)) {
-                    // Small delay so the user actually sees it
-                    delay(1500)
-                    onMessageViewed?.invoke()
+                if (isTranslating) {
+                    Text(
+                        tr("Traduciendo…"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = NexusTokens.Color.TextMuted,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                    )
+                } else if (!translatedText.isNullOrBlank()) {
+                    Text(
+                        text = translatedText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
+                        color = NexusTokens.Color.TextSecondary,
+                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp)
+                    )
                 }
             }
 
-            Surface(
-                shape = bubbleShape,
-                color = Color.Transparent,
+            // Pie: temporizador, hora y confirmación de lectura
+            Row(
                 modifier = Modifier
-                    .widthIn(max = 280.dp)
-                    .shadow(
-                        elevation = if (isOwnMessage) 8.dp else 6.dp,
-                        shape = bubbleShape,
-                        ambientColor = if (isOwnMessage) themeColor.copy(0.4f) else Color.Black.copy(0.3f),
-                        spotColor = if (isOwnMessage) themeColor.copy(0.6f) else Color.Black.copy(0.3f)
-                    )
-                    .then(
-                        // Ephemeral border glow effect
-                        if (message.isEphemeral && !(currentUserId in message.viewedBy)) {
-                            Modifier.border(
-                                width = 1.5.dp,
-                                brush = Brush.linearGradient(
-                                    colors = listOf(
-                                        themeColor.copy(alpha = 0.6f),
-                                        themeSecondaryColor.copy(alpha = 0.3f),
-                                        themeColor.copy(alpha = 0.6f)
-                                    )
-                                ),
-                                shape = bubbleShape
-                            )
-                        } else if (message.isEphemeral && (currentUserId in message.viewedBy)) {
-                            Modifier.border(
-                                width = 1.dp,
-                                color = themeColor.copy(alpha = 0.2f),
-                                shape = bubbleShape
-                            )
-                        } else Modifier
-                    )
-                    .safeClickable(
-                        onClick = { showReactionPicker = !showReactionPicker },
-                        onLongClick = { showMessageOptions = true }
-                    )
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(
-                            when {
-                                message.isViewOnce && hasViewed && !isOwnMessage -> Brush.sweepGradient(
-                                    listOf(DarkSurface.copy(alpha = 0.8f))
-                                )
-                                isOwnMessage -> Brush.linearGradient(
-                                    colors = listOf(
-                                        themeColor,
-                                        themeSecondaryColor,
-                                        themeSecondaryColor
-                                    ),
-                                    start = Offset(0f, 0f),
-                                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                                )
-                                else -> Brush.linearGradient(
-                                    listOf(DarkBubbleLight, DarkBubbleDeep)
-                                )
-                            }
-                        )
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    // Shine overlay for 3D effect
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color.White.copy(if (isOwnMessage) 0.15f else 0.08f),
-                                        Color.Transparent
-                                    )
-                                )
-                            )
-                    )
-
-                    Column {
-                        // ── Cita de historia (mensaje enviado como respuesta a una story) ──
-                        if (message.replyTo?.startsWith("story:") == true) {
-                            StoryReplyQuote(isOwnMessage = isOwnMessage)
-                            Spacer(modifier = Modifier.height(6.dp))
-                        }
-
-                        // ── Media content ──
-                        when (message.mediaType) {
-                            "IMAGE" -> {
-                                message.mediaUrl?.let { url ->
-                                    AsyncImage(
-                                        model = url,
-                                        contentDescription = "Image message",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 300.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .safeClickable {
-                                                onImageClick?.invoke(
-                                                    url,
-                                                    if (isOwnMessage) "Tú" else "Contacto",
-                                                    SimpleDateFormat("HH:mm", Locale.getDefault())
-                                                        .format(Date(message.timestamp))
-                                                )
-                                            },
-                                        contentScale = ContentScale.Crop
-                                    )
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "VIDEO" -> {
-                                message.mediaUrl?.let { url ->
-                                    var showVideoPlayer by remember { mutableStateOf(false) }
-                                    
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(200.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(Color.Black.copy(alpha = 0.3f))
-                                            .safeClickable { showVideoPlayer = true },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        AsyncImage(
-                                            model = url,
-                                            contentDescription = "Video thumbnail",
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(Color.Black.copy(alpha = 0.3f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                Icons.Default.PlayCircle,
-                                                contentDescription = "Play video",
-                                                tint = Color.White,
-                                                modifier = Modifier.size(64.dp)
-                                            )
-                                        }
-                                    }
-                                    
-                                    // Full-screen video player dialog
-                                    if (showVideoPlayer) {
-                                        androidx.compose.ui.window.Dialog(
-                                            onDismissRequest = { showVideoPlayer = false },
-                                            properties = androidx.compose.ui.window.DialogProperties(
-                                                usePlatformDefaultWidth = false
-                                            )
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .background(Color.Black)
-                                            ) {
-                                                val context = androidx.compose.ui.platform.LocalContext.current
-                                                val videoPlayer = remember {
-                                                    androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
-                                                        setMediaItem(androidx.media3.common.MediaItem.fromUri(url))
-                                                        prepare()
-                                                        playWhenReady = true
-                                                    }
-                                                }
-                                                
-                                                DisposableEffect(Unit) {
-                                                    onDispose {
-                                                        videoPlayer.release()
-                                                    }
-                                                }
-                                                
-                                                androidx.compose.ui.viewinterop.AndroidView(
-                                                    factory = { ctx ->
-                                                        androidx.media3.ui.PlayerView(ctx).apply {
-                                                            player = videoPlayer
-                                                            useController = true
-                                                        }
-                                                    },
-                                                    modifier = Modifier.fillMaxSize()
-                                                )
-                                                
-                                                IconButton(
-                                                    onClick = { showVideoPlayer = false },
-                                                    modifier = Modifier
-                                                        .align(Alignment.TopEnd)
-                                                        .padding(16.dp)
-                                                ) {
-                                                    Icon(
-                                                        Icons.Default.Close,
-                                                        contentDescription = "Close",
-                                                        tint = Color.White,
-                                                        modifier = Modifier.size(32.dp)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "AUDIO" -> {
-                                message.mediaUrl?.let { url ->
-                                    com.Azelmods.App.ui.components.AudioMessagePlayer(
-                                        audioUrl = url,
-                                        accentColor = themeColor
-                                    )
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                            "STICKER" -> {
-                                message.mediaUrl?.let { url ->
-                                    AsyncImage(
-                                        model = url,
-                                        contentDescription = "Sticker",
-                                        modifier = Modifier
-                                            .size(150.dp)
-                                            .clip(RoundedCornerShape(12.dp)),
-                                        contentScale = ContentScale.Fit
-                                    )
-                                    if (message.content.isNotEmpty()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                    }
-                                }
-                            }
-                        }
-
-                        // ── Text content ──
-                        // ── Ephemeral / View-Once badge ──
-                        if (message.isEphemeral) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        if (message.isViewOnce) Icons.Default.VisibilityOff else Icons.Default.Timer,
-                                        contentDescription = null,
-                                        tint = if (message.isViewOnce && (currentUserId in message.viewedBy) && !isOwnMessage) Color.Gray else PurpleLight,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = when {
-                                            message.isViewOnce && (currentUserId in message.viewedBy) && !isOwnMessage -> "Visto una vez"
-                                            message.isViewOnce -> "📷 Una vez"
-                                            remainingSeconds > 0 -> "🕐 ${formatDuration(remainingSeconds)}"
-                                            else -> "🕐 Expirando..."
-                                        },
-                                        color = if (message.isViewOnce && hasViewed && !isOwnMessage) Color.Gray else PurpleLight.copy(alpha = 0.8f),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                                
-                                // Countdown progress bar for timer-based ephemeral
-                                if (!message.isViewOnce && remainingSeconds > 0 && message.selfDestructDuration > 0) {
-                                    val progress = remainingSeconds.toFloat() / message.selfDestructDuration.toFloat()
-                                    Box(
-                                        modifier = Modifier
-                                            .width(40.dp)
-                                            .height(3.dp)
-                                            .background(
-                                                DarkElevated,
-                                                RoundedCornerShape(2.dp)
-                                            )
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth(fraction = progress.coerceIn(0f, 1f))
-                                                .fillMaxHeight()
-                                                .background(
-                                                    if (progress > 0.5f) PurpleLight
-                                                    else if (progress > 0.2f) NexusTokens.Color.Away
-                                                    else ErrorRed,
-                                                    RoundedCornerShape(2.dp)
-                                                )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // ── Text content ──
-                        if (message.content.isNotEmpty()) {
-                            val isEmojiOnly = message.content.all { char ->
-                                char.code in 0x1F300..0x1F9FF ||
-                                char.code in 0x2600..0x26FF ||
-                                char.code in 0x2700..0x27BF ||
-                                char.isWhitespace()
-                            }
-                            val emojiCount = message.content.count { !it.isWhitespace() }
-
-                            if (isEmojiOnly && emojiCount <= 5 && message.mediaType == null) {
-                                Text(
-                                    text = message.content,
-                                    fontSize = 44.sp,
-                                    lineHeight = 48.sp
-                                )
-                            } else {
-                                Text(
-                                    text = message.content,
-                                    color = Color.White,
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp
-                                )
-                            }
-
-                            // ── Translated text (if available) ──
-                            if (isTranslating) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(12.dp),
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        strokeWidth = 2.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "Traduciendo...",
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            } else if (!translatedText.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Translate,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.6f),
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Traducción",
-                                        color = Color.White.copy(alpha = 0.6f),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = translatedText,
-                                    color = Color.White.copy(alpha = 0.92f),
-                                    fontSize = 15.sp,
-                                    lineHeight = 20.sp,
-                                    fontStyle = FontStyle.Italic
-                                )
-                            }
-                        }
-
-                        // ── Media content view-once placeholder ──
-                        if (message.isViewOnce && (currentUserId in message.viewedBy) && !isOwnMessage && message.mediaType != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(100.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(DarkElevated.copy(alpha = 0.5f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Default.VisibilityOff,
-                                        contentDescription = null,
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Has visto este mensaje",
-                                        color = Color.Gray,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-                        
-                        // ── Disabled media content for non-viewed view-once (show placeholder only)
-                        if (message.isViewOnce && !(currentUserId in message.viewedBy) && !isOwnMessage && message.mediaType != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(DarkElevated.copy(alpha = 0.7f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        Icons.Default.VisibilityOff,
-                                        contentDescription = null,
-                                        tint = PurpleLight,
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = "Mensaje temporal\nToca para ver",
-                                        color = PurpleLight,
-                                        fontSize = 14.sp,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                        }
-                        
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        // ── Time & status row ──
-                        Row(
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = formatTime(message.timestamp),
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 11.sp
-                            )
-
-                            if (message.edited) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "(editado)",
-                                    color = Color.White.copy(alpha = 0.5f),
-                                    fontSize = 10.sp,
-                                    fontStyle = FontStyle.Italic
-                                )
-                            }
-
-                            if (isOwnMessage) {
-                                Spacer(modifier = Modifier.width(4.dp))
-                                ReadReceiptIndicator(status = message.status)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Quick reaction picker (animated) ──
-            AnimatedVisibility(
-                visible = showReactionPicker,
-                enter = scaleIn(initialScale = 0.8f) + fadeIn(),
-                exit = scaleOut(targetScale = 0.8f) + fadeOut()
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = DarkSurface,
-                    shadowElevation = 8.dp,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        quickReactions.forEach { emoji ->
-                            val animScale = remember { Animatable(0f) }
-                            LaunchedEffect(Unit) {
-                                animScale.animateTo(
-                                    1f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy
-                                    )
-                                )
-                            }
-
-                            Surface(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .scale(animScale.value)
-                                    .safeClickable {
-                                        onReactionClick(emoji)
-                                        showReactionPicker = false
-                                    },
-                                shape = CircleShape,
-                                color = DarkElevated
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(text = emoji, fontSize = 20.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Display existing reactions ──
-        if (message.reactions.isNotEmpty()) {
-            Row(
-                modifier = Modifier.padding(top = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                message.reactions.forEach { (_, emoji) ->
-                    val animScale = remember { Animatable(0f) }
-                    LaunchedEffect(Unit) {
-                        animScale.animateTo(
-                            1f,
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = DarkElevated.copy(alpha = 0.8f),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier
-                            .scale(animScale.value)
-                            .safeClickable { onReactionClick(emoji) }
-                    ) {
-                        Box(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
-                            Text(text = emoji, fontSize = 16.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Ephemeral badge below the bubble ──
-        if (message.isEphemeral) {
-            Row(
-                modifier = Modifier.padding(top = 4.dp, start = 4.dp),
+                    .align(Alignment.End)
+                    .padding(start = 12.dp, end = 8.dp, top = 2.dp, bottom = 5.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    if (message.isViewOnce) Icons.Default.VisibilityOff else Icons.Default.Timer,
-                    contentDescription = null,
-                    tint = PurpleLight.copy(alpha = 0.5f),
-                    modifier = Modifier.size(12.dp)
-                )
-                Spacer(modifier = Modifier.width(3.dp))
+                if (message.isEphemeral && !message.isViewOnce) {
+                    EphemeralCountdown(message, serverNow)
+                    Spacer(Modifier.width(6.dp))
+                }
+                if (message.edited) {
+                    Text(
+                        tr("editado "),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = NexusTokens.Color.TextMuted
+                    )
+                }
                 Text(
-                    text = if (isOwnMessage) {
-                        if (message.isViewOnce) "Enviado como vista única" else "Mensaje temporal"
-                    } else {
-                        if ((currentUserId in message.viewedBy) && message.isViewOnce) "Visto una vez" else "Auto-destruible"
-                    },
-                    color = PurpleLight.copy(alpha = 0.4f),
-                    fontSize = 10.sp,
-                    fontStyle = FontStyle.Italic
+                    text = formatTime(message.timestamp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = NexusTokens.Color.TextMuted
+                )
+                if (isOwnMessage) {
+                    Spacer(Modifier.width(3.dp))
+                    ReadReceiptIndicator(status = message.status)
+                }
+            }
+        }
+
+        if (message.reactions.isNotEmpty()) {
+            Row(
+                modifier = Modifier.padding(top = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                message.reactions.values.groupingBy { it }.eachCount().forEach { (emoji, count) ->
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(NexusTokens.Radius.pill))
+                            .background(NexusTokens.Color.BgHigh)
+                            .clickable { onReactionClick(emoji) }
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(emoji, fontSize = 13.sp)
+                        if (count > 1) {
+                            Spacer(Modifier.width(3.dp))
+                            Text(
+                                count.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = NexusTokens.Color.TextSecondary
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showActions) {
+        ModalBottomSheet(
+            onDismissRequest = { showActions = false },
+            containerColor = NexusTokens.Color.BgSurface,
+            tonalElevation = 0.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                QuickReactions.forEach { emoji ->
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                onReactionClick(emoji)
+                                showActions = false
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(emoji, fontSize = 26.sp)
+                    }
+                }
+            }
+            HorizontalDivider(
+                color = NexusTokens.Color.Hairline,
+                modifier = Modifier.padding(vertical = 6.dp)
+            )
+            ActionRow(Icons.AutoMirrored.Outlined.Reply, "Responder") {
+                showActions = false
+                onReply()
+            }
+            if (message.content.isNotEmpty() && !message.isViewOnce) {
+                ActionRow(Icons.Outlined.ContentCopy, "Copiar") {
+                    clipboard.setText(AnnotatedString(message.content))
+                    showActions = false
+                    android.widget.Toast.makeText(context, tr("Copiado"), android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+            if (onTranslate != null && message.content.isNotEmpty() && !message.isViewOnce) {
+                ActionRow(Icons.Outlined.Translate, "Traducir") {
+                    showActions = false
+                    onTranslate()
+                }
+            }
+            if (canEdit) {
+                ActionRow(Icons.Outlined.Edit, "Editar") {
+                    showActions = false
+                    onEditClick?.invoke()
+                }
+            }
+            ActionRow(Icons.Outlined.DeleteOutline, "Eliminar para mí") {
+                showActions = false
+                onDeleteClick?.invoke(false)
+            }
+            if (canDeleteForEveryone) {
+                ActionRow(Icons.Outlined.Delete, "Eliminar para todos", NexusTokens.Color.Error) {
+                    showActions = false
+                    confirmDeleteForAll = true
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+
+    if (confirmDeleteForAll) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteForAll = false },
+            title = { Text(tr("¿Eliminar para todos?")) },
+            text = { Text(tr("Desaparecerá para todos en este chat. No se puede deshacer."), color = NexusTokens.Color.TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDeleteForAll = false
+                    onDeleteClick?.invoke(true)
+                }) { Text(tr("Eliminar"), color = NexusTokens.Color.Error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDeleteForAll = false }) { Text(tr("Cancelar")) } },
+            containerColor = NexusTokens.Color.BgSurface
+        )
+    }
+
+    if (viewOnceOpen) {
+        ViewOnceViewer(
+            message = message,
+            onClose = {
+                viewOnceOpen = false
+                onViewOnceClosed?.invoke()
+            }
+        )
+    }
+}
+
+@Composable
+private fun SystemNotice(text: String) {
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = NexusTokens.Color.TextSecondary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .clip(RoundedCornerShape(NexusTokens.Radius.pill))
+                .background(NexusTokens.Color.BgSurface)
+                .padding(horizontal = 12.dp, vertical = 5.dp)
+        )
+    }
+}
+
+/** Tiempo restante; antes de que lo abran, cuánto durará. */
+@Composable
+private fun EphemeralCountdown(message: Message, serverNow: () -> Long) {
+    var remaining by remember(message.messageId, message.expiresAt) {
+        mutableLongStateOf(((message.expiresAt - serverNow()) / 1000).coerceAtLeast(0))
+    }
+    LaunchedEffect(message.messageId, message.expiresAt, message.isCountingDown) {
+        if (!message.isCountingDown) return@LaunchedEffect
+        while (remaining > 0) {
+            delay(1000)
+            remaining = ((message.expiresAt - serverNow()) / 1000).coerceAtLeast(0)
+        }
+    }
+    Icon(
+        Icons.Default.Timer,
+        contentDescription = tr("Mensaje temporal"),
+        tint = NexusTokens.Color.TextMuted,
+        modifier = Modifier.size(11.dp)
+    )
+    Spacer(Modifier.width(2.dp))
+    Text(
+        text = formatCountdown(if (message.isCountingDown) remaining else message.selfDestructDuration),
+        style = MaterialTheme.typography.labelSmall,
+        color = NexusTokens.Color.TextMuted
+    )
+}
+
+@Composable
+private fun ViewOncePlaceholder(isOwnMessage: Boolean) {
+    Row(
+        modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (isOwnMessage) Icons.Default.VisibilityOff else Icons.Outlined.Visibility,
+            contentDescription = null,
+            tint = NexusTokens.Color.TextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = if (isOwnMessage) tr("Una sola vista") else tr("Toca para ver una vez"),
+            style = MaterialTheme.typography.bodyMedium,
+            color = NexusTokens.Color.TextPrimary
+        )
+    }
+}
+
+/**
+ * Visor de una sola vista: a pantalla completa y con capturas bloqueadas. Al cerrarlo el
+ * mensaje se borra para todos.
+ */
+@Composable
+private fun ViewOnceViewer(message: Message, onClose: () -> Unit) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        val view = LocalView.current
+        DisposableEffect(view) {
+            (view.parent as? DialogWindowProvider)?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+            onDispose { }
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onClose),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                message.mediaType == "VIDEO" || message.mediaType == "GIF_VIDEO" ->
+                    message.mediaUrl?.let { InlineVideo(url = it, muted = false, showControls = true, modifier = Modifier.fillMaxSize()) }
+                message.mediaUrl != null -> AsyncImage(
+                    model = message.mediaUrl,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
+                else -> Text(
+                    message.content,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Color.White,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(32.dp)
+                )
+            }
+            Text(
+                tr("Se eliminará al cerrar"),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(NexusTokens.Radius.pill))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MediaContent(
+    message: Message,
+    autoplayVideos: Boolean,
+    onImageClick: (String) -> Unit,
+    onLongPress: () -> Unit
+) {
+    val context = LocalContext.current
+    when (message.mediaType) {
+        "IMAGE", "GIF" -> message.mediaUrl?.let { url ->
+            Box {
+                AsyncImage(
+                    model = url,
+                    contentDescription = if (message.mediaType == "GIF") "GIF" else tr("Foto"),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 90.dp, max = 360.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .tapAndHold(onTap = { onImageClick(url) }, onHold = onLongPress),
+                    contentScale = ContentScale.FillWidth
+                )
+                if (message.mediaType == "GIF") MediaTag("GIF", Modifier.align(Alignment.TopStart))
+            }
+        }
+
+        "GIF_VIDEO" -> message.mediaUrl?.let { url ->
+            var fullscreen by remember { mutableStateOf(false) }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(11.dp))
+            ) {
+                InlineVideo(url = url, muted = true, showControls = false, modifier = Modifier.fillMaxSize())
+                Box(Modifier.matchParentSize().tapAndHold(onTap = { fullscreen = true }, onHold = onLongPress))
+                MediaTag("GIF", Modifier.align(Alignment.TopStart))
+            }
+            if (fullscreen) FullscreenVideo(url = url) { fullscreen = false }
+        }
+
+        "VIDEO" -> message.mediaUrl?.let { url ->
+            var fullscreen by remember { mutableStateOf(false) }
+            var playInline by remember { mutableStateOf(autoplayVideos) }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
+            ) {
+                if (playInline) {
+                    // Sin sonido y en bucle mientras está en pantalla; al tocarlo se abre.
+                    InlineVideo(url = url, muted = true, showControls = false, modifier = Modifier.fillMaxSize())
+                    Box(Modifier.matchParentSize().tapAndHold(onTap = { fullscreen = true }, onHold = onLongPress))
+                } else {
+                    Box(
+                        Modifier
+                            .matchParentSize()
+                            .tapAndHold(onTap = { fullscreen = true }, onHold = onLongPress)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.PlayArrow, "Reproducir vídeo", tint = Color.White, modifier = Modifier.size(30.dp))
+                    }
+                }
+                if (!playInline) {
+                    Text(
+                        tr("Reproducir aquí"),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(NexusTokens.Radius.xs))
+                            .clickable { playInline = true }
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    )
+                }
+            }
+            if (fullscreen) FullscreenVideo(url = url) { fullscreen = false }
+        }
+
+        "AUDIO" -> message.mediaUrl?.let { url ->
+            Box(Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp)) {
+                com.Azelmods.App.ui.components.AudioMessagePlayer(
+                    audioUrl = url,
+                    accentColor = MaterialTheme.colorScheme.primary
                 )
             }
         }
 
-        // ── Message Options Dialog ──
-        if (showMessageOptions) {
-            AlertDialog(
-                onDismissRequest = { showMessageOptions = false },
-                containerColor = DarkSurface,
-                title = { Text("Opciones del mensaje", color = Color.White) },
-                text = {
-                    Column {
-                        if (onTranslate != null && message.content.isNotEmpty()) {
-                            TextButton(
-                                onClick = {
-                                    showMessageOptions = false
-                                    onTranslate.invoke()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Translate, null, tint = PurpleLight)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Traducir mensaje", color = Color.White)
-                                }
-                            }
-                        }
+        // Antes se subían pero no había manera de abrirlos: solo se veía el nombre.
+        "DOCUMENT" -> AttachmentRow(
+            icon = Icons.AutoMirrored.Outlined.InsertDriveFile,
+            title = message.content.ifBlank { "Documento" },
+            subtitle = tr("Toca para abrir"),
+            onTap = {
+                message.mediaUrl?.let { url -> openExternal(context, Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+            },
+            onHold = onLongPress
+        )
 
-                        if (canEdit) {
-                            TextButton(
-                                onClick = {
-                                    showMessageOptions = false
-                                    onEditClick?.invoke()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Edit, null, tint = Color.White)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Editar", color = Color.White)
-                                }
-                            }
-                        }
-
-                        TextButton(
-                            onClick = {
-                                showMessageOptions = false
-                                onDeleteClick?.invoke(false)
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.DeleteOutline, null, tint = Color.White)
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text("Eliminar para mí", color = Color.White)
-                            }
-                        }
-
-                        if (canDeleteForEveryone) {
-                            TextButton(
-                                onClick = {
-                                    showMessageOptions = false
-                                    showDeleteConfirmation = true
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Start,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Delete, null, tint = ErrorRed)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Eliminar para todos", color = ErrorRed)
-                                }
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showMessageOptions = false }) {
-                        Text("Cancelar", color = themeColor)
-                    }
+        "LOCATION" -> AttachmentRow(
+            icon = Icons.Outlined.LocationOn,
+            title = tr("Ubicación"),
+            subtitle = message.latitude?.let { lat ->
+                "%.5f, %.5f".format(Locale.ROOT, lat, message.longitude ?: 0.0)
+            } ?: message.content,
+            onTap = {
+                val lat = message.latitude
+                val lon = message.longitude
+                if (lat != null && lon != null) {
+                    openExternal(context, Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lon?q=$lat,$lon")))
                 }
-            )
-        }
-
-        // ── Delete Confirmation Dialog ──
-        if (showDeleteConfirmation) {
-            AlertDialog(
-                onDismissRequest = { showDeleteConfirmation = false },
-                containerColor = DarkSurface,
-                title = { Text("¿Eliminar para todos?", color = Color.White) },
-                text = {
-                    Text(
-                        "Este mensaje será eliminado para todos en el chat. Esta acción no se puede deshacer.",
-                        color = Color.Gray
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = {
-                        showDeleteConfirmation = false
-                        onDeleteClick?.invoke(true)
-                    }) {
-                        Text("Eliminar", color = ErrorRed)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDeleteConfirmation = false }) {
-                        Text("Cancelar", color = Color.White)
-                    }
-                }
-            )
-        }
+            },
+            onHold = onLongPress
+        )
     }
 }
 
-private fun formatTime(timestamp: Long): String {
-    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
+@OptIn(ExperimentalFoundationApi::class)
+private fun Modifier.tapAndHold(onTap: () -> Unit, onHold: () -> Unit): Modifier =
+    combinedClickable(onClick = onTap, onLongClick = onHold)
 
-/**
- * Calculate remaining seconds until a self-destruct timestamp.
- * Returns 0 if already expired.
- */
-private fun calculateRemainingSeconds(selfDestructAt: Long): Long {
-    if (selfDestructAt <= 0) return 0L
-    val remaining = (selfDestructAt - System.currentTimeMillis()) / 1000
-    return maxOf(0L, remaining)
-}
-
-/**
- * Format remaining seconds into a human-readable duration string.
- */
-private fun formatDuration(seconds: Long): String {
-    return when {
-        seconds >= 86400 -> "${seconds / 86400}d"
-        seconds >= 3600 -> "${seconds / 3600}h"
-        seconds >= 60 -> "${seconds / 60}m"
-        else -> "${seconds}s"
+private fun openExternal(context: android.content.Context, intent: Intent) {
+    runCatching { context.startActivity(intent) }.onFailure {
+        android.widget.Toast.makeText(context, tr("No hay ninguna app para abrirlo"), android.widget.Toast.LENGTH_SHORT).show()
     }
 }
 
-/**
- * Cita compacta que se muestra dentro de la burbuja cuando el mensaje es una
- * respuesta a una historia (replyTo = "story:{storyId}"). La historia puede
- * haber expirado (24 h), por eso la cita es autónoma y no intenta cargar el
- * media original.
- */
 @Composable
-private fun StoryReplyQuote(isOwnMessage: Boolean) {
+private fun AttachmentRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    onTap: () -> Unit,
+    onHold: () -> Unit
+) {
     Row(
         modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(
-                if (isOwnMessage) Color.Black.copy(alpha = 0.18f)
-                else Color.White.copy(alpha = 0.08f)
-            )
-            .height(IntrinsicSize.Min),
+            .tapAndHold(onTap, onHold)
+            .padding(start = 12.dp, end = 12.dp, top = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .width(3.dp)
-                .fillMaxHeight()
-                .background(Color.White.copy(alpha = 0.85f))
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = "📖", fontSize = 18.sp)
-        Spacer(modifier = Modifier.width(8.dp))
-        Column(modifier = Modifier.padding(vertical = 6.dp)) {
+                .size(38.dp)
+                .clip(CircleShape)
+                .background(NexusTokens.Color.BgHigh),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = NexusTokens.Color.TextPrimary, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.width(10.dp))
+        Column {
             Text(
-                text = "Historia",
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
+                title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = NexusTokens.Color.TextPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "Respuesta a una historia",
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 11.sp
+                subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = NexusTokens.Color.TextMuted
             )
         }
-        Spacer(modifier = Modifier.width(10.dp))
     }
 }
+
+@Composable
+private fun MediaTag(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = Color.White,
+        modifier = modifier
+            .padding(6.dp)
+            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(NexusTokens.Radius.xs))
+            .padding(horizontal = 5.dp, vertical = 2.dp)
+    )
+}
+
+/** Vídeo dentro de la conversación. El reproductor vive solo mientras está en pantalla. */
+@Composable
+fun InlineVideo(url: String, muted: Boolean, showControls: Boolean, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val player = remember(url) {
+        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+            setMediaItem(androidx.media3.common.MediaItem.fromUri(url))
+            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+            volume = if (muted) 0f else 1f
+            prepare()
+            playWhenReady = true
+        }
+    }
+    DisposableEffect(player) { onDispose { player.release() } }
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            androidx.media3.ui.PlayerView(ctx).apply {
+                this.player = player
+                useController = showControls
+                resizeMode = if (showControls) {
+                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                } else {
+                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun FullscreenVideo(url: String, onClose: () -> Unit) {
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+    ) {
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            InlineVideo(url = url, muted = false, showControls = true, modifier = Modifier.fillMaxSize())
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(8.dp)
+            ) {
+                Icon(Icons.Default.Close, "Cerrar", tint = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReplyQuote(replied: Message, isOwnMessage: Boolean) {
+    val preview = when {
+        replied.isViewOnce -> tr("Mensaje de una sola vista")
+        replied.mediaType == "IMAGE" -> tr("Foto")
+        replied.mediaType == "VIDEO" -> tr("Vídeo")
+        replied.mediaType == "GIF" || replied.mediaType == "GIF_VIDEO" -> "GIF"
+        replied.mediaType == "AUDIO" -> tr("Audio")
+        replied.mediaType == "DOCUMENT" -> tr("Documento")
+        replied.mediaType == "LOCATION" -> tr("Ubicación")
+        else -> replied.content
+    }
+    Row(
+        modifier = Modifier
+            .padding(start = 8.dp, end = 8.dp, top = 8.dp)
+            .clip(RoundedCornerShape(NexusTokens.Radius.sm))
+            .background(if (isOwnMessage) Color.Black.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f))
+            .height(IntrinsicSize.Min)
+    ) {
+        Box(
+            Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Text(
+            text = preview,
+            style = MaterialTheme.typography.bodySmall,
+            color = NexusTokens.Color.TextSecondary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+    }
+}
+
+/**
+ * Cita de una respuesta a historia. La historia puede haber caducado, así que la cita no
+ * intenta cargar el medio original.
+ */
+@Composable
+private fun StoryReplyQuote() {
+    Row(
+        modifier = Modifier
+            .padding(start = 8.dp, end = 8.dp, top = 8.dp)
+            .clip(RoundedCornerShape(NexusTokens.Radius.sm))
+            .background(Color.Black.copy(alpha = 0.18f))
+            .height(IntrinsicSize.Min)
+    ) {
+        Box(
+            Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.primary)
+        )
+        Text(
+            text = tr("Respuesta a una historia"),
+            style = MaterialTheme.typography.bodySmall,
+            color = NexusTokens.Color.TextSecondary,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun ActionRow(
+    icon: ImageVector,
+    label: String,
+    color: Color = NexusTokens.Color.TextPrimary,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            icon,
+            null,
+            tint = if (color == NexusTokens.Color.TextPrimary) NexusTokens.Color.TextSecondary else color,
+            modifier = Modifier.size(NexusTokens.IconSize.md)
+        )
+        Spacer(Modifier.width(20.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = color)
+    }
+}
+
+/** Hasta cinco emojis sueltos se muestran grandes y sin burbuja. */
+private fun String.isEmojiOnly(): Boolean {
+    if (isBlank()) return false
+    var count = 0
+    var i = 0
+    while (i < length) {
+        val cp = codePointAt(i)
+        i += Character.charCount(cp)
+        when {
+            Character.isWhitespace(cp) || cp == 0xFE0F || cp == 0x200D -> Unit
+            cp in 0x1F000..0x1FAFF || cp in 0x2600..0x27BF || cp in 0x2300..0x23FF -> count++
+            else -> return false
+        }
+    }
+    return count in 1..5
+}
+
+private fun formatTime(timestamp: Long): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+
+private fun formatCountdown(seconds: Long): String = when {
+    seconds >= 86_400 -> "${seconds / 86_400} d"
+    seconds >= 3_600 -> "${seconds / 3_600} h"
+    seconds >= 60 -> "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+    else -> "$seconds s"
+}
+
+private const val LONG_MESSAGE_CHARS = 1_200
+private const val COLLAPSED_LINES = 24

@@ -200,7 +200,7 @@ class AiAssistService @Inject constructor(
 
     companion object {
         /** Tope duro por operación de IA. Más allá, se falla con un mensaje claro. */
-        private const val AI_TIMEOUT_MS = 45_000L
+        private const val AI_TIMEOUT_MS = 180_000L
 
         /**
          * Convierte los últimos mensajes en un guion legible para el modelo.

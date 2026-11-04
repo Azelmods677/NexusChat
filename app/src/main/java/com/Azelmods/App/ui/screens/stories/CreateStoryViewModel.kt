@@ -170,6 +170,43 @@ class CreateStoryViewModel @Inject constructor(
     }
     
     /**
+     * Publica una imagen animada (GIF) tal cual, conservando su animación: pasarla por
+     * la captura del editor la convertiría en un único fotograma.
+     */
+    fun uploadAnimatedStory(imageUri: Uri, caption: String, musicUri: Uri? = null, musicName: String = "") {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            try {
+                val userId = auth.currentUser?.uid
+                if (userId.isNullOrBlank()) {
+                    _state.value = _state.value.copy(
+                        isUploading = false,
+                        error = "Por favor inicia sesión nuevamente"
+                    )
+                    return@launch
+                }
+                val url = storageRepository.uploadStoryGif(imageUri, userId)
+                val musicUrl = uploadMusicOrNull(musicUri, userId)
+                databaseRepository.createStory(
+                    mediaUrl = url,
+                    mediaType = "IMAGE",
+                    isVideo = false,
+                    caption = caption,
+                    musicUrl = musicUrl,
+                    musicName = musicName.takeIf { musicUrl != null }
+                )
+                _state.value = _state.value.copy(isUploading = false, uploadSuccess = true)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _state.value = _state.value.copy(
+                    isUploading = false,
+                    error = "Error al subir el GIF: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
      * Upload a COMPOSED VIDEO story: [overlayBitmap] is the editor's editable area
      * captured into a transparent bitmap (text / stickers / emojis already rasterized,
      * transparent where the video shows through). We burn it into every video frame with
@@ -178,7 +215,13 @@ class CreateStoryViewModel @Inject constructor(
      * If compositing fails for any reason we fall back to uploading [originalUri] so the
      * user can always publish (overlays will be missing in that fallback case only).
      */
-    fun uploadComposedVideoStory(overlayBitmap: Bitmap, caption: String, originalUri: Uri) {
+    fun uploadComposedVideoStory(
+        overlayBitmap: Bitmap,
+        caption: String,
+        originalUri: Uri,
+        musicUri: Uri? = null,
+        musicName: String = ""
+    ) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
 
@@ -201,12 +244,15 @@ class CreateStoryViewModel @Inject constructor(
                 }
 
                 val videoUrl = storageRepository.uploadStoryVideo(uploadUri, userId)
+                val musicUrl = uploadMusicOrNull(musicUri, userId)
 
                 databaseRepository.createStory(
                     mediaUrl = videoUrl,
                     mediaType = "VIDEO",
                     isVideo = true,
-                    caption = caption
+                    caption = caption,
+                    musicUrl = musicUrl,
+                    musicName = musicName.takeIf { musicUrl != null }
                 )
 
                 _state.value = _state.value.copy(
@@ -227,7 +273,7 @@ class CreateStoryViewModel @Inject constructor(
      * Upload VIDEO story to Firebase Storage and save to Realtime Database
      * Pattern: stories/{userId}/{timestamp}.mp4
      */
-    fun uploadVideoStory(videoUri: Uri, caption: String) {
+    fun uploadVideoStory(videoUri: Uri, caption: String, musicUri: Uri? = null, musicName: String = "") {
         viewModelScope.launch {
             _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
             
@@ -243,13 +289,16 @@ class CreateStoryViewModel @Inject constructor(
                 
                 // Step 1: Upload video to Storage FIRST and AWAIT completion
                 val videoUrl = storageRepository.uploadStoryVideo(videoUri, userId)
-                
+                val musicUrl = uploadMusicOrNull(musicUri, userId)
+
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
                 databaseRepository.createStory(
                     mediaUrl = videoUrl,
                     mediaType = "VIDEO",
                     isVideo = true,
-                    caption = caption
+                    caption = caption,
+                    musicUrl = musicUrl,
+                    musicName = musicName.takeIf { musicUrl != null }
                 )
 
                 _state.value = _state.value.copy(

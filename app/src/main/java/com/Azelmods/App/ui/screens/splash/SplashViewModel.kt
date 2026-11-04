@@ -2,9 +2,9 @@ package com.Azelmods.App.ui.screens.splash
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Azelmods.App.data.preferences.UserPreferences
 import com.Azelmods.App.data.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,25 +18,22 @@ data class SplashState(
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    userPreferences: UserPreferences
 ) : ViewModel() {
-    
+
+    /** Quien prefiera entrar directo puede apagar la animación en Ajustes. */
+    val animated: Boolean = userPreferences.splashAnimation.value
+
     private val _state = MutableStateFlow(SplashState())
     val state: StateFlow<SplashState> = _state.asStateFlow()
-    
+
     init {
-        checkAuthState()
-    }
-    
-    private fun checkAuthState() {
+        // La espera la marca la animación de la pantalla, no un retardo fijo aquí.
         viewModelScope.launch {
-            // Wait 2.5 seconds for splash animation
-            delay(2500)
-            
-            val isAuthenticated = authRepository.isUserAuthenticated()
             _state.value = SplashState(
                 isLoading = false,
-                isAuthenticated = isAuthenticated
+                isAuthenticated = authRepository.isUserAuthenticated()
             )
         }
     }

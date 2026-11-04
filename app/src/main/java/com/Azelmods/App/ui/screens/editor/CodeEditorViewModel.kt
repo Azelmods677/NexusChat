@@ -1,5 +1,9 @@
 package com.Azelmods.App.ui.screens.editor
 
+import com.Azelmods.App.i18n.tr
+
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -9,246 +13,300 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.Query
 import com.google.firebase.database.ValueEventListener
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import java.io.File
 import javax.inject.Inject
 
+/**
+ * Editor de código: pestañas, guardado automático, importar y exportar, y ejecución.
+ *
+ * Los archivos se guardan en la cuenta (Firebase) para tenerlos en cualquier dispositivo, y
+ * se pueden abrir o guardar en el almacenamiento del teléfono.
+ *
+ * Qué se ejecuta de verdad: JavaScript (motor del WebView), HTML/CSS (vista previa), shell
+ * (proceso real del sistema) y JSON (validar y formatear). Python, Kotlin, C o TypeScript
+ * necesitan un compilador o intérprete que Android no incluye; se dice claramente en vez de
+ * fingir que corren.
+ */
 @HiltViewModel
-class CodeEditorViewModel @Inject constructor() : ViewModel() {
-    
+class CodeEditorViewModel @Inject constructor(
+    @ApplicationContext private val context: Context
+) : ViewModel() {
+
     private val db = FirebaseDatabase.getInstance()
     private val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    
+
     private val _files = MutableStateFlow<List<CodeFile>>(emptyList())
     val files: StateFlow<List<CodeFile>> = _files.asStateFlow()
-    
+
+    /** Archivos abiertos en pestañas. */
+    private val _tabs = MutableStateFlow<List<CodeFile>>(emptyList())
+    val tabs: StateFlow<List<CodeFile>> = _tabs.asStateFlow()
+
     private val _currentFile = MutableStateFlow<CodeFile?>(null)
     val currentFile: StateFlow<CodeFile?> = _currentFile.asStateFlow()
-    
+
+    /** Ids con cambios sin guardar. */
+    private val _unsaved = MutableStateFlow<Set<String>>(emptySet())
+    val unsaved: StateFlow<Set<String>> = _unsaved.asStateFlow()
+
     private val _output = MutableStateFlow("")
     val output: StateFlow<String> = _output.asStateFlow()
-    
+
     private val _isRunning = MutableStateFlow(false)
     val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
 
-    // 🔥 JS execution via WebView (Composable handles the actual WebView)
     private val _jsToExecute = MutableStateFlow<String?>(null)
     val jsToExecute: StateFlow<String?> = _jsToExecute.asStateFlow()
 
-    // 🌐 HTML/CSS live preview: el Composable renderiza este HTML en un WebView visible.
     private val _htmlToPreview = MutableStateFlow<String?>(null)
     val htmlToPreview: StateFlow<String?> = _htmlToPreview.asStateFlow()
-    
-    // Referencia + listener del historial de archivos, para poder removerlo en
-    // onCleared() y no fugar el listener (antes se registraba y nunca se quitaba).
+
     private var filesQuery: Query? = null
     private var filesListener: ValueEventListener? = null
+    private var autosaveJob: Job? = null
+    private var runJob: Job? = null
+    private var process: Process? = null
 
     init {
         loadFiles()
     }
 
-    // Load files from Firebase in real-time
     private fun loadFiles() {
-        viewModelScope.launch {
-            val ref = db.getReference("codeFiles/$uid")
-                .orderByChild("timestamp")
-            val listener = object : ValueEventListener {
-                override fun onDataChange(snap: DataSnapshot) {
-                    _files.value = snap.children
-                        .mapNotNull { it.getValue(CodeFile::class.java) }
-                        .sortedByDescending { it.timestamp }
-                }
-
-                override fun onCancelled(e: DatabaseError) {}
+        if (uid.isBlank()) return
+        val ref = db.getReference("codeFiles/$uid").orderByChild("timestamp")
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snap: DataSnapshot) {
+                _files.value = snap.children
+                    .mapNotNull { it.getValue(CodeFile::class.java) }
+                    .sortedByDescending { it.timestamp }
             }
-            ref.addValueEventListener(listener)
-            filesQuery = ref
-            filesListener = listener
+
+            override fun onCancelled(e: DatabaseError) {
+                _output.value = "No se pudieron cargar tus archivos: ${e.message}"
+            }
         }
+        ref.addValueEventListener(listener)
+        filesQuery = ref
+        filesListener = listener
     }
 
     override fun onCleared() {
         super.onCleared()
-        // Evita la fuga del listener de Firebase cuando se cierra la pantalla.
         filesListener?.let { filesQuery?.removeEventListener(it) }
-        filesListener = null
-        filesQuery = null
+        process?.destroy()
     }
-    
-    // Create new file
-    fun newFile(name: String, language: String) {
+
+    private fun push(file: CodeFile) {
+        if (uid.isBlank()) return
         viewModelScope.launch {
-            try {
-                // Validar que el usuario esté autenticado
-                if (uid.isBlank()) {
-                    android.util.Log.e("CodeEditorVM", "❌ User not authenticated")
-                    _output.value = "❌ Error: Usuario no autenticado. Inicia sesión para crear archivos."
-                    return@launch
-                }
-                
-                // Validar nombre del archivo
-                if (name.isBlank()) {
-                    android.util.Log.e("CodeEditorVM", "❌ File name is blank")
-                    _output.value = "❌ Error: El nombre del archivo no puede estar vacío"
-                    return@launch
-                }
-                
-                android.util.Log.d("CodeEditorVM", "📝 Creating file: $name (language: $language)")
-                
-                val ref = db.getReference("codeFiles/$uid").push()
-                val fileId = ref.key ?: run {
-                    android.util.Log.e("CodeEditorVM", "❌ Firebase push() returned null key")
-                    // Generar ID manualmente como fallback
-                    val generatedId = "file_${System.currentTimeMillis()}_${(0..999).random()}"
-                    android.util.Log.d("CodeEditorVM", "📝 Using generated ID: $generatedId")
-                    generatedId
-                }
-                
-                val template = getTemplate(language)
-                val file = CodeFile(
-                    id = fileId,
-                    name = name,
-                    language = language,
-                    content = template,
-                    userId = uid,
-                    timestamp = System.currentTimeMillis(),
-                    size = template.length.toLong()
-                )
-                
-                android.util.Log.d("CodeEditorVM", "💾 Saving file to Firebase: codeFiles/$uid/$fileId")
-                
-                // Si Firebase no dio una key, usar el ID generado manualmente
-                val saveRef = if (ref.key != null) {
-                    ref
-                } else {
-                    db.getReference("codeFiles/$uid/$fileId")
-                }
-                
-                saveRef.setValue(file).await()
-                
-                // 🔥 FIX: Abrir el archivo inmediatamente después de crearlo
-                _currentFile.value = file
-                _output.value = "✅ Archivo creado: $name\n💡 Listo para editar"
-                android.util.Log.d("CodeEditorVM", "✅ File created successfully: $name (id: $fileId)")
-            } catch (e: Exception) {
-                android.util.Log.e("CodeEditorVM", "❌ Error creating file: ${e.message}", e)
-                _output.value = "❌ Error al crear archivo: ${e.message ?: "Error desconocido"}\n\nVerifica tu conexión a internet y que tengas permisos en Firebase."
-            }
+            runCatching { db.getReference("codeFiles/$uid/${file.id}").setValue(file).await() }
+                .onSuccess { _unsaved.value = _unsaved.value - file.id }
+                .onFailure { _output.value = "No se pudo guardar ${file.name}: ${it.message}" }
         }
     }
-    
-    // Save file
-    fun saveFile(content: String) {
-        val file = _currentFile.value 
-        if (file == null) {
-            android.util.Log.w("CodeEditorVM", "⚠️ No file selected to save")
-            _output.value = "⚠️ Ningún archivo seleccionado para guardar"
+
+    fun newFile(name: String) {
+        val clean = name.trim()
+        if (clean.isEmpty()) return
+        if (uid.isBlank()) {
+            _output.value = "Inicia sesión para crear archivos."
             return
         }
-        
+        val language = CodeLanguages.fromFileName(clean)
+        val id = db.getReference("codeFiles/$uid").push().key ?: "file_${System.currentTimeMillis()}"
+        val content = template(language)
+        val file = CodeFile(
+            id = id,
+            name = clean,
+            language = language,
+            content = content,
+            userId = uid,
+            timestamp = System.currentTimeMillis(),
+            size = content.length.toLong()
+        )
+        push(file)
+        openFile(file)
+    }
+
+    /** Abre un archivo del teléfono en una pestaña nueva. */
+    fun importDocument(uri: Uri) {
         viewModelScope.launch {
-            try {
-                android.util.Log.d("CodeEditorVM", "💾 Saving file: ${file.name}")
-                
-                val updated = file.copy(
-                    content = content,
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val name = context.contentResolver.query(uri, null, null, null, null)?.use { c ->
+                        val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+                    } ?: "archivo.txt"
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: error("No se pudo leer")
+                    if (bytes.size > MAX_FILE_BYTES) error("El archivo pasa de 2 MB")
+                    name to String(bytes)
+                }
+            }
+            result.onSuccess { (name, text) ->
+                val id = db.getReference("codeFiles/$uid").push().key ?: "file_${System.currentTimeMillis()}"
+                val file = CodeFile(
+                    id = id,
+                    name = name,
+                    language = CodeLanguages.fromFileName(name),
+                    content = text,
+                    userId = uid,
                     timestamp = System.currentTimeMillis(),
-                    size = content.length.toLong()
+                    size = text.length.toLong()
                 )
-                
-                db.getReference("codeFiles/$uid/${file.id}")
-                    .setValue(updated).await()
-                    
-                _currentFile.value = updated
-                _output.value = "✅ Guardado: ${file.name}"
-                android.util.Log.d("CodeEditorVM", "✅ File saved successfully: ${file.name}")
+                push(file)
+                openFile(file)
+            }.onFailure { _output.value = "No se pudo abrir: ${it.message}" }
+        }
+    }
+
+    /** Guarda el archivo abierto en el teléfono. */
+    fun exportTo(uri: Uri, content: String) {
+        viewModelScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri, "wt")?.use { it.write(content.toByteArray()) }
+                }.isSuccess
+            }
+            _output.value = if (ok) tr("Guardado en el teléfono") else tr("No se pudo guardar en el teléfono")
+        }
+    }
+
+    fun openFile(file: CodeFile) {
+        if (_tabs.value.none { it.id == file.id }) _tabs.value = _tabs.value + file
+        _currentFile.value = _tabs.value.first { it.id == file.id }
+    }
+
+    /** Cierra una pestaña guardando antes lo pendiente. */
+    fun closeTab(fileId: String, latestContent: String?) {
+        if (latestContent != null) saveFile(fileId, latestContent)
+        val remaining = _tabs.value.filterNot { it.id == fileId }
+        _tabs.value = remaining
+        if (_currentFile.value?.id == fileId) _currentFile.value = remaining.lastOrNull()
+    }
+
+    fun closeAllTabs() {
+        _tabs.value = emptyList()
+        _currentFile.value = null
+    }
+
+    /** El usuario ha escrito: se guarda solo poco después de dejar de teclear. */
+    fun onContentChanged(fileId: String, content: String) {
+        val current = _tabs.value.firstOrNull { it.id == fileId } ?: return
+        if (current.content == content) return
+        _unsaved.value = _unsaved.value + fileId
+        _tabs.value = _tabs.value.map { if (it.id == fileId) it.copy(content = content) else it }
+        autosaveJob?.cancel()
+        autosaveJob = viewModelScope.launch {
+            delay(AUTOSAVE_DELAY_MS)
+            saveFile(fileId, content)
+        }
+    }
+
+    fun saveFile(fileId: String, content: String) {
+        val file = _tabs.value.firstOrNull { it.id == fileId } ?: return
+        val updated = file.copy(content = content, timestamp = System.currentTimeMillis(), size = content.length.toLong())
+        _tabs.value = _tabs.value.map { if (it.id == fileId) updated else it }
+        if (_currentFile.value?.id == fileId) _currentFile.value = updated
+        push(updated)
+    }
+
+    fun renameFile(fileId: String, newName: String) {
+        val clean = newName.trim()
+        val file = _tabs.value.firstOrNull { it.id == fileId } ?: return
+        if (clean.isEmpty()) return
+        val updated = file.copy(name = clean, language = CodeLanguages.fromFileName(clean))
+        _tabs.value = _tabs.value.map { if (it.id == fileId) updated else it }
+        if (_currentFile.value?.id == fileId) _currentFile.value = updated
+        push(updated)
+    }
+
+    fun deleteFile(file: CodeFile) {
+        closeTab(file.id, null)
+        if (uid.isBlank()) return
+        viewModelScope.launch {
+            runCatching { db.getReference("codeFiles/$uid/${file.id}").removeValue().await() }
+                .onFailure { _output.value = "No se pudo eliminar: ${it.message}" }
+        }
+    }
+
+    fun executeCode(code: String, language: String) {
+        when (language) {
+            "js" -> {
+                _isRunning.value = true
+                _output.value = ""
+                _jsToExecute.value = code
+            }
+            "html" -> _htmlToPreview.value = code
+            "css" -> _htmlToPreview.value = wrapCssInHtml(code)
+            "json" -> _output.value = formatJson(code)
+            "bash" -> runShell(code)
+            "python" -> _output.value = needsTool("Python", "pkg install python")
+            "kotlin", "java" -> _output.value = needsTool("Este lenguaje", "pkg install kotlin")
+            "c" -> _output.value = needsTool("Este lenguaje", "pkg install clang")
+            "ts", "tsx", "jsx" -> _output.value =
+                "Este lenguaje debe compilarse a JavaScript antes de ejecutarse, y el compilador no " +
+                    "corre en el teléfono. Pásalo a un archivo .js y pulsa ejecutar."
+            else -> _output.value = "Este tipo de archivo no se ejecuta."
+        }
+    }
+
+    private fun needsTool(what: String, command: String) =
+        "$what necesita un intérprete o compilador que Android no incluye.\n\n" +
+            "Puedes usar Termux: $command"
+
+    /** Ejecuta el script en una shell real y muestra la salida a medida que llega. */
+    private fun runShell(script: String) {
+        runJob?.cancel()
+        _isRunning.value = true
+        _output.value = ""
+        runJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val home = File(context.filesDir, "home").apply { mkdirs() }
+                val proc = ProcessBuilder("/system/bin/sh", "-c", script)
+                    .directory(home)
+                    .redirectErrorStream(true)
+                    .apply { environment()["HOME"] = home.absolutePath }
+                    .start()
+                process = proc
+                val buffer = CharArray(4096)
+                proc.inputStream.bufferedReader().use { reader ->
+                    while (isActive) {
+                        val read = reader.read(buffer)
+                        if (read < 0) break
+                        _output.value = (_output.value + String(buffer, 0, read)).takeLast(MAX_OUTPUT_CHARS)
+                    }
+                }
+                val code = proc.waitFor()
+                _output.value += "\n[Terminó con código $code]"
             } catch (e: Exception) {
-                android.util.Log.e("CodeEditorVM", "❌ Error saving file: ${e.message}", e)
-                _output.value = "❌ Error al guardar: ${e.message ?: "Error desconocido"}\n\nVerifica tu conexión a internet."
+                _output.value += "\nError: ${e.message}"
+            } finally {
+                _isRunning.value = false
+                process = null
             }
         }
     }
-    
-    /**
-     * Execute code. For JavaScript, delegates to the Composable via [jsToExecute].
-     * For other languages, shows informative fallback messages.
-     */
-    fun executeCode(code: String, language: String) {
-        viewModelScope.launch {
-            _isRunning.value = true
-            _output.value = "Analizando..."
-            kotlinx.coroutines.delay(300)
-            
-            when (language) {
-                "js" -> {
-                    // 🔥 Signal Composable to execute JS via WebView
-                    _output.value = "🟨 Ejecutando JavaScript..."
-                    _jsToExecute.value = code
-                }
-                "html" -> {
-                    // Renderiza el HTML (con su CSS/JS embebido) en un WebView visible.
-                    _output.value = "🌐 Vista previa HTML — pulsa la X para volver al editor"
-                    _htmlToPreview.value = code
-                }
-                "css" -> {
-                    // El CSS solo no es una página: se previsualiza sobre contenido de ejemplo.
-                    _output.value = "🎨 Vista previa del CSS con contenido de ejemplo"
-                    _htmlToPreview.value = wrapCssInHtml(code)
-                }
-                "python" -> {
-                    _output.value = "🐍 Python no está disponible en Android nativo.\n\n" +
-                        "Para ejecutar Python:\n" +
-                        "1. Instala Termux desde F-Droid\n" +
-                        "2. Ejecuta: pkg install python\n" +
-                        "3. Corre tu script desde el terminal"
-                }
-                "bash" -> {
-                    _output.value = "💻 Bash en Android es limitado.\n\n" +
-                        "Algunos comandos básicos funcionan (ls, pwd, cat)\n" +
-                        "pero otros requieren Termux.\n\n" +
-                        "Usa el Terminal integrado (Settings > Terminal) para un shell completo."
-                }
-                "kotlin" -> {
-                    _output.value = "💜 Kotlin en Android requiere compilación.\n\n" +
-                        "No se puede ejecutar código fuente directamente en el dispositivo.\n\n" +
-                        "Prueba Kotlin Playground:\nhttps://play.kotlinlang.org/"
-                }
-                "c" -> {
-                    _output.value = "🔵 C requiere compilador (gcc/clang).\n\n" +
-                        "No disponible en Android sin Termux.\n\n" +
-                        "Instala via Termux: pkg install clang"
-                }
-                "json" -> {
-                    // Validar y formatear JSON sí se puede hacer aquí mismo, sin red
-                    // ni herramientas externas. Es lo único honesto que "ejecutar"
-                    // puede significar para un JSON, y es genuinamente útil.
-                    _output.value = formatJson(code)
-                }
-                "ts", "tsx", "jsx" -> {
-                    _output.value = "🔷 ${language.uppercase()} necesita transpilarse a JavaScript " +
-                        "antes de ejecutarse, y eso requiere un bundler (tsc, esbuild, Vite) " +
-                        "que no corre en el dispositivo.\n\n" +
-                        "El editor sí te da resaltado completo para escribirlo.\n" +
-                        "Para probarlo, crea un archivo .js con el resultado compilado " +
-                        "y púlsale ▶, o abre un .html que lo cargue."
-                }
-                else -> {
-                    _output.value = "⚠️ Lenguaje '$language' no soportado para ejecución en este dispositivo."
-                }
-            }
-            if (language != "js") {
-                _isRunning.value = false
-            }
-        }
+
+    fun stopExecution() {
+        process?.destroy()
+        runJob?.cancel()
+        _isRunning.value = false
     }
 
     fun clearHtmlPreview() {
         _htmlToPreview.value = null
     }
 
-    /** Envuelve una hoja de estilos en una página mínima para poder previsualizarla. */
     private fun wrapCssInHtml(css: String): String = """
         <!DOCTYPE html>
         <html lang="es">
@@ -268,68 +326,46 @@ class CodeEditorViewModel @Inject constructor() : ViewModel() {
         </html>
     """.trimIndent()
 
-    /**
-     * Called by the Composable after WebView JS execution completes.
-     */
     fun onJsResult(result: String, error: String?) {
         _isRunning.value = false
         _output.value = when {
-            error != null -> "❌ Error:\n$error" + if (result.isNotBlank()) "\n\n$result" else ""
-            result.isBlank() -> "🟨 JavaScript ejecutado (sin salida de consola)"
-            else -> "🟨 JavaScript Output:\n$result"
+            error != null -> "Error:\n$error" + if (result.isNotBlank()) "\n\n$result" else ""
+            result.isBlank() -> tr("Ejecutado (sin salida en la consola)")
+            else -> result
         }
         _jsToExecute.value = null
     }
-    
-    private fun executePython(code: String): String = ""  // removed — no crash
-    private fun executeJavaScript(code: String): String = ""  // removed — no crash
-    private fun executeKotlin(code: String): String = ""  // removed — no crash
-    private suspend fun executeShell(interpreter: String, code: String): String = ""  // removed — no crash
-    
-    /**
-     * Valida y reindenta JSON. Devuelve el error con su posición si no es válido:
-     * un "JSON inválido" a secas no sirve para arreglarlo.
-     */
+
     private fun formatJson(code: String): String {
         val trimmed = code.trim()
-        if (trimmed.isEmpty()) return "⚠️ El archivo está vacío."
+        if (trimmed.isEmpty()) return "El archivo está vacío."
         return try {
             val pretty = when (trimmed.first()) {
                 '[' -> org.json.JSONArray(trimmed).toString(2)
                 '{' -> org.json.JSONObject(trimmed).toString(2)
-                else -> return "❌ JSON inválido: debe empezar por '{' o '['."
+                else -> return "JSON no válido: debe empezar por { o ["
             }
-            "✅ JSON válido\n\n$pretty"
+            "JSON válido\n\n$pretty"
         } catch (e: org.json.JSONException) {
-            "❌ JSON inválido\n\n${e.message}"
+            "JSON no válido\n\n${e.message}"
         }
     }
 
-    // Templates by language
-    private fun getTemplate(lang: String) = when (lang) {
-        "python" -> "#!/usr/bin/env python3\n# Nexus Chat Dev Framework\n\nprint('Hello from Nexus Chat!')\n"
-        "kotlin" -> "fun main() {\n    println(\"Hello from Nexus Chat!\")\n}\n"
-        "bash" -> "#!/bin/bash\n# Nexus Chat Framework\n\necho 'Hello from Nexus Chat!'\n"
-        "js" -> "// Nexus Chat Framework\nconsole.log('Hello from Nexus Chat!');\n"
-        "c" -> "#include <stdio.h>\nint main() {\n    printf(\"Hello from Nexus Chat!\\n\");\n    return 0;\n}\n"
-        "html" -> "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Nexus Chat</title>\n  <style>\n    body { font-family: sans-serif; text-align: center; padding: 2rem; }\n    h1 { color: #7C6FE0; }\n  </style>\n</head>\n<body>\n  <h1>Hello from Nexus Chat!</h1>\n  <p>Edita este HTML y pulsa ▶ para ver la vista previa.</p>\n  <script>console.log('Listo');</script>\n</body>\n</html>\n"
-        "css" -> "/* Nexus Chat Framework */\nbody {\n  font-family: sans-serif;\n  background: #0D0D1E;\n  color: #FFFFFF;\n  padding: 2rem;\n}\nh1 { color: #7C6FE0; }\n.box {\n  margin-top: 1rem;\n  padding: 1rem;\n  border: 2px solid #00D4FF;\n  border-radius: 12px;\n}\n"
-        "ts" -> "// Nexus Chat Framework — TypeScript\ninterface Saludo {\n  mensaje: string;\n  veces: number;\n}\n\nconst saludar = ({ mensaje, veces }: Saludo): void => {\n  for (let i = 0; i < veces; i++) console.log(mensaje);\n};\n\nsaludar({ mensaje: 'Hello from Nexus Chat!', veces: 3 });\n"
-        "jsx" -> "// Nexus Chat Framework — React\nimport React, { useState } from 'react';\n\nexport default function App() {\n  const [contador, setContador] = useState(0);\n\n  return (\n    <div className=\"app\">\n      <h1>Hello from Nexus Chat!</h1>\n      <button onClick={() => setContador(contador + 1)}>\n        Pulsado {contador} veces\n      </button>\n    </div>\n  );\n}\n"
-        "tsx" -> "// Nexus Chat Framework — React + TypeScript\nimport React, { useState } from 'react';\n\ntype Props = {\n  titulo: string;\n};\n\nexport default function App({ titulo }: Props) {\n  const [contador, setContador] = useState<number>(0);\n\n  return (\n    <div className=\"app\">\n      <h1>{titulo}</h1>\n      <button onClick={() => setContador(contador + 1)}>\n        Pulsado {contador} veces\n      </button>\n    </div>\n  );\n}\n"
-        "json" -> "{\n  \"nombre\": \"nexus-chat\",\n  \"version\": \"5.0.0\",\n  \"descripcion\": \"Proyecto creado en el editor de Nexus Chat\",\n  \"activo\": true,\n  \"dependencias\": []\n}\n"
-        else -> "// Nuevo archivo\n"
+    private fun template(language: String) = when (language) {
+        "python" -> "#!/usr/bin/env python3\n\nprint('Hola')\n"
+        "kotlin" -> tr("fun main() {\n    println(\"Hola\")\n}\n")
+        "bash" -> "#!/bin/sh\n\necho \"Hola desde $(uname -m)\"\n"
+        "js" -> tr("console.log('Hola');\n")
+        "c" -> "#include <stdio.h>\n\nint main(void) {\n    printf(\"Hola\\n\");\n    return 0;\n}\n"
+        "html" -> tr("<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>Página</title>\n</head>\n<body>\n  <h1>Hola</h1>\n</body>\n</html>\n")
+        "css" -> tr("body {\n  font-family: sans-serif;\n  padding: 2rem;\n}\n")
+        "json" -> tr("{\n  \"nombre\": \"proyecto\",\n  \"version\": \"1.0.0\"\n}\n")
+        else -> ""
     }
-    
-    fun openFile(file: CodeFile) {
-        _currentFile.value = file
-    }
-    
-    fun closeFile() {
-        _currentFile.value = null
-    }
-    
-    fun clearOutput() {
-        _output.value = ""
+
+    private companion object {
+        const val AUTOSAVE_DELAY_MS = 1_500L
+        const val MAX_FILE_BYTES = 2 * 1024 * 1024
+        const val MAX_OUTPUT_CHARS = 100_000
     }
 }

@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.security
 
+import com.Azelmods.App.i18n.tr
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.*
@@ -82,7 +84,7 @@ fun OrbotWelcomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Orbot Setup") },
+                title = { Text(tr("Configurar Orbot")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -113,7 +115,7 @@ fun OrbotWelcomeScreen(
 
             // ── Title ──────────────────────────────────────────────────
             Text(
-                text = "Navegación Anónima",
+                text = tr("Navegación Anónima"),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -123,7 +125,7 @@ fun OrbotWelcomeScreen(
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = "Accede a sitios .onion y navega de forma privada usando la red Tor a través de Orbot",
+                text = tr("Accede a sitios .onion y navega de forma privada usando la red Tor a través de Orbot"),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray,
                 textAlign = TextAlign.Center,
@@ -155,8 +157,8 @@ fun OrbotWelcomeScreen(
                 OrbotStatus.NOT_INSTALLED -> {
                     OrbotActionButton(
                         icon = Icons.Default.Download,
-                        text = "Descargar Orbot",
-                        description = "Desde Play Store o F-Droid",
+                        text = tr("Descargar Orbot"),
+                        description = tr("Desde Play Store o F-Droid"),
                         color = MaterialTheme.colorScheme.primary,
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -185,26 +187,26 @@ fun OrbotWelcomeScreen(
 
                     InstallStepCard(
                         step = 1,
-                        title = "Descarga e instala Orbot",
-                        description = "Desde Play Store, F-Droid o orbot.app"
+                        title = tr("Descarga e instala Orbot"),
+                        description = tr("Desde Play Store, F-Droid o orbot.app")
                     )
                     InstallStepCard(
                         step = 2,
-                        title = "Abre Orbot y presiona 'Iniciar'",
-                        description = "Espera a que se conecte a la red Tor"
+                        title = tr("Abre Orbot y presiona 'Iniciar'"),
+                        description = tr("Espera a que se conecte a la red Tor")
                     )
                     InstallStepCard(
                         step = 3,
-                        title = "Vuelve a esta pantalla",
-                        description = "Verás el estado 'Conectado' automáticamente"
+                        title = tr("Vuelve a esta pantalla"),
+                        description = tr("Verás el estado 'Conectado' automáticamente")
                     )
                 }
 
                 OrbotStatus.INACTIVE -> {
                     OrbotActionButton(
                         icon = Icons.Default.PlayArrow,
-                        text = "Abrir Orbot",
-                        description = "Orbot está instalado pero no conectado",
+                        text = tr("Abrir Orbot"),
+                        description = tr("Orbot está instalado pero no conectado"),
                         color = Warning,
                         onClick = { OrbotDetector.launchOrbot(context) }
                     )
@@ -228,13 +230,13 @@ fun OrbotWelcomeScreen(
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Consejo",
+                                    tr("Consejo"),
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     fontSize = 14.sp
                                 )
                                 Text(
-                                    "Una vez que Orbot se conecte, el estado cambiará automáticamente.",
+                                    tr("Una vez que Orbot se conecte, el estado cambiará automáticamente."),
                                     color = Color.Gray,
                                     fontSize = 12.sp
                                 )
@@ -249,8 +251,8 @@ fun OrbotWelcomeScreen(
                     // OrbotActionButton solo por consistencia visual con los otros estados.
                     OrbotActionButton(
                         icon = Icons.Default.Verified,
-                        text = "¡Conectado a Tor!",
-                        description = "Tu tráfico está siendo anonimizado",
+                        text = tr("¡Conectado a Tor!"),
+                        description = tr("Tu tráfico está siendo anonimizado"),
                         color = Success,
                         enabled = false,
                         onClick = {}
@@ -267,7 +269,7 @@ fun OrbotWelcomeScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                "¿Qué sigue?",
+                                tr("¿Qué sigue?"),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                                 fontSize = 14.sp
@@ -275,20 +277,20 @@ fun OrbotWelcomeScreen(
 
                             NextStepItem(
                                 icon = Icons.Default.Language,
-                                title = "Navegador Privado",
-                                description = "Accede a sitios .onion con DuckDuckGo",
+                                title = tr("Navegador Privado"),
+                                description = tr("Accede a sitios .onion con DuckDuckGo"),
                                 onClick = { navController.navigate(Screen.TorBrowser.route) }
                             )
                             NextStepItem(
                                 icon = Icons.Default.Security,
-                                title = "Configuración de Tor",
-                                description = "Ajusta el modo anónimo y proxy selector",
+                                title = tr("Configuración de Tor"),
+                                description = tr("Ajusta el modo anónimo y proxy selector"),
                                 onClick = { navController.navigate(Screen.TorControl.route) }
                             )
                             NextStepItem(
                                 icon = Icons.Default.Shield,
-                                title = "Seguridad",
-                                description = "Explora todas las funciones de privacidad",
+                                title = tr("Seguridad"),
+                                description = tr("Explora todas las funciones de privacidad"),
                                 onClick = { navController.popBackStack() }
                             )
                         }
@@ -318,7 +320,7 @@ fun OrbotWelcomeScreen(
                     }
                 }
             ) {
-                Text("Verificar estado", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+                Text(tr("Verificar estado"), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
             }
 
             Spacer(Modifier.height(32.dp))
@@ -414,7 +416,7 @@ private fun TorOnionAnimation(status: OrbotStatus) {
         // Center icon with rotation and pulse
         Icon(
             imageVector = Icons.Default.Security,
-            contentDescription = "Tor",
+            contentDescription = tr("Tor"),
             tint = when (status) {
                 OrbotStatus.ACTIVE -> Success
                 OrbotStatus.INACTIVE -> Warning
@@ -442,17 +444,17 @@ private fun OrbotStatusCard(status: OrbotStatus) {
     }
 
     val title = when (status) {
-        OrbotStatus.CHECKING -> "Verificando..."
-        OrbotStatus.NOT_INSTALLED -> "Orbot no instalado"
-        OrbotStatus.INACTIVE -> "Orbot inactivo"
-        OrbotStatus.ACTIVE -> "Orbot conectado"
+        OrbotStatus.CHECKING -> tr("Verificando...")
+        OrbotStatus.NOT_INSTALLED -> tr("Orbot no instalado")
+        OrbotStatus.INACTIVE -> tr("Orbot inactivo")
+        OrbotStatus.ACTIVE -> tr("Orbot conectado")
     }
 
     val description = when (status) {
-        OrbotStatus.CHECKING -> "Detectando Orbot en tu dispositivo"
-        OrbotStatus.NOT_INSTALLED -> "Orbot no está instalado en tu dispositivo"
-        OrbotStatus.INACTIVE -> "Orbot está instalado pero no conectado a Tor"
-        OrbotStatus.ACTIVE -> "Tu dispositivo está conectado a la red Tor"
+        OrbotStatus.CHECKING -> tr("Detectando Orbot en tu dispositivo")
+        OrbotStatus.NOT_INSTALLED -> tr("Orbot no está instalado en tu dispositivo")
+        OrbotStatus.INACTIVE -> tr("Orbot está instalado pero no conectado a Tor")
+        OrbotStatus.ACTIVE -> tr("Tu dispositivo está conectado a la red Tor")
     }
 
     Card(

@@ -1,64 +1,65 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.FormatSize
+import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.Azelmods.App.ui.theme.*
+import com.Azelmods.App.ui.components.NexusListRow
+import com.Azelmods.App.ui.components.NexusRowValue
+import com.Azelmods.App.ui.components.NexusSectionHeader
+import com.Azelmods.App.ui.components.NexusTopBar
+import com.Azelmods.App.ui.theme.AppTheme
+import com.Azelmods.App.ui.theme.NexusTokens
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AppearanceScreen(
     navController: NavController,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val darkModeEnabled by viewModel.darkModeEnabled.collectAsState()
     val accentColor by viewModel.accentColor.collectAsState()
     val fontSize by viewModel.fontSize.collectAsState()
     val wallpaperType by viewModel.wallpaperType.collectAsState()
-    
-    val wallpaperSubtitle = when (wallpaperType) {
-        "image" -> "Custom image"
-        "video" -> "Animated video"
-        "color" -> "Solid color"
-        else -> "Default"
+
+    val wallpaperLabel = when (wallpaperType) {
+        "image" -> tr("Imagen")
+        "video" -> tr("Vídeo")
+        "color" -> tr("Color")
+        else -> tr("Predeterminado")
     }
-    
+    val fontSizeLabel = when (fontSize.uppercase().replace(" ", "").replace("_", "")) {
+        "SMALL", "PEQUEÑO", "PEQUENO" -> tr("Pequeña")
+        "LARGE", "GRANDE" -> tr("Grande")
+        "EXTRALARGE", "XLARGE", "EXTRAGRANDE", "MUYGRANDE" -> tr("Muy grande")
+        else -> tr("Normal")
+    }
+    val activeAccent = AppTheme.canonicalId(accentColor)
+    val activeAccentName = AppTheme.ACCENT_SWATCHES.firstOrNull { it.id == activeAccent }?.displayName.orEmpty()
+
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Appearance", color = Color.White, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface
-                )
-            )
-        },
-        containerColor = DarkBackground
+        topBar = { NexusTopBar(title = tr("Apariencia"), onBack = { navController.popBackStack() }) },
+        containerColor = NexusTokens.Color.BgBase
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -66,89 +67,85 @@ fun AppearanceScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "Theme",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-            
-            SettingsSwitchItem(
-                title = "Dark Mode",
-                subtitle = "Use dark theme",
-                icon = Icons.Default.DarkMode,
-                checked = darkModeEnabled,
-                onCheckedChange = { viewModel.setDarkModeEnabled(it) }
-            )
-            
-            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
-            
-            Text(
-                text = "Accent Color",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            // 25 temas curados — fuente única en AppTheme.ACCENT_SWATCHES
-            val accentColors = AppTheme.ACCENT_SWATCHES
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
+            NexusSectionHeader(tr("Color de acento"), trailing = {
+                Text(
+                    activeAccentName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NexusTokens.Color.TextMuted
+                )
+            })
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(300.dp)
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                maxItemsInEachRow = 6
             ) {
-                items(accentColors) { swatch ->
-                    val isSelected = accentColor.equals(swatch.id, ignoreCase = true) ||
-                        accentColor.equals(swatch.displayName, ignoreCase = true)
+                AppTheme.ACCENT_SWATCHES.forEach { swatch ->
+                    val selected = swatch.id == activeAccent
                     Box(
                         modifier = Modifier
-                            .aspectRatio(1f)
+                            .size(44.dp)
                             .clip(CircleShape)
-                            .background(
-                                androidx.compose.ui.graphics.Brush.linearGradient(
-                                    listOf(swatch.colors.primary, swatch.colors.secondary)
-                                )
+                            .background(swatch.color)
+                            .then(
+                                if (selected) Modifier.border(2.dp, NexusTokens.Color.TextPrimary, CircleShape)
+                                else Modifier
                             )
-                            .border(
-                                width = if (isSelected) 3.dp else 1.dp,
-                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.3f),
-                                shape = CircleShape
+                            .clickable { viewModel.setAccentColor(swatch.id) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selected) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Seleccionado: ${swatch.displayName}",
+                                tint = if (swatch.color.luminance() > 0.34f) Color(0xFF0B0F0D) else Color.White,
+                                modifier = Modifier.size(20.dp)
                             )
-                            .clickable { viewModel.setAccentColor(swatch.id) }
-                    )
+                        }
+                    }
                 }
             }
-            
-            HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
-            
-            Text(
-                text = "Display",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
+
+            NexusSectionHeader(tr("Avatares"))
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val themePreferences = remember { com.Azelmods.App.data.preferences.ThemePreferences(context) }
+            var avatarRings by remember { mutableStateOf(themePreferences.areAvatarRingsEnabled()) }
+            com.Azelmods.App.ui.components.NexusSwitchRow(
+                title = tr("Aros de color"),
+                subtitle = tr("Cada contacto con su color en la lista de chats. Las historias siempre lo llevan."),
+                icon = Icons.Outlined.Palette,
+                checked = avatarRings,
+                onCheckedChange = {
+                    avatarRings = it
+                    themePreferences.setAvatarRingsEnabled(it)
+                }
             )
-            
-            SettingsItem(
-                title = "Font Size",
-                subtitle = fontSize,
-                icon = Icons.Default.FormatSize,
-                onClick = { navController.navigate("font_size") }
+
+            NexusSectionHeader(tr("Pantalla"))
+            val splashAnimation by viewModel.splashAnimation.collectAsState()
+            com.Azelmods.App.ui.components.NexusSwitchRow(
+                title = tr("Animación de entrada"),
+                subtitle = tr("Al abrir la app. Apágala para entrar directo."),
+                icon = Icons.Outlined.AutoAwesome,
+                checked = splashAnimation,
+                onCheckedChange = viewModel::setSplashAnimation
             )
-            
-            SettingsItem(
-                title = "Chat Wallpaper",
-                subtitle = wallpaperSubtitle,
-                icon = Icons.Default.Wallpaper,
-                onClick = { navController.navigate("wallpaper") }
+            NexusListRow(
+                title = tr("Tamaño de letra"),
+                icon = Icons.Outlined.FormatSize,
+                onClick = { navController.navigate("font_size") },
+                trailing = { NexusRowValue(fontSizeLabel) }
             )
+            NexusListRow(
+                title = tr("Fondo"),
+                subtitle = tr("Imagen, vídeo o color detrás de los chats"),
+                icon = Icons.Outlined.Wallpaper,
+                onClick = { navController.navigate("wallpaper") },
+                trailing = { NexusRowValue(wallpaperLabel) }
+            )
+            Spacer(Modifier.height(24.dp))
         }
     }
 }
@@ -159,24 +156,15 @@ fun SettingsRadioItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-    ) {
-        RadioButton(
-            selected = selected,
-            onClick = onClick,
-            colors = RadioButtonDefaults.colors(
-                selectedColor = MaterialTheme.colorScheme.primary
+    NexusListRow(
+        title = title,
+        onClick = onClick,
+        trailing = {
+            RadioButton(
+                selected = selected,
+                onClick = onClick,
+                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
             )
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            color = Color.White,
-            fontSize = 16.sp
-        )
-    }
+        }
+    )
 }

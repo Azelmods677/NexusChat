@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.azelai
 
+import com.Azelmods.App.i18n.tr
+
 import android.util.Log
 import com.Azelmods.App.data.ai.GeminiContextManager
 import com.Azelmods.App.data.api.AzelAIApiService
@@ -37,8 +39,8 @@ class AzelAIRepository @Inject constructor(
         conversationHistory: List<AIMessage>,
         userMessage: String
     ): List<Message> {
-        val maxHistory = 10 // Mantener solo los últimos 10 mensajes para optimizar tokens
-        
+        val maxHistory = 40 // Memoria real de la conversación; con 10 la IA olvidaba enseguida
+
         val filteredHistory = conversationHistory
             .filter { !it.isLoading && !it.error && it.role != "system" }
             
@@ -48,8 +50,8 @@ class AzelAIRepository @Inject constructor(
         val messages = trimmedHistory
             .map { msg -> 
                 // Optimizamos tokens truncando respuestas largas de la IA, pero respetando los prompts del usuario
-                val optimizedContent = if (msg.role == "assistant" && msg.content.length > 1500) {
-                    msg.content.take(1500) + "\n\n[...Texto truncado para ahorrar tokens...]"
+                val optimizedContent = if (msg.role == "assistant" && msg.content.length > 8000) {
+                    msg.content.take(8000) + "\n\n[...Texto truncado para ahorrar tokens...]"
                 } else {
                     msg.content
                 }
@@ -203,7 +205,7 @@ class AzelAIRepository @Inject constructor(
             snapshot.children.forEach { chatSnapshot ->
                 val chatId = chatSnapshot.key ?: return@forEach
                 if (chatId.startsWith("chat_")) {
-                    val title = chatSnapshot.child("title").getValue(String::class.java) ?: "Chat sin título"
+                    val title = chatSnapshot.child("title").getValue(String::class.java) ?: tr("Chat sin título")
                     val lastMessage = chatSnapshot.child("lastMessage").getValue(String::class.java) ?: ""
                     val lastActivity = chatSnapshot.child("lastActivity").getValue(Long::class.java) ?: 0L
                     val messageCount = chatSnapshot.child("messageCount").getValue(Int::class.java) ?: 0

@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.stories
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -100,8 +102,16 @@ fun StoryViewerScreen(
     // ── Snackbar on reply sent ───────────────────────────────────────────────
     LaunchedEffect(state.replySent) {
         if (state.replySent) {
-            snackbarHostState.showSnackbar("Reply sent!")
+            snackbarHostState.showSnackbar(tr("Respuesta enviada"))
             viewModel.clearReplySent()
+        }
+    }
+
+    // ── Una acción falló: se avisa y la historia sigue en pantalla ───────────
+    LaunchedEffect(state.actionError) {
+        state.actionError?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearActionError()
         }
     }
 
@@ -135,7 +145,7 @@ fun StoryViewerScreen(
     }
 
     // ── Error / Empty ────────────────────────────────────────────────────────
-    if (state.stories.isEmpty() || state.error != null) {
+    if (state.stories.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -156,24 +166,27 @@ fun StoryViewerScreen(
                     tint = Color.Gray
                 )
                 Text(
-                    text = state.error ?: "No stories available",
+                    text = state.error ?: tr("No hay historias que ver"),
                     color = Color.White,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
-                Text(
-                    text = "This user's stories may have expired or been deleted.",
-                    color = Color.Gray,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
+                // Decir que "caducaron" solo es cierto cuando no hay ningún error.
+                if (state.error == null) {
+                    Text(
+                        text = tr("Puede que sus historias hayan caducado o se hayan borrado."),
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                }
                 Button(
                     onClick = { navController.popBackStack() },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Go Back")
+                    Text(tr("Volver"))
                 }
             }
         }
@@ -187,14 +200,14 @@ fun StoryViewerScreen(
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // Música de la historia (imagen y texto; el vídeo trae su propio audio).
+    // Música de la historia. En un vídeo con música, la música sustituye a su sonido.
     //
     // Vive aquí, fuera del `when` de tipos, para que haya un único reproductor por
     // historia. Se recrea al cambiar de pista y se libera en onDispose: sin eso el
     // audio seguiría sonando después de salir del visor.
     // ────────────────────────────────────────────────────────────────────────
     val storyMusicUrl = currentStory.musicUrl
-    if (!storyMusicUrl.isNullOrBlank() && !currentStory.type.equals("VIDEO", ignoreCase = true)) {
+    if (!storyMusicUrl.isNullOrBlank()) {
         val musicPlayer = remember(storyMusicUrl) {
             androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
                 setMediaItem(androidx.media3.common.MediaItem.fromUri(storyMusicUrl))
@@ -234,9 +247,11 @@ fun StoryViewerScreen(
                             .data(currentStory.mediaUrl)
                             .crossfade(300)
                             .build(),
-                        contentDescription = "Story image",
+                        contentDescription = tr("Imagen de la historia"),
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
+                        // Entera, sin recortar: el editor ya publica en 9:16 lo que el autor
+                        // encuadró, y en pantallas más altas el resto se ve en negro.
+                        contentScale = ContentScale.Fit,
                         loading = {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
@@ -263,7 +278,7 @@ fun StoryViewerScreen(
                                         tint = Color.Gray
                                     )
                                     Text(
-                                        text = "Failed to load image",
+                                        text = tr("No se pudo cargar la imagen"),
                                         color = Color.Gray,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
@@ -310,6 +325,7 @@ fun StoryViewerScreen(
                                 playWhenReady = true
                             }
                             repeatMode = Player.REPEAT_MODE_OFF
+                            if (!storyMusicUrl.isNullOrBlank()) volume = 0f
                             addListener(object : Player.Listener {
                                 override fun onPlaybackStateChanged(playbackState: Int) {
                                     when (playbackState) {
@@ -327,7 +343,7 @@ fun StoryViewerScreen(
                                 override fun onPlayerError(
                                     error: androidx.media3.common.PlaybackException
                                 ) {
-                                    videoError = error.message ?: "Playback error"
+                                    videoError = error.message ?: tr("Error de reproducción")
                                     isBuffering = false
                                 }
                             })
@@ -386,7 +402,7 @@ fun StoryViewerScreen(
                                         tint = Color.Gray
                                     )
                                     Text(
-                                        text = "Failed to load video",
+                                        text = tr("No se pudo cargar el vídeo"),
                                         color = Color.White,
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.Bold
@@ -405,7 +421,7 @@ fun StoryViewerScreen(
                                                 navController.popBackStack()
                                         },
                                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                                    ) { Text("Skip") }
+                                    ) { Text(tr("Omitir")) }
                                 }
                             }
                         }
@@ -520,7 +536,7 @@ fun StoryViewerScreen(
 
         // ── 2b. INDICADOR DE MÚSICA ──────────────────────────────────────────
         // Si suena una pista, el usuario tiene que poder ver cuál.
-        if (!storyMusicUrl.isNullOrBlank() && !currentStory.type.equals("VIDEO", ignoreCase = true)) {
+        if (!storyMusicUrl.isNullOrBlank()) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -540,7 +556,7 @@ fun StoryViewerScreen(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = currentStory.musicName?.takeIf { it.isNotBlank() } ?: "Audio",
+                    text = currentStory.musicName?.takeIf { it.isNotBlank() } ?: tr("Audio"),
                     color = Color.White,
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1
@@ -630,7 +646,7 @@ fun StoryViewerScreen(
                 // Name + time
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = currentStory.userName.ifBlank { "Unknown" },
+                        text = currentStory.userName.ifBlank { "Desconocido" },
                         color = Color.White,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -660,7 +676,7 @@ fun StoryViewerScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Close",
+                        contentDescription = tr("Cerrar"),
                         tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
@@ -721,7 +737,7 @@ fun StoryViewerScreen(
                     IconButton(onClick = { showReplySheet = true }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send reply",
+                            contentDescription = tr("Enviar respuesta"),
                             tint = Color.White
                         )
                     }
@@ -749,7 +765,7 @@ fun StoryViewerScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Eliminar historia",
+                            contentDescription = tr("Eliminar historia"),
                             tint = Color.White
                         )
                     }
@@ -801,7 +817,7 @@ fun StoryViewerScreen(
                     value = replyText,
                     onValueChange = { replyText = it },
                     placeholder = {
-                        Text("Type a message…", color = Color.White.copy(alpha = 0.38f))
+                        Text(tr("Escribe un mensaje…"), color = Color.White.copy(alpha = 0.38f))
                     },
                     modifier = Modifier.fillMaxWidth(),
                     maxLines = 4,
@@ -843,7 +859,7 @@ fun StoryViewerScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Send Reply",
+                        text = tr("Enviar respuesta"),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -887,7 +903,7 @@ fun StoryViewerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Viewers",
+                        text = tr("Vistas"),
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold
@@ -910,7 +926,7 @@ fun StoryViewerScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No viewers yet",
+                            text = tr("Aún no la ha visto nadie"),
                             color = Color.Gray,
                             style = MaterialTheme.typography.bodyMedium
                         )
@@ -925,7 +941,7 @@ fun StoryViewerScreen(
                                 ?: viewer["name"] as? String
                                 ?: viewer["username"] as? String
                                 ?: viewer["uid"] as? String
-                                ?: "AnÃ³nimo"
+                                ?: tr("Anónimo")
                             val viewerPhoto = viewer["photoUrl"] as? String
                             val viewerUid = viewer["uid"] as? String
                             val viewerReaction = viewerUid?.let { state.reactions[it] }
@@ -978,9 +994,9 @@ fun StoryViewerScreen(
                     tint = MaterialTheme.colorScheme.error
                 )
             },
-            title = { Text("Eliminar historia") },
+            title = { Text(tr("Eliminar historia")) },
             text = {
-                Text("¿Seguro que quieres eliminar esta historia? Esta acción no se puede deshacer.")
+                Text(tr("¿Seguro que quieres eliminar esta historia? Esta acción no se puede deshacer."))
             },
             confirmButton = {
                 TextButton(
@@ -990,7 +1006,7 @@ fun StoryViewerScreen(
                     }
                 ) {
                     Text(
-                        text = "Eliminar",
+                        text = tr("Eliminar"),
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -1003,7 +1019,7 @@ fun StoryViewerScreen(
                         isPaused = false
                     }
                 ) {
-                    Text("Cancelar")
+                    Text(tr("Cancelar"))
                 }
             },
             containerColor = DarkSurface
@@ -1064,7 +1080,7 @@ private fun QuickReactionRow(
 fun getTimeAgo(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     return when {
-        diff < 60_000L -> "Just now"
+        diff < 60_000L -> tr("Ahora mismo")
         diff < 3_600_000L -> "${diff / 60_000}m ago"
         diff < 86_400_000L -> "${diff / 3_600_000}h ago"
         else -> "${diff / 86_400_000}d ago"

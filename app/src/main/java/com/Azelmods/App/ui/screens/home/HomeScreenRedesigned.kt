@@ -1,71 +1,71 @@
 ﻿package com.Azelmods.App.ui.screens.home
 
-import com.Azelmods.App.data.manager.AppBackgroundManager
-import com.Azelmods.App.data.model.BackgroundType
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
+import com.Azelmods.App.i18n.tr
+
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.ripple
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import com.Azelmods.App.ui.components.AvatarRing
+import com.Azelmods.App.ui.components.ProfileColors
+import com.Azelmods.App.ui.components.pressScale
+import com.Azelmods.App.ui.components.staggeredEnter
+import kotlinx.coroutines.delay
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-// horizontalScroll y rememberScrollState viven en androidx.compose.foundation,
-// NO en foundation.layout: el wildcard de layout de abajo no los trae.
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SmartToy
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.Azelmods.App.data.model.Chat
-import com.Azelmods.App.data.model.MessageStatus
 import com.Azelmods.App.data.chat.ChatId
-import com.Azelmods.App.ui.navigation.Screen
-import com.Azelmods.App.ui.components.safeClickable
-import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.data.model.Chat
+import com.Azelmods.App.data.model.ChatSettings
+import com.Azelmods.App.data.model.ChatType
+import com.Azelmods.App.data.model.MessageStatus
+import com.Azelmods.App.ui.components.NexusCountBadge
+import com.Azelmods.App.ui.components.NexusDivider
+import com.Azelmods.App.ui.components.NexusEmptyState
+import com.Azelmods.App.ui.components.NexusFilterChip
 import com.Azelmods.App.ui.components.ReadReceiptIndicator
+import com.Azelmods.App.ui.components.UserAvatar
+import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.NexusTokens
-import com.Azelmods.App.ui.theme.rememberThemeColor
-import com.Azelmods.App.ui.theme.rememberThemeSecondaryColor
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.*
-import coil3.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
-import com.Azelmods.App.ui.components.VideoBackgroundPlayer
-import com.Azelmods.App.ui.theme.parseHexColor
-import com.Azelmods.App.ui.theme.linearGradientBrush
-import com.Azelmods.App.ui.theme.Pink
-import com.Azelmods.App.ui.theme.Teal
-import com.Azelmods.App.ui.theme.PurpleBright
-import com.Azelmods.App.ui.theme.CyanAccent
-import com.Azelmods.App.ui.theme.EmeraldGreen
-import com.Azelmods.App.ui.theme.NeonGreen
-import com.Azelmods.App.ui.theme.ErrorRed
-import com.Azelmods.App.ui.theme.DarkSurface
-import com.Azelmods.App.ui.theme.RosePink
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,303 +74,206 @@ fun HomeScreenRedesigned(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val backgroundConfig by viewModel.backgroundConfig.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedChat by remember { mutableStateOf<Chat?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showMuteOptions by remember { mutableStateOf(false) }
-    val themeColor = rememberThemeColor()
-    val themeSecondaryColor = rememberThemeSecondaryColor()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
+    var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val storyOwners by viewModel.storyOwners.collectAsState()
+    val ghostMode by viewModel.ghostModeEnabled.collectAsState()
+    val avatarRings = remember { com.Azelmods.App.data.preferences.ThemePreferences(context).areAvatarRingsEnabled() }
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+    fun toast(message: String) {
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+    }
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = {
                     Text(
-                        "Nexus Chat",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = Color.White
+                        tr("Chats"),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = NexusTokens.Color.TextPrimary
                     )
                 },
                 actions = {
-                    IconButton(onClick = {
-                        try {
-                            navController.navigate("search")
-                        } catch (e: Exception) { }
-                    }) {
-                        Icon(Icons.Default.Search, "Search", tint = Color.White)
+                    IconButton(onClick = { navController.navigate(Screen.Search.route) }) {
+                        Icon(Icons.Default.Search, "Buscar", tint = NexusTokens.Color.TextSecondary)
+                    }
+                    IconButton(onClick = { navController.navigate(Screen.AzelAI.route) }) {
+                        Icon(Icons.Outlined.SmartToy, "Azel IA", tint = NexusTokens.Color.TextSecondary)
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, "Más opciones", tint = NexusTokens.Color.TextSecondary)
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            containerColor = NexusTokens.Color.BgElevated
+                        ) {
+                            HomeMenuItem(
+                                if (ghostMode) tr("Desactivar modo fantasma") else tr("Activar modo fantasma"),
+                                if (ghostMode) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility
+                            ) {
+                                showMenu = false
+                                viewModel.toggleGhostMode()
+                                toast(if (ghostMode) tr("Modo fantasma desactivado") else tr("Modo fantasma activado"))
+                            }
+                            HomeMenuItem("Seguridad y Tor", Icons.Outlined.Lock) {
+                                showMenu = false
+                                navController.navigate(Screen.Security.route)
+                            }
+                            HomeMenuItem("Editor de código", Icons.Outlined.Code) {
+                                showMenu = false
+                                navController.navigate("code_editor")
+                            }
+                            HomeMenuItem("Terminal", Icons.Outlined.Terminal) {
+                                showMenu = false
+                                navController.navigate("terminal")
+                            }
+                            HomeMenuItem("Ajustes", Icons.Outlined.Settings) {
+                                showMenu = false
+                                navController.navigate(Screen.Settings.route)
+                            }
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent // Transparent to see background
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent
                 )
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    try {
-                        navController.navigate("new_conversation")
-                    } catch (e: Exception) { }
-                },
-                containerColor = themeColor,
-                contentColor = Color.White,
-                elevation = FloatingActionButtonDefaults.elevation(8.dp)
+            FloatingActionButton(
+                onClick = { navController.navigate(Screen.NewConversation.route) },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(2.dp, 2.dp, 2.dp, 2.dp)
             ) {
-                Icon(Icons.Default.Edit, "New Chat")
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("New Chat")
+                Icon(Icons.Default.Edit, "Nueva conversación")
             }
         },
-        containerColor = Color.Transparent // Transparent to see background
-        ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-            // Filtros. La fila SCROLLEA en horizontal: son cuatro
-            // (Todos / No leídos / Grupos / Archivados) y en una pantalla de
-            // 6" el cuarto se salía del borde sin posibilidad de alcanzarlo.
-            // Como archivar mueve la conversación justo a ese filtro, archivar
-            // equivalía a perder el chat: se iba a un sitio al que no se podía
-            // llegar. Con el scroll, y con el contador de archivados de abajo,
-            // el camino de vuelta existe.
+        containerColor = Color.Transparent
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Filtros: la fila desplaza en horizontal para que "Archivados" siempre
+            // sea alcanzable; es el único camino de vuelta de un chat archivado.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ChatFilter.values().forEach { filter ->
-                    val isSelected = state.selectedFilter == filter
-                    
-                    Surface(
-                        modifier = Modifier
-                            .height(42.dp)
-                            .safeClickable { viewModel.onFilterChange(filter) },
-                        shape = RoundedCornerShape(21.dp),
-                        color = if (isSelected) Color.Transparent else Color.Black.copy(alpha = 0.3f)
-                    ) {
-                        Box(
-                            modifier = if (isSelected) {
-                                Modifier.background(
-                                    Brush.linearGradient(
-                                        listOf(
-                                            themeColor,
-                                            themeSecondaryColor
-                                        )
-                                    )
-                                )
-                            } else {
-                                Modifier
-                            },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                // Icon for each filter
-                                val icon = when (filter) {
-                                    ChatFilter.ALL -> Icons.AutoMirrored.Filled.Chat
-                                    ChatFilter.UNREAD -> Icons.Default.MarkChatUnread
-                                    ChatFilter.GROUPS -> Icons.Default.Group
-                                    ChatFilter.ARCHIVED -> Icons.Default.Archive
-                                }
-                                
-                                AnimatedVisibility(
-                                    visible = isSelected,
-                                    enter = scaleIn() + fadeIn(),
-                                    exit = scaleOut() + fadeOut()
-                                ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                
-                                Text(
-                                    // En castellano y no el nombre del enum en
-                                    // mayúsculas: el resto de la app está en
-                                    // castellano y "UNREAD"/"ARCHIVED" no dicen
-                                    // nada a quien no lea inglés.
-                                    text = when (filter) {
-                                        ChatFilter.ALL -> "Todos"
-                                        ChatFilter.UNREAD -> "No leídos"
-                                        ChatFilter.GROUPS -> "Grupos"
-                                        ChatFilter.ARCHIVED -> "Archivados"
-                                    },
-                                    color = if (isSelected) Color.White else Color.Gray,
-                                    fontSize = 15.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                                )
-
-                                // Cuántas conversaciones hay archivadas. Sin este
-                                // número, archivar parece que borra: no queda
-                                // rastro de que la conversación siga existiendo.
-                                if (filter == ChatFilter.ARCHIVED && !isSelected) {
-                                    val archivados = state.chats.count { it.isArchived }
-                                    if (archivados > 0) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = themeColor,
-                                            modifier = Modifier.size(20.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Text(
-                                                    text = archivados.toString(),
-                                                    color = Color.White,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                // Badge count for unread
-                                if (filter == ChatFilter.UNREAD && !isSelected) {
-                                    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                                    val unreadCount = state.filteredChats.count { chat ->
-                                        (chat.unreadCount[currentUserId] ?: 0) > 0
-                                    }
-                                    
-                                    if (unreadCount > 0) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = themeColor,
-                                            modifier = Modifier.size(20.dp)
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) {
-                                                Text(
-                                                    text = if (unreadCount > 9) "9+" else unreadCount.toString(),
-                                                    color = Color.White,
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    val count = when (filter) {
+                        ChatFilter.UNREAD -> state.chats.count { (it.unreadCount[currentUserId] ?: 0) > 0 && !it.isArchived }
+                        ChatFilter.ARCHIVED -> state.chats.count { it.isArchived }
+                        else -> 0
                     }
-                }
-            }
-            
-            // Chat list
-            when {
-                state.isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(color = themeColor)
-                    }
-                }
-                
-                state.filteredChats.isEmpty() -> {
-                    EmptyChatsState(
-                        onStartConversation = {
-                            try {
-                                navController.navigate("new_conversation")
-                            } catch (e: Exception) { }
+                    NexusFilterChip(
+                        label = when (filter) {
+                            ChatFilter.ALL -> tr("Todos")
+                            ChatFilter.UNREAD -> tr("No leídos")
+                            ChatFilter.GROUPS -> tr("Grupos")
+                            ChatFilter.ARCHIVED -> tr("Archivados")
                         },
-                        themeColor = themeColor
+                        selected = state.selectedFilter == filter,
+                        count = count,
+                        onClick = { viewModel.onFilterChange(filter) }
                     )
                 }
-                
+            }
+
+            when {
+                state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                state.filteredChats.isEmpty() -> EmptyChatsState(
+                    filter = state.selectedFilter,
+                    onStartConversation = { navController.navigate(Screen.NewConversation.route) },
+                    onOpenAssistant = {
+                        if (currentUserId.isNotEmpty()) {
+                            val chatId = ChatId.create(currentUserId, "demo_azel_assistant")
+                            navController.navigate(Screen.Chat.createRoute(chatId))
+                        }
+                    }
+                )
+
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // ═══ DEMO CHAT - ALWAYS FIRST ═══
-                        item {
-                            DemoChatCard(
-                                onClick = {
-                                    try {
-                                        val currentUid = FirebaseAuth.getInstance().currentUser?.uid
-                                        if (currentUid == null) {
-                                            android.util.Log.e("HomeScreen", "Cannot open demo chat: user not authenticated")
-                                            android.widget.Toast.makeText(
-                                                context,
-                                                "Inicia sesión para abrir el Demo Chat",
-                                                android.widget.Toast.LENGTH_SHORT
-                                            ).show()
-                                        } else {
-                                            // ChatId canónico y consistente con NewConversationViewModel.createDemoChat
-                                            val chatId = ChatId.create(currentUid, "demo_azel_assistant")
-                                            navController.navigate(Screen.Chat.createRoute(chatId))
+                    // La entrada escalonada solo se ve al abrir: al desplazarse las filas
+                    // deben estar ya en su sitio.
+                    var listEntered by rememberSaveable { mutableStateOf(false) }
+                    LaunchedEffect(Unit) {
+                        delay(700)
+                        listEntered = true
+                    }
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        itemsIndexed(items = state.filteredChats, key = { _, chat -> chat.chatId }) { index, chat ->
+                            val contactId = chat.participantIds.find { it != currentUserId }
+                            val hasStory = contactId != null && contactId in storyOwners
+                            Column(
+                                Modifier
+                                    .animateItem()
+                                    .staggeredEnter(index, enabled = !listEntered)
+                            ) {
+                                ChatRow(
+                                    chat = chat,
+                                    hasStory = hasStory,
+                                    colorRing = avatarRings,
+                                    onClick = { navController.navigate("chat/${chat.chatId}") },
+                                    onLongPress = {
+                                        selectedChat = chat
+                                        showBottomSheet = true
+                                    },
+                                    onAvatarClick = {
+                                        if (contactId != null) {
+                                            navController.navigate(
+                                                if (hasStory) "story_viewer/$contactId" else "profile_viewer/$contactId"
+                                            )
                                         }
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("HomeScreen", "Error opening demo chat: ${e.message}", e)
-                                        android.widget.Toast.makeText(
-                                            context,
-                                            "No se pudo abrir el Demo Chat. Intenta de nuevo.",
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
                                     }
-                                },
-                                themeColor = themeColor
-                            )
+                                )
+                                NexusDivider(startInset = 82.dp)
+                            }
                         }
-                        
-                        items(
-                            items = state.filteredChats,
-                            key = { it.chatId }
-                        ) { chat ->
-                            ChatRow(
-                                chat = chat,
-                        onClick = {
-                            try {
-                                navController.navigate("chat/${chat.chatId}")
-                            } catch (e: Exception) { }
-                        },
-                                onLongPress = {
-                                    selectedChat = chat
-                                    showBottomSheet = true
-                                },
-                                onAvatarClick = {
-                                    try {
-                                        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                                        val contactId = chat.participantIds.find { 
-                                            it != currentUserId 
-                                        } ?: return@ChatRow
-                                        navController.navigate("profile_viewer/$contactId")
-                                    } catch (e: Exception) { }
-                                },
-                                themeColor = themeColor,
-                                themeSecondaryColor = themeSecondaryColor
-                            )
-                        }
+                        item { Spacer(Modifier.height(88.dp)) }
                     }
                 }
             }
         }
     }
-    
-    // Bottom sheet for long press actions
+
+    // Acciones al mantener pulsado un chat
     selectedChat?.let { chat ->
         if (showBottomSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
-                containerColor = DarkSurface.copy(alpha = 0.95f)
+                containerColor = NexusTokens.Color.BgSurface,
+                tonalElevation = 0.dp
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(bottom = 16.dp)
                 ) {
                     ChatActionItem(
                         icon = Icons.Default.PushPin,
-                        text = if (chat.isPinned) "No fijar" else "Fijar arriba",
+                        text = if (chat.isPinned) tr("Dejar de fijar") else tr("Fijar arriba"),
                         onClick = {
                             viewModel.togglePin(chat.chatId)
                             showBottomSheet = false
@@ -378,70 +281,44 @@ fun HomeScreenRedesigned(
                     )
                     ChatActionItem(
                         icon = if (chat.isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
-                        text = if (chat.isMuted) "Reactivar notificaciones" else "Silenciar…",
+                        text = if (chat.isMuted) tr("Reactivar notificaciones") else tr("Silenciar"),
                         onClick = {
-                            if (chat.isMuted) {
-                                // Ya silenciado: reactivar directamente, sin
-                                // preguntar por una duración que no aplica.
-                                viewModel.toggleMute(chat.chatId) { message ->
-                                    android.widget.Toast
-                                        .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
-                                        .show()
-                                }
-                                showBottomSheet = false
-                            } else {
-                                showBottomSheet = false
-                                showMuteOptions = true
-                            }
+                            showBottomSheet = false
+                            if (chat.isMuted) viewModel.toggleMute(chat.chatId) { toast(it) }
+                            else showMuteOptions = true
                         }
                     )
                     ChatActionItem(
                         icon = if (chat.isArchived) Icons.Default.Unarchive else Icons.Default.Archive,
-                        text = if (chat.isArchived) "Restaurar de archivados" else "Archivar",
+                        text = if (chat.isArchived) tr("Sacar de archivados") else tr("Archivar"),
                         onClick = {
-                            viewModel.toggleArchive(chat.chatId) { message ->
-                                android.widget.Toast
-                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
-                                    .show()
-                            }
+                            viewModel.toggleArchive(chat.chatId) { toast(it) }
                             showBottomSheet = false
                         }
                     )
-                    // Bloquear solo tiene sentido en chats de dos personas: en un
-                    // grupo no hay un "otro" unico a quien bloquear.
-                    if (chat.chatType != com.Azelmods.App.data.model.ChatType.GROUP) {
+                    if (chat.chatType != ChatType.GROUP) {
                         ChatActionItem(
                             icon = Icons.Default.Block,
-                            text = "Bloquear / Desbloquear",
+                            text = tr("Bloquear o desbloquear"),
                             onClick = {
-                                viewModel.toggleBlock(chat.chatId) { message ->
-                                    android.widget.Toast
-                                        .makeText(context, message, android.widget.Toast.LENGTH_LONG)
-                                        .show()
-                                }
+                                viewModel.toggleBlock(chat.chatId) { toast(it) }
                                 showBottomSheet = false
                             }
                         )
                     }
                     ChatActionItem(
                         icon = Icons.Default.CleaningServices,
-                        text = "Vaciar chat",
+                        text = tr("Vaciar chat"),
                         onClick = {
-                            viewModel.clearChat(chat.chatId) { message ->
-                                android.widget.Toast
-                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
-                                    .show()
-                            }
+                            viewModel.clearChat(chat.chatId) { toast(it) }
                             showBottomSheet = false
                         }
                     )
                     ChatActionItem(
                         icon = Icons.Default.Delete,
-                        text = "Eliminar conversación",
-                        textColor = ErrorRed,
+                        text = tr("Eliminar conversación"),
+                        textColor = NexusTokens.Color.Error,
                         onClick = {
-                            // Pide confirmación: el borrado quita la conversación
-                            // para AMBOS miembros y no se puede deshacer.
                             showBottomSheet = false
                             showDeleteConfirm = true
                         }
@@ -451,95 +328,94 @@ fun HomeScreenRedesigned(
         }
     }
 
-    // Duración del silencio. Silenciar "para siempre" y no poder elegir un rato
-    // es lo que hace que la gente acabe silenciando un chat y olvidándose.
     selectedChat?.let { chat ->
         if (showMuteOptions) {
             val opciones = listOf(
-                "1 hora" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_HOUR,
-                "8 horas" to com.Azelmods.App.data.model.ChatSettings.MUTE_8_HOURS,
-                "1 semana" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_WEEK,
-                "Hasta que lo reactive" to com.Azelmods.App.data.model.ChatSettings.MUTE_ALWAYS
+                "1 hora" to ChatSettings.MUTE_1_HOUR,
+                "8 horas" to ChatSettings.MUTE_8_HOURS,
+                "1 semana" to ChatSettings.MUTE_1_WEEK,
+                "Hasta que lo reactive" to ChatSettings.MUTE_ALWAYS
             )
             AlertDialog(
                 onDismissRequest = { showMuteOptions = false },
-                icon = { Icon(Icons.Default.NotificationsOff, contentDescription = null) },
-                title = { Text("Silenciar conversación") },
+                title = { Text(tr("Silenciar conversación")) },
                 text = {
                     Column {
                         Text(
-                            "Dejarás de recibir notificaciones de este chat. Las llamadas seguirán entrando.",
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.7f)
+                            tr("Dejarás de recibir notificaciones de este chat. Las llamadas seguirán entrando."),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = NexusTokens.Color.TextSecondary
                         )
                         Spacer(Modifier.height(8.dp))
                         opciones.forEach { (etiqueta, duracion) ->
-                            TextButton(
-                                onClick = {
-                                    showMuteOptions = false
-                                    viewModel.toggleMute(chat.chatId, duracion) { message ->
-                                        android.widget.Toast
-                                            .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
-                                            .show()
+                            Text(
+                                text = etiqueta,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = NexusTokens.Color.TextPrimary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        showMuteOptions = false
+                                        viewModel.toggleMute(chat.chatId, duracion) { toast(it) }
                                     }
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(etiqueta, modifier = Modifier.fillMaxWidth())
-                            }
+                                    .padding(vertical = 12.dp)
+                            )
                         }
                     }
                 },
                 confirmButton = {},
                 dismissButton = {
-                    TextButton(onClick = { showMuteOptions = false }) { Text("Cancelar") }
+                    TextButton(onClick = { showMuteOptions = false }) { Text(tr("Cancelar")) }
                 },
-                containerColor = DarkSurface
+                containerColor = NexusTokens.Color.BgSurface
             )
         }
     }
 
-    // Confirmación de borrado. Va fuera del ModalBottomSheet a propósito: si
-    // viviera dentro, cerrar la hoja desmontaría el diálogo antes de que el
-    // usuario pudiera contestar.
     selectedChat?.let { chat ->
         if (showDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
-                icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = ErrorRed) },
-                title = { Text("¿Eliminar la conversación?") },
+                title = { Text(tr("¿Eliminar la conversación?")) },
                 text = {
                     Text(
-                        "Se borrarán todos los mensajes para los dos participantes. " +
-                            "Esta acción no se puede deshacer.\n\n" +
-                            "Si solo quieres limpiar el historial, usa «Vaciar chat»."
+                        tr("Se borrarán todos los mensajes para los dos participantes. " +
+                            "No se puede deshacer.\n\n" +
+                            "Si solo quieres limpiar el historial, usa «Vaciar chat»."),
+                        color = NexusTokens.Color.TextSecondary
                     )
                 },
                 confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showDeleteConfirm = false
-                            viewModel.deleteChat(chat.chatId) { message ->
-                                android.widget.Toast
-                                    .makeText(context, message, android.widget.Toast.LENGTH_SHORT)
-                                    .show()
-                            }
-                        }
-                    ) {
-                        Text("Eliminar", color = ErrorRed)
+                    TextButton(onClick = {
+                        showDeleteConfirm = false
+                        viewModel.deleteChat(chat.chatId) { toast(it) }
+                    }) {
+                        Text(tr("Eliminar"), color = NexusTokens.Color.Error)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text("Cancelar")
-                    }
+                    TextButton(onClick = { showDeleteConfirm = false }) { Text(tr("Cancelar")) }
                 },
-                containerColor = DarkSurface
+                containerColor = NexusTokens.Color.BgSurface
             )
         }
     }
 }
 
+@Composable
+private fun HomeMenuItem(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = { Text(label, color = NexusTokens.Color.TextPrimary) },
+        leadingIcon = { Icon(icon, null, tint = NexusTokens.Color.TextSecondary) },
+        onClick = onClick
+    )
+}
+
+/** Fila de conversación: plana, a todo el ancho, con el acento solo en lo que está sin leer. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatRow(
@@ -547,8 +423,8 @@ fun ChatRow(
     onClick: () -> Unit,
     onLongPress: () -> Unit,
     onAvatarClick: (() -> Unit)? = null,
-    themeColor: Color = MaterialTheme.colorScheme.primary,
-    themeSecondaryColor: Color = MaterialTheme.colorScheme.secondary
+    hasStory: Boolean = false,
+    colorRing: Boolean = true
 ) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val otherUserId = chat.participantIds.ifEmpty { chat.participants }
@@ -556,328 +432,165 @@ fun ChatRow(
     val contactName = otherUserId?.let { chat.participantNames[it] }
         ?: chat.contactName.ifBlank { null }
         ?: chat.participantNames.values.firstOrNull()
-        ?: "Anónimo"
-    val contactPhotoUrl = otherUserId?.let { chat.participantPhotos[it] }
-        ?: chat.contactPhotoUrl
-    // Presencia REAL del contacto. Antes se calculaba como "alguien está escribiendo",
-    // así que el punto verde de "en línea" solo aparecía mientras el otro tecleaba y
-    // desaparecía al parar: no indicaba presencia en absoluto.
-    val isOnline = chat.isOnline
+        ?: tr("Sin nombre")
+    val contactPhotoUrl = otherUserId?.let { chat.participantPhotos[it] } ?: chat.contactPhotoUrl
     val isPeerTyping = chat.isTyping.any { (userId, typing) -> typing && userId != currentUserId }
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
     val hasUnread = unreadCount > 0
+    val interaction = remember { MutableInteractionSource() }
+    val ringColors = remember(otherUserId, contactName, chat.contactColor) {
+        ProfileColors.forUser(otherUserId ?: contactName, chat.contactColor)
+    }
 
-    // Feedback táctil: la tarjeta se hunde ligeramente al pulsarla.
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.975f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "press_scale"
-    )
-
-    // NOTA: se retiró el AnimatedVisibility de entrada por fila. Al reciclarse los
-    // items del LazyColumn la animación se re-disparaba en cada scroll y la lista
-    // "parpadeaba". La entrada se anima ahora a nivel de lista, no por tarjeta.
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 5.dp)
-            .scale(pressScale)
+            .pressScale(interaction, pressedScale = 0.985f)
+            .combinedClickable(
+                interactionSource = interaction,
+                indication = ripple(),
+                onClick = onClick,
+                onLongClick = onLongPress
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 84.dp)
-                // combinedClickable y no safeClickable: [onLongPress] se recibía como
-                // parámetro pero NUNCA se conectaba, así que el menú de mantener pulsado
-                // (fijar / silenciar / archivar / eliminar) era inalcanzable. De paso, el
-                // interactionSource compartido alimenta la animación de pulsación.
-                .combinedClickable(
-                    interactionSource = interactionSource,
-                    indication = ripple(),
-                    onClick = onClick,
-                    onLongClick = onLongPress
-                ),
-            shape = RoundedCornerShape(NexusTokens.Surface.CardRadius),
-            // Translúcido a propósito: la Home deja ver el fondo/wallpaper del
-            // usuario y eso es parte de la identidad de la app. Los alfas ya no
-            // se escriben a mano aquí: salen de NexusTokens.Glass, que es donde
-            // se decide cuánto deja pasar cada nivel de superficie (v6).
-            color = if (hasUnread) NexusTokens.Glass.Raised else NexusTokens.Glass.Rest,
-            border = BorderStroke(
-                width = NexusTokens.Glass.BorderWidth,
-                brush = if (hasUnread) {
-                    Brush.linearGradient(listOf(themeColor.copy(alpha = 0.85f), themeSecondaryColor.copy(alpha = 0.55f)))
-                } else {
-                    Brush.linearGradient(
-                        listOf(NexusTokens.Glass.BorderRest, Color.White.copy(alpha = 0.04f))
-                    )
-                }
-            ),
-            shadowElevation = if (hasUnread) NexusTokens.Surface.CardRaised else NexusTokens.Surface.CardRest
-        ) {
-            // fillMaxWidth y NO fillMaxSize: la tarjeta ya no tiene altura fija sino
-            // mínima, así que pedir el alto máximo dejaría la fila a merced de las
-            // constraints del contenedor en lugar de ajustarse al contenido.
-            // ── Raíl de acento (v6) ───────────────────────────────────────────
-            // Barra vertical de marca en el borde izquierdo cuando hay algo
-            // pendiente: a un vistazo, y con un fondo de pantalla debajo, un
-            // borde de 1 dp y un contador al otro extremo no se ven.
-            //
-            // Va como CAPA dentro de un Box, no como primer hijo de un Row con
-            // `height(IntrinsicSize.Min)`. Esa era la versión anterior y
-            // crasheaba: AnimatedVisibility no sabe responder a una medición
-            // intrínseca ("Intrinsic measurements are not supported"), así que
-            // en cuanto la tarjeta se remedía —justo lo que pasa al fijar,
-            // archivar o borrar— la app se caía. Aquí el raíl se dibuja encima y
-            // toma la altura del contenido con matchParentSize, sin que nadie
-            // tenga que preguntar cuánto mide.
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Row(
+        Box(modifier = Modifier.size(54.dp)) {
+            UserAvatar(
+                name = contactName,
+                photoUrl = contactPhotoUrl,
+                size = 54.dp,
+                ring = when {
+                    // Historia activa: el aro gira, como aviso de que hay algo nuevo que ver.
+                    hasStory -> AvatarRing(ringColors, width = 2.5.dp, rotating = true)
+                    colorRing -> AvatarRing(ringColors, width = 1.5.dp)
+                    else -> null
+                },
+                modifier = Modifier.clickable(enabled = onAvatarClick != null) { onAvatarClick?.invoke() }
+            )
+            // Presencia real: solo aparece si el contacto está conectado.
+            if (chat.isOnline) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .align(Alignment.BottomEnd)
+                        .size(14.dp)
+                        .background(NexusTokens.Color.BgBase, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(Modifier.size(9.dp).background(NexusTokens.Color.Online, CircleShape))
+                }
+            }
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // El nombre y el icono de silencio ocupan el hueco: así la hora queda
+                // siempre alineada a la derecha, sea cual sea la longitud del nombre.
+                Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                // ── Avatar ────────────────────────────────────────────────────
-                // El anillo de gradiente solo aparece cuando hay mensajes sin leer:
-                // así el adorno significa algo en vez de ser decoración constante.
-                Box(modifier = Modifier.size(56.dp)) {
-                    if (hasUnread) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.sweepGradient(
-                                        listOf(themeColor, Teal, Pink, themeColor)
-                                    ),
-                                    CircleShape
-                                )
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(if (hasUnread) 50.dp else 56.dp)
-                            .align(Alignment.Center)
-                            .safeClickable { onAvatarClick?.invoke() }
-                    ) {
-                        UserAvatar(
-                            name = contactName,
-                            photoUrl = contactPhotoUrl,
-                            size = if (hasUnread) 50.dp else 56.dp
-                        )
-                    }
-
-                    // Punto de presencia (verde = en línea de verdad).
-                    if (isOnline) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .size(15.dp)
-                                .background(Color.Black.copy(alpha = 0.75f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .background(EmeraldGreen, CircleShape)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(14.dp))
-                
-                // Chat info with glassmorphism effect
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (chat.isPinned) {
-                                Icon(
-                                    Icons.Default.PushPin,
-                                    contentDescription = "Fijado",
-                                    tint = themeColor,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(Modifier.width(4.dp))
-                            }
-                            if (chat.isE2EE) {
-                                Icon(
-                                    Icons.Default.Lock,
-                                    contentDescription = "Cifrado de extremo a extremo",
-                                    tint = EmeraldGreen.copy(alpha = 0.9f),
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(Modifier.width(5.dp))
-                            }
-                            Text(
-                                text = contactName,
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            if (chat.isMuted) {
-                                Spacer(Modifier.width(5.dp))
-                                Icon(
-                                    Icons.Default.NotificationsOff,
-                                    contentDescription = "Silenciado",
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = formatTimestamp(chat.lastMessageTime),
-                            color = if (hasUnread) themeColor else Color.White.copy(alpha = 0.45f),
-                            fontSize = 11.sp,
-                            fontWeight = if (hasUnread) FontWeight.Bold else FontWeight.Normal
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (isPeerTyping) {
-                            // "Escribiendo…" en el idioma de la app (antes: "typing").
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "escribiendo",
-                                    color = Teal,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                TypingDotsSmall()
-                            }
-                        } else {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Doble check real del design system en vez del texto
-                                // "✓✓" en verde, que se pintaba SIEMPRE igual aunque el
-                                // mensaje no estuviera entregado ni leído.
-                                //
-                                // "Leído" depende de los NO LEÍDOS DEL OTRO, no de los
-                                // míos: si al destinatario no le queda nada pendiente,
-                                // ha visto mi último mensaje.
-                                if (chat.lastMessageSenderId == currentUserId) {
-                                    val peerUnread = otherUserId?.let { chat.unreadCount[it] } ?: 0
-                                    ReadReceiptIndicator(
-                                        status = if (peerUnread > 0) MessageStatus.DELIVERED else MessageStatus.READ,
-                                        modifier = Modifier.padding(end = 5.dp)
-                                    )
-                                }
-
-                                Text(
-                                    text = chat.lastMessage,
-                                    color = if (hasUnread) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.5f),
-                                    fontSize = 13.sp,
-                                    fontWeight = if (hasUnread) FontWeight.Medium else FontWeight.Normal,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        // Contador de no leídos. La píldora se ensancha con el número
-                        // (antes era un círculo fijo de 26.dp y "99+" se salía).
-                        AnimatedVisibility(
-                            visible = hasUnread,
-                            enter = scaleIn() + fadeIn(),
-                            exit = scaleOut() + fadeOut()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .heightIn(min = 22.dp)
-                                    .widthIn(min = 22.dp)
-                                    .background(
-                                        Brush.linearGradient(listOf(themeColor, themeSecondaryColor)),
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                                    color = Color.White,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
-                                )
-                            }
-                        }
-                    }
-                    }
-                }
-
-                // Raíl superpuesto: matchParentSize copia la altura ya medida
-                // del Row, sin pedir medición intrínseca a nadie.
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = hasUnread,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.matchParentSize()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(NexusTokens.Glass.AccentRailWidth)
-                            .background(
-                                Brush.verticalGradient(listOf(themeColor, themeSecondaryColor))
-                            )
+                    Text(
+                        text = contactName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (hasUnread) FontWeight.SemiBold else FontWeight.Medium,
+                        color = NexusTokens.Color.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+                    if (chat.isMuted) {
+                        Spacer(Modifier.width(5.dp))
+                        Icon(
+                            Icons.Default.NotificationsOff,
+                            contentDescription = tr("Silenciado"),
+                            tint = NexusTokens.Color.TextMuted,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = formatTimestamp(chat.lastMessageTime),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (hasUnread) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted
+                )
+            }
+
+            // Sin último mensaje (chat vacío o vaciado) no se reserva una línea en blanco:
+            // el nombre queda centrado junto al avatar.
+            val showSecondLine = isPeerTyping || chat.lastMessage.isNotBlank() || chat.isPinned || hasUnread
+            if (showSecondLine) Spacer(Modifier.height(3.dp))
+
+            if (showSecondLine) Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isPeerTyping) {
+                    Text(
+                        text = tr("escribiendo"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    TypingDotsSmall()
+                    Spacer(Modifier.weight(1f))
+                } else {
+                    if (chat.lastMessageSenderId == currentUserId) {
+                        val peerUnread = otherUserId?.let { chat.unreadCount[it] } ?: 0
+                        ReadReceiptIndicator(
+                            status = if (peerUnread > 0) MessageStatus.DELIVERED else MessageStatus.READ,
+                            modifier = Modifier.padding(end = 4.dp)
+                        )
+                    }
+                    Text(
+                        text = chat.lastMessage,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (hasUnread) NexusTokens.Color.TextSecondary else NexusTokens.Color.TextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (chat.isPinned) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.Default.PushPin,
+                        contentDescription = tr("Fijado"),
+                        tint = NexusTokens.Color.TextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+                if (hasUnread) {
+                    Spacer(Modifier.width(8.dp))
+                    NexusCountBadge(count = unreadCount, muted = chat.isMuted)
                 }
             }
         }
     }
 }
 
+/** Indicador de escritura: animación con sentido, comunica un estado en curso. */
 @Composable
 fun TypingDotsSmall() {
+    val transition = rememberInfiniteTransition(label = "typing")
     Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.padding(start = 4.dp)
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        modifier = Modifier.padding(start = 5.dp)
     ) {
         repeat(3) { index ->
-            val infiniteTransition = rememberInfiniteTransition(label = "dot$index")
-            val alpha by infiniteTransition.animateFloat(
-                initialValue = 0.3f,
+            val alpha by transition.animateFloat(
+                initialValue = 0.25f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(600, delayMillis = index * 200),
+                    animation = tween(600, delayMillis = index * 180),
                     repeatMode = RepeatMode.Reverse
                 ),
-                label = "alpha"
+                label = "dot$index"
             )
-            
-            Text(
-                text = ".",
-                color = Teal.copy(alpha = alpha),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
+            Box(
+                Modifier
+                    .size(4.dp)
+                    .graphicsLayer { this.alpha = alpha }
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
             )
         }
     }
@@ -885,46 +598,30 @@ fun TypingDotsSmall() {
 
 @Composable
 fun EmptyChatsState(
+    filter: ChatFilter,
     onStartConversation: () -> Unit,
-    themeColor: Color = MaterialTheme.colorScheme.primary
+    onOpenAssistant: () -> Unit
 ) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    when (filter) {
+        ChatFilter.ALL -> Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Chat,
-                contentDescription = null,
-                modifier = Modifier.size(80.dp),
-                tint = Color.Gray
+            NexusEmptyState(
+                icon = Icons.AutoMirrored.Filled.Chat,
+                title = tr("Aún no tienes conversaciones"),
+                body = "Busca a alguien por su usuario o escanea su código QR para empezar.",
+                actionLabel = tr("Nueva conversación"),
+                onAction = onStartConversation,
+                modifier = Modifier.weight(1f)
             )
-            
-            Text(
-                text = "No conversations yet",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Text(
-                text = "Start chatting with your contacts",
-                color = Color.Gray,
-                fontSize = 14.sp
-            )
-            
-            Button(
-                onClick = onStartConversation,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = themeColor
-                )
-            ) {
-                Text("Start a conversation")
+            TextButton(onClick = onOpenAssistant, modifier = Modifier.padding(bottom = 96.dp)) {
+                Text(tr("Hablar con el asistente de bienvenida"))
             }
         }
+        ChatFilter.UNREAD -> NexusEmptyState(Icons.Default.MarkChatRead, "Estás al día", body = "No tienes mensajes sin leer.")
+        ChatFilter.GROUPS -> NexusEmptyState(Icons.Default.Group, "Sin grupos", body = "Crea uno desde «Nueva conversación».")
+        ChatFilter.ARCHIVED -> NexusEmptyState(Icons.Default.Archive, "Sin archivados", body = "Mantén pulsado un chat para archivarlo.")
     }
 }
 
@@ -932,179 +629,45 @@ fun EmptyChatsState(
 fun ChatActionItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
-    textColor: Color = Color.White,
+    textColor: Color = NexusTokens.Color.TextPrimary,
     onClick: () -> Unit
 ) {
-    Surface(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .safeClickable(onClick = onClick),
-        color = Color.Transparent
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(24.dp)
-            )
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Text(
-                text = text,
-                color = textColor,
-                fontSize = 16.sp
-            )
-        }
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (textColor == NexusTokens.Color.TextPrimary) NexusTokens.Color.TextSecondary else textColor,
+            modifier = Modifier.size(NexusTokens.IconSize.md)
+        )
+        Spacer(Modifier.width(20.dp))
+        Text(text = text, color = textColor, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
+/**
+ * Hora en la lista de chats: hoy la hora, ayer "Ayer", esta semana el día, y si no la
+ * fecha. Es lo que el usuario espera de una app de mensajería, en vez de "3h" o "12d".
+ */
 private fun formatTimestamp(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - timestamp
-    
+    if (timestamp <= 0L) return ""
+    val locale = Locale.forLanguageTag("es")
+    val date = Date(timestamp)
+    val then = Calendar.getInstance().apply { time = date }
+    val now = Calendar.getInstance()
+    val sameYear = then.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+    val dayDiff = now.get(Calendar.DAY_OF_YEAR) - then.get(Calendar.DAY_OF_YEAR)
     return when {
-        diff < 60_000 -> "now"
-        diff < 3600_000 -> "${diff / 60_000}m"
-        diff < 86400_000 -> "${diff / 3600_000}h"
-        diff < 172800_000 -> "Yesterday"
-        else -> {
-            val date = Date(timestamp)
-            SimpleDateFormat("MM/dd", Locale.getDefault()).format(date)
-        }
-    }
-}
-
-@Composable
-fun DemoChatCard(
-    onClick: () -> Unit,
-    themeColor: Color = MaterialTheme.colorScheme.primary
-) {
-    val animatedTransition = rememberInfiniteTransition(label = "demo_card")
-    val borderGlow by animatedTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "border_glow"
-    )
-    
-    // Mismas métricas que ChatRow (radio 20, margen 12) para que la lista se lea
-    // como un único sistema y no como dos componentes de apps distintas.
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 5.dp)
-    ) {
-        // Static gradient border (no rotation animation to avoid recomposition)
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-        ) {
-            drawRoundRect(
-                brush = Brush.sweepGradient(
-                    listOf(
-                        PurpleBright.copy(alpha = borderGlow * 0.7f),
-                        CyanAccent.copy(alpha = borderGlow * 0.4f),
-                        RosePink.copy(alpha = borderGlow * 0.7f),
-                        PurpleBright.copy(alpha = borderGlow * 0.7f)
-                    ),
-                    center = androidx.compose.ui.geometry.Offset(size.width / 2, size.height / 2)
-                ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(20.dp.toPx()),
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx())
-            )
-        }
-
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(84.dp)
-                .safeClickable(onClick = onClick),
-            shape = RoundedCornerShape(20.dp),
-            color = Color.Black.copy(alpha = 0.32f),
-            shadowElevation = 6.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Robot avatar with gradient
-                Box(
-                    modifier = Modifier.size(56.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        PurpleBright,
-                                        CyanAccent
-                                    )
-                                ),
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "🤖",
-                            fontSize = 28.sp
-                        )
-                    }
-                }
-
-                Spacer(Modifier.width(14.dp))
-
-                // Chat info
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        "Azel Assistant",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(Modifier.height(4.dp))
-
-                    Text(
-                        "Escríbeme y te enseño la app",
-                        color = Color.White.copy(alpha = 0.55f),
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                
-                // DEMO badge
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = NeonGreen.copy(alpha = 0.16f),
-                    border = BorderStroke(1.dp, NeonGreen.copy(alpha = 0.7f))
-                ) {
-                    Text(
-                        "DEMO",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        color = NeonGreen,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
+        sameYear && dayDiff == 0 -> SimpleDateFormat("HH:mm", locale).format(date)
+        sameYear && dayDiff == 1 -> tr("Ayer")
+        sameYear && dayDiff in 2..6 ->
+            SimpleDateFormat("EEE", locale).format(date).replaceFirstChar { it.uppercase() }
+        sameYear -> SimpleDateFormat("d MMM", locale).format(date)
+        else -> SimpleDateFormat("dd/MM/yy", locale).format(date)
     }
 }

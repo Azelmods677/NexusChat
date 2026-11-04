@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.azelai.agents
 
+import com.Azelmods.App.i18n.tr
+
 import android.content.Intent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -96,6 +98,7 @@ fun AgentsPanel(
     geminiModel: String,
     onOpenSettings: () -> Unit,
     onSendToChat: (goal: String, answer: String) -> Unit,
+    onOpenEditor: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: AgentsViewModel = hiltViewModel()
 ) {
@@ -131,7 +134,8 @@ fun AgentsPanel(
                         viewModel.close()
                         viewModel.start(goal, geminiModel)
                     },
-                    onSendToChat = { onSendToChat(current.goal, current.finalAnswer) }
+                    onSendToChat = { onSendToChat(current.goal, current.finalAnswer) },
+                    onOpenEditor = onOpenEditor
                 )
             }
         }
@@ -162,15 +166,15 @@ private fun AgentSetup(
         item {
             Column {
                 Text(
-                    "Agentes de IA",
+                    tr("Agentes de IA"),
                     color = TextPrimary,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    "Dales un objetivo: buscan en la web, calculan, se reparten el trabajo y te entregan " +
-                        "el resultado. Puedes ver cada paso mientras trabajan.",
+                    tr("Dales un objetivo y lo resuelven solos: investigan en internet, escriben y ejecutan código, " +
+                        "corrigen sus errores y dejan los archivos en tu editor. Puedes ver cada paso en directo."),
                     color = TextSecondary,
                     fontSize = 14.sp,
                     lineHeight = 20.sp
@@ -219,7 +223,7 @@ private fun AgentSetup(
 
         item {
           Column {
-            Text("Ideas para probar", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(tr("Ideas para probar"), color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(8.dp))
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
@@ -243,7 +247,7 @@ private fun AgentSetup(
         if (ui.history.isNotEmpty()) {
             item {
                 Text(
-                    "Recientes",
+                    tr("Recientes"),
                     color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -268,12 +272,12 @@ private fun ProviderBanner(onOpenSettings: () -> Unit) {
             Icon(Icons.Default.Key, null, tint = NexusTokens.Color.Warning)
             Spacer(Modifier.width(12.dp))
             Text(
-                "Los agentes usan tu proveedor de IA. Configura una clave o un modelo local para empezar.",
+                tr("Los agentes usan tu proveedor de IA. Configura una clave o un modelo local para empezar."),
                 color = TextPrimary,
                 fontSize = 13.sp,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = onOpenSettings) { Text("Configurar", color = NexusTokens.Color.Warning) }
+            TextButton(onClick = onOpenSettings) { Text(tr("Configurar"), color = NexusTokens.Color.Warning) }
         }
     }
 }
@@ -341,9 +345,11 @@ private fun AgentCard(agent: AgentDefinition, selected: Boolean, onClick: () -> 
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                if (agent.tools.isEmpty()) "Solo razonamiento" else agent.tools.joinToString("  ") { it.emoji },
+                if (agent.tools.isEmpty()) tr("Solo razonamiento") else agent.tools.joinToString("  ") { it.emoji },
                 color = TextMuted,
-                fontSize = 13.sp
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -404,7 +410,7 @@ private fun GoalInput(goal: String, onGoalChange: (String) -> Unit, enabled: Boo
                 value = goal,
                 onValueChange = onGoalChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("¿Qué quieres que consigan?", color = TextMuted) },
+                placeholder = { Text(tr("¿Qué quieres que consigan?"), color = TextMuted) },
                 minLines = 2,
                 maxLines = 6,
                 colors = TextFieldDefaults.colors(
@@ -426,7 +432,7 @@ private fun GoalInput(goal: String, onGoalChange: (String) -> Unit, enabled: Boo
                 ) {
                     Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Poner a trabajar")
+                    Text(tr("Poner a trabajar"))
                 }
             }
         }
@@ -476,7 +482,8 @@ private fun AgentWorkspace(
     onCancel: () -> Unit,
     onClose: () -> Unit,
     onRetry: () -> Unit,
-    onSendToChat: () -> Unit
+    onSendToChat: () -> Unit,
+    onOpenEditor: () -> Unit
 ) {
     val listState = rememberLazyListState()
     val agentsById = remember(run.nodes) { run.nodes.associate { it.agent.id to it.agent } }
@@ -504,7 +511,7 @@ private fun AgentWorkspace(
         }
         if (run.events.isNotEmpty()) {
             item(key = "log_title") {
-                Text("Actividad", color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(tr("Actividad"), color = TextMuted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
             }
             items(run.events, key = { it.id }) { event ->
                 EventRow(event = event, agent = agentsById[event.agentId], modifier = Modifier.animateItem())
@@ -512,6 +519,9 @@ private fun AgentWorkspace(
         }
         if (run.isRunning) {
             item(key = "working") { WorkingIndicator(run) }
+        }
+        if (run.savedFiles.isNotEmpty()) {
+            item(key = "saved_files") { SavedFilesCard(files = run.savedFiles, onOpenEditor = onOpenEditor) }
         }
         when (run.status) {
             AgentRunStatus.DONE -> item(key = "result") {
@@ -521,9 +531,9 @@ private fun AgentWorkspace(
                 StatusMessage(
                     icon = Icons.Default.ErrorOutline,
                     color = NexusTokens.Color.Error,
-                    title = "No se pudo completar",
+                    title = tr("No se pudo completar"),
                     text = run.error ?: run.finalAnswer.ifBlank { "Error desconocido" },
-                    primaryLabel = "Reintentar",
+                    primaryLabel = tr("Reintentar"),
                     onPrimary = onRetry,
                     onSecondary = onClose
                 )
@@ -532,9 +542,9 @@ private fun AgentWorkspace(
                 StatusMessage(
                     icon = Icons.Default.StopCircle,
                     color = NexusTokens.Color.Warning,
-                    title = "Detenido",
-                    text = "Paraste la ejecución. Lo que hicieron los agentes sigue arriba.",
-                    primaryLabel = "Volver a lanzar",
+                    title = tr("Detenido"),
+                    text = tr("Paraste la ejecución. Lo que hicieron los agentes sigue arriba."),
+                    primaryLabel = tr("Volver a lanzar"),
                     onPrimary = onRetry,
                     onSecondary = onClose
                 )
@@ -589,7 +599,7 @@ private fun RunHeader(run: AgentRunState, onCancel: () -> Unit, onClose: () -> U
                         ) {
                             Icon(Icons.Default.Stop, null, tint = NexusTokens.Color.Error, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(4.dp))
-                            Text("Detener", color = NexusTokens.Color.Error, fontSize = 13.sp)
+                            Text(tr("Detener"), color = NexusTokens.Color.Error, fontSize = 13.sp)
                         }
                     }
                 }
@@ -780,7 +790,7 @@ private fun PlanCard(plan: List<PlanStep>, currentStep: Int, agentsById: Map<Str
         border = BorderStroke(0.5.dp, Border)
     ) {
         Column(Modifier.padding(16.dp)) {
-            Text("📋 Plan del coordinador", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text(tr("📋 Plan del coordinador"), color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             Spacer(Modifier.height(10.dp))
             plan.forEachIndexed { i, step ->
                 val agent = agentsById[step.agentId] ?: AgentCatalog.agent(step.agentId)
@@ -841,7 +851,7 @@ private fun EventRow(event: AgentEvent, agent: AgentDefinition?, modifier: Modif
                 )
                 is AgentEvent.Handoff -> Text(
                     buildString {
-                        append(agent?.name ?: "Agente").append(" recibe: ").append(event.task)
+                        append(agent?.name ?: tr("Agente")).append(" recibe: ").append(event.task)
                     },
                     color = TextPrimary,
                     fontSize = 13.sp,
@@ -879,13 +889,13 @@ private fun EventRow(event: AgentEvent, agent: AgentDefinition?, modifier: Modif
                     )
                 }
                 is AgentEvent.ToolResult -> ExpandableBlock(
-                    title = if (event.ok) "✅ Resultado de ${event.tool?.label ?: "la herramienta"}" else "⚠️ ${event.tool?.label ?: "Herramienta"} sin resultado",
+                    title = if (event.ok) "✅ Resultado de ${event.tool?.label ?: tr("la herramienta")}" else "⚠️ ${event.tool?.label ?: tr("Herramienta")} sin resultado",
                     body = event.output,
                     accent = if (event.ok) NexusTokens.Color.Success else NexusTokens.Color.Warning,
                     monospace = true
                 )
                 is AgentEvent.Output -> ExpandableBlock(
-                    title = "📝 ${agent?.name ?: "Agente"} entregó su parte (${wordCount(event.text)} palabras)",
+                    title = "📝 ${agent?.name ?: tr("Agente")} entregó su parte (${wordCount(event.text)} palabras)",
                     body = event.text,
                     accent = color,
                     markdown = true
@@ -922,7 +932,7 @@ private fun ExpandableBlock(
                 Text(title, color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    if (expanded) "Contraer" else "Ver más",
+                    if (expanded) tr("Contraer") else tr("Ver más"),
                     tint = TextMuted,
                     modifier = Modifier.size(18.dp)
                 )
@@ -962,18 +972,73 @@ private fun WorkingIndicator(run: AgentRunState) {
     val active = run.nodes.firstOrNull {
         it.status == AgentNodeStatus.THINKING || it.status == AgentNodeStatus.USING_TOOL
     }
-    Row(Modifier.padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(16.dp),
-            strokeWidth = 2.dp,
-            color = active?.let { Color(it.agent.color) } ?: Accent
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(
-            active?.let { "${it.agent.name}: ${it.activity}" } ?: "Preparando…",
-            color = TextSecondary,
-            fontSize = 13.sp
-        )
+    Column {
+        Row(Modifier.padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = active?.let { Color(it.agent.color) } ?: Accent
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                active?.let { "${it.agent.name}: ${it.activity}" } ?: tr("Preparando…"),
+                color = TextSecondary,
+                fontSize = 13.sp
+            )
+        }
+        // El agente escribiendo en directo: sin esto, un programa largo eran minutos de espera muda.
+        AnimatedVisibility(visible = run.liveText.isNotBlank()) {
+            Surface(
+                color = Surface1,
+                shape = RoundedCornerShape(NexusTokens.Radius.md),
+                border = BorderStroke(0.5.dp, Border),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Text(
+                    run.liveText.takeLast(420),
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace,
+                    lineHeight = 17.sp,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedFilesCard(files: List<String>, onOpenEditor: () -> Unit) {
+    Surface(
+        color = NexusTokens.Color.Success.copy(alpha = 0.10f),
+        shape = RoundedCornerShape(NexusTokens.Radius.lg),
+        border = BorderStroke(1.dp, NexusTokens.Color.Success.copy(alpha = 0.45f)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onOpenEditor)
+    ) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Code, null, tint = NexusTokens.Color.Success)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    if (files.size == 1) tr("1 archivo en tu editor") else "${files.size} archivos en tu editor",
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp
+                )
+                Text(
+                    files.joinToString(" · "),
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, "Abrir el editor", tint = NexusTokens.Color.Success, modifier = Modifier.size(18.dp))
+        }
     }
 }
 
@@ -1013,7 +1078,7 @@ private fun ResultCard(answer: String, animate: Boolean, onSendToChat: () -> Uni
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.AutoAwesome, null, tint = Accent, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Resultado", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(tr("Resultado"), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
             Spacer(Modifier.height(10.dp))
             SelectionContainer {
@@ -1033,7 +1098,7 @@ private fun ResultCard(answer: String, animate: Boolean, onSendToChat: () -> Uni
                         clipboard.setText(AnnotatedString(answer))
                         copied = true
                     },
-                    label = { Text(if (copied) "Copiado" else "Copiar") },
+                    label = { Text(if (copied) tr("Copiado") else tr("Copiar")) },
                     leadingIcon = { Icon(if (copied) Icons.Default.Check else Icons.Default.ContentCopy, null, Modifier.size(16.dp)) }
                 )
                 AssistChip(
@@ -1044,17 +1109,17 @@ private fun ResultCard(answer: String, animate: Boolean, onSendToChat: () -> Uni
                         }
                         context.startActivity(Intent.createChooser(share, "Compartir resultado"))
                     },
-                    label = { Text("Compartir") },
+                    label = { Text(tr("Compartir")) },
                     leadingIcon = { Icon(Icons.Default.Share, null, Modifier.size(16.dp)) }
                 )
                 AssistChip(
                     onClick = onSendToChat,
-                    label = { Text("Seguir en el chat") },
+                    label = { Text(tr("Seguir en el chat")) },
                     leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(16.dp)) }
                 )
                 AssistChip(
                     onClick = onNew,
-                    label = { Text("Nueva tarea") },
+                    label = { Text(tr("Nueva tarea")) },
                     leadingIcon = { Icon(Icons.Default.Add, null, Modifier.size(16.dp)) }
                 )
             }
@@ -1092,7 +1157,7 @@ private fun StatusMessage(
                     colors = ButtonDefaults.buttonColors(containerColor = NexusTokens.Color.Primary),
                     shape = RoundedCornerShape(NexusTokens.Radius.pill)
                 ) { Text(primaryLabel) }
-                TextButton(onClick = onSecondary) { Text("Nueva tarea", color = TextSecondary) }
+                TextButton(onClick = onSecondary) { Text(tr("Nueva tarea"), color = TextSecondary) }
             }
         }
     }

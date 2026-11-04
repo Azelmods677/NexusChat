@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.conversation
 
+import com.Azelmods.App.i18n.tr
+
 import android.Manifest
 import android.util.Log
 import androidx.camera.core.CameraSelector
@@ -64,7 +66,7 @@ fun QRScannerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Escanear código QR") },
+                title = { Text(tr("Escanear código QR")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver")
@@ -117,7 +119,7 @@ fun QRScannerScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Apunta la cámara al código QR",
+                            text = tr("Apunta la cámara al código QR"),
                             color = Color.White,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Bold,
@@ -125,7 +127,7 @@ fun QRScannerScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "El código se escaneará automáticamente",
+                            text = tr("El código se escaneará automáticamente"),
                             color = Color.White.copy(alpha = 0.8f),
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center
@@ -144,19 +146,19 @@ fun QRScannerScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Permiso de cámara necesario",
+                        text = tr("Permiso de cámara necesario"),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Para escanear códigos QR, necesitamos acceso a tu cámara.",
+                        text = tr("Para escanear códigos QR, necesitamos acceso a tu cámara."),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
-                        Text("Conceder permiso")
+                        Text(tr("Conceder permiso"))
                     }
                 }
             }
@@ -171,13 +173,13 @@ fun QRScannerScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "Permiso de cámara denegado",
+                        text = tr("Permiso de cámara denegado"),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Por favor, habilita el permiso de cámara en la configuración de la app.",
+                        text = tr("Por favor, habilita el permiso de cámara en la configuración de la app."),
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
@@ -190,10 +192,10 @@ fun QRScannerScreen(
     if (showConfirmDialog && scannedData != null) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Usuario encontrado") },
+            title = { Text(tr("Usuario encontrado")) },
             text = {
                 Column {
-                    Text("¿Deseas agregar a este usuario?")
+                    Text(tr("¿Deseas agregar a este usuario?"))
                     Spacer(modifier = Modifier.height(8.dp))
                     scannedData?.let { data ->
                         Text("Nombre: ${data.name}", fontWeight = FontWeight.Bold)
@@ -209,12 +211,12 @@ fun QRScannerScreen(
                         navController.popBackStack()
                     }
                 ) {
-                    Text("Agregar")
+                    Text(tr("Agregar"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirmDialog = false }) {
-                    Text("Cancelar")
+                    Text(tr("Cancelar"))
                 }
             }
         )
@@ -224,11 +226,11 @@ fun QRScannerScreen(
     errorMessage?.let { error ->
         AlertDialog(
             onDismissRequest = { errorMessage = null },
-            title = { Text("Error") },
+            title = { Text(tr("Error")) },
             text = { Text(error) },
             confirmButton = {
                 Button(onClick = { errorMessage = null }) {
-                    Text("OK")
+                    Text(tr("Aceptar"))
                 }
             }
         )

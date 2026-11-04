@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.animation.*
@@ -296,7 +298,7 @@ private fun FullScreenImageContent(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Error al cargar imagen",
+                                text = tr("Error al cargar imagen"),
                                 color = Color.Gray,
                                 fontSize = 16.sp
                             )
@@ -306,7 +308,7 @@ private fun FullScreenImageContent(
                 else -> {
                     Image(
                         painter = painter,
-                        contentDescription = "Full screen image",
+                        contentDescription = tr("Imagen a pantalla completa"),
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit
                     )
@@ -342,7 +344,7 @@ private fun FullScreenImageContent(
                     ) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Close",
+                            contentDescription = tr("Cerrar"),
                             tint = Color.White,
                             modifier = Modifier.size(22.dp)
                         )
@@ -384,7 +386,7 @@ private fun FullScreenImageContent(
                         ) {
                             Icon(
                                 Icons.Default.MoreVert,
-                                contentDescription = "More",
+                                contentDescription = tr("Más"),
                                 tint = Color.White,
                                 modifier = Modifier.size(22.dp)
                             )
@@ -395,7 +397,7 @@ private fun FullScreenImageContent(
                             containerColor = DarkSurface
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Save to device", color = Color.White) },
+                                text = { Text(tr("Guardar en el teléfono"), color = Color.White) },
                                 onClick = {
                                     showOptionsMenu = false
                                     onDownload?.invoke()
@@ -405,7 +407,7 @@ private fun FullScreenImageContent(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Share", color = Color.White) },
+                                text = { Text(tr("Compartir"), color = Color.White) },
                                 onClick = {
                                     showOptionsMenu = false
                                     val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
@@ -419,7 +421,7 @@ private fun FullScreenImageContent(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Close", color = Color.White) },
+                                text = { Text(tr("Cerrar"), color = Color.White) },
                                 onClick = {
                                     showOptionsMenu = false
                                     onDismiss()
@@ -455,14 +457,14 @@ private fun FullScreenImageContent(
                     // Share button
                     ImageViewerAction(
                         icon = Icons.Default.Share,
-                        label = "Compartir",
+                        label = tr("Compartir"),
                         onClick = {
                             val bmp = extractBitmap()
                             if (bmp == null) {
-                                android.widget.Toast.makeText(context, "Espera a que cargue la imagen", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, tr("Espera a que cargue la imagen"), android.widget.Toast.LENGTH_SHORT).show()
                             } else {
                                 val ok = com.Azelmods.App.ui.utils.ImageActions.shareImage(context, bmp)
-                                if (!ok) android.widget.Toast.makeText(context, "No se pudo compartir", android.widget.Toast.LENGTH_SHORT).show()
+                                if (!ok) android.widget.Toast.makeText(context, tr("No se pudo compartir"), android.widget.Toast.LENGTH_SHORT).show()
                             }
                         }
                     )
@@ -470,18 +472,18 @@ private fun FullScreenImageContent(
                     // Download button
                     ImageViewerAction(
                         icon = Icons.Default.Download,
-                        label = "Descargar",
+                        label = tr("Descargar"),
                         onClick = {
                             scope.launch {
                                 val bmp = extractBitmap()
                                 if (bmp == null) {
-                                    android.widget.Toast.makeText(context, "Espera a que cargue la imagen", android.widget.Toast.LENGTH_SHORT).show()
+                                    android.widget.Toast.makeText(context, tr("Espera a que cargue la imagen"), android.widget.Toast.LENGTH_SHORT).show()
                                     return@launch
                                 }
                                 val ok = com.Azelmods.App.ui.utils.ImageActions.saveToGallery(context, bmp)
                                 android.widget.Toast.makeText(
                                     context,
-                                    if (ok) "Imagen guardada en la Galería" else "Error al guardar la imagen",
+                                    if (ok) tr("Imagen guardada en la Galería") else tr("Error al guardar la imagen"),
                                     android.widget.Toast.LENGTH_SHORT
                                 ).show()
                                 if (ok) onDownload?.invoke()
@@ -492,11 +494,11 @@ private fun FullScreenImageContent(
                     // Forward button (uses the system share sheet to forward anywhere)
                     ImageViewerAction(
                         icon = Icons.AutoMirrored.Filled.Forward,
-                        label = "Reenviar",
+                        label = tr("Reenviar"),
                         onClick = {
                             val bmp = extractBitmap()
                             if (bmp == null) {
-                                android.widget.Toast.makeText(context, "Espera a que cargue la imagen", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, tr("Espera a que cargue la imagen"), android.widget.Toast.LENGTH_SHORT).show()
                             } else {
                                 com.Azelmods.App.ui.utils.ImageActions.shareImage(context, bmp)
                             }
@@ -507,7 +509,7 @@ private fun FullScreenImageContent(
                     if (onDelete != null) {
                         ImageViewerAction(
                             icon = Icons.Default.Delete,
-                            label = "Eliminar",
+                            label = tr("Eliminar"),
                             color = ErrorRed,
                             onClick = { showDeleteDialog = true }
                         )
@@ -523,7 +525,7 @@ private fun FullScreenImageContent(
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = ErrorRed) },
-                title = { Text("¿Eliminar la foto?") },
+                title = { Text(tr("¿Eliminar la foto?")) },
                 text = {
                     Text(
                         if (canDeleteForEveryone) {
@@ -541,7 +543,7 @@ private fun FullScreenImageContent(
                                 onDelete(true)
                             }
                         ) {
-                            Text("Eliminar para todos", color = ErrorRed)
+                            Text(tr("Eliminar para todos"), color = ErrorRed)
                         }
                     } else {
                         TextButton(
@@ -550,14 +552,14 @@ private fun FullScreenImageContent(
                                 onDelete(false)
                             }
                         ) {
-                            Text("Eliminar", color = ErrorRed)
+                            Text(tr("Eliminar"), color = ErrorRed)
                         }
                     }
                 },
                 dismissButton = {
                     Row {
                         TextButton(onClick = { showDeleteDialog = false }) {
-                            Text("Cancelar")
+                            Text(tr("Cancelar"))
                         }
                         if (canDeleteForEveryone) {
                             TextButton(
@@ -566,7 +568,7 @@ private fun FullScreenImageContent(
                                     onDelete(false)
                                 }
                             ) {
-                                Text("Solo para mí")
+                                Text(tr("Solo para mí"))
                             }
                         }
                     }
@@ -596,7 +598,7 @@ private fun FullScreenImageContent(
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
-                        text = "Desliza para cerrar",
+                        text = tr("Desliza para cerrar"),
                         color = Color.White,
                         fontSize = 13.sp
                     )

@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.background
 
+import com.Azelmods.App.i18n.tr
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -109,7 +111,7 @@ fun BackgroundPickerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Chat Wallpaper") },
+                title = { Text(tr("Fondo del chat")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
@@ -139,12 +141,12 @@ fun BackgroundPickerScreen(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("App") }
+                        text = { Text(tr("App")) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Este Chat") }
+                        text = { Text(tr("Este Chat")) }
                     )
                 }
             }
@@ -168,7 +170,7 @@ fun BackgroundPickerScreen(
                 ) {
                     // Preview label
                     Text(
-                        text = "Vista Previa",
+                        text = tr("Vista Previa"),
                         modifier = Modifier.align(Alignment.CenterHorizontally),
                         color = Color.White.copy(alpha = 0.5f),
                         fontSize = 11.sp
@@ -184,12 +186,12 @@ fun BackgroundPickerScreen(
                     ) {
                         Column(modifier = Modifier.padding(10.dp, 8.dp)) {
                             Text(
-                                text = "¡Hola! ¿Cómo estás? 😊",
+                                text = tr("¡Hola! ¿Cómo estás? 😊"),
                                 color = Color.White,
                                 fontSize = 14.sp
                             )
                             Text(
-                                text = "10:30 AM",
+                                text = tr("10:30 AM"),
                                 color = Color.White.copy(alpha = 0.5f),
                                 fontSize = 10.sp,
                                 modifier = Modifier.align(Alignment.End)
@@ -207,7 +209,7 @@ fun BackgroundPickerScreen(
                     ) {
                         Column(modifier = Modifier.padding(10.dp, 8.dp)) {
                             Text(
-                                text = "¡Genial! Me encanta este fondo ✨",
+                                text = tr("¡Genial! Me encanta este fondo ✨"),
                                 color = Color.White,
                                 fontSize = 14.sp
                             )
@@ -217,7 +219,7 @@ fun BackgroundPickerScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "10:31 AM",
+                                    text = tr("10:31 AM"),
                                     color = Color.White.copy(alpha = 0.5f),
                                     fontSize = 10.sp
                                 )
@@ -255,9 +257,9 @@ fun BackgroundPickerScreen(
                     BackgroundType.NONE, BackgroundType.DEFAULT -> {
                         Text(
                             text = if (config.type == BackgroundType.DEFAULT) 
-                                "Usar fondo de la aplicación" 
+                                tr("Usar fondo de la aplicación") 
                             else 
-                                "Sin fondo personalizado",
+                                tr("Sin fondo personalizado"),
                             color = Color.Gray,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(vertical = 16.dp)
@@ -335,7 +337,7 @@ fun BackgroundPickerScreen(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Cancelar")
+                        Text(tr("Cancelar"))
                     }
                     
                     Button(
@@ -367,7 +369,7 @@ fun BackgroundPickerScreen(
                                     color = Color.White
                                 )
                             } else {
-                                Text("Aplicar", color = Color.White)
+                                Text(tr("Aplicar"), color = Color.White)
                             }
                         }
                     }
@@ -478,7 +480,7 @@ private fun TypeSelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Tipo de Fondo",
+            text = tr("Tipo de Fondo"),
             fontSize = 14.sp,
             color = Color.Gray
         )
@@ -555,7 +557,7 @@ private fun ColorContent(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Colores Predefinidos",
+            text = tr("Colores Predefinidos"),
             fontSize = 14.sp,
             color = Color.Gray
         )
@@ -595,7 +597,7 @@ private fun ColorContent(
                 ) {
                     Icon(
                         Icons.Default.Add,
-                        contentDescription = "Custom",
+                        contentDescription = tr("Personalizado"),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -620,7 +622,7 @@ private fun ImageContent(
         ) {
             Icon(Icons.Default.Image, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Seleccionar Imagen de Galería")
+            Text(tr("Seleccionar Imagen de Galería"))
         }
         
         // Info text
@@ -641,7 +643,7 @@ private fun ImageContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "La imagen se aplicará como fondo en toda la aplicación",
+                    text = tr("La imagen se aplicará como fondo en toda la aplicación"),
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp
                 )
@@ -665,7 +667,7 @@ private fun VideoContent(
         ) {
             Icon(Icons.Default.VideoLibrary, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Seleccionar Video")
+            Text(tr("Seleccionar Video"))
         }
         
         // Info text
@@ -686,7 +688,7 @@ private fun VideoContent(
                     modifier = Modifier.size(18.dp)
                 )
                 Text(
-                    text = "El video se reproducirá en loop como fondo animado",
+                    text = tr("El video se reproducirá en loop como fondo animado"),
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 12.sp
                 )
@@ -709,7 +711,7 @@ private fun GradientContent(
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Preset gradients section
         Text(
-            text = "Fondos Predefinidos",
+            text = tr("Fondos Predefinidos"),
             fontSize = 14.sp,
             color = Color.Gray
         )
@@ -759,7 +761,7 @@ private fun GradientContent(
         
         // Custom gradient colors
         Text(
-            text = "Personalizar Degradado",
+            text = tr("Personalizar Degradado"),
             fontSize = 14.sp,
             color = Color.Gray
         )

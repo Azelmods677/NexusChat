@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -221,7 +223,7 @@ private fun MarkdownCodeBlock(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = language?.takeIf { it.isNotBlank() } ?: "código",
+                text = language?.takeIf { it.isNotBlank() } ?: tr("código"),
                 color = accent,
                 fontSize = NexusTokens.FontSize.xs,
                 fontWeight = FontWeight.SemiBold,
@@ -236,7 +238,7 @@ private fun MarkdownCodeBlock(
             ) {
                 Icon(
                     imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
-                    contentDescription = if (copied) "Copiado" else "Copiar código",
+                    contentDescription = if (copied) tr("Copiado") else tr("Copiar código"),
                     tint = if (copied) NexusTokens.Color.Success else NexusTokens.Color.TextSecondary,
                     modifier = Modifier.size(NexusTokens.IconSize.sm)
                 )

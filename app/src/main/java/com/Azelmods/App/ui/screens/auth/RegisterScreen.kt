@@ -1,333 +1,131 @@
 package com.Azelmods.App.ui.screens.auth
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Mail
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.components.NexusButton
 import com.Azelmods.App.ui.navigation.Screen
-import com.Azelmods.App.ui.theme.DarkBackground
-import com.Azelmods.App.ui.theme.DarkSurface
+import com.Azelmods.App.ui.theme.NexusTokens
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     navController: NavController,
     viewModel: RegisterViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
-    val emailFocusRequester = remember { FocusRequester() }
-    val passwordFocusRequester = remember { FocusRequester() }
-    val confirmPasswordFocusRequester = remember { FocusRequester() }
-    
-    // Navigate to Home on success
+    val context = LocalContext.current
+    val emailFocus = remember { FocusRequester() }
+    val passwordFocus = remember { FocusRequester() }
+    val confirmFocus = remember { FocusRequester() }
+
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) {
             navController.navigate(Screen.Home.route) {
-                popUpTo(Screen.Register.route) { inclusive = true }
+                popUpTo(Screen.Login.route) { inclusive = true }
             }
         }
     }
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            // Edge-to-edge: fondo a pantalla completa; el contenido scrollable
-            // respeta la status bar y el área visible se reduce con el teclado.
-            .statusBarsPadding()
-            .imePadding()
-    ) {
+
+    Scaffold(containerColor = NexusTokens.Color.BgBase) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
         ) {
-            // Logo
-            Text(
-                text = "NC",
-                fontSize = 64.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 48.dp)
+            AuthBrand(
+                subtitle = tr("Crea tu cuenta"),
+                modifier = Modifier.padding(bottom = 20.dp)
             )
-            
-            // Display Name field
-            OutlinedTextField(
+
+            AuthField(
                 value = state.displayName,
                 onValueChange = viewModel::onDisplayNameChange,
-                label = { Text("Display Name") },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null)
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                keyboardActions = KeyboardActions(
-                    onNext = { emailFocusRequester.requestFocus() }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
+                label = tr("Nombre visible"),
+                icon = Icons.Outlined.Person,
+                keyboardActions = KeyboardActions(onNext = { emailFocus.requestFocus() })
             )
-            
-            // Email field
-            OutlinedTextField(
+            AuthField(
                 value = state.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = null)
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { passwordFocusRequester.requestFocus() }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(emailFocusRequester)
-                    .padding(bottom = 16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
+                label = tr("Correo"),
+                icon = Icons.Outlined.Mail,
+                keyboardType = KeyboardType.Email,
+                keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() }),
+                modifier = Modifier.focusRequester(emailFocus)
             )
-            
-            // Password field
-            OutlinedTextField(
+            AuthField(
                 value = state.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = { Text("Password") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password"
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { confirmPasswordFocusRequester.requestFocus() }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(passwordFocusRequester)
-                    .padding(bottom = 16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
+                label = tr("Contraseña"),
+                icon = Icons.Outlined.Lock,
+                keyboardType = KeyboardType.Password,
+                keyboardActions = KeyboardActions(onNext = { confirmFocus.requestFocus() }),
+                isPassword = true,
+                modifier = Modifier.focusRequester(passwordFocus)
             )
-            
-            // Confirm Password field
-            OutlinedTextField(
+            AuthField(
                 value = state.confirmPassword,
                 onValueChange = viewModel::onConfirmPasswordChange,
-                label = { Text("Confirm Password") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                        Icon(
-                            imageVector = if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password"
-                        )
-                    }
-                },
-                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { viewModel.register() }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(confirmPasswordFocusRequester)
-                    .padding(bottom = 8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
+                label = tr("Confirmar contraseña"),
+                icon = Icons.Outlined.Lock,
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+                keyboardActions = KeyboardActions(onDone = { viewModel.register() }),
+                isPassword = true,
+                modifier = Modifier.focusRequester(confirmFocus)
             )
-            
-            // Error message
-            state.error?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Register button — CTA primario del sistema (gradiente de marca,
-            // spring de press, loading integrado sin cambiar el layout).
+
+            AuthError(state.error)
+
             NexusButton(
-                text = "Register",
+                text = tr("Crear cuenta"),
                 onClick = viewModel::register,
                 loading = state.isLoading
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Divider with "or"
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = Color.Gray.copy(alpha = 0.3f)
-                )
-                Text(
-                    text = "or",
-                    color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = Color.Gray.copy(alpha = 0.3f)
-                )
-            }
-            
-            // Google Sign-In button.
-            // NOTA: usa GoogleSignInClient (marcado @Suppress("DEPRECATION")) de forma
-            // deliberada: es estable y funciona en producción. La migración a Credential
-            // Manager es un cambio de flujo de auth de mayor alcance y se hará en un
-            // refactor dedicado, no aquí.
-            val context = androidx.compose.ui.platform.LocalContext.current
-            @Suppress("DEPRECATION")
-            val googleSignInClient = remember {
-                com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
-                    com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
-                )
-                    .requestIdToken(context.getString(com.Azelmods.App.R.string.default_web_client_id))
-                    .requestEmail()
-                    .build()
-                    .let { com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(context, it) }
-            }
-            val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
-                contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-            ) { result ->
-                @Suppress("DEPRECATION")
-                val task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(result.data)
-                try {
-                    val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
-                    account?.idToken?.let { viewModel.registerWithGoogle(it) }
-                } catch (e: com.google.android.gms.common.api.ApiException) {
-                    viewModel.clearError()
-                }
-            }
-            
-            OutlinedButton(
-                onClick = { launcher.launch(googleSignInClient.signInIntent) },
+
+            AuthDivider()
+
+            AuthOutlinedAction(
+                text = tr("Continuar con Google"),
+                onClick = { viewModel.signInWithGoogle(context) },
                 enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
+                leading = { GoogleMark() }
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    tr("¿Ya tienes cuenta?"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NexusTokens.Color.TextMuted
                 )
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "G",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                    Text(
-                        text = "Continue with Google",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                TextButton(onClick = { navController.popBackStack() }) {
+                    Text(tr("Entrar"))
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Login link
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Already have an account? ",
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Login",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        navController.popBackStack()
-                    }
-                )
             }
         }
     }

@@ -46,6 +46,7 @@ sealed class Screen(val route: String) {
     object SettingsHelp : Screen(NavRoutes.SETTINGS_HELP)
     object SettingsAbout : Screen(NavRoutes.SETTINGS_ABOUT)
     object Premium : Screen(NavRoutes.PREMIUM)
+    object ProfileCustomize : Screen("profile_customize")
     object AiFeatures : Screen(NavRoutes.AI_FEATURES)
     object AzelAI : Screen(NavRoutes.AZEL_AI)
     

@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.EaseInOutQuart
 import androidx.compose.animation.core.EaseOutBack
@@ -87,7 +89,7 @@ fun ReadReceiptIndicator(
                 )
                 Icon(
                     imageVector = Icons.Default.Schedule,
-                    contentDescription = "Enviando",
+                    contentDescription = tr("Enviando"),
                     tint = animatedColor,
                     modifier = Modifier
                         .size(12.dp)
@@ -98,7 +100,7 @@ fun ReadReceiptIndicator(
             MessageStatus.FAILED -> {
                 Icon(
                     imageVector = Icons.Default.ErrorOutline,
-                    contentDescription = "No enviado",
+                    contentDescription = tr("No enviado"),
                     tint = Color.Red,
                     modifier = Modifier.size(13.dp)
                 )

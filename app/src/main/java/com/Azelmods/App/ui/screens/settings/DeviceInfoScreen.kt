@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -51,10 +53,10 @@ fun DeviceInfoScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Device Info", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(tr("Información del dispositivo"), color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -96,35 +98,35 @@ fun DeviceInfoScreen(
             
             DeviceInfoCard(
                 icon = Icons.Default.PhoneAndroid,
-                title = "Brand",
+                title = tr("Marca"),
                 value = deviceInfo.brand,
                 themeColor = themeColor
             )
             
             DeviceInfoCard(
                 icon = Icons.Default.Devices,
-                title = "Model",
+                title = tr("Modelo"),
                 value = deviceInfo.model,
                 themeColor = themeColor
             )
             
             DeviceInfoCard(
                 icon = Icons.Default.Android,
-                title = "Android Version",
+                title = tr("Versión de Android"),
                 value = deviceInfo.androidVersion,
                 themeColor = themeColor
             )
             
             DeviceInfoCard(
                 icon = Icons.Default.Info,
-                title = "SDK Level",
+                title = tr("Nivel de SDK"),
                 value = deviceInfo.sdkLevel,
                 themeColor = themeColor
             )
             
             DeviceInfoCard(
                 icon = Icons.Default.Build,
-                title = "Build ID",
+                title = tr("ID de compilación"),
                 value = deviceInfo.buildId,
                 themeColor = themeColor
             )
@@ -145,21 +147,21 @@ fun DeviceInfoScreen(
             
             DeviceInfoCard(
                 icon = Icons.Default.Memory,
-                title = "Processor",
+                title = tr("Procesador"),
                 value = deviceInfo.processor,
                 themeColor = themeColor
             )
             
             DeviceInfoCard(
                 icon = Icons.Default.Storage,
-                title = "Board",
+                title = tr("Placa"),
                 value = deviceInfo.board,
                 themeColor = themeColor
             )
             
             DeviceInfoCard(
                 icon = Icons.Default.Fingerprint,
-                title = "Fingerprint",
+                title = tr("Huella"),
                 value = deviceInfo.fingerprint,
                 themeColor = themeColor
             )
@@ -237,7 +239,7 @@ fun BatteryCard(
                 )
                 
                 Text(
-                    text = if (isCharging) "Charging" else "Not Charging",
+                    text = if (isCharging) tr("Cargando") else tr("Sin cargar"),
                     fontSize = 14.sp,
                     color = if (isCharging) themeColor else Color.Gray
                 )

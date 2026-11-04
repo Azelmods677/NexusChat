@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.tutorial
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -34,12 +36,12 @@ fun TutorialScreen(
                             Text(tutorial.icon, fontSize = 24.sp)
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(tutorial?.title ?: "Tutorial")
+                        Text(tutorial?.title ?: tr("Tutorial"))
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -59,7 +61,7 @@ fun TutorialScreen(
         ) {
             if (tutorial == null) {
                 Text(
-                    "Tutorial no encontrado",
+                    tr("Tutorial no encontrado"),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyLarge
                 )

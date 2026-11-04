@@ -71,7 +71,8 @@ class AzelAIApiService @Inject constructor(
         private const val OPENAI_COMPAT_MAX_TOKENS = 4096
         private const val TEMPERATURE = 0.7f
         private const val TOP_P = 0.95f
-        private const val MAX_CONTEXT_MESSAGES = 8
+        // Memoria de la conversación. Con 8 mensajes la IA olvidaba lo hablado hacía un rato.
+        private const val MAX_CONTEXT_MESSAGES = 40
     }
     
     init {
@@ -118,9 +119,15 @@ class AzelAIApiService @Inject constructor(
     
     private val client by lazy {
         val builder = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
+            // Sin tope de lectura. Este readTimeout de 60 s era el corte que seguía
+            // habiendo: un modelo que pasa más de un minuto pensando no envía ningún byte,
+            // y la conexión se abortaba aunque estuviera trabajando bien. La vigilancia de
+            // silencio vive arriba (ver AzelAIViewModel y AgentOrchestrator), y el usuario
+            // siempre puede pulsar "Detener". Conectar por Tor también puede tardar.
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(0, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(0, TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .header("Content-Type", "application/json")
@@ -166,6 +173,63 @@ Guidelines:
 - Format answers with Markdown when it improves readability (lists, code blocks, headings).
     """.trimIndent()
     
+    /** Lo que Google devolvió a través de Gemini: un resumen y sus fuentes (título, URL). */
+    data class GoogleSearchResult(val summary: String, val sources: List<Pair<String, String>>)
+
+    /**
+     * Búsqueda en Google de verdad, con la función de búsqueda de Gemini.
+     *
+     * Google no deja consultar sus resultados desde una app sin un servicio de pago, pero la
+     * API de Gemini sí permite buscar con la clave del usuario. Devuelve null si el proveedor
+     * activo no es Gemini o si falla: quien llama sigue con los demás buscadores.
+     */
+    suspend fun googleSearch(query: String): GoogleSearchResult? = withContext(Dispatchers.IO) {
+        if (keyStore.getProvider().isOpenAiCompatible) return@withContext null
+        val key = resolveApiKey().takeIf { it.isNotEmpty() } ?: return@withContext null
+
+        val prompt = "Busca en Google y resume en español lo que encuentres sobre: $query\n" +
+            "Di solo lo que aparezca en los resultados. Si nada coincide con lo buscado, dilo tal cual."
+        val body = JSONObject()
+            .put("contents", JSONArray().put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", prompt)))))
+            .put("tools", JSONArray().put(JSONObject().put("google_search", JSONObject())))
+            // Sin razonamiento: aquí solo resume resultados, y lo que "piensa" gasta el tope de salida.
+            .put(
+                "generationConfig",
+                JSONObject()
+                    .put("temperature", 0.2)
+                    .put("maxOutputTokens", 2048)
+                    .put("thinkingConfig", JSONObject().put("thinkingBudget", 0))
+            )
+            .toString()
+        val request = Request.Builder()
+            .url("$BASE_URL/$GEMINI_2_5_FLASH:generateContent?key=$key")
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+
+        val timed = client.newBuilder().callTimeout(30, TimeUnit.SECONDS).build()
+        timed.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.w(TAG, "Búsqueda en Google no disponible: HTTP ${response.code}")
+                return@withContext null
+            }
+            val candidate = JSONObject(response.body?.string().orEmpty()).optJSONArray("candidates")?.optJSONObject(0)
+                ?: return@withContext null
+            val parts = candidate.optJSONObject("content")?.optJSONArray("parts") ?: JSONArray()
+            val summary = (0 until parts.length())
+                .mapNotNull { parts.optJSONObject(it)?.optString("text")?.takeIf { text -> text.isNotBlank() } }
+                .joinToString("")
+                .trim()
+            if (summary.isEmpty()) return@withContext null
+            val chunks = candidate.optJSONObject("groundingMetadata")?.optJSONArray("groundingChunks") ?: JSONArray()
+            val sources = (0 until chunks.length()).mapNotNull { i ->
+                val web = chunks.optJSONObject(i)?.optJSONObject("web") ?: return@mapNotNull null
+                val uri = web.optString("uri").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                web.optString("title") to uri
+            }
+            GoogleSearchResult(summary, sources)
+        }
+    }
+
     /**
      * 🚀 CHAT COMPLETION CON STREAMING REAL (GEMINI FORMAT)
      */

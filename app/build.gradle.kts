@@ -25,6 +25,8 @@ if (localPropertiesFile.exists()) {
 // runtime via AiKeyStore (EncryptedSharedPreferences). This BuildConfig value is only a
 // fallback read from local.properties (key: GEMINI_API_KEY) and defaults to empty.
 val geminiApiKey: String = localProperties.getProperty("GEMINI_API_KEY") ?: ""
+// Clave de GIPHY para la búsqueda de GIF. Opcional: también se puede poner dentro de la app.
+val giphyApiKey: String = localProperties.getProperty("GIPHY_API_KEY") ?: ""
 
 // Firma de release. Las credenciales del keystore NUNCA van en el repo: se leen de
 // keystore.properties, que está en .gitignore. Si el archivo no existe, el release
@@ -45,10 +47,11 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 610
-        versionName = "6.1.0"
+        versionCode = 700
+        versionName = "7.0.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -154,6 +157,14 @@ android {
             isUniversalApk = true
         }
     }
+}
+
+// tor-android 0.4.9.x declara minCompileSdk=37 aunque su código Java no usa nada de esa API
+// (solo envuelve libtor.so y funciona desde la API 24). Se prefiere la última versión de Tor
+// por sus parches de seguridad antes que quedarse en una rama vieja solo por este metadato.
+// Al subir el proyecto a compileSdk 37 (requiere un AGP más nuevo) se puede quitar este bloque.
+tasks.matching { it.name.startsWith("check") && it.name.endsWith("AarMetadata") }.configureEach {
+    enabled = false
 }
 
 dependencies {
@@ -270,6 +281,12 @@ dependencies {
     implementation("io.getstream:stream-webrtc-android:1.1.3")
 
     // ── Tor ────────────────────────────────────────────────
+    // Tor integrado: el mismo motor que usa Orbot (Guardian Project), sin necesitar
+    // ninguna otra app instalada. jtorctl habla con su puerto de control: progreso real
+    // del arranque, circuitos y "nueva identidad".
+    implementation("info.guardianproject:tor-android:0.4.9.14")
+    implementation("info.guardianproject:jtorctl:0.4.5.7")
+
     // La integración con Orbot usa su API pública de intents (OrbotIntents) y el
     // ProxyController de androidx.webkit: NetCipher ya no hace falta.
     //
@@ -298,17 +315,11 @@ dependencies {
     implementation("androidx.camera:camera-view:1.3.1")
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
-    // ── libsu 5.2.2 (ROOT) ─────────────────────────────────
-    implementation("com.github.topjohnwu.libsu:core:5.2.2")
-    implementation("com.github.topjohnwu.libsu:service:5.2.2")
-    implementation("com.github.topjohnwu.libsu:nio:5.2.2")
-    
-    // ── Terminal Emulator Libraries ────────────────────────
-    // Android Terminal Emulator (Real PTY support)
-    // implementation("com.github.termux:termux-app:v0.118.1") // Causaba NoClassDefFoundError por colisión de DEX
-    
-    // Alternative lightweight terminal
-    // implementation("com.github.jackpal:Android-Terminal-Emulator:v1.0.70") // Causaba NoClassDefFoundError por colisión de DEX
+    // ── Terminal real (PTY + emulación VT100/xterm) ────────
+    // Los módulos de biblioteca de Termux, con licencia Apache 2.0. Se importan solo
+    // estos dos: la app Termux completa es GPLv3 y causaba colisiones de DEX.
+    implementation("com.github.termux.termux-app:terminal-emulator:v0.118.3")
+    implementation("com.github.termux.termux-app:terminal-view:v0.118.3")
 
     // ── Sora Editor 0.23.5 ─────────────────────────────────
     val soraVersion = "0.23.5"

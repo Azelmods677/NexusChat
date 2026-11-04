@@ -1,54 +1,40 @@
 package com.Azelmods.App.ui.screens.auth
 
-import android.app.Activity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Mail
+import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.ui.components.NexusButton
 import com.Azelmods.App.ui.navigation.Screen
-import com.Azelmods.App.ui.theme.DarkBackground
-import com.Azelmods.App.ui.theme.DarkSurface
+import com.Azelmods.App.ui.theme.NexusTokens
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navController: NavController,
     viewModel: LoginViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val passwordFocusRequester = remember { FocusRequester() }
-    
-    // Navigate to Home on success
+    val passwordFocus = remember { FocusRequester() }
+
     LaunchedEffect(state.isSuccess) {
         if (state.isSuccess) {
             navController.navigate(Screen.Home.route) {
@@ -56,227 +42,78 @@ fun LoginScreen(
             }
         }
     }
-    
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(DarkBackground)
-            // Edge-to-edge (enableEdgeToEdge global): el fondo llena la pantalla,
-            // pero el contenido respeta la status bar y sube con el teclado.
-            .statusBarsPadding()
-            .imePadding()
-    ) {
+
+    Scaffold(containerColor = NexusTokens.Color.BgBase) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
         ) {
-            // Logo
-            Text(
-                text = "NC",
-                fontSize = 64.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                modifier = Modifier.padding(bottom = 48.dp)
+            AuthBrand(
+                subtitle = tr("Tus conversaciones, solo tuyas"),
+                modifier = Modifier.padding(bottom = 20.dp)
             )
-            
-            // Email field
-            OutlinedTextField(
+
+            if (state.anonymousModeOn) AnonymousModeLoginNotice(onDisable = viewModel::disableAnonymousMode)
+
+            AuthField(
                 value = state.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = null)
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { passwordFocusRequester.requestFocus() }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
+                label = tr("Correo"),
+                icon = Icons.Outlined.Mail,
+                keyboardType = KeyboardType.Email,
+                keyboardActions = KeyboardActions(onNext = { passwordFocus.requestFocus() })
             )
-            
-            // Password field
-            OutlinedTextField(
+            AuthField(
                 value = state.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = { Text("Password") },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null)
-                },
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(
-                            imageVector = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = if (passwordVisible) "Hide password" else "Show password"
-                        )
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = { viewModel.login() }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(passwordFocusRequester)
-                    .padding(bottom = 8.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = DarkSurface,
-                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                )
+                label = tr("Contraseña"),
+                icon = Icons.Outlined.Lock,
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done,
+                keyboardActions = KeyboardActions(onDone = { viewModel.login() }),
+                isPassword = true,
+                modifier = Modifier.focusRequester(passwordFocus)
             )
-            
-            // Error message
-            state.error?.let { errorMessage ->
-                Text(
-                    text = errorMessage,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Login button — CTA primario del sistema (gradiente de marca,
-            // spring de press, loading integrado sin cambiar el layout).
+
+            AuthError(state.error)
+
             NexusButton(
-                text = "Login",
+                text = tr("Entrar"),
                 onClick = viewModel::login,
                 loading = state.isLoading
             )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            // Divider with "or"
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = Color.Gray.copy(alpha = 0.3f)
-                )
-                Text(
-                    text = "or",
-                    color = Color.Gray,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                HorizontalDivider(
-                    modifier = Modifier.weight(1f),
-                    color = Color.Gray.copy(alpha = 0.3f)
-                )
-            }
-            
-            // Google Sign-In button
-            OutlinedButton(
-                onClick = {
-                    viewModel.signInWithGoogle()
-                },
-                enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                )
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "G",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                    Text(
-                        text = "Continue with Google",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(12.dp))
 
-            // Acceso por número de teléfono (SMS). Tercera vía junto a correo y
-            // Google: hay gente sin cuenta de Google y gente que no quiere dar su
-            // correo, y hasta ahora no tenían por dónde entrar.
-            OutlinedButton(
+            AuthDivider()
+
+            AuthOutlinedAction(
+                text = tr("Continuar con Google"),
+                onClick = { viewModel.signInWithGoogle(context) },
+                enabled = !state.isLoading,
+                leading = { GoogleMark() }
+            )
+            AuthOutlinedAction(
+                text = tr("Continuar con el teléfono"),
                 onClick = { navController.navigate(Screen.PhoneLogin.route) },
                 enabled = !state.isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White
+                leading = { Icon(Icons.Outlined.Phone, contentDescription = null, modifier = Modifier.size(20.dp)) }
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    tr("¿No tienes cuenta?"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NexusTokens.Color.TextMuted
                 )
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Phone,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 12.dp)
-                    )
-                    Text(
-                        text = "Continuar con el teléfono",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                TextButton(onClick = { navController.navigate(Screen.Register.route) }) {
+                    Text(tr("Crear cuenta"))
                 }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Register link
-            Row(
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Don't have an account? ",
-                    color = Color.Gray
-                )
-                Text(
-                    text = "Register",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clickable {
-                        navController.navigate(Screen.Register.route)
-                    }
-                )
             }
         }
     }

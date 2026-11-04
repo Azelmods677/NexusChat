@@ -15,17 +15,23 @@
         comerciales de IA de abajo siguen FORZADOS a HTTPS con su propio domain-config.
     -->
     <base-config cleartextTrafficPermitted="true">
+        <!-- Solo las CA del sistema: confiar en las del usuario permitiría interceptar
+             el tráfico instalando un certificado. Depurar con un proxy sigue siendo
+             posible en compilaciones de depuración (ver debug-overrides). -->
         <trust-anchors>
             <certificates src="system"/>
-            <certificates src="user"/>
         </trust-anchors>
     </base-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="user"/>
+        </trust-anchors>
+    </debug-overrides>
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">api.ollama.cloud</domain>
         <domain includeSubdomains="true">ollama.com</domain>
         <trust-anchors>
             <certificates src="system"/>
-            <certificates src="user"/>
         </trust-anchors>
     </domain-config>
     <domain-config cleartextTrafficPermitted="false">

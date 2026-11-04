@@ -29,12 +29,22 @@ class WebRTCManager @Inject constructor(
     private var localVideoTrack: VideoTrack? = null
     private var localAudioTrack: AudioTrack? = null
     private var videoCapturer: CameraVideoCapturer? = null
-    
-    // EGL contexts — MUST keep references to prevent native crash from GC
-    private var encoderEglBase: EglBase? = null
-    private var decoderEglBase: EglBase? = null
-    private var capturerEglBase: EglBase? = null
-    
+    private var videoSource: VideoSource? = null
+    private var audioSource: AudioSource? = null
+    private var captureThreadHelper: SurfaceTextureHelper? = null
+
+    /**
+     * Un único contexto gráfico para cámara, codificador, decodificador y pantalla.
+     *
+     * La imagen viaja entre ellos como textura de OpenGL, y una textura solo existe dentro
+     * del contexto que la creó. Con un contexto para cada pieza, nadie podía leer las
+     * texturas de los demás: la cámara se abría, la llamada conectaba y el vídeo se veía
+     * en negro en los dos teléfonos.
+     */
+    private val rootEglBase: EglBase = EglBase.create()
+    val eglContext: EglBase.Context get() = rootEglBase.eglBaseContext
+
+
     // State flows
     private val _localVideoTrackFlow = MutableStateFlow<VideoTrack?>(null)
     val localVideoTrackFlow: StateFlow<VideoTrack?> = _localVideoTrackFlow.asStateFlow()
@@ -88,19 +98,10 @@ class WebRTCManager @Inject constructor(
         
         PeerConnectionFactory.initialize(options)
         
-        val encEgl = EglBase.create()
-        encoderEglBase = encEgl
-        val decEgl = EglBase.create()
-        decoderEglBase = decEgl
-        
-        val encoderFactory = DefaultVideoEncoderFactory(
-            encEgl.eglBaseContext,
-            true,
-            true
-        )
-        
-        val decoderFactory = DefaultVideoDecoderFactory(decEgl.eglBaseContext)
-        
+        val encoderFactory = DefaultVideoEncoderFactory(eglContext, true, true)
+        val decoderFactory = DefaultVideoDecoderFactory(eglContext)
+
+
         peerConnectionFactory = PeerConnectionFactory.builder()
             .setVideoEncoderFactory(encoderFactory)
             .setVideoDecoderFactory(decoderFactory)
@@ -236,6 +237,19 @@ class WebRTCManager @Inject constructor(
         Log.d(TAG, "PeerConnection initialized")
     }
     
+    /** Si la cámara falla o la ocupa otra app, que se vea en el registro y no solo una imagen negra. */
+    private val cameraEvents = object : CameraVideoCapturer.CameraEventsHandler {
+        override fun onCameraError(error: String?) {
+            Log.e(TAG, "Error de cámara: $error")
+            CrashlyticsLogger.warn("webrtc", "camera", "Error: $error")
+        }
+        override fun onCameraDisconnected() = Log.w(TAG, "Cámara desconectada").let { }
+        override fun onCameraFreezed(error: String?) = Log.w(TAG, "Cámara congelada: $error").let { }
+        override fun onCameraOpening(cameraName: String?) = Log.d(TAG, "Abriendo cámara $cameraName").let { }
+        override fun onFirstFrameAvailable() = Log.d(TAG, "Primer fotograma de la cámara").let { }
+        override fun onCameraClosed() = Log.d(TAG, "Cámara cerrada").let { }
+    }
+
     private fun createLocalMediaTracks(isVideoCall: Boolean) {
         // Audio track
         val audioConstraints = MediaConstraints().apply {
@@ -245,31 +259,32 @@ class WebRTCManager @Inject constructor(
             mandatory.add(MediaConstraints.KeyValuePair("googNoiseSuppression", "true"))
         }
         
-        val audioSource = peerConnectionFactory?.createAudioSource(audioConstraints)
-        localAudioTrack = peerConnectionFactory?.createAudioTrack("audio_track", audioSource)
-        
+        val microphone = peerConnectionFactory?.createAudioSource(audioConstraints)
+        audioSource = microphone
+        localAudioTrack = peerConnectionFactory?.createAudioTrack("audio_track", microphone)
+
         // Video track (only for video calls)
         if (isVideoCall) {
-            val videoSource = peerConnectionFactory?.createVideoSource(false)
-            localVideoTrack = peerConnectionFactory?.createVideoTrack("video_track", videoSource)
-            
+            val camera = peerConnectionFactory?.createVideoSource(false)
+            videoSource = camera
+            localVideoTrack = peerConnectionFactory?.createVideoTrack("video_track", camera)
+
             // Initialize camera
             val enumerator = Camera2Enumerator(context)
             val cameraName = enumerator.deviceNames.firstOrNull { enumerator.isFrontFacing(it) }
                 ?: enumerator.deviceNames.firstOrNull()
-            
-            cameraName?.let {
-                _isFrontCamera.value = enumerator.isFrontFacing(it)
-                videoCapturer = enumerator.createCapturer(it, null) as? CameraVideoCapturer
-                val capEgl = EglBase.create()
-                capturerEglBase = capEgl
-                videoCapturer?.initialize(
-                    SurfaceTextureHelper.create("CaptureThread", capEgl.eglBaseContext),
-                    context,
-                    videoSource?.capturerObserver
-                )
+
+            if (cameraName == null) {
+                Log.e(TAG, "El dispositivo no ofrece ninguna cámara")
+                _cameraEnabled.value = false
+            } else {
+                _isFrontCamera.value = enumerator.isFrontFacing(cameraName)
+                videoCapturer = enumerator.createCapturer(cameraName, cameraEvents) as? CameraVideoCapturer
+                val helper = SurfaceTextureHelper.create("CaptureThread", eglContext)
+                captureThreadHelper = helper
+                videoCapturer?.initialize(helper, context, camera?.capturerObserver)
                 videoCapturer?.startCapture(1280, 720, 30)
-                
+
                 _localVideoTrackFlow.value = localVideoTrack
             }
         }
@@ -516,13 +531,13 @@ class WebRTCManager @Inject constructor(
         localVideoTrack = null
         localAudioTrack = null
 
-        // 5) Contexto EGL del capturador.
-        try {
-            capturerEglBase?.release()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error releasing capturer EglBase: ${e.message}")
-        }
-        capturerEglBase = null
+        // 5) Lo que alimentaba a las pistas. Sin esto, cada videollamada dejaba un hilo vivo.
+        runCatching { videoSource?.dispose() }
+        runCatching { audioSource?.dispose() }
+        runCatching { captureThreadHelper?.dispose() }
+        videoSource = null
+        audioSource = null
+        captureThreadHelper = null
 
         synchronized(iceLock) {
             remoteDescriptionSet = false

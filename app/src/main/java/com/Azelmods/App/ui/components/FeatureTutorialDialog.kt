@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.horizontalScroll
@@ -165,7 +167,7 @@ private fun CodeBlock(code: String) {
                 ) {
                     Icon(
                         Icons.Default.ContentCopy,
-                        contentDescription = "Copiar",
+                        contentDescription = tr("Copiar"),
                         modifier = Modifier.size(18.dp)
                     )
                 }

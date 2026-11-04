@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import android.net.Uri
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
@@ -89,7 +91,7 @@ fun PhotoAdjuster(
             if (imageUri != null) {
                 Image(
                     painter = rememberAsyncImagePainter(imageUri),
-                    contentDescription = "Photo to adjust",
+                    contentDescription = tr("Foto para ajustar"),
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer {
@@ -176,7 +178,7 @@ fun PhotoAdjuster(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Cancel",
+                    contentDescription = tr("Cancelar"),
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -233,14 +235,14 @@ fun PhotoAdjuster(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "Arrastra en cualquier dirección",
+                    text = tr("Arrastra en cualquier dirección"),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
                 
                 Text(
-                    text = "para ajustar la posición",
+                    text = tr("para ajustar la posición"),
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -313,7 +315,7 @@ fun PhotoAdjuster(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Confirmar",
+                            text = tr("Confirmar"),
                             color = Color.White,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold

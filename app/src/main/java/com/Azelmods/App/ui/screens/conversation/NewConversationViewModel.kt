@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.conversation
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
@@ -50,7 +52,7 @@ class NewConversationViewModel @Inject constructor(
             android.util.Log.e("NewConversation", "User NOT authenticated - cannot load contacts")
             _state.value = _state.value.copy(
                 isLoading = false,
-                error = "Please sign in to view contacts"
+                error = com.Azelmods.App.i18n.tr("Inicia sesión para ver tus contactos")
             )
         }
     }
@@ -79,11 +81,11 @@ class NewConversationViewModel @Inject constructor(
                                 displayName = userData["name"] as? String ?: userData["displayName"] as? String ?: "",
                                 username = userData["username"] as? String ?: "",
                                 email = userData["email"] as? String ?: "",
-                                phone = userData["phone"] as? String ?: "",
+                                phone = userData["phoneNumber"] as? String ?: userData["phone"] as? String ?: "",
                                 photoUrl = userData["photoUrl"] as? String,
                                 coverUrl = userData["coverUrl"] as? String,
                                 bio = userData["bio"] as? String ?: "",
-                                status = userData["status"] as? String ?: "Hey there! I'm using Nexus Chat",
+                                status = userData["status"] as? String ?: tr("¡Hola! Estoy usando NexusChat"),
                                 isOnline = userData["isOnline"] as? Boolean ?: false,
                                 lastSeen = (userData["lastSeen"] as? Number)?.toLong() ?: System.currentTimeMillis(),
                                 isPremium = userData["isPremium"] as? Boolean ?: false,
@@ -131,11 +133,15 @@ class NewConversationViewModel @Inject constructor(
         }
 
         val q = query.lowercase().removePrefix("@")
+        val queryDigits = query.filter(Char::isDigit)
         val filtered = _state.value.contacts.filter { user ->
             user.name.lowercase().contains(q) ||
                     user.displayName.lowercase().contains(q) ||
                     user.username.lowercase().removePrefix("@").contains(q) ||
-                    user.email.lowercase().contains(q)
+                    user.email.lowercase().contains(q) ||
+                    // Escribir a un número sin tenerlo guardado: se compara solo por dígitos,
+                    // para que dé igual escribir el prefijo, espacios o guiones.
+                    (queryDigits.length >= MIN_PHONE_DIGITS && user.phone.filter(Char::isDigit).contains(queryDigits))
         }
 
         _state.value = _state.value.copy(filteredContacts = filtered)
@@ -309,3 +315,5 @@ class NewConversationViewModel @Inject constructor(
         }
     }
 }
+
+private const val MIN_PHONE_DIGITS = 6

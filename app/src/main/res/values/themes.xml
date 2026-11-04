@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.NexusChat" parent="android:Theme.Material.Light.NoActionBar" />
+    <!--
+        El color de la ventana es lo primero que ve el usuario, antes de que Compose pinte
+        nada: con un tema claro, la app abría con casi dos segundos de pantalla blanca antes de
+        la animación de entrada. El icono es transparente a propósito: el emblema ya lo dibuja
+        la propia animación, y dos logos seguidos se notan como un salto.
+    -->
+    <style name="Theme.NexusChat" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nexus_window</item>
+        <item name="android:colorBackground">@color/nexus_window</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenBackground">@color/nexus_window</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_blank</item>
+    </style>
 </resources>

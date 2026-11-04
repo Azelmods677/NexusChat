@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,7 +49,7 @@ fun AiFeatureToggles(viewModel: AiFeaturesViewModel) {
 
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
         Text(
-            text = "Funciones sobre tus chats",
+            text = tr("Funciones sobre tus chats"),
             color = Color.White,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
@@ -66,48 +68,48 @@ fun AiFeatureToggles(viewModel: AiFeaturesViewModel) {
 
         AiFeatureToggle(
             icon = Icons.Default.QuestionAnswer,
-            title = "Respuestas sugeridas",
-            description = "Tres respuestas rápidas sobre el teclado cuando te escriben.",
+            title = tr("Respuestas sugeridas"),
+            description = tr("Tres respuestas rápidas sobre el teclado cuando te escriben."),
             checked = state.smartReplies,
             enabled = state.providerReady,
             onCheckedChange = viewModel::setSmartReplies
         )
         AiFeatureToggle(
             icon = Icons.Default.Translate,
-            title = "Traducir lo que recibo",
-            description = "Traduce los mensajes entrantes a tu idioma sin tocar el original.",
+            title = tr("Traducir lo que recibo"),
+            description = tr("Traduce los mensajes entrantes a tu idioma sin tocar el original."),
             checked = state.autoTranslate,
             enabled = state.providerReady,
             onCheckedChange = viewModel::setAutoTranslate
         )
         AiFeatureToggle(
             icon = Icons.Default.Summarize,
-            title = "Resumen de conversación",
-            description = "Añade «Resumir chat» al menú de la conversación.",
+            title = tr("Resumen de conversación"),
+            description = tr("Añade «Resumir chat» al menú de la conversación."),
             checked = state.conversationSummary,
             enabled = state.providerReady,
             onCheckedChange = viewModel::setConversationSummary
         )
         AiFeatureToggle(
             icon = Icons.Default.EditNote,
-            title = "Sugerencias de tono",
-            description = "Reescribe tu borrador en tono cercano, formal, más corto o más amable.",
+            title = tr("Sugerencias de tono"),
+            description = tr("Reescribe tu borrador en tono cercano, formal, más corto o más amable."),
             checked = state.toneSuggestions,
             enabled = state.providerReady,
             onCheckedChange = viewModel::setToneSuggestions
         )
         AiFeatureToggle(
             icon = Icons.Default.AutoFixHigh,
-            title = "Mejorar fotos al enviar",
-            description = "Realce de contraste y color en tu dispositivo. La foto no sale de aquí.",
+            title = tr("Mejorar fotos al enviar"),
+            description = tr("Realce de contraste y color en tu dispositivo. La foto no sale de aquí."),
             checked = state.photoEnhance,
             enabled = true,
             onCheckedChange = viewModel::setPhotoEnhance
         )
         AiFeatureToggle(
             icon = Icons.Default.KeyboardVoice,
-            title = "Dictado por voz",
-            description = "Botón de micrófono para dictar. Usa el reconocimiento del propio Android.",
+            title = tr("Dictado por voz"),
+            description = tr("Botón de micrófono para dictar. Usa el reconocimiento del propio Android."),
             checked = state.voiceTranscription,
             enabled = true,
             onCheckedChange = viewModel::setVoiceTranscription

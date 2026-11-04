@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.chat
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -93,7 +95,7 @@ fun MediaGalleryScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No media in this chat",
+                    text = tr("Este chat no tiene archivos"),
                     color = Color.Gray
                 )
             }
@@ -147,7 +149,7 @@ private fun MediaGridItem(
                 .data(message.mediaUrl)
                 .crossfade(300)
                 .build(),
-            contentDescription = "Media",
+            contentDescription = tr("Multimedia"),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             loading = {
@@ -175,7 +177,7 @@ private fun MediaGridItem(
             ) {
                 Icon(
                     Icons.Default.PlayCircle,
-                    contentDescription = "Play",
+                    contentDescription = tr("Reproducir"),
                     tint = Color.White,
                     modifier = Modifier.size(48.dp)
                 )
@@ -243,7 +245,7 @@ private fun FullScreenMediaViewer(
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Close",
+                    contentDescription = tr("Cerrar"),
                     tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
@@ -269,7 +271,7 @@ private fun FullScreenMediaViewer(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Previous",
+                            contentDescription = tr("Anterior"),
                             tint = Color.White
                         )
                     }
@@ -287,7 +289,7 @@ private fun FullScreenMediaViewer(
                     ) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Next",
+                            contentDescription = tr("Siguiente"),
                             tint = Color.White
                         )
                     }
@@ -348,7 +350,7 @@ private fun ZoomableImage(
                 .data(imageUrl)
                 .crossfade(300)
                 .build(),
-            contentDescription = "Full screen image",
+            contentDescription = tr("Imagen a pantalla completa"),
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer(
@@ -440,7 +442,7 @@ private fun FullscreenVideoPlayer(
         ) {
             Icon(
                 Icons.Default.Close,
-                contentDescription = "Cerrar video",
+                contentDescription = tr("Cerrar video"),
                 tint = Color.White,
                 modifier = Modifier.size(32.dp)
             )

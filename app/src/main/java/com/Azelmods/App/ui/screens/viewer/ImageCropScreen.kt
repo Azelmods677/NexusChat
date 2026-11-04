@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.viewer
 
+import com.Azelmods.App.i18n.tr
+
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -84,14 +86,14 @@ fun ImageCropScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (photoType == "cover") "Ajustar Portada" else "Ajustar Foto de Perfil",
+                    text = if (photoType == "cover") tr("Ajustar Portada") else tr("Ajustar Foto de Perfil"),
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Pellizca para hacer zoom • Arrastra para mover",
+                    text = tr("Pellizca para hacer zoom • Arrastra para mover"),
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 13.sp
                 )
@@ -133,7 +135,7 @@ fun ImageCropScreen(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Cancel",
+                    contentDescription = tr("Cancelar"),
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
@@ -150,7 +152,7 @@ fun ImageCropScreen(
                     contentColor = Color.White
                 )
             ) {
-                Text("Restablecer", fontSize = 16.sp)
+                Text(tr("Restablecer"), fontSize = 16.sp)
             }
             
             // Confirm button
@@ -169,7 +171,7 @@ fun ImageCropScreen(
             ) {
                 Icon(
                     Icons.Default.Check,
-                    contentDescription = "Confirm",
+                    contentDescription = tr("Confirmar"),
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )

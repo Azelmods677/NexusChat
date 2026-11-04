@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.azelai.agents
 
+import com.Azelmods.App.i18n.tr
+
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -174,10 +176,10 @@ class AgentsViewModel @Inject constructor(
         val msg = e.message.orEmpty()
         return when {
             msg == AzelAIApiService.API_KEY_MISSING ->
-                "No hay ninguna IA configurada. Añade tu clave o un modelo local en Ajustes → IA."
-            e is java.net.UnknownHostException -> "Sin conexión a internet."
-            msg.contains("401") -> "La API key no es válida."
-            msg.contains("429") -> "Límite de uso del proveedor alcanzado. Espera un momento y reinténtalo."
+                tr("No hay ninguna IA configurada. Añade tu clave o un modelo local en Ajustes → IA.")
+            e is java.net.UnknownHostException -> tr("Sin conexión a internet.")
+            msg.contains("401") -> tr("La API key no es válida.")
+            msg.contains("429") -> tr("Límite de uso del proveedor alcanzado. Espera un momento y reinténtalo.")
             else -> msg.ifBlank { "Error desconocido" }
         }
     }

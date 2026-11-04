@@ -1,6 +1,8 @@
 
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -85,7 +87,7 @@ fun AppBackground(
                                 .data(uri)
                                 .crossfade(300)
                                 .build(),
-                            contentDescription = "App background",
+                            contentDescription = tr("Fondo de la app"),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop,
                             loading = {

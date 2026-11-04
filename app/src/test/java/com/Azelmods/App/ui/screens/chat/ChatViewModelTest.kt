@@ -158,7 +158,7 @@ class ChatViewModelTest : StringSpec({
 
             coEvery { databaseRepository.sendMessage(any(), any(), any()) } returns Unit
 
-            viewModel.sendMessage(content = "Hello!", chatId = "chat-1")
+            viewModel.sendMessage(rawContent = "Hello!", chatId = "chat-1")
 
             coVerify { databaseRepository.sendMessage("chat-1", "Hello!", null) }
         }
@@ -172,7 +172,7 @@ class ChatViewModelTest : StringSpec({
         viewModel.state.value.error shouldBe null
 
         // Blank content triggers early return — no state change
-        viewModel.sendMessage(content = "", chatId = "chat-1")
+        viewModel.sendMessage(rawContent = "", chatId = "chat-1")
 
         viewModel.state.value.replyingTo shouldBe null
         viewModel.state.value.error shouldBe null

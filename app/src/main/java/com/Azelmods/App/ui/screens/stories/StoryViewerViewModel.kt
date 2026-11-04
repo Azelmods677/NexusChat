@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.stories
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Azelmods.App.data.repository.RealtimeDatabaseRepository
@@ -16,7 +18,10 @@ data class StoryViewerState(
     val stories: List<StoryItemData> = emptyList(),
     val currentIndex: Int = 0,
     val isLoading: Boolean = true,
+    /** No se pudieron cargar las historias: es lo único que sustituye al visor. */
     val error: String? = null,
+    /** Falló una acción (responder, reaccionar, borrar): se avisa sin cerrar la historia. */
+    val actionError: String? = null,
     val replySent: Boolean = false,
     val viewers: List<Map<String, Any>> = emptyList(),
     val deleted: Boolean = false,
@@ -51,19 +56,19 @@ class StoryViewerViewModel @Inject constructor(
                     return@launch
                 }
 
+                // Todas son de la misma persona: el perfil se pide una sola vez.
+                val userData = runCatching { repository.getUserById(userId) }.getOrNull()
+                val userName = userData?.get("displayName") as? String
+                    ?: userData?.get("username") as? String
+                    ?: userData?.get("name") as? String
+                    ?: tr("Usuario")
+                val userPhotoUrl = userData?.get("photoUrl") as? String
+
                 repository.getStoriesForUser(userId).collect { storiesData ->
                     val userStories = mutableListOf<StoryItemData>()
 
                     for (storyMap in storiesData) {
                         val storyUserId = storyMap["userId"] as? String ?: userId
-
-                        // Resolve user display info
-                        val userData = runCatching { repository.getUserById(storyUserId) }.getOrNull()
-                        val userName = userData?.get("displayName") as? String
-                            ?: userData?.get("username") as? String
-                            ?: userData?.get("name") as? String
-                            ?: storyUserId
-                        val userPhotoUrl = userData?.get("photoUrl") as? String
 
                         // Normalise timestamp fields that Firebase may return as Long or Double
                         val timestamp = when (val ts = storyMap["timestamp"]) {
@@ -127,20 +132,27 @@ class StoryViewerViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("StoryViewerVM", "Error cargando stories de $userId: ${e.message}", e)
-                val msg = e.message ?: ""
-                val friendly = if (msg.contains("Permission denied", ignoreCase = true) ||
-                    msg.contains("permission_denied", ignoreCase = true)
-                ) {
-                    "No tienes permiso para ver estas historias. Revisa las reglas de Firebase o vuelve a intentarlo."
-                } else {
-                    msg.ifBlank { "No se pudieron cargar las historias" }
-                }
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = friendly
+                    error = friendlyMessage(e, "No se pudieron cargar las historias")
                 )
             }
         }
+    }
+
+    /** El texto crudo de Firebase ("Permission denied") no le dice nada a quien usa la app. */
+    private fun friendlyMessage(e: Throwable, fallback: String): String {
+        val msg = e.message.orEmpty()
+        return when {
+            msg.contains("permission", ignoreCase = true) -> "$fallback: no tienes permiso para hacerlo."
+            e is java.io.IOException || msg.contains("network", ignoreCase = true) ->
+                "$fallback: revisa tu conexión."
+            else -> fallback
+        }
+    }
+
+    fun clearActionError() {
+        _state.value = _state.value.copy(actionError = null)
     }
 
     // ── Navigation ───────────────────────────────────────────────────────────
@@ -166,7 +178,9 @@ class StoryViewerViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             runCatching { repository.sendStoryReply(storyOwnerId, storyId, text) }
                 .onSuccess { _state.value = _state.value.copy(replySent = true) }
-                .onFailure { _state.value = _state.value.copy(error = it.message) }
+                .onFailure {
+                    _state.value = _state.value.copy(actionError = friendlyMessage(it, "No se pudo enviar la respuesta"))
+                }
         }
     }
 
@@ -187,9 +201,7 @@ class StoryViewerViewModel @Inject constructor(
                     )
                 }
                 .onFailure {
-                    _state.value = _state.value.copy(
-                        error = "No se pudo enviar la reacción: ${it.message}"
-                    )
+                    _state.value = _state.value.copy(actionError = friendlyMessage(it, "No se pudo enviar la reacción"))
                 }
         }
     }
@@ -243,9 +255,7 @@ class StoryViewerViewModel @Inject constructor(
                     deleted = true
                 )
             }.onFailure {
-                _state.value = _state.value.copy(
-                    error = it.message ?: "No se pudo eliminar la historia"
-                )
+                _state.value = _state.value.copy(actionError = friendlyMessage(it, "No se pudo eliminar la historia"))
             }
         }
     }

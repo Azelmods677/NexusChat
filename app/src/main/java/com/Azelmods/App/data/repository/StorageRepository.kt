@@ -187,6 +187,24 @@ class StorageRepository @Inject constructor(
         }
     }
 
+    /** Sube un archivo sin recomprimirlo y devuelve su URL. */
+    private suspend fun putFileAndGetUrl(path: String, uri: Uri, contentType: String): String {
+        if (FirebaseAuth.getInstance().currentUser == null) {
+            throw Exception("Sesión no iniciada: entra de nuevo para subir archivos.")
+        }
+        val fileRef = storage.reference.child(path)
+        fileRef.putFile(uri, mediaMetadata(contentType)).await()
+        return fileRef.downloadUrl.await().toString()
+    }
+
+    /** GIF de un chat, tal cual: recomprimirlo o etiquetarlo como JPEG perdería la animación. */
+    suspend fun uploadChatGif(uri: Uri, chatId: String): String =
+        putFileAndGetUrl("chats/$chatId/gifs/${System.currentTimeMillis()}.gif", uri, "image/gif")
+
+    /** GIF publicado como historia. */
+    suspend fun uploadStoryGif(uri: Uri, userId: String): String =
+        putFileAndGetUrl("stories/$userId/${System.currentTimeMillis()}.gif", uri, "image/gif")
+
     /**
      * Upload story to Firebase Storage
      * Pattern: stories/{userId}/{timestamp}.jpg

@@ -28,6 +28,20 @@ class SettingsViewModel @Inject constructor(
     private val databaseRepository: com.Azelmods.App.data.repository.RealtimeDatabaseRepository
 ) : ViewModel() {
 
+    /**
+     * Cierra la sesión de verdad. Lo que necesita permiso (marcarse fuera de línea y
+     * retirar el token de notificaciones de este dispositivo) se hace antes de salir;
+     * si no, quien cierra sesión seguiría recibiendo los avisos de esa cuenta.
+     */
+    fun logout(onDone: () -> Unit) {
+        viewModelScope.launch {
+            runCatching { databaseRepository.updatePresence(false) }
+            com.Azelmods.App.utils.FCMTokenManager.deleteFCMToken()
+            firebaseAuth.signOut()
+            onDone()
+        }
+    }
+
     // ── Contactos bloqueados ─────────────────────────────────────────────────
     // Antes la pantalla de privacidad mostraba una lista declarada como
     // `remember { mutableStateOf(listOf<String>()) }`: SIEMPRE vacía, sin origen de
@@ -59,6 +73,9 @@ class SettingsViewModel @Inject constructor(
     }
     
     // Account Settings
+    val splashAnimation: StateFlow<Boolean> = userPreferences.splashAnimation
+    fun setSplashAnimation(enabled: Boolean) = userPreferences.setSplashAnimation(enabled)
+
     val displayName: StateFlow<String> = userPreferences.displayName
     val username: StateFlow<String> = userPreferences.username
     val bio: StateFlow<String> = userPreferences.bio

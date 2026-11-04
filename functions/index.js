@@ -91,18 +91,23 @@ exports.onMessageCreate = functions.database
         }
 
         // ── 2. Obtener miembros del chat ──
+        // `members` es un mapa { uid: true }: los ids son las CLAVES. Con
+        // Object.values() el "destinatario" salía `true`, se buscaban los tokens en
+        // /fcmTokens/true y ningún mensaje llegaba a notificarse. Se admite también
+        // el formato antiguo en array.
         let members = [];
         try {
             const chatSnapshot = await db.ref(`/chats/${chatId}/members`).once("value");
-            members = Object.values(chatSnapshot.val() || {});
+            const raw = chatSnapshot.val() || {};
+            members = Array.isArray(raw) ? raw.filter(Boolean) : Object.keys(raw);
         } catch (e) {
             console.error("❌ Error reading chat members:", e);
             return null;
         }
 
-        // ── 3. Encontrar destinatario (el que NO es el remitente) ──
-        const recipientId = members.find((uid) => uid !== senderId);
-        if (!recipientId) {
+        // ── 3. Destinatarios: todos los miembros menos quien envía ──
+        const recipientIds = members.filter((uid) => uid !== senderId);
+        if (recipientIds.length === 0) {
             console.log("⚠️ No recipient found, skipping");
             return null;
         }
@@ -133,35 +138,48 @@ exports.onMessageCreate = functions.database
         if (mediaType) {
             switch (mediaType) {
                 case "IMAGE":
-                    displayText = "📷 Photo";
+                    displayText = "📷 Foto";
                     break;
                 case "VIDEO":
-                    displayText = "🎥 Video";
+                    displayText = "🎥 Vídeo";
                     break;
                 case "AUDIO":
-                    displayText = "🎤 Voice message";
+                    displayText = "🎤 Mensaje de voz";
                     break;
                 case "DOCUMENT":
-                    displayText = "📄 Document";
+                    displayText = "📄 Documento";
                     break;
                 case "LOCATION":
-                    displayText = "📍 Location";
+                    displayText = "📍 Ubicación";
                     break;
                 case "STICKER":
                     displayText = "Sticker";
                     break;
+                case "GIF":
+                    displayText = "GIF";
+                    break;
+                case "SYSTEM":
+                    // Aviso interno del chat (p. ej. cambio del temporizador): sin push.
+                    return null;
             }
         }
 
-        // ── 7. Obtener FCM tokens del destinatario ──
-        const fcmTokens = await getFcmTokens(recipientId);
+        // Un mensaje temporal no debe dejar su contenido en la bandeja de avisos del
+        // otro teléfono, donde sobreviviría al borrado del propio mensaje.
+        if (messageData.isEphemeral === true) {
+            displayText = messageData.isViewOnce === true ? "Mensaje de una sola vista" : "Mensaje temporal";
+        }
+
+        // ── 7. Obtener FCM tokens de los destinatarios ──
+        const tokenLists = await Promise.all(recipientIds.map((uid) => getFcmTokens(uid)));
+        const fcmTokens = [...new Set(tokenLists.flat())];
 
         if (fcmTokens.length === 0) {
-            console.log(`⚠️ No FCM tokens for user ${recipientId}`);
+            console.log(`⚠️ No FCM tokens for chat ${chatId}`);
             return null;
         }
 
-        console.log(`📱 Sending push to ${fcmTokens.length} device(s) for user ${recipientId}`);
+        console.log(`📱 Sending push to ${fcmTokens.length} device(s) in chat ${chatId}`);
 
         // ── 8. Construir payload de datos ──
         const dataPayload = {
@@ -217,31 +235,56 @@ exports.onMessageCreate = functions.database
     });
 
 /**
- * 🆕 onStoryCreate — Notifica contactos cuando se publica una historia nueva.
+ * 🆕 onStoryCreate — Avisa a quienes tienen una conversación con el autor cuando publica
+ * una historia. Las historias viven en /stories/{userId}/{storyId}: la ruta anterior,
+ * /stories/{storyId}, se disparaba con el nodo equivocado y nunca avisaba a nadie.
  */
 exports.onStoryCreate = functions.database
-    .ref("/stories/{storyId}")
+    .ref("/stories/{userId}/{storyId}")
     .onCreate(async (snapshot, context) => {
-        const { storyId } = context.params;
-        const storyData = snapshot.val();
+        const { userId, storyId } = context.params;
 
-        const userId = storyData.userId;
-        if (!userId) return null;
-
-        // Obtener nombre del usuario
-        let userName = "Someone";
+        let userName = "Alguien";
         try {
             const userSnapshot = await db.ref(`/users/${userId}/displayName`).once("value");
             userName = userSnapshot.val() || userName;
         } catch (e) {
-            // ignore
+            console.warn("⚠️ Could not fetch story author name:", e);
         }
 
-        // Notificar a todos los contactos (simplificado)
-        // En producción, filtrar solo contactos del usuario
-        console.log(`📖 New story by ${userName}: ${storyId}`);
+        // Los contactos son los otros miembros de sus conversaciones 1:1.
+        const chatsSnapshot = await db.ref(`/userChats/${userId}`).once("value");
+        const chatIds = Object.keys(chatsSnapshot.val() || {}).filter((id) => !id.startsWith("group_"));
+        const contacts = [...new Set(
+            chatIds.flatMap((id) => id.split("_")).filter((uid) => uid && uid !== userId)
+        )];
+        if (contacts.length === 0) return null;
 
-        return null; // Implementación completa según necesidades
+        const tokenLists = await Promise.all(contacts.map((uid) => getFcmTokens(uid)));
+        const fcmTokens = [...new Set(tokenLists.flat())];
+
+        const results = await Promise.allSettled(
+            fcmTokens.map((token) =>
+                admin.messaging().send({
+                    token: token,
+                    notification: {
+                        title: userName,
+                        body: "Ha publicado una historia",
+                    },
+                    data: { type: "story", storyId: storyId, userId: userId },
+                    android: {
+                        notification: {
+                            channelId: "nexus_messages",
+                            icon: "ic_notification",
+                            color: "#7B5CFA",
+                        },
+                    },
+                })
+            )
+        );
+        const failCount = results.filter((r) => r.status === "rejected").length;
+        if (failCount > 0) console.warn(`⚠️ ${failCount} story push(es) failed for ${storyId}`);
+        return null;
     });
 
 /**
@@ -476,6 +519,113 @@ exports.onCallCreate = functions.database
     });
 
 /**
+ * Margen máximo de un mensaje temporal que nadie llega a abrir. Coincide con
+ * RealtimeDatabaseRepository.EPHEMERAL_MAX_UNREAD_MS: el cliente lo escribe en
+ * `expireAt`, y aquí se usa como respaldo si el campo falta.
+ */
+const EPHEMERAL_MAX_UNREAD_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Calcula cuándo debe borrarse un mensaje temporal, o null si no lo es.
+ *
+ * La cuenta atrás empieza cuando el destinatario lo abre (`viewedAt`, marca del
+ * servidor), no al enviarlo: si no, alguien sin conexión perdería el mensaje sin
+ * llegar a verlo. Mientras nadie lo abra rige `expireAt`.
+ *
+ * @param {object} message Mensaje guardado en la base de datos.
+ * @return {number|null} Marca de tiempo en milisegundos.
+ */
+function ephemeralDeadline(message) {
+    if (!message || message.isEphemeral !== true) return null;
+    const seconds = Number(message.selfDestructDuration) || 0;
+    const viewedAt = Number(message.viewedAt) || 0;
+    if (viewedAt > 0 && seconds > 0) return viewedAt + seconds * 1000;
+    const expireAt = Number(message.expireAt) || 0;
+    if (expireAt > 0) return expireAt;
+    return (Number(message.timestamp) || Date.now()) + EPHEMERAL_MAX_UNREAD_MS;
+}
+
+/**
+ * 🕒 indexEphemeralMessage — Mantiene el índice `expiringMessages`, ordenado por
+ * fecha de borrado. Sin él, la limpieza programada tendría que recorrer todos los
+ * mensajes de todos los chats cada minuto.
+ *
+ * El nodo solo lo toca el Admin SDK: las reglas lo dejan cerrado a los clientes.
+ */
+exports.indexEphemeralMessage = functions.database
+    .ref("/chats/{chatId}/messages/{messageId}")
+    .onWrite(async (change, context) => {
+        const { chatId, messageId } = context.params;
+        const key = `${chatId}__${messageId}`;
+        const message = change.after.val();
+        const deadline = ephemeralDeadline(message);
+
+        if (deadline === null) {
+            // Ya no existe o no es temporal: quitar la entrada si la había.
+            if (change.before.exists() && change.before.val()?.isEphemeral === true) {
+                await db.ref(`/expiringMessages/${key}`).remove();
+            }
+            return null;
+        }
+
+        await db.ref(`/expiringMessages/${key}`).set({
+            chatId,
+            messageId,
+            at: deadline,
+            mediaUrl: message.mediaUrl || null,
+        });
+        return null;
+    });
+
+/**
+ * 🧨 cleanupExpiredMessages — Borra en el servidor los mensajes temporales vencidos,
+ * y su archivo en Storage si llevaban foto, vídeo o GIF.
+ *
+ * Es lo que hace cierta la autodestrucción: la app borra el mensaje cuando el tiempo
+ * se acaba, pero solo si alguno de los participantes tiene el chat abierto. Con esta
+ * función el mensaje desaparece aunque todos hayan cerrado la app.
+ *
+ * Frecuencia: cada minuto. Requiere plan Blaze (Cloud Scheduler).
+ */
+exports.cleanupExpiredMessages = functions.pubsub
+    .schedule("every 1 minutes")
+    .onRun(async () => {
+        const snapshot = await db.ref("expiringMessages")
+            .orderByChild("at")
+            .endAt(Date.now())
+            .limitToFirst(500)
+            .once("value");
+        if (!snapshot.exists()) return null;
+
+        const updates = {};
+        const storageUrls = [];
+        snapshot.forEach((entry) => {
+            const { chatId, messageId, mediaUrl } = entry.val() || {};
+            updates[`expiringMessages/${entry.key}`] = null;
+            if (chatId && messageId) {
+                updates[`chats/${chatId}/messages/${messageId}`] = null;
+            }
+            if (typeof mediaUrl === "string" && mediaUrl.startsWith("http")) {
+                storageUrls.push(mediaUrl);
+            }
+        });
+        await db.ref().update(updates);
+
+        const bucket = admin.storage().bucket();
+        await Promise.all(storageUrls.map(async (url) => {
+            try {
+                const match = url.match(/\/o\/([^?]+)/);
+                if (match) await bucket.file(decodeURIComponent(match[1])).delete();
+            } catch (e) {
+                console.warn(`No se pudo borrar de Storage: ${e.message}`);
+            }
+        }));
+
+        console.log(`🧨 ${snapshot.numChildren()} mensajes temporales eliminados`);
+        return null;
+    });
+
+/**
  * 🧹 cleanupExpiredStories — Función programada que elimina las historias que ya
  * superaron su ventana de 24 h. Completa la "expiración" de Stories: el cliente
  * ya las ocultaba al leer, pero sin esto los nodos y archivos se acumulaban para
@@ -540,4 +690,229 @@ exports.cleanupExpiredStories = functions.pubsub
 
         console.log(`🧹 cleanupExpiredStories: ${expiredCount} historias expiradas eliminadas.`);
         return null;
+    });
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 💳 Premium con Mercado Pago
+//
+// El token de Mercado Pago es un secreto de servidor: vive en Secret Manager, nunca en el
+// APK. Se configura una sola vez con:
+//   npx firebase-tools functions:secrets:set MERCADOPAGO_ACCESS_TOKEN
+//
+// Precios: los de PREMIUM_PLANS, salvo que se sobrescriban sin redesplegar en la base de
+// datos, en config/premium/plans/{plan}/amount y config/premium/currency.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MP_API = "https://api.mercadopago.com";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const PREMIUM_PLANS = {
+    monthly: { title: "Mensual", amount: 19900, period: "Se paga cada mes", days: 30 },
+    annual: { title: "Anual", amount: 159900, period: "Un año completo", days: 365, badge: "Ahorra 33 %" },
+    lifetime: { title: "De por vida", amount: 399900, period: "Pago único", days: null, badge: "Para siempre" },
+};
+
+/**
+ * Planes vigentes, con los cambios de config/premium aplicados.
+ *
+ * @return {Promise<{plans: object, currency: string}>} Planes por id y moneda.
+ */
+async function loadPremiumConfig() {
+    const snapshot = await db.ref("config/premium").once("value");
+    const config = snapshot.val() || {};
+    const plans = {};
+    for (const [id, plan] of Object.entries(PREMIUM_PLANS)) {
+        const amount = Number(config.plans?.[id]?.amount);
+        plans[id] = { ...plan, amount: amount > 0 ? amount : plan.amount };
+    }
+    return { plans, currency: config.currency || "COP" };
+}
+
+/**
+ * Dirección pública de esta función.
+ *
+ * @return {string} URL base, sin barra final.
+ */
+function premiumBaseUrl() {
+    const projectId = JSON.parse(process.env.FIREBASE_CONFIG || "{}").projectId || process.env.GCLOUD_PROJECT;
+    return `https://us-central1-${projectId}.cloudfunctions.net/premiumApi`;
+}
+
+/**
+ * Crea el cobro en Mercado Pago para el usuario autenticado.
+ *
+ * @param {object} req Petición: `Authorization: Bearer <idToken>` y `{ plan }`.
+ * @param {object} res Respuesta: `{ url }` con el enlace de pago.
+ * @return {Promise<void>}
+ */
+async function handleCheckout(req, res) {
+    const header = req.get("Authorization") || "";
+    const idToken = header.startsWith("Bearer ") ? header.slice(7) : "";
+    let user;
+    try {
+        user = await admin.auth().verifyIdToken(idToken);
+    } catch (e) {
+        res.status(401).json({ error: "Tu sesión no es válida. Vuelve a entrar." });
+        return;
+    }
+
+    const { plans, currency } = await loadPremiumConfig();
+    const planId = String(req.body?.plan || "");
+    const plan = plans[planId];
+    if (!plan) {
+        res.status(400).json({ error: "Ese plan no existe." });
+        return;
+    }
+
+    const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+    const base = premiumBaseUrl();
+    const response = await fetch(`${MP_API}/checkout/preferences`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+            items: [{
+                id: planId,
+                title: `NexusChat Premium · ${plan.title}`,
+                quantity: 1,
+                currency_id: currency,
+                unit_price: plan.amount,
+            }],
+            payer: user.email ? { email: user.email } : undefined,
+            // Lo único que une el pago con la cuenta: se recibe de vuelta en el aviso.
+            external_reference: `${user.uid}|${planId}|${Date.now()}`,
+            notification_url: `${base}/webhook`,
+            back_urls: { success: `${base}/return`, pending: `${base}/return`, failure: `${base}/return` },
+            auto_return: "approved",
+            statement_descriptor: "NEXUSCHAT",
+        }),
+    });
+
+    if (!response.ok) {
+        console.error(`❌ Mercado Pago respondió ${response.status}: ${await response.text()}`);
+        res.status(502).json({ error: "Mercado Pago no pudo crear el cobro. Inténtalo en un rato." });
+        return;
+    }
+    const preference = await response.json();
+    const url = token.startsWith("TEST-") ? preference.sandbox_init_point : preference.init_point;
+    res.json({ url });
+}
+
+/**
+ * Aviso de Mercado Pago: un pago ha cambiado.
+ *
+ * El contenido del aviso no se cree: cualquiera podría enviar uno inventado a esta dirección.
+ * Solo se usa su id para preguntarle el pago a Mercado Pago con nuestro token, y esa respuesta
+ * es lo único que puede activar Premium.
+ *
+ * @param {object} req Petición de Mercado Pago.
+ * @param {object} res Respuesta; 200 para que no reintente lo ya procesado.
+ * @return {Promise<void>}
+ */
+async function handleWebhook(req, res) {
+    const type = req.body?.type || req.query.type || req.query.topic;
+    const paymentId = req.body?.data?.id || req.query["data.id"] || req.query.id;
+    if (type !== "payment" || !paymentId) {
+        res.status(200).send("ignorado");
+        return;
+    }
+
+    const response = await fetch(`${MP_API}/v1/payments/${encodeURIComponent(paymentId)}`, {
+        headers: { Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}` },
+    });
+    if (!response.ok) {
+        // 404: id inventado o de otra cuenta. Otro error: que Mercado Pago lo reintente.
+        res.status(response.status === 404 ? 200 : 500).send("sin confirmar");
+        return;
+    }
+    const payment = await response.json();
+
+    const [uid, planId] = String(payment.external_reference || "").split("|");
+    const { plans } = await loadPremiumConfig();
+    const plan = plans[planId];
+    if (!uid || !plan) {
+        res.status(200).send("sin referencia");
+        return;
+    }
+
+    const receiptRef = db.ref(`payments/${uid}/${payment.id}`);
+    const previous = (await receiptRef.once("value")).val();
+    await receiptRef.set({
+        plan: planId,
+        status: payment.status,
+        amount: payment.transaction_amount,
+        currency: payment.currency_id,
+        createdAt: previous?.createdAt || Date.now(),
+        updatedAt: Date.now(),
+    });
+
+    const premiumRef = db.ref(`premium/${uid}`);
+    if (payment.status === "approved" && previous?.status !== "approved") {
+        if (Number(payment.transaction_amount) < plan.amount) {
+            console.error(`❌ Pago ${payment.id} por debajo del precio del plan ${planId}`);
+            res.status(200).send("importe incorrecto");
+            return;
+        }
+        // Renovar antes de que venza suma el tiempo, no lo pisa.
+        await premiumRef.transaction((current) => {
+            if (plan.days === null || (current?.active && !current.expiresAt)) {
+                return { active: true, plan: plan.days === null ? planId : current.plan, updatedAt: Date.now() };
+            }
+            const from = Math.max(Date.now(), Number(current?.expiresAt) || 0);
+            return { active: true, plan: planId, expiresAt: from + plan.days * DAY_MS, updatedAt: Date.now() };
+        });
+        console.log(`✅ Premium ${planId} activado para ${uid}`);
+    } else if (["refunded", "charged_back", "cancelled"].includes(payment.status) && previous?.status === "approved") {
+        await premiumRef.update({ active: false, updatedAt: Date.now() });
+        console.log(`↩️ Premium retirado a ${uid}: pago ${payment.status}`);
+    }
+
+    res.status(200).send("ok");
+}
+
+/**
+ * 💳 premiumApi — Planes, cobro y avisos de Mercado Pago.
+ *   GET  /plans     planes y precios para la app
+ *   POST /checkout  crea el enlace de pago
+ *   POST /webhook   aviso de Mercado Pago
+ *   GET  /return    página a la que vuelve quien paga
+ */
+exports.premiumApi = functions
+    .runWith({ secrets: ["MERCADOPAGO_ACCESS_TOKEN"] })
+    .https.onRequest(async (req, res) => {
+        try {
+            if (req.path === "/plans" && req.method === "GET") {
+                const { plans, currency } = await loadPremiumConfig();
+                const format = new Intl.NumberFormat("es-CO", {
+                    style: "currency",
+                    currency,
+                    maximumFractionDigits: 0,
+                });
+                res.json({
+                    plans: Object.entries(plans).map(([id, plan]) => ({
+                        id,
+                        title: plan.title,
+                        priceLabel: format.format(plan.amount),
+                        period: plan.period,
+                        badge: plan.badge || "",
+                    })),
+                });
+            } else if (req.path === "/checkout" && req.method === "POST") {
+                await handleCheckout(req, res);
+            } else if (req.path === "/webhook") {
+                await handleWebhook(req, res);
+            } else if (req.path === "/return") {
+                res.set("Content-Type", "text/html; charset=utf-8").send(
+                    "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>" +
+                    "<body style='background:#0b0c0e;color:#eceef0;font-family:sans-serif;text-align:center;padding:64px 24px'>" +
+                    "<h2>Gracias</h2><p>Ya puedes volver a NexusChat. Premium se activa solo en cuanto " +
+                    "Mercado Pago confirme el pago.</p></body>"
+                );
+            } else {
+                res.status(404).json({ error: "No encontrado" });
+            }
+        } catch (e) {
+            console.error("❌ premiumApi:", e);
+            res.status(500).json({ error: "Error del servidor de pagos." });
+        }
     });

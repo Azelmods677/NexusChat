@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 270" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" role="img" aria-label="Los agentes de NexusChat: del objetivo al resultado, probando y corrigiendo el código">
+  <rect width="1240" height="270" rx="20" fill="#0B0C0E"/>
+  <text x="24" y="44" font-size="20" font-weight="700" fill="#ECEEF0">Le das un objetivo. El equipo hace el resto.</text>
+  <line x1="236" y1="134" x2="270" y2="134" stroke="#24282C" stroke-width="2"/><circle cx="236" cy="134" r="4" fill="#7C828A"><animate attributeName="cx" from="236" to="270" dur="4.8s" begin="0.0s" keyTimes="0;.14;1" values="236;270;270" repeatCount="indefinite"/></circle><line x1="482" y1="134" x2="516" y2="134" stroke="#24282C" stroke-width="2"/><circle cx="482" cy="134" r="4" fill="#53A6E6"><animate attributeName="cx" from="482" to="516" dur="4.8s" begin="0.8s" keyTimes="0;.14;1" values="482;516;516" repeatCount="indefinite"/></circle><line x1="728" y1="134" x2="762" y2="134" stroke="#24282C" stroke-width="2"/><circle cx="728" cy="134" r="4" fill="#2FB38E"><animate attributeName="cx" from="728" to="762" dur="4.8s" begin="1.6s" keyTimes="0;.14;1" values="728;762;762" repeatCount="indefinite"/></circle><line x1="974" y1="134" x2="1008" y2="134" stroke="#24282C" stroke-width="2"/><circle cx="974" cy="134" r="4" fill="#D9A441"><animate attributeName="cx" from="974" to="1008" dur="4.8s" begin="2.4000000000000004s" keyTimes="0;.14;1" values="974;1008;1008" repeatCount="indefinite"/></circle>
+  <g>
+    <rect x="24" y="74" width="212" height="120" rx="18" fill="#171A1D" stroke="#24282C"/>
+    <rect x="24" y="74" width="212" height="120" rx="18" fill="none" stroke="#7C828A" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" values="0;1;0" keyTimes="0;.12;.28" dur="4.8s" begin="0.0s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="54" cy="110" r="8" fill="#7C828A"/>
+    <text x="72" y="116" font-size="20" font-weight="700" fill="#ECEEF0">Tu objetivo</text>
+    <text x="46" y="158" font-size="15" fill="#A6ACB3">lo pides en una frase</text>
+  </g>
+  <g>
+    <rect x="270" y="74" width="212" height="120" rx="18" fill="#171A1D" stroke="#24282C"/>
+    <rect x="270" y="74" width="212" height="120" rx="18" fill="none" stroke="#53A6E6" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" values="0;1;0" keyTimes="0;.12;.28" dur="4.8s" begin="0.8s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="300" cy="110" r="8" fill="#53A6E6"/>
+    <text x="318" y="116" font-size="20" font-weight="700" fill="#ECEEF0">Arquitecto</text>
+    <text x="292" y="158" font-size="15" fill="#A6ACB3">diseña la solución</text>
+  </g>
+  <g>
+    <rect x="516" y="74" width="212" height="120" rx="18" fill="#171A1D" stroke="#24282C"/>
+    <rect x="516" y="74" width="212" height="120" rx="18" fill="none" stroke="#2FB38E" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" values="0;1;0" keyTimes="0;.12;.28" dur="4.8s" begin="1.6s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="546" cy="110" r="8" fill="#2FB38E"/>
+    <text x="564" y="116" font-size="20" font-weight="700" fill="#ECEEF0">Programador</text>
+    <text x="538" y="158" font-size="15" fill="#A6ACB3">escribe y ejecuta</text>
+  </g>
+  <g>
+    <rect x="762" y="74" width="212" height="120" rx="18" fill="#171A1D" stroke="#24282C"/>
+    <rect x="762" y="74" width="212" height="120" rx="18" fill="none" stroke="#D9A441" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" values="0;1;0" keyTimes="0;.12;.28" dur="4.8s" begin="2.4000000000000004s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="792" cy="110" r="8" fill="#D9A441"/>
+    <text x="810" y="116" font-size="20" font-weight="700" fill="#ECEEF0">Probador</text>
+    <text x="784" y="158" font-size="15" fill="#A6ACB3">busca y corrige fallos</text>
+  </g>
+  <g>
+    <rect x="1008" y="74" width="212" height="120" rx="18" fill="#171A1D" stroke="#24282C"/>
+    <rect x="1008" y="74" width="212" height="120" rx="18" fill="none" stroke="#A78BFA" stroke-width="2" opacity="0">
+      <animate attributeName="opacity" values="0;1;0" keyTimes="0;.12;.28" dur="4.8s" begin="3.2s" repeatCount="indefinite"/>
+    </rect>
+    <circle cx="1038" cy="110" r="8" fill="#A78BFA"/>
+    <text x="1056" y="116" font-size="20" font-weight="700" fill="#ECEEF0">Resultado</text>
+    <text x="1030" y="158" font-size="15" fill="#A6ACB3">archivos en tu editor</text>
+  </g>
+  <path d="M868.0 194 v26 h-246.0 v-26" fill="none" stroke="#D9A441" stroke-opacity=".6" stroke-width="2" stroke-dasharray="6 6"><animate attributeName="stroke-dashoffset" from="24" to="0" dur="1s" repeatCount="indefinite"/></path><text x="745.0" y="242" text-anchor="middle" font-size="14" fill="#D9A441">si algo falla, lo arreglan y vuelven a probar</text>
+</svg>

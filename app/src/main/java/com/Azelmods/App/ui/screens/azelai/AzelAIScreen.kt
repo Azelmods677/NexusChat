@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.azelai
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -50,6 +52,7 @@ private val UserBubble = NexusTokens.Color.BgElevated
 fun AzelAIScreen(
     onBack: () -> Unit,
     onOpenSettings: () -> Unit = {},
+    onOpenEditor: () -> Unit = {},
     viewModel: AzelAIViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
@@ -89,7 +92,7 @@ fun AzelAIScreen(
                 onClear = { showClearDialog = true },
                 onStats = { showStatsDialog = true },
                 onToggleSidebar = { showSidebar = !showSidebar },
-                currentChatTitle = if (selectedTab == 1) "Agentes de IA" else state.currentChatTitle,
+                currentChatTitle = if (selectedTab == 1) tr("Agentes de IA") else state.currentChatTitle,
                 providerName = state.providerName,
                 providerModel = state.providerModel,
                 isConfigured = state.isProviderConfigured,
@@ -108,6 +111,7 @@ fun AzelAIScreen(
                 com.Azelmods.App.ui.screens.azelai.agents.AgentsPanel(
                     geminiModel = state.selectedModel,
                     onOpenSettings = onOpenSettings,
+                    onOpenEditor = onOpenEditor,
                     onSendToChat = { goal, answer ->
                         viewModel.importAgentResult(goal, answer)
                         selectedTab = 0
@@ -212,8 +216,8 @@ fun AzelAIScreen(
 
     if (showClearDialog) {
         AzelConfirmDialog(
-            title = "Limpiar Chat",
-            desc = "¿Estás seguro de eliminar todo el historial de esta conversación?",
+            title = tr("Limpiar Chat"),
+            desc = tr("¿Estás seguro de eliminar todo el historial de esta conversación?"),
             onConfirm = { viewModel.clearHistory(); showClearDialog = false },
             onDismiss = { showClearDialog = false }
         )
@@ -297,7 +301,7 @@ fun AzelAITopBar(
                                 text = if (isConfigured) {
                                     listOf(providerName, providerModel).filter { it.isNotBlank() }.joinToString(" · ")
                                         .ifBlank { "IA lista" }
-                                } else "Sin configurar — toca para añadir tu clave",
+                                } else tr("Sin configurar — toca para añadir tu clave"),
                                 color = TextSecondary,
                                 fontSize = 11.sp,
                                 maxLines = 1,
@@ -398,7 +402,7 @@ fun AzelAIWelcome(isConfigured: Boolean = true, onOpenSettings: () -> Unit = {})
         }
         Spacer(Modifier.height(28.dp))
         Text(
-            "¿En qué puedo ayudarte?",
+            tr("¿En qué puedo ayudarte?"),
             color = TextPrimary,
             fontSize = 28.sp,
             fontWeight = FontWeight.Normal,
@@ -409,8 +413,8 @@ fun AzelAIWelcome(isConfigured: Boolean = true, onOpenSettings: () -> Unit = {})
         // lo cual era falso (se usan los filtros por defecto del proveedor) y es
         // motivo de rechazo en Google Play.
         Text(
-            "Escribe, resume, traduce, programa o pregunta lo que necesites. " +
-                "Usa tu propio proveedor de IA y tus conversaciones se guardan en tu cuenta.",
+            tr("Escribe, resume, traduce, programa o pregunta lo que necesites. " +
+                "Usa tu propio proveedor de IA y tus conversaciones se guardan en tu cuenta."),
             color = TextSecondary,
             fontSize = 15.sp,
             textAlign = TextAlign.Center,
@@ -426,7 +430,7 @@ fun AzelAIWelcome(isConfigured: Boolean = true, onOpenSettings: () -> Unit = {})
             ) {
                 Icon(Icons.Default.Key, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Configurar mi IA")
+                Text(tr("Configurar mi IA"))
             }
         }
     }
@@ -477,9 +481,9 @@ fun AzelAIQuickTools(onPick: (String) -> Unit, onOpenAgents: () -> Unit) {
                 Text("🤖", fontSize = 22.sp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Agentes de IA", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(tr("Agentes de IA"), color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Investigan, calculan y se reparten el trabajo. Míralos trabajar en vivo.",
+                        tr("Investigan, calculan y se reparten el trabajo. Míralos trabajar en vivo."),
                         color = TextSecondary,
                         fontSize = 12.sp
                     )
@@ -585,7 +589,7 @@ fun AzelAIInputBar(
                     modifier = Modifier.fillMaxWidth(),
                     placeholder = { 
                         Text(
-                            "Escribe tu consulta...", 
+                            tr("Escribe tu consulta..."), 
                             color = TextSecondary,
                             fontSize = 15.sp
                         ) 
@@ -665,7 +669,7 @@ fun AzelAIInputBar(
                                 )
                                 Icon(
                                     Icons.Default.Stop,
-                                    contentDescription = "Detener",
+                                    contentDescription = tr("Detener"),
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -673,7 +677,7 @@ fun AzelAIInputBar(
                         } else {
                             Icon(
                                 Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Enviar",
+                                contentDescription = tr("Enviar"),
                                 tint = if (value.isNotBlank()) Color.White else TextSecondary,
                                 modifier = Modifier.size(22.dp)
                             )
@@ -766,7 +770,7 @@ fun AzelAIThinkingBubble(
         if (progress >= 0.85f) {
             Spacer(Modifier.height(6.dp))
             Text(
-                text = "⚠️ La respuesta está tardando más de lo esperado...",
+                text = tr("⚠️ La respuesta está tardando más de lo esperado..."),
                 color = timeoutColor.copy(alpha = 0.8f),
                 fontSize = 11.sp,
                 modifier = Modifier.padding(start = 44.dp)
@@ -784,11 +788,11 @@ fun AzelConfirmDialog(title: String, desc: String, onConfirm: () -> Unit, onDism
         text = { Text(desc, color = TextSecondary) },
         confirmButton = {
             Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = NexusTokens.Color.Error)) {
-                Text("Confirmar")
+                Text(tr("Confirmar"))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar", color = AzelPurple) }
+            TextButton(onClick = onDismiss) { Text(tr("Cancelar"), color = AzelPurple) }
         }
     )
 }
@@ -798,7 +802,7 @@ fun AzelStatsDialog(stats: Map<String, Any>, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = SurfaceDark,
-        title = { Text("Uso de la IA", color = TextPrimary) },
+        title = { Text(tr("Uso de la IA"), color = TextPrimary) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatItem("Mensajes totales", stats["messageCount"]?.toString() ?: "0")
@@ -806,7 +810,7 @@ fun AzelStatsDialog(stats: Map<String, Any>, onDismiss: () -> Unit) {
                 StatItem("Tipo de acceso", "Directo (API Key)")
             }
         },
-        confirmButton = { Button(onClick = onDismiss) { Text("Cerrar") } }
+        confirmButton = { Button(onClick = onDismiss) { Text(tr("Cerrar")) } }
     )
 }
 
@@ -831,7 +835,7 @@ fun AzelAISidebar(
     Surface(modifier = modifier.fillMaxHeight(), color = BgDark, border = BorderStroke(0.5.dp, BorderColor)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Chats", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(tr("Chats"), color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 IconButton(onClick = onNewChat) { Icon(Icons.Default.Add, null, tint = AzelPurple) }
             }
             Spacer(Modifier.height(16.dp))
@@ -839,7 +843,7 @@ fun AzelAISidebar(
                 value = searchQuery,
                 onValueChange = onSearchChange,
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar...", color = TextSecondary) },
+                placeholder = { Text(tr("Buscar..."), color = TextSecondary) },
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = AzelPurple, unfocusedBorderColor = BorderColor)
             )

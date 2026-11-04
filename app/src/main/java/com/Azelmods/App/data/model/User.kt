@@ -9,8 +9,13 @@ data class User(
     val phone: String = "",
     val photoUrl: String? = null,
     val coverUrl: String? = null,
+    val coverVideoUrl: String? = null,
+    /** Vídeo corto que se reproduce en bucle en lugar de la foto, dentro del perfil. */
+    val profileVideoUrl: String? = null,
+    /** Índice en ProfileColors del color elegido, o -1 si no eligió ninguno. */
+    val profileColor: Int = -1,
     val bio: String = "",
-    val status: String = "Hey there! I'm using Nexus Chat",
+    val status: String = "¡Hola! Estoy usando NexusChat",
     val isOnline: Boolean = false,
     val lastSeen: Long = System.currentTimeMillis(),
     val isPremium: Boolean = false,

@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,13 +40,13 @@ fun AiFeaturesScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "AI Features",
+                        text = tr("Funciones de IA"),
                         fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -85,13 +87,13 @@ fun AiFeaturesScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "AI-Powered Features",
+                        text = tr("Funciones con IA"),
                         color = Color.White,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Enhance your messaging experience",
+                        text = tr("Mejora tus conversaciones"),
                         color = Color.White.copy(alpha = 0.8f),
                         fontSize = 14.sp
                     )
@@ -132,13 +134,13 @@ fun AiFeaturesScreen(
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Azel IA",
+                                text = tr("Azel IA"),
                                 color = Color.White,
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "Asistente de IA para programación, redacción y análisis",
+                                text = tr("Asistente de IA para programación, redacción y análisis"),
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -148,7 +150,7 @@ fun AiFeaturesScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     Text(
-                        text = "• Asistencia de programación y revisión de código\n• Redacción, resumen y traducción de textos\n• Explicación de conceptos y respuestas a preguntas\n• Buenas prácticas de seguridad defensiva\n• Análisis y organización de información",
+                        text = tr("• Asistencia de programación y revisión de código\n• Redacción, resumen y traducción de textos\n• Explicación de conceptos y respuestas a preguntas\n• Buenas prácticas de seguridad defensiva\n• Análisis y organización de información"),
                         color = Color.White.copy(alpha = 0.8f),
                         fontSize = 13.sp,
                         lineHeight = 18.sp
@@ -166,7 +168,7 @@ fun AiFeaturesScreen(
                     ) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Acceder a Azel IA", fontWeight = FontWeight.Bold)
+                        Text(tr("Acceder a Azel IA"), fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -229,13 +231,13 @@ fun GeminiApiKeySection(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Proveedor de IA",
+                        text = tr("Proveedor de IA"),
                         color = Color.White,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Tú eliges el proveedor y el modelo. La clave se guarda cifrada en este dispositivo.",
+                        text = tr("Tú eliges el proveedor y el modelo. La clave se guarda cifrada en este dispositivo."),
                         color = Color.Gray,
                         fontSize = 13.sp
                     )
@@ -262,7 +264,7 @@ fun GeminiApiKeySection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Proveedor", color = Color.Gray, fontSize = 11.sp)
+                            Text(text = tr("Proveedor"), color = Color.Gray, fontSize = 11.sp)
                             Text(
                                 text = provider.displayName,
                                 color = Color.White,
@@ -272,7 +274,7 @@ fun GeminiApiKeySection(
                         }
                         Icon(
                             Icons.Default.ArrowDropDown,
-                            contentDescription = "Elegir proveedor",
+                            contentDescription = tr("Elegir proveedor"),
                             tint = Color.Gray
                         )
                     }
@@ -306,7 +308,7 @@ fun GeminiApiKeySection(
                 OutlinedTextField(
                     value = baseUrlInput,
                     onValueChange = { baseUrlInput = it },
-                    label = { Text("URL base (…/v1)") },
+                    label = { Text(tr("URL base (…/v1)")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -318,7 +320,7 @@ fun GeminiApiKeySection(
                 OutlinedTextField(
                     value = modelInput,
                     onValueChange = { modelInput = it },
-                    label = { Text("Modelo") },
+                    label = { Text(tr("Modelo")) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -348,7 +350,7 @@ fun GeminiApiKeySection(
 
                 Spacer(modifier = Modifier.height(8.dp))
                 TextButton(onClick = { viewModel.saveEndpoint(baseUrlInput, modelInput) }) {
-                    Text("Guardar proveedor y modelo")
+                    Text(tr("Guardar proveedor y modelo"))
                 }
             }
 
@@ -365,11 +367,11 @@ fun GeminiApiKeySection(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = when {
-                        hasKey -> "API Key activa"
+                        hasKey -> tr("API Key activa")
                         // Un servidor local no necesita clave: decir "sin API key" ahí
                         // sugeriría un problema que no existe.
                         provider.allowsEmptyKey -> "Sin clave — ${provider.displayName} no la necesita"
-                        else -> "Sin API Key configurada"
+                        else -> tr("Sin API Key configurada")
                     },
                     color = if (hasKey || provider.allowsEmptyKey) Teal else Color.Gray,
                     fontSize = 14.sp,
@@ -383,8 +385,8 @@ fun GeminiApiKeySection(
                 value = keyInput,
                 onValueChange = { keyInput = it },
                 singleLine = true,
-                placeholder = { Text("Pega aquí tu API key…") },
-                label = { Text("API Key") },
+                placeholder = { Text(tr("Pega aquí tu API key…")) },
+                label = { Text(tr("API Key")) },
                 visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth(),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -395,7 +397,7 @@ fun GeminiApiKeySection(
                     IconButton(onClick = { showKey = !showKey }) {
                         Icon(
                             imageVector = if (showKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (showKey) "Ocultar" else "Mostrar"
+                            contentDescription = if (showKey) tr("Ocultar") else tr("Mostrar")
                         )
                     }
                 }
@@ -419,7 +421,7 @@ fun GeminiApiKeySection(
                 ) {
                     Icon(Icons.Default.Save, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar", fontWeight = FontWeight.Bold)
+                    Text(tr("Guardar"), fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(
@@ -429,7 +431,7 @@ fun GeminiApiKeySection(
                 ) {
                     Icon(Icons.Default.Delete, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Borrar")
+                    Text(tr("Borrar"))
                 }
             }
 
@@ -477,7 +479,7 @@ private fun ModelCatalog(
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-            text = "Modelos",
+            text = tr("Modelos"),
             color = Color.White,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
@@ -497,14 +499,14 @@ private fun ModelCatalog(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("Buscar modelos", fontSize = 13.sp)
+                Text(tr("Buscar modelos"), fontSize = 13.sp)
             }
         }
     }
 
     if (suggested.isNotEmpty() && remote.isEmpty()) {
         Text(
-            text = "Sugeridos — o pulsa «Buscar modelos» para ver el catálogo actual del proveedor.",
+            text = tr("Sugeridos — o pulsa «Buscar modelos» para ver el catálogo actual del proveedor."),
             color = Color.Gray,
             fontSize = 11.sp
         )

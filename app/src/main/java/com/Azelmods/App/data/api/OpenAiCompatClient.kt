@@ -196,10 +196,20 @@ object OpenAiCompatClient {
                     throw Exception("Error del proveedor: ${error.stringOrEmpty("message").ifBlank { "desconocido" }}")
                 }
                 val choice = json.optJSONArray("choices")?.optJSONObject(0)
-                val text = choice?.optJSONObject("delta")?.stringOrEmpty("content").orEmpty()
+                val delta = choice?.optJSONObject("delta")
+                val text = delta?.stringOrEmpty("content").orEmpty()
                 if (text.isNotEmpty()) {
                     gotContent = true
                     onDelta(text)
+                } else if (delta != null && (
+                        delta.stringOrEmpty("reasoning_content").isNotEmpty() ||
+                            delta.stringOrEmpty("reasoning").isNotEmpty()
+                        )
+                ) {
+                    // El modelo está razonando (DeepSeek, o1, GLM…): aún no hay texto que
+                    // mostrar, pero el trozo vacío avisa de que sigue trabajando y evita
+                    // que la vigilancia de silencio corte la respuesta.
+                    onDelta("")
                 }
                 json.optJSONObject("usage")?.let { totalTokens = it.optInt("total_tokens", totalTokens) }
             }

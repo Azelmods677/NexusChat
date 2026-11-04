@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.calls
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -81,12 +83,12 @@ fun CallsScreen(
         val call = selectedCallDetails!!
         AlertDialog(
             onDismissRequest = { selectedCallDetails = null },
-            title = { Text(text = "Detalles de la llamada") },
+            title = { Text(text = tr("Detalles de la llamada")) },
             text = {
                 Column {
                     Text(text = "Contacto: ${call.userName}")
-                    Text(text = "Tipo: ${if (call.callType == "VIDEO") "Videollamada" else "Voz"}")
-                    Text(text = "Dirección: ${if (call.isIncoming) "Entrante" else "Saliente"}")
+                    Text(text = "Tipo: ${if (call.callType == "VIDEO") tr("Videollamada") else tr("Voz")}")
+                    Text(text = "Dirección: ${if (call.isIncoming) tr("Entrante") else tr("Saliente")}")
                     Text(text = "Estado: ${callStatusLabel(call.status)}")
                     if (call.duration != null) {
                         Text(text = "Duración: ${call.duration}")
@@ -96,7 +98,7 @@ fun CallsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { selectedCallDetails = null }) {
-                    Text("Cerrar")
+                    Text(tr("Cerrar"))
                 }
             },
             containerColor = DarkSurface,
@@ -114,7 +116,7 @@ fun CallsScreen(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Buscar llamadas…", color = Color.Gray) },
+                            placeholder = { Text(tr("Buscar llamadas…"), color = Color.Gray) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color.Transparent,
@@ -129,13 +131,13 @@ fun CallsScreen(
                             isSearchActive = false
                             searchQuery = "" 
                         }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"), tint = Color.White)
                         }
                     },
                     actions = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear", tint = Color.White)
+                                Icon(Icons.Default.Close, contentDescription = tr("Borrar"), tint = Color.White)
                             }
                         }
                     },
@@ -147,14 +149,14 @@ fun CallsScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "Llamadas",
+                            text = tr("Llamadas"),
                             fontWeight = FontWeight.Bold,
                             fontSize = 24.sp
                         )
                     },
                     actions = {
                         IconButton(onClick = { isSearchActive = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
+                            Icon(Icons.Default.Search, contentDescription = tr("Buscar"))
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -170,7 +172,7 @@ fun CallsScreen(
                 onClick = { navController.navigate(Screen.NewConversation.route) },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.Add, contentDescription = "New Call", tint = Color.White)
+                Icon(Icons.Default.Add, contentDescription = tr("Nueva llamada"), tint = Color.White)
             }
         },
         containerColor = Color.Transparent
@@ -191,7 +193,7 @@ fun CallsScreen(
                     FilterChip(
                         selected = selectedFilter == filter,
                         onClick = { selectedFilter = filter },
-                        label = { Text(if (filter == "Missed") "Perdidas" else "Todas") },
+                        label = { Text(if (filter == "Missed") tr("Perdidas") else tr("Todas")) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = MaterialTheme.colorScheme.primary,
                             selectedLabelColor = Color.White
@@ -226,14 +228,14 @@ fun CallsScreen(
                             tint = Color.Gray
                         )
                         Text(
-                            text = if (searchQuery.isNotEmpty()) "Sin resultados" else if (selectedFilter == "Missed") "No tienes llamadas perdidas" else "Aún no hay llamadas",
+                            text = if (searchQuery.isNotEmpty()) tr("Sin resultados") else if (selectedFilter == "Missed") tr("No tienes llamadas perdidas") else tr("Aún no hay llamadas"),
                             color = Color.Gray,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium
                         )
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = "Pulsa + para empezar una llamada",
+                                text = tr("Pulsa + para empezar una llamada"),
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -287,7 +289,7 @@ fun CallItemRow(
                 model = ImageRequest.Builder(context)
                     .data(call.userPhotoUrl)
                     .build(),
-                contentDescription = "Profile photo",
+                contentDescription = tr("Foto de perfil"),
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
@@ -365,7 +367,7 @@ fun CallItemRow(
         ) {
             Icon(
                 imageVector = if (call.callType == "VIDEO") Icons.Default.Videocam else Icons.Default.Phone,
-                contentDescription = "Llamar",
+                contentDescription = tr("Llamar"),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
@@ -379,17 +381,17 @@ private fun formatCallTime(timestamp: Long): String {
     return when {
         diff < 3600_000 -> "${diff / 60_000}m ago"
         diff < 86400_000 -> "${diff / 3600_000}h ago"
-        diff < 172800_000 -> "Yesterday"
+        diff < 172800_000 -> tr("Ayer")
         else -> "${diff / 86400_000}d ago"
     }
 }
 
 /** Texto legible del estado guardado en la base de datos. */
 private fun callStatusLabel(status: String): String = when (status.uppercase()) {
-    "MISSED" -> "Perdida"
-    "DECLINED" -> "Rechazada"
-    "ENDED", "CONNECTED" -> "Finalizada"
-    "CALLING", "RINGING", "NO_ANSWER" -> "Sin respuesta"
-    "ACCEPTED" -> "Aceptada"
+    "MISSED" -> tr("Perdida")
+    "DECLINED" -> tr("Rechazada")
+    "ENDED", "CONNECTED" -> tr("Finalizada")
+    "CALLING", "RINGING", "NO_ANSWER" -> tr("Sin respuesta")
+    "ACCEPTED" -> tr("Aceptada")
     else -> status.lowercase().replaceFirstChar { it.uppercase() }
 }

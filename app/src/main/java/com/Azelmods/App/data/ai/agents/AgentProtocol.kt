@@ -15,12 +15,25 @@ import kotlinx.serialization.json.contentOrNull
  * herramientas (y varios modelos locales no lo soportan).
  */
 sealed class AgentDecision {
-    /** Quiere usar una herramienta y esperar su resultado. */
-    data class UseTool(val thought: String, val tool: String, val input: String) : AgentDecision()
+    /**
+     * Quiere usar herramientas y esperar el resultado. [more] son las que lanza a la vez,
+     * además de la primera: leer tres páginas no debería costar tres pasos de trabajo.
+     */
+    data class UseTool(
+        val thought: String,
+        val tool: String,
+        val input: String,
+        val more: List<ToolRequest> = emptyList()
+    ) : AgentDecision() {
+        val calls: List<ToolRequest> get() = listOf(ToolRequest(tool, input)) + more
+    }
 
     /** Ha terminado: [answer] es la respuesta en Markdown. */
     data class Final(val thought: String, val answer: String) : AgentDecision()
 }
+
+/** Una llamada a una herramienta. */
+data class ToolRequest(val tool: String, val input: String)
 
 /** Un paso del plan del coordinador: qué agente hace qué. */
 data class PlanStep(val agentId: String, val task: String)
@@ -38,38 +51,86 @@ object AgentProtocol {
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
+    /** Más texto que esto antes del JSON significa que el JSON es un ejemplo dentro de la respuesta. */
+    private const val MAX_PROSE_BEFORE_JSON = 160
+
+    private val trailingFence = Regex("```[\\w+#.-]*[ \\t]*\\n(.*?)\\n?```", RegexOption.DOT_MATCHES_ALL)
+
+    /**
+     * La respuesta final es Markdown normal y solo las llamadas a herramientas van en JSON.
+     * Meter la respuesta en una cadena JSON obligaba al modelo a escapar cada comilla y salto
+     * de línea del código que escribía, y ahí es donde el código llegaba roto. Se sigue
+     * aceptando `{"final": ...}` porque algunos modelos insisten en responder así.
+     */
     fun parseDecision(raw: String): AgentDecision {
         val text = raw.trim()
-        val obj = extractJsonObject(text)?.let { parseObject(it) }
+        val candidate = extractJsonObject(text)
+        val obj = candidate?.let { parseObject(it) }
 
-        if (obj != null) {
-            val thought = obj.string("thought") ?: obj.string("pensamiento").orEmpty()
-            val final = obj.string("final") ?: obj.string("answer") ?: obj.string("respuesta")
-            val action = obj.string("action") ?: obj.string("tool") ?: obj.string("accion")
-            val input = obj.string("input") ?: obj.string("action_input") ?: obj.string("query").orEmpty()
+        if (candidate != null && obj != null) {
+            val before = text.substringBefore(candidate)
+            val after = text.substringAfter(candidate)
+            // Una respuesta que explica un formato JSON con un ejemplo no es una llamada.
+            val isInstruction = before.removeSuffix("```json\n").trim().length <= MAX_PROSE_BEFORE_JSON
 
-            if (!action.isNullOrBlank() && !action.equals("final", ignoreCase = true) &&
-                !action.equals("none", ignoreCase = true)
-            ) {
-                return AgentDecision.UseTool(thought, action.trim(), input.trim())
+            if (isInstruction) {
+                val thought = obj.string("thought") ?: obj.string("pensamiento").orEmpty()
+                // El código puede venir en un bloque tras el JSON, que no hay que escapar.
+                val attachedCode = trailingFence.find(after)?.groupValues?.get(1)
+
+                val many = (obj["actions"] as? JsonArray)?.mapNotNull { item ->
+                    val o = item as? JsonObject ?: return@mapNotNull null
+                    val tool = (o.string("tool") ?: o.string("action"))?.trim().orEmpty()
+                    if (tool.isEmpty()) null else ToolRequest(tool, o.inputValue())
+                }.orEmpty()
+                if (many.isNotEmpty()) {
+                    return AgentDecision.UseTool(thought, many.first().tool, many.first().input, many.drop(1))
+                }
+
+                val action = obj.string("action") ?: obj.string("tool") ?: obj.string("accion")
+                if (!action.isNullOrBlank() && !action.equals("final", ignoreCase = true) &&
+                    !action.equals("none", ignoreCase = true)
+                ) {
+                    val input = listOf(obj.inputValue(), attachedCode?.trimEnd().orEmpty())
+                        .filter { it.isNotEmpty() }
+                        .joinToString("\n")
+                    return AgentDecision.UseTool(thought, action.trim(), input)
+                }
+
+                val final = obj.string("final") ?: obj.string("answer") ?: obj.string("respuesta")
+                if (final != null) return AgentDecision.Final(thought, final.trim())
+                // Objeto sin "final" ni "action": su pensamiento es lo único útil.
+                if (thought.isNotBlank() && text.startsWith("{")) return AgentDecision.Final("", thought.trim())
             }
-            if (final != null) return AgentDecision.Final(thought, final.trim())
-            // Objeto sin "final" ni "action": su pensamiento es lo único útil.
-            if (thought.isNotBlank()) return AgentDecision.Final("", thought.trim())
         }
 
         // JSON roto pero con un "final" reconocible (p. ej. saltos de línea sin
         // escapar dentro de la cadena): se rescata su contenido.
-        salvageFinal(text)?.let { return AgentDecision.Final("", it) }
+        if (text.startsWith("{") || text.startsWith("```")) {
+            salvageFinal(text)?.let { return AgentDecision.Final("", it) }
+        }
 
-        return AgentDecision.Final("", stripCodeFence(text))
+        return AgentDecision.Final("", unwrapWholeFence(text))
     }
+
+    /**
+     * Quita la valla solo si toda la respuesta es un único bloque Markdown. Si hay más texto
+     * después, esa valla es parte del contenido: quitarla se comía la explicación del código.
+     */
+    private fun unwrapWholeFence(text: String): String {
+        if (!text.startsWith("```markdown") && !text.startsWith("```md")) return text
+        if (Regex("```").findAll(text).count() != 2) return text
+        return stripCodeFence(text)
+    }
+
+    private fun JsonObject.inputValue(): String =
+        (string("input") ?: string("action_input") ?: string("query")).orEmpty().trim()
 
     /**
      * Plan del coordinador: `{"plan":[{"agent":"investigador","task":"..."}]}`
      * (también acepta el array suelto). Ignora agentes que no estén en [validIds].
      */
-    fun parsePlan(raw: String, validIds: Set<String>, maxSteps: Int = 4): List<PlanStep> {
+    fun parsePlan(raw: String, validIds: Set<String>, maxSteps: Int = 6): List<PlanStep> {
         val text = stripCodeFence(raw.trim())
         // Primero el formato pedido ({"plan":[…]}); si el primer objeto no trae
         // plan (p. ej. el modelo devolvió el array suelto y el primer "{" es el

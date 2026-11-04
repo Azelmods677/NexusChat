@@ -1,5 +1,9 @@
 package com.Azelmods.App.ui.screens.home
 
+import com.Azelmods.App.i18n.tr
+
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.Azelmods.App.data.local.CacheManager
@@ -44,8 +48,39 @@ enum class ChatFilter { ALL, UNREAD, GROUPS, ARCHIVED }
 class HomeViewModel @Inject constructor(
     private val databaseRepository: RealtimeDatabaseRepository,
     private val cacheManager: CacheManager,
-    private val backgroundManager: AppBackgroundManager
+    private val backgroundManager: AppBackgroundManager,
+    private val decryptMessageUseCase: com.Azelmods.App.domain.usecase.DecryptMessageUseCase,
+    private val ghostMode: com.Azelmods.App.data.security.GhostMode
 ) : ViewModel() {
+
+    val ghostModeEnabled: StateFlow<Boolean> = ghostMode.enabled
+
+    fun toggleGhostMode() = ghostMode.set(!ghostMode.enabled.value)
+
+    /** Quién tiene historias activas: su avatar lleva el aro animado. */
+    val storyOwners: StateFlow<Set<String>> = databaseRepository.getAllStories()
+        .map { stories -> stories.mapNotNull { it["userId"] as? String }.toSet() }
+        .catch { emit(emptySet()) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    /**
+     * Texto de la vista previa. Si el último mensaje va cifrado, en el servidor solo hay
+     * un rótulo y el texto cifrado: se descifra aquí, en el teléfono, como el propio chat.
+     */
+    private suspend fun lastMessagePreview(data: Map<String, Any>, peerUid: String): String {
+        val label = data["lastMessage"] as? String ?: ""
+        val payload = data["lastMessagePayload"] as? String
+        if (payload.isNullOrBlank() || peerUid.isBlank()) return label
+        return runCatching {
+            val bytes = android.util.Base64.decode(payload, android.util.Base64.NO_WRAP)
+            when (val result = decryptMessageUseCase(
+                peerUid, bytes, com.Azelmods.App.data.security.encryption.MessageType.WHISPER
+            )) {
+                is com.Azelmods.App.data.security.encryption.DecryptionResult.Success -> result.plaintext
+                else -> label
+            }
+        }.getOrDefault(label)
+    }
 
     private val _state = MutableStateFlow(HomeState())
     val state: StateFlow<HomeState> = _state.asStateFlow()
@@ -129,7 +164,7 @@ class HomeViewModel @Inject constructor(
             }
             val mensaje = runCatching { databaseRepository.setChatMuted(chatId, muteUntil) }
                 .fold(
-                    onSuccess = { if (muteUntil == null) "Notificaciones reactivadas" else "Chat silenciado" },
+                    onSuccess = { if (muteUntil == null) tr("Notificaciones reactivadas") else tr("Chat silenciado") },
                     onFailure = { "No se pudo silenciar: ${it.message ?: "error"}" }
                 )
             reportarEnMain(mensaje, onResult)
@@ -184,9 +219,9 @@ class HomeViewModel @Inject constructor(
             withContext(Dispatchers.Main) {
                 onResult(
                     when {
-                        result.isFailure -> "No se pudo completar la accion"
-                        alreadyBlocked -> "Contacto desbloqueado"
-                        else -> "Contacto bloqueado: ya no puede escribirte aqui"
+                        result.isFailure -> tr("No se pudo completar la accion")
+                        alreadyBlocked -> tr("Contacto desbloqueado")
+                        else -> tr("Contacto bloqueado: ya no puede escribirte aqui")
                     }
                 )
             }
@@ -263,7 +298,7 @@ class HomeViewModel @Inject constructor(
                 onSuccess = { "Conversación eliminada" },
                 onFailure = { e ->
                     android.util.Log.e("HomeVM", "No se pudo eliminar el chat $chatId", e)
-                    "No se pudo eliminar: ${e.message ?: "error desconocido"}"
+                    "No se pudo eliminar: ${e.message ?: tr("error desconocido")}"
                 }
             )
             reportarEnMain(mensaje, onResult)
@@ -280,7 +315,7 @@ class HomeViewModel @Inject constructor(
                 onSuccess = { "Chat vaciado" },
                 onFailure = { e ->
                     android.util.Log.e("HomeVM", "No se pudo vaciar el chat $chatId", e)
-                    "No se pudo vaciar: ${e.message ?: "error desconocido"}"
+                    "No se pudo vaciar: ${e.message ?: tr("error desconocido")}"
                 }
             )
             reportarEnMain(mensaje, onResult)
@@ -411,7 +446,7 @@ class HomeViewModel @Inject constructor(
                 android.util.Log.e("HomeVM", "❌ Critical error loading chats: ${e.message}", e)
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Failed to load chats"
+                    error = e.message ?: tr("No se pudieron cargar los chats")
                 )
             }
         }
@@ -514,7 +549,7 @@ class HomeViewModel @Inject constructor(
                 ?.takeIf { it.isNotBlank() }
                 ?: (otherUserData?.get("username") as? String)
                     ?.takeIf { it.isNotBlank() }
-                ?: "Anónimo"
+                ?: tr("Anónimo")
         }
 
         // Prefer photoUrl, fall back to profilePhotoUrl.
@@ -542,7 +577,7 @@ class HomeViewModel @Inject constructor(
             participantIds = members,
             participantNames = participantNames,
             participantPhotos = participantPhotos,
-            lastMessage = data["lastMessage"] as? String ?: "",
+            lastMessage = lastMessagePreview(data, otherUid),
             lastMessageTime = lastMessageTime,
             lastMessageSenderId = data["lastMessageSenderId"] as? String ?: "",
             unreadCount = unreadMap,
@@ -550,6 +585,7 @@ class HomeViewModel @Inject constructor(
             chatType = chatType,
             contactName = displayName,
             contactPhotoUrl = photoUrl.takeIf { it.isNotBlank() },
+            contactColor = (otherUserData?.get("profileColor") as? Number)?.toInt() ?: -1,
             isOnline = otherIsOnline,
             isPinned = isPinned,
             isMuted = isMuted,

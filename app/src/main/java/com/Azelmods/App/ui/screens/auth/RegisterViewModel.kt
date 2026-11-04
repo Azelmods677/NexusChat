@@ -1,7 +1,11 @@
 package com.Azelmods.App.ui.screens.auth
 
+import com.Azelmods.App.i18n.tr
+
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Azelmods.App.domain.usecase.auth.GoogleLoginUseCase
 import com.Azelmods.App.domain.usecase.auth.RegisterUseCase
 import com.Azelmods.App.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -9,7 +13,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 data class RegisterState(
@@ -24,110 +27,85 @@ data class RegisterState(
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
-    private val registerUseCase: RegisterUseCase
+    private val registerUseCase: RegisterUseCase,
+    private val googleLoginUseCase: GoogleLoginUseCase,
+    private val googleIdTokenProvider: GoogleIdTokenProvider
 ) : ViewModel() {
-    
+
     private val _state = MutableStateFlow(RegisterState())
     val state: StateFlow<RegisterState> = _state.asStateFlow()
-    
+
     fun onDisplayNameChange(displayName: String) {
         _state.value = _state.value.copy(displayName = displayName, error = null)
     }
-    
+
     fun onEmailChange(email: String) {
         _state.value = _state.value.copy(email = email, error = null)
     }
-    
+
     fun onPasswordChange(password: String) {
         _state.value = _state.value.copy(password = password, error = null)
     }
-    
+
     fun onConfirmPasswordChange(confirmPassword: String) {
         _state.value = _state.value.copy(confirmPassword = confirmPassword, error = null)
     }
-    
+
     fun register() {
-        val currentState = _state.value
-        
-        // Validation
-        if (currentState.displayName.isBlank()) {
-            _state.value = currentState.copy(error = "Display name is required")
+        val current = _state.value
+        val problem = when {
+            current.displayName.isBlank() -> tr("Escribe tu nombre")
+            current.displayName.length < 2 -> tr("El nombre tiene al menos 2 caracteres")
+            current.email.isBlank() -> tr("Escribe tu correo")
+            !current.email.contains("@") -> tr("Ese correo no parece válido")
+            current.password.isBlank() -> tr("Escribe una contraseña")
+            current.password.length < 6 -> tr("La contraseña debe tener al menos 6 caracteres")
+            current.password != current.confirmPassword -> tr("Las contraseñas no coinciden")
+            else -> null
+        }
+        if (problem != null) {
+            _state.value = current.copy(error = problem)
             return
         }
-        
-        if (currentState.displayName.length < 2) {
-            _state.value = currentState.copy(error = "Display name must be at least 2 characters")
-            return
-        }
-        
-        if (currentState.email.isBlank()) {
-            _state.value = currentState.copy(error = "Email is required")
-            return
-        }
-        
-        if (!currentState.email.contains("@")) {
-            _state.value = currentState.copy(error = "Invalid email format")
-            return
-        }
-        
-        if (currentState.password.isBlank()) {
-            _state.value = currentState.copy(error = "Password is required")
-            return
-        }
-        
-        if (currentState.password.length < 6) {
-            _state.value = currentState.copy(error = "Password must be at least 6 characters")
-            return
-        }
-        
-        if (currentState.password != currentState.confirmPassword) {
-            _state.value = currentState.copy(error = "Passwords don't match")
-            return
-        }
-        
         viewModelScope.launch {
-            _state.value = currentState.copy(isLoading = true, error = null)
-            
-            when (val result = registerUseCase(
-                currentState.email,
-                currentState.password,
-                currentState.displayName
-            )) {
-                is Resource.Success -> {
-                    // Guardar el token FCM para poder recibir push de mensajes y llamadas.
-                    runCatching { com.Azelmods.App.utils.FCMTokenManager.saveFCMToken() }
-                    _state.value = _state.value.copy(
-                        isLoading = false,
-                        isSuccess = true
-                    )
-                }
-                is Resource.Error -> {
-                    _state.value = _state.value.copy(
-                        isLoading = false,
-                        error = result.message ?: "Registration failed"
-                    )
-                }
-                is Resource.Loading -> {
-                    // Already handled
-                }
+            _state.value = current.copy(isLoading = true, error = null)
+            when (val result = registerUseCase(current.email, current.password, current.displayName)) {
+                is Resource.Success -> onSignedIn()
+                is Resource.Error -> _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = result.message ?: tr("No se pudo crear la cuenta")
+                )
+                is Resource.Loading -> Unit
             }
         }
     }
-    
-    fun clearError() {
-        _state.value = _state.value.copy(error = null)
-    }
-    
-    fun registerWithGoogle(idToken: String) {
+
+    /** [activity] debe ser la pantalla: el selector de cuentas se muestra sobre ella. */
+    fun signInWithGoogle(activity: Context) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
-            try {
-                val credential = com.google.firebase.auth.GoogleAuthProvider.getCredential(idToken, null)
-                com.google.firebase.auth.FirebaseAuth.getInstance().signInWithCredential(credential).await()
-                _state.value = _state.value.copy(isLoading = false, isSuccess = true)
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(isLoading = false, error = "Google Sign-In failed: ${e.message}")
+            when (val token = googleIdTokenProvider.request(activity)) {
+                is GoogleTokenResult.Cancelled -> _state.value = _state.value.copy(isLoading = false)
+                is GoogleTokenResult.Failed -> _state.value = _state.value.copy(isLoading = false, error = token.message)
+                is GoogleTokenResult.Token -> when (val result = googleLoginUseCase(token.idToken)) {
+                    is Resource.Success -> onSignedIn()
+                    is Resource.Error -> _state.value = _state.value.copy(
+                        isLoading = false,
+                        error = "No se pudo iniciar sesión: ${result.message}"
+                    )
+                    is Resource.Loading -> Unit
+                }
             }
         }
+    }
+
+    private suspend fun onSignedIn() {
+        // Sin el token FCM no llegarían las notificaciones de mensajes ni de llamadas.
+        runCatching { com.Azelmods.App.utils.FCMTokenManager.saveFCMToken() }
+        _state.value = _state.value.copy(isLoading = false, isSuccess = true)
+    }
+
+    fun clearError() {
+        _state.value = _state.value.copy(error = null)
     }
 }

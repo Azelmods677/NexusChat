@@ -40,7 +40,7 @@ class GoogleLoginUseCase @Inject constructor(
                     "email" to (firebaseUser.email ?: ""),
                     "photoUrl" to (firebaseUser.photoUrl?.toString() ?: ""),
                     "phoneNumber" to (firebaseUser.phoneNumber ?: ""),
-                    "bio" to "Hey there! I'm using Nexus Chat",
+                    "bio" to "¡Hola! Estoy usando NexusChat",
                     "createdAt" to ServerValue.TIMESTAMP,
                     "isOnline" to true
                 )
@@ -54,8 +54,8 @@ class GoogleLoginUseCase @Inject constructor(
                     username = "@${firebaseUser.email?.substringBefore("@") ?: firebaseUser.uid.take(8)}",
                     email = firebaseUser.email ?: "",
                     photoUrl = firebaseUser.photoUrl?.toString(),
-                    bio = "Hey there! I'm using Nexus Chat",
-                    status = "Hey there! I'm using Nexus Chat",
+                    bio = "¡Hola! Estoy usando NexusChat",
+                    status = "¡Hola! Estoy usando NexusChat",
                     isOnline = true,
                     lastSeen = System.currentTimeMillis(),
                     createdAt = System.currentTimeMillis()
@@ -82,7 +82,7 @@ class GoogleLoginUseCase @Inject constructor(
                     email = userData["email"] as? String ?: "",
                     photoUrl = userData["photoUrl"] as? String,
                     bio = userData["bio"] as? String ?: "",
-                    status = userData["status"] as? String ?: "Hey there! I'm using Nexus Chat",
+                    status = userData["status"] as? String ?: "¡Hola! Estoy usando NexusChat",
                     isOnline = true,
                     lastSeen = System.currentTimeMillis(),
                     createdAt = (userData["createdAt"] as? Number)?.toLong() ?: System.currentTimeMillis()

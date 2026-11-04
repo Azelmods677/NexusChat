@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/Azelmods677/NexusChat">
-    <img src="https://img.shields.io/badge/Version-6.1.0-7F52FF?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-7.0.0-2FB38E?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
   </a>
   <a href="https://github.com/Azelmods677/NexusChat/releases">
     <img src="https://img.shields.io/github/v/release/Azelmods677/NexusChat?style=for-the-badge&logo=github&color=00E676&labelColor=0d1117" alt="Latest Release" />
@@ -17,7 +17,8 @@
 </p>
 
 <p align="center">
-  <a href="#v610">🆕 v6.1.0</a> ·
+  <a href="#v700">🚀 v7.0.0</a> ·
+  <a href="#v610">v6.1.0</a> ·
   <a href="#v301">v3.0.1</a> ·
   <a href="#v300">🚀 v3.0.0</a> ·
   <a href="#v220">🔧 v2.2.0</a> ·
@@ -27,6 +28,54 @@
 </p>
 
 </div>
+
+---
+
+<a id="v700"></a>
+## v7.0.0: la actualización más grande de NexusChat
+
+### Agentes que trabajan de verdad
+- Ahora programan como un desarrollador: escriben el código, lo ejecutan, leen el error, lo corrigen y guardan los archivos en tu editor.
+- 17 herramientas reales: búsqueda web, noticias, lectura de páginas, búsqueda de perfiles, GitHub, Stack Overflow, paquetes, clima, divisas, ejecución de JavaScript en el teléfono y de 15 lenguajes en un servidor, y archivos.
+- Búsqueda en varios buscadores a la vez, con Google a través de Gemini. Marcan qué resultados contienen de verdad lo buscado y dicen dónde buscaron, en vez de afirmar que algo "no existe".
+- Equipo de desarrollo nuevo: Arquitecto, Programador, Probador y Revisor. Se ve en directo lo que escribe cada uno.
+- Corregido: el código llegaba cortado porque la respuesta se forzaba dentro de un JSON y se recortaba a 3.000 caracteres.
+
+### Perfiles con fotos y vídeos
+- La portada y la foto de perfil ahora pueden ser una foto o un vídeo en bucle.
+- Fotos y vídeos a pantalla completa para deslizar, como en Telegram, en tu perfil y en el de los demás.
+- Colores y portada en su propia pantalla, "Personalizar perfil", con vista previa en directo.
+- 40 colores de perfil: 24 para todos y 16 exclusivos de Premium. Quien ya tenía uno elegido lo conserva.
+
+### Llamadas
+- Corregido: la videollamada se veía en negro. La cámara, el codificador y la pantalla usaban contextos gráficos distintos.
+- Tu cámara a pantalla completa mientras suena, y el recuadro propio ya no queda tapado por la imagen grande.
+- Tono de llamada para quien llama: antes solo había silencio.
+- Fondo con la foto desenfocada y el color de la persona.
+
+### Notificaciones
+- Corregido: los avisos de mensajes nuevos no llegaban. El servidor enviaba el aviso a un destinatario equivocado.
+- Aviso cuando un contacto publica una historia.
+
+### Premium con pago real
+- Pago con Mercado Pago, confirmado por el servidor: la app nunca decide por sí sola que alguien ha pagado.
+- Insignia, colores exclusivos y galería de perfil sin límite.
+
+### Entrada e interfaz
+- Animación de entrada nueva, con opción para apagarla en Apariencia.
+- Acerca de renovado, con las novedades de la versión.
+- La app completa en español e inglés.
+
+### Estabilidad y seguridad
+- Corregido el cierre inesperado "Key was already used" al subir por el historial de un chat.
+- El historial cargado ya no desaparece cuando llega un mensaje nuevo.
+- Un error al responder a una historia ya no borra la historia de la pantalla.
+- Reglas de Storage: borrar archivos dejó de fallar, y las copias de seguridad y los vídeos de perfil ya tienen permiso.
+- El bloqueo de contactos ahora se aplica de verdad en el servidor.
+
+### Retirado
+- Escudo "anti-traba": no tiene sentido en una app independiente.
+
 
 ---
 

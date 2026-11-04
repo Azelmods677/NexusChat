@@ -13,6 +13,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -68,37 +70,74 @@ fun getTypographyForSize(sizeName: String): androidx.compose.material3.Typograph
     )
 }
 
+/**
+ * Texto legible sobre un color: oscuro sobre acentos claros, blanco sobre los oscuros.
+ * Con un `onPrimary` fijo en blanco, acentos como Jade o Ámbar no pasaban contraste.
+ */
+private fun readableOn(background: Color): Color =
+    if (background.luminance() > 0.34f) Color(0xFF0B0F0D) else Color.White
+
+/**
+ * Esquema oscuro completo. Antes `secondary`/`tertiary` eran el acento con alfa: los
+ * contenedores de Material salían translúcidos y cambiaban según lo que hubiera detrás.
+ */
 private fun createDarkColorScheme(accentColor: Color) = darkColorScheme(
     primary = accentColor,
-    secondary = accentColor.copy(alpha = 0.7f),
-    tertiary = accentColor.copy(alpha = 0.5f),
-    background = DarkBackground,
-    surface = DarkSurface,
-    surfaceVariant = DarkSurfaceVariant,
-    primaryContainer = accentColor.copy(alpha = 0.3f),
-    onPrimaryContainer = accentColor,
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color.White,
-    onSurface = Color.White,
-    error = Error
+    onPrimary = readableOn(accentColor),
+    primaryContainer = lerp(NexusTokens.Color.BgSurface, accentColor, 0.28f),
+    onPrimaryContainer = lerp(accentColor, Color.White, 0.65f),
+    inversePrimary = lerp(accentColor, Color.Black, 0.35f),
+    secondary = NexusTokens.Color.Secondary,
+    onSecondary = Color(0xFF0E1215),
+    secondaryContainer = NexusTokens.Color.BgHigh,
+    onSecondaryContainer = NexusTokens.Color.TextPrimary,
+    tertiary = NexusTokens.Color.Gold,
+    onTertiary = Color(0xFF1A1405),
+    tertiaryContainer = NexusTokens.Color.BgHigh,
+    onTertiaryContainer = NexusTokens.Color.TextPrimary,
+    background = NexusTokens.Color.BgBase,
+    onBackground = NexusTokens.Color.TextPrimary,
+    surface = NexusTokens.Color.BgBase,
+    onSurface = NexusTokens.Color.TextPrimary,
+    surfaceVariant = NexusTokens.Color.BgElevated,
+    onSurfaceVariant = NexusTokens.Color.TextSecondary,
+    surfaceTint = Color.Transparent,
+    surfaceDim = NexusTokens.Color.BgDeep,
+    surfaceBright = NexusTokens.Color.BgHigh,
+    surfaceContainerLowest = NexusTokens.Color.BgDeep,
+    surfaceContainerLow = NexusTokens.Color.BgBase,
+    surfaceContainer = NexusTokens.Color.BgSurface,
+    surfaceContainerHigh = NexusTokens.Color.BgElevated,
+    surfaceContainerHighest = NexusTokens.Color.BgHigh,
+    outline = Color(0xFF3A4046),
+    outlineVariant = NexusTokens.Color.Hairline,
+    error = NexusTokens.Color.Error,
+    onError = Color.White,
+    errorContainer = Color(0xFF3A1B19),
+    onErrorContainer = Color(0xFFF4B8B3),
+    scrim = Color.Black
 )
 
 private fun createLightColorScheme(accentColor: Color) = lightColorScheme(
-    primary = accentColor,
-    secondary = accentColor.copy(alpha = 0.7f),
-    tertiary = accentColor.copy(alpha = 0.5f),
-    background = LightBackground,
-    surface = LightSurface,
-    primaryContainer = accentColor.copy(alpha = 0.2f),
-    onPrimaryContainer = accentColor,
+    primary = lerp(accentColor, Color.Black, 0.18f),
     onPrimary = Color.White,
+    primaryContainer = lerp(Color.White, accentColor, 0.18f),
+    onPrimaryContainer = lerp(accentColor, Color.Black, 0.55f),
+    secondary = Color(0xFF55636F),
     onSecondary = Color.White,
+    tertiary = Color(0xFF8A6A1F),
     onTertiary = Color.White,
-    onBackground = Color.Black,
-    onSurface = Color.Black,
-    error = Error
+    background = LightBackground,
+    onBackground = Color(0xFF14171A),
+    surface = LightSurface,
+    onSurface = Color(0xFF14171A),
+    surfaceVariant = Color(0xFFEDEFF1),
+    onSurfaceVariant = Color(0xFF50575E),
+    surfaceTint = Color.Transparent,
+    outline = Color(0xFFC3C8CD),
+    outlineVariant = Color(0xFFE3E6E9),
+    error = NexusTokens.Color.Error,
+    onError = Color.White
 )
 
 @Composable

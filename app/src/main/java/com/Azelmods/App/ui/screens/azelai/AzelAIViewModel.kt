@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.azelai
 
+import com.Azelmods.App.i18n.tr
+
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -286,7 +288,7 @@ class AzelAIViewModel @Inject constructor(
                 if (useStreaming) {
                     var firstChunk = true
                     repository.sendMessageStream(content, history, selectedModel)
-                        .timeoutBetweenChunks(FIRST_TOKEN_TIMEOUT_MS, IDLE_TIMEOUT_MS) { firstChunk }
+                        .timeoutBetweenChunks(FIRST_TOKEN_TIMEOUT_MS, IDLE_TIMEOUT_MS) { firstChunk && partial.isEmpty() }
                         .collect { chunk ->
                             if (chunk.isNotEmpty()) {
                                 firstChunk = false
@@ -394,17 +396,17 @@ class AzelAIViewModel @Inject constructor(
         return when {
             e is AiResponseTimeoutException -> e.message.orEmpty()
             msg == com.Azelmods.App.data.api.AzelAIApiService.API_KEY_MISSING ->
-                "No hay ninguna IA configurada. Añade tu clave o un modelo local en Ajustes → IA."
-            msg.contains("no autenticado", ignoreCase = true) -> "Debes iniciar sesión para usar la IA"
-            e is java.net.UnknownHostException -> "Sin conexión a internet"
-            e is java.net.SocketTimeoutException -> "Tiempo de espera agotado"
-            e is java.net.ConnectException -> "No se pudo conectar con el servidor de IA"
-            msg.contains("401") -> "API key inválida o caducada"
-            msg.contains("403") -> "Acceso denegado por el proveedor"
-            msg.contains("404") -> "El modelo elegido no existe en este proveedor"
-            msg.contains("429") -> "Límite de uso del proveedor alcanzado. Espera un momento."
+                tr("No hay ninguna IA configurada. Añade tu clave o un modelo local en Ajustes → IA.")
+            msg.contains("no autenticado", ignoreCase = true) -> tr("Debes iniciar sesión para usar la IA")
+            e is java.net.UnknownHostException -> tr("Sin conexión a internet")
+            e is java.net.SocketTimeoutException -> tr("Tiempo de espera agotado")
+            e is java.net.ConnectException -> tr("No se pudo conectar con el servidor de IA")
+            msg.contains("401") -> tr("API key inválida o caducada")
+            msg.contains("403") -> tr("Acceso denegado por el proveedor")
+            msg.contains("404") -> tr("El modelo elegido no existe en este proveedor")
+            msg.contains("429") -> tr("Límite de uso del proveedor alcanzado. Espera un momento.")
             msg.contains("500") || msg.contains("502") || msg.contains("503") ->
-                "El proveedor de IA no está disponible ahora mismo"
+                tr("El proveedor de IA no está disponible ahora mismo")
             else -> msg.ifBlank { "Error desconocido" }
         }
     }
@@ -457,10 +459,14 @@ class AzelAIViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "AzelAIViewModel"
-        /** Margen para el primer trozo: modelos grandes y locales tardan en arrancar. */
-        const val FIRST_TOKEN_TIMEOUT_MS = 90_000L
+        /**
+         * Margen para el primer trozo. Generoso a propósito: los modelos de razonamiento y
+         * los locales pueden pasar minutos sin escribir nada, y por Tor todo tarda más.
+         * Esto solo detecta conexiones muertas: para cortar antes está el botón "Detener".
+         */
+        const val FIRST_TOKEN_TIMEOUT_MS = 10 * 60_000L
         /** Silencio máximo entre trozos una vez que la respuesta ha empezado. */
-        const val IDLE_TIMEOUT_MS = 45_000L
+        const val IDLE_TIMEOUT_MS = 5 * 60_000L
     }
 }
 

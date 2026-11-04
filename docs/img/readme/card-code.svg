@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 232" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" role="img" aria-label="Editor y terminal">
+  <rect x="1" y="1" width="438" height="230" rx="20" fill="#171A1D" stroke="#24282C"/>
+  <rect x="32" y="26" width="56" height="56" rx="16" fill="#7FD6BC" fill-opacity=".14"/>
+  <g transform="translate(40 34) scale(.84)"><path d="M17 15 7 24l10 9M31 15l10 9-10 9M27 11l-6 26" fill="none" stroke="#7FD6BC" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+  <text x="104" y="62" font-size="23" font-weight="700" fill="#ECEEF0">Editor y terminal</text>
+  <text x="32" y="136" font-size="17" fill="#A6ACB3">Escribe y ejecuta código desde el teléfono,</text><text x="32" y="161" font-size="17" fill="#A6ACB3">con pestañas, colores y una terminal real.</text>
+</svg>

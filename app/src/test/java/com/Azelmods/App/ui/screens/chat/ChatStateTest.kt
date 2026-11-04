@@ -104,13 +104,10 @@ class ChatStateTest {
     }
 
     @Test
-    fun `ephemeral mode state`() = runTest {
-        val state = ChatState(
-            isEphemeralMode = true,
-            ephemeralDuration = 30L
-        )
-        assertTrue(state.isEphemeralMode)
-        assertEquals(30L, state.ephemeralDuration)
+    fun `view once state`() = runTest {
+        val state = ChatState(viewOnceNext = true, showEphemeralPicker = true)
+        assertTrue(state.viewOnceNext)
+        assertTrue(state.showEphemeralPicker)
     }
 
     @Test

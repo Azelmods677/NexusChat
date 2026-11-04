@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import android.media.MediaPlayer
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -207,7 +209,7 @@ fun AudioMessagePlayer(
                     ) {
                         Icon(
                             imageVector = if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (playing) "Pause" else "Play",
+                            contentDescription = if (playing) tr("Pausa") else tr("Reproducir"),
                             tint = if (isError) NexusTokens.Color.Error else Color.White,
                             modifier = Modifier.size(24.dp)
                         )
@@ -265,9 +267,9 @@ fun AudioMessagePlayer(
                 } else {
                     // Loading or error state
                     Text(
-                        text = if (isError) "❌ Error al cargar audio" 
-                               else if (isLoading) "⏳ Cargando..." 
-                               else "🎵 Mensaje de voz",
+                        text = if (isError) tr("❌ Error al cargar audio") 
+                               else if (isLoading) tr("⏳ Cargando...") 
+                               else tr("🎵 Mensaje de voz"),
                         color = if (isError) NexusTokens.Color.Error else Color.White.copy(alpha = 0.9f),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium

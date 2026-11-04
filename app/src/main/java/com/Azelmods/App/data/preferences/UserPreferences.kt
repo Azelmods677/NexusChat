@@ -27,7 +27,7 @@ class UserPreferences @Inject constructor(
     private val _username = MutableStateFlow(prefs.getString(KEY_USERNAME, "user") ?: "user")
     val username: StateFlow<String> = _username.asStateFlow()
     
-    private val _bio = MutableStateFlow(prefs.getString(KEY_BIO, "Hey there! I'm using Nexus Chat") ?: "Hey there! I'm using Nexus Chat")
+    private val _bio = MutableStateFlow(prefs.getString(KEY_BIO, "¡Hola! Estoy usando NexusChat") ?: "¡Hola! Estoy usando NexusChat")
     val bio: StateFlow<String> = _bio.asStateFlow()
     
     private val _phoneNumber = MutableStateFlow(prefs.getString(KEY_PHONE, "") ?: "")
@@ -104,6 +104,15 @@ class UserPreferences @Inject constructor(
     // Network Settings
     private val _lowDataMode = MutableStateFlow(prefs.getBoolean(KEY_LOW_DATA_MODE, false))
     val lowDataMode: StateFlow<Boolean> = _lowDataMode.asStateFlow()
+
+    // Animación de entrada
+    private val _splashAnimation = MutableStateFlow(prefs.getBoolean(KEY_SPLASH_ANIMATION, true))
+    val splashAnimation: StateFlow<Boolean> = _splashAnimation.asStateFlow()
+
+    fun setSplashAnimation(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_SPLASH_ANIMATION, enabled) }
+        _splashAnimation.value = enabled
+    }
     
     // Account Settings Update Functions
     fun updateDisplayName(name: String) {
@@ -245,7 +254,7 @@ class UserPreferences @Inject constructor(
         // Reset to defaults
         _displayName.value = "User"
         _username.value = "user"
-        _bio.value = "Hey there! I'm using Nexus Chat"
+        _bio.value = "¡Hola! Estoy usando NexusChat"
         _lastSeenEnabled.value = true
         _notificationsEnabled.value = true
         _darkModeEnabled.value = true
@@ -294,5 +303,6 @@ class UserPreferences @Inject constructor(
         private const val KEY_AUTO_DOWNLOAD_PHOTOS = "auto_download_photos"
         private const val KEY_AUTO_DOWNLOAD_VIDEOS = "auto_download_videos"
         private const val KEY_AUTO_DOWNLOAD_FILES = "auto_download_files"
+        private const val KEY_SPLASH_ANIMATION = "splash_animation"
     }
 }

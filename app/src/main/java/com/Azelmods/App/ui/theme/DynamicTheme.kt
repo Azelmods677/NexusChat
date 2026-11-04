@@ -4,11 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.Azelmods.App.ui.screens.settings.SettingsViewModel
 
 /**
- * Dynamic Theme System — 25 temas curados.
+ * Acentos de la app: una lista corta y curada.
  *
  * Fuente ÚNICA de los acentos de la app. [SWATCHES] define el orden, el id
  * (clave persistida), el nombre visible y el triplete de colores (primary +
@@ -34,84 +35,66 @@ object AppTheme {
         val color: Color get() = colors.primary
     }
 
-    private fun c(hex: Long) = Color(hex)
+    /**
+     * Un acento con sus tres roles. `secondary` coincide con `primary`: el código que
+     * aún dibuja `linearGradient(primary, secondary)` obtiene un color sólido.
+     */
+    private fun accent(id: String, name: String, hex: Long): AccentSwatch {
+        val color = Color(hex)
+        return AccentSwatch(id, name, ThemeColors(color, color, lerp(color, Color.Black, 0.45f)))
+    }
 
-    // ── 25 temas curados (hue-ordered, vibrantes y distintos) ──────────────
+    // ── Acentos curados: saturación contenida, todos legibles sobre grafito ──
     val ACCENT_SWATCHES: List<AccentSwatch> = listOf(
-        // PURPLE es el acento por defecto: su primary ES el violeta de marca
-        // (NexusTokens.Color.Primary). Así el tema por defecto y la identidad
-        // estática de la app usan exactamente el mismo violeta.
-        AccentSwatch("PURPLE",     "Púrpura",         ThemeColors(c(0xFF7C6FE0), c(0xFF651FFF), c(0xFF4A148C))),
-        AccentSwatch("VIOLET",     "Violeta",         ThemeColors(c(0xFF9D4EDD), c(0xFF7B2CBF), c(0xFF5A189A))),
-        AccentSwatch("LAVENDER",   "Lavanda",         ThemeColors(c(0xFFB388FF), c(0xFF9575CD), c(0xFF673AB7))),
-        AccentSwatch("INDIGO",     "Índigo",          ThemeColors(c(0xFF5C6BC0), c(0xFF3949AB), c(0xFF1A237E))),
-        AccentSwatch("BLUE",       "Azul",            ThemeColors(c(0xFF2979FF), c(0xFF2962FF), c(0xFF0D47A1))),
-        AccentSwatch("SKY",        "Cielo",           ThemeColors(c(0xFF40C4FF), c(0xFF00B0FF), c(0xFF0277BD))),
-        AccentSwatch("CYAN",       "Cian",            ThemeColors(c(0xFF00E5FF), c(0xFF00B8D4), c(0xFF00838F))),
-        AccentSwatch("AQUA",       "Aguamarina",      ThemeColors(c(0xFF1DE9B6), c(0xFF00BFA5), c(0xFF00897B))),
-        AccentSwatch("TEAL",       "Teal",            ThemeColors(c(0xFF26A69A), c(0xFF00897B), c(0xFF004D40))),
-        AccentSwatch("MINT",       "Menta",           ThemeColors(c(0xFF64FFDA), c(0xFF1DE9B6), c(0xFF00BFA5))),
-        AccentSwatch("EMERALD",    "Esmeralda",       ThemeColors(c(0xFF00E676), c(0xFF00C853), c(0xFF1B5E20))),
-        AccentSwatch("GREEN",      "Verde Lima",      ThemeColors(c(0xFF76FF03), c(0xFF64DD17), c(0xFF33691E))),
-        AccentSwatch("LIME",       "Lima",            ThemeColors(c(0xFFC6FF00), c(0xFFAEEA00), c(0xFF827717))),
-        AccentSwatch("YELLOW",     "Amarillo",        ThemeColors(c(0xFFFFEA00), c(0xFFFFD600), c(0xFFF9A825))),
-        AccentSwatch("GOLD",       "Oro",             ThemeColors(c(0xFFFFD54F), c(0xFFFFC107), c(0xFFFF8F00))),
-        AccentSwatch("AMBER",      "Ámbar",           ThemeColors(c(0xFFFFAB00), c(0xFFFF8F00), c(0xFFFF6F00))),
-        AccentSwatch("ORANGE",     "Naranja",         ThemeColors(c(0xFFFF9100), c(0xFFFF6D00), c(0xFFE65100))),
-        AccentSwatch("CORAL",      "Coral",           ThemeColors(c(0xFFFF7043), c(0xFFFF5722), c(0xFFD84315))),
-        AccentSwatch("RED",        "Rojo",            ThemeColors(c(0xFFFF1744), c(0xFFD50000), c(0xFFB71C1C))),
-        AccentSwatch("CRIMSON",    "Carmesí",         ThemeColors(c(0xFFEF233C), c(0xFFD90429), c(0xFF8D0801))),
-        AccentSwatch("ROSE",       "Rosa",            ThemeColors(c(0xFFFF4081), c(0xFFF50057), c(0xFFC51162))),
-        AccentSwatch("PINK",       "Rosa Neón",       ThemeColors(c(0xFFFF80AB), c(0xFFFF4081), c(0xFFC2185B))),
-        AccentSwatch("MAGENTA",    "Magenta",         ThemeColors(c(0xFFE040FB), c(0xFFD500F9), c(0xFFAA00FF))),
-        AccentSwatch("SLATE",      "Pizarra",         ThemeColors(c(0xFF90A4AE), c(0xFF607D8B), c(0xFF37474F))),
-        AccentSwatch("BLOOD_MOON", "Luna de Sangre",  ThemeColors(c(0xFFFF5252), c(0xFFC62828), c(0xFF7F0000)))
+        accent("JADE", "Jade", 0xFF2FB38E),
+        accent("PETROL", "Petróleo", 0xFF2E9CAE),
+        accent("COBALT", "Cobalto", 0xFF4F8AE8),
+        accent("INDIGO", "Índigo", 0xFF6D78D6),
+        accent("PLUM", "Ciruela", 0xFF9A6BBF),
+        accent("ROSE", "Rosa", 0xFFD0648A),
+        accent("RED", "Rojo", 0xFFD9534F),
+        accent("CORAL", "Coral", 0xFFE07A5F),
+        accent("AMBER", "Ámbar", 0xFFD9A441),
+        accent("OLIVE", "Oliva", 0xFF8FA35A),
+        accent("SLATE", "Pizarra", 0xFF8796A5),
+        accent("GRAPHITE", "Grafito", 0xFFC2C7CC)
     )
 
     // ── Lookup por id (mayúsculas) ────────────────────────────────────────
     private val THEME_MAP: Map<String, ThemeColors> =
         ACCENT_SWATCHES.associate { it.id to it.colors }
 
-    // Alias (nombres antiguos / español) → clave canónica. Preserva las
-    // preferencias ya guardadas por usuarios de la versión anterior.
+    // Ids de versiones anteriores → acento actual más cercano, para que una preferencia
+    // guardada siga siendo válida. PURPLE era el valor por defecto: pasa a Jade.
     private val ALIAS_MAP: Map<String, String> = mapOf(
-        // Español
-        "MORADO" to "PURPLE",
-        "VIOLETA" to "VIOLET",
-        "LAVANDA" to "LAVENDER",
+        "PURPLE" to "JADE", "MORADO" to "JADE",
+        "VIOLET" to "PLUM", "VIOLETA" to "PLUM",
+        "LAVENDER" to "PLUM", "LAVANDA" to "PLUM",
+        "MAGENTA" to "PLUM",
         "ÍNDIGO" to "INDIGO",
-        "INDIGO" to "INDIGO",
-        "AZUL" to "BLUE",
-        "CIELO" to "SKY",
-        "CIAN" to "CYAN",
-        "AGUAMARINA" to "AQUA",
-        "MENTA" to "MINT",
-        "ESMERALDA" to "EMERALD",
-        "VERDE" to "GREEN",
-        "LIMA" to "LIME",
-        "AMARILLO" to "YELLOW",
-        "ORO" to "GOLD",
-        "ÁMBAR" to "AMBER",
-        "AMBAR" to "AMBER",
-        "NARANJA" to "ORANGE",
+        "BLUE" to "COBALT", "AZUL" to "COBALT",
+        "SKY" to "COBALT", "CIELO" to "COBALT",
+        "CYAN" to "PETROL", "CIAN" to "PETROL",
+        "AQUA" to "PETROL", "AGUAMARINA" to "PETROL",
+        "TEAL" to "PETROL",
+        "MINT" to "JADE", "MENTA" to "JADE",
+        "EMERALD" to "JADE", "ESMERALDA" to "JADE",
+        "GREEN" to "OLIVE", "VERDE" to "OLIVE",
+        "LIME" to "OLIVE", "LIMA" to "OLIVE",
+        "YELLOW" to "AMBER", "AMARILLO" to "AMBER",
+        "GOLD" to "AMBER", "ORO" to "AMBER",
+        "ÁMBAR" to "AMBER", "AMBAR" to "AMBER",
+        "ORANGE" to "CORAL", "NARANJA" to "CORAL",
         "ROJO" to "RED",
-        "CARMESÍ" to "CRIMSON",
-        "CARMESI" to "CRIMSON",
-        "ROSA" to "ROSE",
+        "CRIMSON" to "RED", "CARMESÍ" to "RED", "CARMESI" to "RED",
+        "ROSA" to "ROSE", "PINK" to "ROSE",
         "PIZARRA" to "SLATE",
-        "LUNA DE SANGRE" to "BLOOD_MOON",
-        // Nombres legacy de la versión de 15 temas
-        "TOXIC" to "GREEN",
-        "TÓXICO" to "GREEN",
-        "DARK" to "SLATE",
-        "OSCURO" to "SLATE",
-        "TOXICO_RED" to "RED",
-        "PERVERSO" to "CRIMSON",
-        "CRIMSON_DARK" to "CRIMSON",
-        "CRIMSONDARK" to "CRIMSON",
-        "NEON_RED" to "RED",
-        "NEONRED" to "RED",
-        "BLOODMOON" to "BLOOD_MOON"
+        "BLOOD_MOON" to "RED", "LUNA DE SANGRE" to "RED", "BLOODMOON" to "RED",
+        "TOXIC" to "OLIVE", "TÓXICO" to "OLIVE",
+        "DARK" to "SLATE", "OSCURO" to "SLATE",
+        "TOXICO_RED" to "RED", "PERVERSO" to "RED",
+        "CRIMSON_DARK" to "RED", "CRIMSONDARK" to "RED",
+        "NEON_RED" to "RED", "NEONRED" to "RED"
     )
 
     /** Normaliza un nombre a su clave canónica. */
@@ -124,9 +107,12 @@ object AppTheme {
         }
     }
 
-    /** Look up [ThemeColors] for a theme name, falling back to PURPLE. */
+    /** Busca los colores de un acento; si no se reconoce, Jade. */
     private fun lookup(name: String): ThemeColors =
-        THEME_MAP[normalise(name)] ?: THEME_MAP.getValue("PURPLE")
+        THEME_MAP[normalise(name)] ?: THEME_MAP.getValue("JADE")
+
+    /** Id canónico de un valor guardado, para marcar el acento activo en el selector. */
+    fun canonicalId(name: String): String = normalise(name).takeIf { it in THEME_MAP } ?: "JADE"
 
     // ── Public helpers ────────────────────────────────────────────────────
     fun getPrimaryColor(theme: String): Color = lookup(theme).primary

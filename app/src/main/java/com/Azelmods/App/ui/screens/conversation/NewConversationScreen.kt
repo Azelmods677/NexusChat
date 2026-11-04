@@ -1,4 +1,6 @@
 ﻿package com.Azelmods.App.ui.screens.conversation
+
+import com.Azelmods.App.i18n.tr
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -57,7 +59,7 @@ fun NewConversationScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("New Conversation", color = Color.White) },
+                title = { Text(tr("Nueva conversación"), color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
@@ -86,7 +88,7 @@ fun NewConversationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                placeholder = { Text("Search contacts...", color = Color.Gray) },
+                placeholder = { Text(tr("Nombre, usuario, correo o teléfono"), color = Color.Gray) },
                 leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
                 shape = RoundedCornerShape(24.dp),
                 singleLine = true,
@@ -110,13 +112,13 @@ fun NewConversationScreen(
             ) {
                 QuickActionCard(
                     icon = Icons.Default.Group,
-                    text = "New Group",
+                    text = tr("Nuevo grupo"),
                     onClick = { showNewGroupSheet = true }
                 )
                 
                 QuickActionCard(
                     icon = Icons.Default.PersonAdd,
-                    text = "Add Contact",
+                    text = tr("Añadir contacto"),
                     onClick = { showAddContactSheet = true }
                 )
             }
@@ -152,13 +154,13 @@ fun NewConversationScreen(
                     
                     Column(Modifier.weight(1f)) {
                         Text(
-                            "Demo Chat",
+                            tr("Chat de prueba"),
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
                         Text(
-                            "Prueba el chat sin contactos",
+                            tr("Prueba el chat sin contactos"),
                             color = Color.White.copy(0.5f),
                             fontSize = 13.sp
                         )
@@ -181,7 +183,7 @@ fun NewConversationScreen(
             
             // Contacts list
             Text(
-                text = "CONTACTS",
+                text = tr("Contactos"),
                 color = Color.Gray,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -208,7 +210,7 @@ fun NewConversationScreen(
                     ) {
                         Text(
                             text = if (state.searchQuery.isBlank())
-                                "No registered users found"
+                                tr("No se encontraron usuarios")
                             else
                                 "No results for \"${state.searchQuery}\"",
                             style = MaterialTheme.typography.bodyMedium,
@@ -407,7 +409,7 @@ fun AddContactSheet(
             .padding(24.dp)
     ) {
         Text(
-            text = "Add Contact",
+            text = tr("Añadir contacto"),
             color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
@@ -422,8 +424,8 @@ fun AddContactSheet(
                 errorMessage = null
             },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Username", color = Color.Gray) },
-            placeholder = { Text("@username", color = Color.Gray) },
+            label = { Text(tr("Usuario"), color = Color.Gray) },
+            placeholder = { Text(tr("@username"), color = Color.Gray) },
             leadingIcon = { Icon(Icons.Default.AlternateEmail, null, tint = Color.Gray) },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,
@@ -465,7 +467,7 @@ fun AddContactSheet(
             ) {
                 Icon(Icons.Default.QrCodeScanner, null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Scan QR")
+                Text(tr("Escanear QR"))
             }
         }
         
@@ -484,7 +486,7 @@ fun AddContactSheet(
                         viewModel.startConversation(userId, navController)
                         onSuccess(name)
                     } else {
-                        errorMessage = "Could not find user. Check the username."
+                        errorMessage = com.Azelmods.App.i18n.tr("No se encontró a ese usuario. Revisa el nombre.")
                     }
                 }
             },
@@ -501,9 +503,9 @@ fun AddContactSheet(
                     strokeWidth = 2.dp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isSearching) "Searching..." else "Starting...")
+                Text(if (isSearching) tr("Buscando…") else tr("Iniciando…"))
             } else {
-                Text("Start Chat")
+                Text(tr("Iniciar chat"))
             }
         }
         
@@ -531,7 +533,7 @@ fun NewGroupSheet(
     ) {
         if (!showNameInput) {
             Text(
-                text = "New Group",
+                text = tr("Nuevo grupo"),
                 color = Color.White,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -540,7 +542,7 @@ fun NewGroupSheet(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Select at least 2 contacts",
+                text = tr("Elige al menos 2 contactos"),
                 color = Color.Gray,
                 fontSize = 14.sp
             )
@@ -607,11 +609,11 @@ fun NewGroupSheet(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             ) {
-                Text("Next")
+                Text(tr("Siguiente"))
             }
         } else {
             Text(
-                text = "Group Name",
+                text = tr("Nombre del grupo"),
                 color = Color.White,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -623,7 +625,7 @@ fun NewGroupSheet(
                 value = groupName,
                 onValueChange = { groupName = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Enter group name", color = Color.Gray) },
+                label = { Text(tr("Escribe el nombre del grupo"), color = Color.Gray) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
@@ -658,7 +660,7 @@ fun NewGroupSheet(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Create Group")
+                    Text(tr("Crear grupo"))
                 }
             }
         }

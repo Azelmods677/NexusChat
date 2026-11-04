@@ -2,6 +2,7 @@ package com.Azelmods.App.ui.screens.security
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.Azelmods.App.data.security.tor.TorEngine
 import com.Azelmods.App.data.security.tor.TorState
 import com.Azelmods.App.domain.repository.SecurityRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,154 +13,53 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for security features including Tor integration via Orbot
+ * Estado del modo anónimo para las pantallas de seguridad.
  *
- * Maneja el estado de Tor y proporciona funciones para activar/desactivar
- * el modo anónimo usando Orbot.
+ * La preferencia se guarda al pulsar el interruptor, no al terminar de conectar: si el
+ * usuario lo activó, al reabrir la app debe seguir activo aunque Tor no llegara a conectar,
+ * porque es lo que evita que algo salga sin protección sin que se dé cuenta.
  */
 @HiltViewModel
 class SecurityViewModel @Inject constructor(
     private val securityRepository: SecurityRepository,
     private val torPreferences: com.Azelmods.App.data.security.tor.TorPreferences,
-    private val torService: com.Azelmods.App.data.security.tor.TorService
+    private val torService: com.Azelmods.App.data.security.tor.TorService,
+    private val ghostMode: com.Azelmods.App.data.security.GhostMode
 ) : ViewModel() {
+
+    val ghostModeEnabled: StateFlow<Boolean> = ghostMode.enabled
+
+    fun setGhostMode(on: Boolean) = ghostMode.set(on)
 
     val torState: StateFlow<TorState> = securityRepository.getTorState()
 
-    private val _uiState = MutableStateFlow<SecurityUiState>(SecurityUiState.Idle)
-    val uiState: StateFlow<SecurityUiState> = _uiState.asStateFlow()
+    private val _engine = MutableStateFlow(torService.engine)
+    val engine: StateFlow<TorEngine> = _engine.asStateFlow()
 
-    private val _torLogs = MutableStateFlow<List<String>>(emptyList())
-    val torLogs: StateFlow<List<String>> = _torLogs.asStateFlow()
+    val embeddedTorVersion: String get() = torService.embeddedVersion
 
-    init {
-        restoreTorState()
-    }
-
-    /**
-     * Restaura el estado de Tor al iniciar la app
-     */
-    private fun restoreTorState() {
-        viewModelScope.launch {
-            try {
-                val wasEnabled = torPreferences.isAnonymousModeEnabled()
-                if (wasEnabled) {
-                    enableAnonymousMode()
-                }
-            } catch (_: Exception) { }
-        }
-    }
-
-    /**
-     * Activa el modo anónimo iniciando Tor vía Orbot
-     */
     fun enableAnonymousMode() {
-        viewModelScope.launch {
-            try {
-                addLog("Iniciando Tor vía Orbot...")
-                _uiState.value = SecurityUiState.Loading("Buscando Orbot...")
-
-                securityRepository.startTor().collect { state ->
-                    when (state) {
-                        is TorState.Disconnected -> {
-                            _uiState.value = SecurityUiState.Idle
-                            addLog("Tor desconectado")
-                        }
-                        is TorState.Connecting -> {
-                            _uiState.value = SecurityUiState.Loading("Conectando: ${state.progress}%")
-                            addLog(
-                                "Conectando a Tor: ${state.progress}%" +
-                                if (state.message.isNotEmpty()) " – ${state.message}" else ""
-                            )
-                        }
-                        is TorState.Bootstrapping -> {
-                            _uiState.value = SecurityUiState.Loading("Conectando: ${state.progress}%")
-                            addLog(
-                                "Conectando a Tor: ${state.progress}%" +
-                                if (state.message.isNotEmpty()) " – ${state.message}" else ""
-                            )
-                        }
-                        is TorState.Connected -> {
-                            _uiState.value = SecurityUiState.Success("Modo anónimo activado")
-                            torPreferences.setAnonymousModeEnabled(true)
-                            addLog("✓ Conectado a la red Tor vía Orbot")
-                        }
-                        is TorState.Error -> {
-                            _uiState.value = SecurityUiState.Error(
-                                message = state.message,
-                                suggestion = "Asegúrate de que Orbot esté instalado y ejecutándose"
-                            )
-                            addLog("Error: ${state.message}")
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.value = SecurityUiState.Error(
-                    message = "Error al iniciar Tor: ${e.message}",
-                    suggestion = "Verifica tu conexión de red"
-                )
-            }
-        }
+        torPreferences.setAnonymousModeEnabled(true)
+        torService.startTor()
     }
 
-    /**
-     * Desactiva el modo anónimo deteniendo Tor
-     */
     fun disableAnonymousMode() {
-        viewModelScope.launch {
-            try {
-                addLog("Deteniendo Tor...")
-                _uiState.value = SecurityUiState.Loading("Deteniendo Tor...")
-                securityRepository.stopTor()
-                _uiState.value = SecurityUiState.Idle
-                torPreferences.setAnonymousModeEnabled(false)
-                addLog("Tor detenido")
-            } catch (e: Exception) {
-                _uiState.value = SecurityUiState.Error(
-                    message = "Error al detener Tor: ${e.message}",
-                    suggestion = "Reintenta o reinicia la app"
-                )
-                addLog("Error: ${e.message}")
-            }
-        }
+        torPreferences.setAnonymousModeEnabled(false)
+        viewModelScope.launch { securityRepository.stopTor() }
+    }
+
+    fun setEngine(engine: TorEngine) {
+        torService.setEngine(engine)
+        _engine.value = engine
     }
 
     /** Vuelve a preguntar a check.torproject.org si salimos por Tor y con qué IP. */
-    fun verifyTor() {
-        addLog("Comprobando la salida por Tor…")
-        torService.verifyConnection()
-    }
+    fun verifyTor() = torService.verifyConnection()
+
+    /** Pide circuitos nuevos. Devuelve false si el motor en uso no lo permite. */
+    fun newIdentity(): Boolean = torService.newIdentity()
 
     /** Pide a Orbot que arranque Tor sin salir de NexusChat. */
-    fun requestOrbotStart(context: android.content.Context): Boolean {
-        val sent = com.Azelmods.App.data.security.tor.OrbotIntents.requestStart(context)
-        addLog(if (sent) "Petición enviada a Orbot para iniciar Tor" else "No se pudo contactar con Orbot")
-        return sent
-    }
-
-    /**
-     * Limpia el estado actual de UI
-     */
-    fun clearUiState() {
-        _uiState.value = SecurityUiState.Idle
-    }
-
-    fun clearLogs() { _torLogs.value = emptyList() }
-
-    private fun addLog(entry: String) {
-        val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-            .format(java.util.Date())
-        val newLogs = (_torLogs.value + "[$timestamp] $entry").takeLast(100)
-        _torLogs.value = newLogs
-    }
-}
-
-/**
- * UI state for security screen
- */
-sealed class SecurityUiState {
-    object Idle : SecurityUiState()
-    data class Loading(val message: String) : SecurityUiState()
-    data class Success(val message: String) : SecurityUiState()
-    data class Error(val message: String, val suggestion: String) : SecurityUiState()
+    fun requestOrbotStart(context: android.content.Context): Boolean =
+        com.Azelmods.App.data.security.tor.OrbotIntents.requestStart(context)
 }

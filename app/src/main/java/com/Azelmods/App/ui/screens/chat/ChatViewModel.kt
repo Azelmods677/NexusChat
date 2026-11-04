@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.chat
 
+import com.Azelmods.App.i18n.tr
+
 import android.net.Uri
 import android.util.Base64
 import androidx.lifecycle.ViewModel
@@ -21,10 +23,26 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+/**
+ * Identidad de un mensaje dentro de la lista: es a la vez la clave de la `LazyColumn` y lo
+ * que se usa para quitar repetidos. Al ser una sola definición, una lista pasada por
+ * [mergeMessages] no puede provocar el crash "Key was already used".
+ */
+internal fun Message.listKey(): String =
+    messageId.ifBlank { "fallback_${timestamp}_${senderId}_${content.hashCode()}_${mediaUrl.hashCode()}" }
+
+/**
+ * Une lo que llega en vivo con las páginas antiguas, sin repetidos y en orden. [live] va
+ * primero porque su copia es la actual (estado de lectura, reacciones) y es la que debe ganar.
+ */
+internal fun mergeMessages(live: List<Message>, older: List<Message>): List<Message> =
+    (live + older).distinctBy { it.listKey() }.sortedBy { it.timestamp }
 
 data class ChatState(
     val messages: List<Message> = emptyList(),
@@ -42,9 +60,13 @@ data class ChatState(
     val earliestMessageTimestamp: Long = 0L,    // Timestamp of the earliest loaded message
     val earliestMessageId: String = "",          // ID of the earliest loaded message
     // ── Ephemeral / Self-Destructing Messages ──
-    val isEphemeralMode: Boolean = false,          // Toggle for ephemeral sending mode
-    val ephemeralDuration: Long = 0L,              // Selected duration in seconds (0 = view once)
-    val showEphemeralPicker: Boolean = false,      // Show duration picker dropdown
+    /** Temporizador compartido del chat, en segundos. 0 = los mensajes no caducan. */
+    val chatTimerSeconds: Long = 0L,
+    /** El siguiente mensaje o archivo se envía como "una sola vista". */
+    val viewOnceNext: Boolean = false,
+    val showEphemeralPicker: Boolean = false,
+    /** Reproducir vídeos dentro del chat sin tocarlos (ajuste de descarga automática). */
+    val autoplayVideos: Boolean = false,
     // ── Translation ──
     val translatingMessageIds: Set<String> = emptySet(), // IDs currently being translated
     val translationError: String? = null,
@@ -134,97 +156,190 @@ class ChatViewModel @Inject constructor(
 
     init {
         observeAiFeatureFlags()
+        viewModelScope.launch {
+            userPreferences.autoDownloadVideos.collect { enabled ->
+                _state.value = _state.value.copy(autoplayVideos = enabled)
+            }
+        }
     }
     
     /**
      * Load chat background configuration
      */
-    /**
-     * Toggle ephemeral mode on/off
-     */
-    fun toggleEphemeralMode() {
-        _state.value = _state.value.copy(
-            isEphemeralMode = !_state.value.isEphemeralMode,
-            showEphemeralPicker = false
-        )
-    }
-
-    /**
-     * Set ephemeral duration and enable ephemeral mode
-     */
-    fun setEphemeralDuration(durationSeconds: Long) {
-        _state.value = _state.value.copy(
-            isEphemeralMode = true,
-            ephemeralDuration = durationSeconds,
-            showEphemeralPicker = false
-        )
-    }
-
-    /**
-     * Toggle the ephemeral duration picker
-     */
+    /** Abre o cierra la hoja del temporizador. */
     fun toggleEphemeralPicker() {
         _state.value = _state.value.copy(showEphemeralPicker = !_state.value.showEphemeralPicker)
     }
 
-    /**
-     * Dismiss the ephemeral duration picker
-     */
     fun dismissEphemeralPicker() {
         _state.value = _state.value.copy(showEphemeralPicker = false)
     }
 
+    /** Marca el siguiente envío como "una sola vista". */
+    fun setViewOnceNext(enabled: Boolean) {
+        _state.value = _state.value.copy(viewOnceNext = enabled, showEphemeralPicker = false)
+    }
+
     /**
-     * Start periodic cleanup of expired ephemeral messages
+     * Cambia el temporizador del chat. Es compartido, como en Signal: lo que elige uno
+     * vale para los dos y queda un aviso en la conversación para que nadie lo ignore.
+     */
+    fun setChatTimer(seconds: Long) {
+        val chatId = currentChatId
+        if (chatId.isBlank()) return
+        _state.value = _state.value.copy(showEphemeralPicker = false)
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val notice = if (seconds == 0L) tr("Mensajes temporales desactivados")
+                else "Los mensajes nuevos desaparecerán ${timerLabel(seconds)} después de leerse"
+                databaseRepository.setChatTimer(chatId, seconds, notice)
+            }.onFailure {
+                _state.value = _state.value.copy(error = "No se pudo cambiar el temporizador: ${it.message}")
+            }
+        }
+    }
+
+    /**
+     * Vigila el chat abierto: refleja el temporizador común y, cada segundo, retira los
+     * mensajes cuyo tiempo se ha acabado, en pantalla y en el servidor.
+     *
+     * La versión anterior leía el nodo `chats` completo, que las reglas de seguridad
+     * niegan a cualquier cliente, así que no borraba nada nunca.
      */
     private fun startEphemeralCleanup(chatId: String) {
         ephemeralCleanupJob?.cancel()
         ephemeralCleanupJob = viewModelScope.launch(Dispatchers.IO) {
-            while (true) {
-                delay(30_000) // Check every 30 seconds
-                try {
-                    databaseRepository.cleanupExpiredEphemeralMessages()
-                } catch (e: Exception) {
-                    // Silently ignore cleanup errors
+            launch {
+                runCatching {
+                    databaseRepository.observeChatTimer(chatId).collect { seconds ->
+                        _state.value = _state.value.copy(chatTimerSeconds = seconds)
+                    }
                 }
+            }
+            while (true) {
+                delay(1_000)
+                val now = databaseRepository.serverNow()
+                val expired = _state.value.messages.filter { it.expiresAt in 1..now }
+                if (expired.isEmpty()) continue
+                removeFromList(expired.map { it.messageId }.toSet())
+                expired.forEach { deleteEphemeral(chatId, it) }
             }
         }
     }
 
+    private val deletingEphemeralIds = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     /**
-     * Mark a message as viewed (for ephemeral/view-once tracking)
+     * Páginas antiguas ya traídas al subir por el chat. El listener en vivo solo cubre los
+     * últimos 30 mensajes: si no se guardan aparte, cada mensaje nuevo o recibo de lectura
+     * borraba de la pantalla todo lo que el usuario había cargado.
      */
+    @Volatile private var olderMessages: List<Message> = emptyList()
+    @Volatile private var lastLiveWindow: List<Message> = emptyList()
+    private var loadMoreJob: Job? = null
+
+    private fun removeFromList(ids: Set<String>) {
+        olderMessages = olderMessages.filterNot { it.messageId in ids }
+        lastLiveWindow = lastLiveWindow.filterNot { it.messageId in ids }
+        _state.update { current -> current.copy(messages = current.messages.filterNot { it.messageId in ids }) }
+    }
+
+    private suspend fun deleteEphemeral(chatId: String, message: Message) {
+        if (!deletingEphemeralIds.add(message.messageId)) return
+        runCatching { databaseRepository.deleteEphemeralMessage(chatId, message.messageId, message.mediaUrl) }
+            .onFailure {
+                deletingEphemeralIds.remove(message.messageId)
+                android.util.Log.w("ChatViewModel", "No se pudo borrar el mensaje temporal: ${it.message}")
+            }
+    }
+
+    /** El destinatario ha visto un mensaje temporal: empieza su cuenta atrás. */
     fun markMessageViewed(message: Message) {
         if (!message.isEphemeral || currentChatId.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
+            runCatching { databaseRepository.markEphemeralMessageViewed(currentChatId, message.messageId) }
+        }
+    }
+
+    /** Se cerró un mensaje de una sola vista: desaparece para todos. */
+    fun consumeViewOnce(message: Message) {
+        val chatId = currentChatId
+        if (chatId.isBlank()) return
+        removeFromList(setOf(message.messageId))
+        viewModelScope.launch(Dispatchers.IO) { deleteEphemeral(chatId, message) }
+    }
+
+    /**
+     * Único camino de los archivos al chat: aplica el temporizador o la "una sola vista"
+     * a fotos, vídeos, GIF y audio igual que al texto. Antes estos envíos ignoraban el
+     * modo temporal, de modo que justo lo más delicado era lo que no desaparecía.
+     */
+    private suspend fun publishMedia(chatId: String, url: String, type: String, caption: String = "") {
+        val state = _state.value
+        if (state.viewOnceNext || state.chatTimerSeconds > 0) {
+            databaseRepository.sendEphemeralMediaMessage(
+                chatId = chatId,
+                mediaUrl = url,
+                mediaType = type,
+                caption = caption,
+                isViewOnce = state.viewOnceNext,
+                selfDestructDuration = state.chatTimerSeconds
+            )
+            if (state.viewOnceNext) _state.value = _state.value.copy(viewOnceNext = false)
+        } else {
+            databaseRepository.sendMediaMessage(chatId = chatId, mediaUrl = url, mediaType = type, caption = caption)
+        }
+    }
+
+    /** GIF desde el teléfono, tal cual para conservar la animación. */
+    fun sendGifMessage(uri: Uri, chatId: String) = uploadAndSend(chatId, "GIF") { target ->
+        publishMedia(target, storageRepository.uploadChatGif(uri, target), "GIF")
+    }
+
+    /** Vídeo corto que se repite sin sonido dentro del chat, como los GIF de Telegram. */
+    fun sendAnimationMessage(uri: Uri, chatId: String) = uploadAndSend(chatId, "animación") { target ->
+        publishMedia(target, storageRepository.uploadChatVideo(uri, target), "GIF_VIDEO")
+    }
+
+    /**
+     * GIF elegido en la búsqueda. Se descarga y se sube a nuestro almacenamiento: si el
+     * mensaje apuntara a GIPHY, el teléfono del destinatario le revelaría su IP.
+     */
+    fun sendRemoteGif(gifUrl: String, chatId: String) = uploadAndSend(chatId, "GIF") { target ->
+        val file = java.io.File(appContext.cacheDir, "gif_${System.currentTimeMillis()}.gif")
+        try {
+            okhttp3.OkHttpClient().newCall(okhttp3.Request.Builder().url(gifUrl).build()).execute().use { response ->
+                if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                file.outputStream().use { out -> response.body?.byteStream()?.copyTo(out) }
+            }
+            publishMedia(target, storageRepository.uploadChatGif(Uri.fromFile(file), target), "GIF")
+        } finally {
+            file.delete()
+        }
+    }
+
+    private fun uploadAndSend(chatId: String, what: String, block: suspend (String) -> Unit) {
+        val target = effectiveChatId(chatId)
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                databaseRepository.markEphemeralMessageViewed(currentChatId, message.messageId)
+                block(target)
+                _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
-                // Silently ignore
+                android.util.Log.e("ChatViewModel", "No se pudo enviar $what", e)
+                _state.value = _state.value.copy(isUploading = false, error = "No se pudo enviar $what: ${e.message}")
             }
         }
     }
 
-    /**
-     * Send ephemeral media message (view once photo/video)
-     */
-    fun sendEphemeralMediaMessage(mediaUrl: String, mediaType: String, chatId: String) {
-        val targetChatId = effectiveChatId(chatId)
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val state = _state.value
-                databaseRepository.sendEphemeralMediaMessage(
-                    chatId = targetChatId,
-                    mediaUrl = mediaUrl,
-                    mediaType = mediaType,
-                    caption = "",
-                    isViewOnce = state.ephemeralDuration == 0L,
-                    selfDestructDuration = state.ephemeralDuration
-                )
-            } catch (e: Exception) {
-                _state.value = _state.value.copy(error = "Error al enviar: ${e.message}")
-            }
-        }
+    /** Número → texto del temporizador, p. ej. 3600 → "1 hora". */
+    private fun timerLabel(seconds: Long): String = when {
+        seconds >= 604_800 -> tr("1 semana")
+        seconds >= 86_400 -> tr("1 día")
+        seconds >= 28_800 -> tr("8 horas")
+        seconds >= 3_600 -> tr("1 hora")
+        seconds >= 300 -> tr("5 minutos")
+        else -> "$seconds segundos"
     }
 
     fun loadChatBackground(chatId: String) {
@@ -333,7 +448,7 @@ class ChatViewModel @Inject constructor(
                     uid = data["uid"] as? String ?: uid,
                     name = data["displayName"] as? String
                         ?: data["name"] as? String
-                        ?: if (isDemoContact) DEMO_USER_NAME else "Usuario",
+                        ?: if (isDemoContact) DEMO_USER_NAME else tr("Usuario"),
                     username = data["username"] as? String ?: "",
                     email = data["email"] as? String ?: "",
                     photoUrl = data["photoUrl"] as? String,
@@ -417,8 +532,13 @@ class ChatViewModel @Inject constructor(
                 val cachedMessages = cacheManager.getCachedMessages(chatId)
                 if (cachedMessages.isNotEmpty()) {
                     android.util.Log.d("ChatViewModel", "📦 Loaded ${cachedMessages.size} cached messages for $chatId")
-                    _state.value = _state.value.copy(messages = cachedMessages)
+                    _state.value = _state.value.copy(messages = cachedMessages.distinctBy { it.listKey() })
                 }
+
+                // Otra conversación: lo paginado de la anterior no pinta nada aquí.
+                loadMoreJob?.cancel()
+                olderMessages = emptyList()
+                lastLiveWindow = emptyList()
 
                 // Launch typing observer in its own coroutine so it doesn't block message collection
                 observeTypingStatus(chatId)
@@ -439,66 +559,40 @@ class ChatViewModel @Inject constructor(
                     ).collect { messagesData ->
                         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                         val peerId = peerIdOf(chatId, currentUserId)
-                        val messages = messagesData.map { data ->
-                            val senderId = data["senderId"] as? String ?: ""
-                            val isEncrypted = data["isEncrypted"] as? Boolean ?: false
-                            val payload = data["encryptedPayload"] as? String
-                            val content = decryptedContent(
-                                rawContent = data["content"] as? String ?: "",
-                                isEncrypted = isEncrypted,
-                                payload = payload,
-                                peerId = peerId
-                            )
-
-                            val timestampRaw = data["timestamp"]
-                            val timestampVal = when (timestampRaw) {
-                                is Long -> timestampRaw
-                                is Double -> timestampRaw.toLong()
-                                is String -> timestampRaw.toLongOrNull() ?: System.currentTimeMillis()
-                                else -> System.currentTimeMillis()
-                            }
-                            
-                            Message(
-                                messageId = data["messageId"] as? String ?: "",
-                                chatId = chatId,
-                                senderId = senderId,
-                                senderName = data["senderName"] as? String ?: "",
-                                content = content,
-                                timestamp = timestampVal,
-                                status = parseMessageStatus(data["status"]),
-                                replyTo = data["replyTo"] as? String,
-                                reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
-                                mediaUrl = data["mediaUrl"] as? String,
-                                mediaType = data["mediaType"] as? String,
-                                deletedFor = (data["deletedFor"] as? Map<String, Boolean>) ?: emptyMap(),
-                                deletedForEveryone = data["deletedForEveryone"] as? Boolean ?: false,
-                                edited = data["edited"] as? Boolean ?: false,
-                                editedAt = data["editedAt"] as? Long ?: 0L,
-                                forwardedFrom = data["forwardedFrom"] as? String,
-                                isEncrypted = isEncrypted,
-                                encryptedPayload = payload
-                            )
-                        }.filter { message ->
-                            message.deletedFor[currentUserId] != true
-                        }.distinctBy { it.messageId.ifBlank { "${it.timestamp}_${it.senderId}" } }
+                        val now = databaseRepository.serverNow()
+                        val messages = messagesData.map { data -> mapMessage(data, chatId, peerId) }
+                            .filter { message -> message.deletedFor[currentUserId] != true }
+                            // Lo caducado no vuelve a aparecer aunque el borrado siga en camino.
+                            .filterNot { it.expiresAt in 1..now }
+                            .distinctBy { it.listKey() }
 
                         // ── SAVE TO ROOM CACHE ──
+                        // Lo temporal no se guarda en el teléfono: sobreviviría al borrado.
                         try {
-                            cacheManager.cacheMessages(messages)
+                            cacheManager.cacheMessages(messages.filterNot { it.isEphemeral || it.mediaType == "SYSTEM" })
                         } catch (e: Exception) {
                             android.util.Log.e("ChatViewModel", "Failed to cache messages", e)
                         }
 
-                        // Update earliest message timestamp for pagination
-                        val earliestTimestamp = messages.minOfOrNull { it.timestamp } ?: 0L
-                        val earliestId = messages.minByOrNull { it.timestamp }?.messageId ?: ""
+                        // La ventana en vivo son los últimos 30: con cada mensaje nuevo, el
+                        // más antiguo sale de ella. Sigue siendo historial, no un borrado.
+                        val liveKeys = messages.mapTo(HashSet()) { it.listKey() }
+                        val liveStart = messages.minOfOrNull { it.timestamp } ?: Long.MAX_VALUE
+                        olderMessages = olderMessages + lastLiveWindow.filter {
+                            it.timestamp < liveStart && it.listKey() !in liveKeys
+                        }
+                        lastLiveWindow = messages
 
-                        _state.value = _state.value.copy(
-                            messages = messages,
-                            earliestMessageTimestamp = earliestTimestamp,
-                            earliestMessageId = earliestId,
-                            hasMoreMessages = true
-                        )
+                        val merged = mergeMessages(messages, olderMessages)
+                            .filterNot { it.expiresAt in 1..now }
+
+                        _state.update { current ->
+                            current.copy(
+                                messages = merged,
+                                earliestMessageTimestamp = merged.firstOrNull()?.timestamp ?: 0L,
+                                earliestMessageId = merged.firstOrNull()?.messageId.orEmpty()
+                            )
+                        }
 
                         // El recorrido del bot de bienvenida se reconstruye a partir
                         // de lo que ya hay escrito en el chat. `demoTurnIndex` es un
@@ -548,7 +642,66 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    /** Convierte el status almacenado (String) al enum MessageStatus para la UI de recibos. */
+    /**
+     * Convierte un mensaje de la base de datos en el modelo de la app.
+     *
+     * Es el único sitio donde se hace. Antes había dos copias y ninguna leía los campos
+     * de los mensajes temporales: el servidor los guardaba pero la app nunca se enteraba,
+     * y por eso no había cuenta atrás ni "una sola vista", ni desaparecía nada.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun mapMessage(data: Map<String, Any>, chatId: String, peerId: String): Message {
+        val isEncrypted = data["isEncrypted"] as? Boolean ?: false
+        val payload = data["encryptedPayload"] as? String
+        val content = decryptedContent(
+            rawContent = data["content"] as? String ?: "",
+            isEncrypted = isEncrypted,
+            payload = payload,
+            peerId = peerId
+        )
+        val timestamp = when (val raw = data["timestamp"]) {
+            is Number -> raw.toLong()
+            is String -> raw.toLongOrNull() ?: System.currentTimeMillis()
+            else -> System.currentTimeMillis()
+        }
+        val viewedBy = when (val raw = data["viewedBy"]) {
+            is Map<*, *> -> raw.keys.filterIsInstance<String>()
+            is List<*> -> raw.filterIsInstance<String>()
+            else -> emptyList()
+        }
+        return Message(
+            messageId = data["messageId"] as? String ?: "",
+            chatId = chatId,
+            senderId = data["senderId"] as? String ?: "",
+            senderName = data["senderName"] as? String ?: "",
+            content = content,
+            timestamp = timestamp,
+            status = parseMessageStatus(data["status"]),
+            replyTo = data["replyTo"] as? String,
+            reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
+            mediaUrl = data["mediaUrl"] as? String,
+            mediaType = data["mediaType"] as? String,
+            deletedFor = (data["deletedFor"] as? Map<String, Boolean>) ?: emptyMap(),
+            deletedForEveryone = data["deletedForEveryone"] as? Boolean ?: false,
+            edited = data["edited"] as? Boolean ?: false,
+            editedAt = (data["editedAt"] as? Number)?.toLong() ?: 0L,
+            forwardedFrom = data["forwardedFrom"] as? String,
+            isEncrypted = isEncrypted,
+            encryptedPayload = payload,
+            latitude = (data["latitude"] as? Number)?.toDouble(),
+            longitude = (data["longitude"] as? Number)?.toDouble(),
+            isEphemeral = data["isEphemeral"] as? Boolean ?: false,
+            isViewOnce = data["isViewOnce"] as? Boolean ?: false,
+            selfDestructDuration = (data["selfDestructDuration"] as? Number)?.toLong() ?: 0L,
+            viewedAt = (data["viewedAt"] as? Number)?.toLong() ?: 0L,
+            expireAt = (data["expireAt"] as? Number)?.toLong() ?: 0L,
+            selfDestructAt = (data["selfDestructAt"] as? Number)?.toLong() ?: 0L,
+            viewedBy = viewedBy
+        )
+    }
+
+    fun serverNow(): Long = databaseRepository.serverNow()
+
     /**
      * UID del otro extremo de un chat privado, o cadena vacía si es un grupo.
      *
@@ -585,7 +738,7 @@ class ChatViewModel @Inject constructor(
             val bytes = Base64.decode(payload, Base64.NO_WRAP)
             when (val dec = decryptMessageUseCase(peerId, bytes, MessageType.WHISPER)) {
                 is com.Azelmods.App.data.security.encryption.DecryptionResult.Success -> dec.plaintext
-                else -> "🔒 No se pudo descifrar"
+                else -> tr("🔒 No se pudo descifrar")
             }
         } catch (e: Exception) {
             android.util.Log.e("ChatViewModel", "Descifrado fallido", e)
@@ -652,23 +805,25 @@ class ChatViewModel @Inject constructor(
         }
     }
 
-    fun sendMessage(content: String, chatId: String) {
-        if (content.isBlank()) return
+    fun sendMessage(rawContent: String, chatId: String) {
+        if (rawContent.isBlank()) return
+        // Un comando (/dado, /calc 5+7...) se envía ya resuelto.
+        val content = com.Azelmods.App.data.chat.ChatCommands.run(rawContent) ?: rawContent
         val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 android.util.Log.d("ChatViewModel", "📤 Sending message to chat: $targetChatId")
                 
                 val state = _state.value
-                if (state.isEphemeralMode) {
-                    // Send as ephemeral message
+                if (state.viewOnceNext || state.chatTimerSeconds > 0) {
                     databaseRepository.sendEphemeralMessage(
                         chatId = targetChatId,
                         content = content,
                         replyTo = state.replyingTo?.messageId,
-                        isViewOnce = state.ephemeralDuration == 0L,
-                        selfDestructDuration = state.ephemeralDuration
+                        isViewOnce = state.viewOnceNext,
+                        selfDestructDuration = state.chatTimerSeconds
                     )
+                    if (state.viewOnceNext) _state.value = _state.value.copy(viewOnceNext = false)
                 } else {
                     databaseRepository.sendMessage(
                         chatId = targetChatId,
@@ -676,12 +831,12 @@ class ChatViewModel @Inject constructor(
                         replyTo = state.replyingTo?.messageId
                     )
                 }
-                
+
                 android.util.Log.d("ChatViewModel", "✅ Message sent successfully")
                 _state.value = _state.value.copy(replyingTo = null, error = null)
 
                 // Chat de bienvenida: "Azel Assistant" responde mensaje a mensaje.
-                if (isDemoChat(targetChatId) && !state.isEphemeralMode) {
+                if (isDemoChat(targetChatId) && state.chatTimerSeconds == 0L && !state.viewOnceNext) {
                     replyAsDemoAssistant(content, targetChatId)
                 }
             } catch (e: Exception) {
@@ -722,9 +877,9 @@ class ChatViewModel @Inject constructor(
                                 content = content,
                                 senderId = currentUserId,
                                 replyTo = _state.value.replyingTo?.messageId,
-                                isEphemeral = _state.value.isEphemeralMode,
-                                isViewOnce = _state.value.ephemeralDuration == 0L,
-                                selfDestructDuration = _state.value.ephemeralDuration
+                                isEphemeral = _state.value.viewOnceNext || _state.value.chatTimerSeconds > 0,
+                                isViewOnce = _state.value.viewOnceNext,
+                                selfDestructDuration = _state.value.chatTimerSeconds
                             )
                         )
                         _state.value = _state.value.copy(
@@ -743,7 +898,7 @@ class ChatViewModel @Inject constructor(
                     android.util.Log.e("ChatViewModel", "⚠️ Firebase error: ${e.message}")
                     _state.value = _state.value.copy(
                         replyingTo = null,
-                        error = "Error al enviar: ${e.message ?: "Error desconocido"}"
+                        error = "Error al enviar: ${e.message ?: tr("Error desconocido")}"
                     )
                 }
             }
@@ -825,12 +980,7 @@ class ChatViewModel @Inject constructor(
                     imageUri
                 }
                 val imageUrl = storageRepository.uploadChatImage(uriToUpload, targetChatId)
-                databaseRepository.sendMediaMessage(
-                    chatId = targetChatId,
-                    mediaUrl = imageUrl,
-                    mediaType = "IMAGE",
-                    caption = ""
-                )
+                publishMedia(targetChatId, imageUrl, "IMAGE")
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -851,12 +1001,7 @@ class ChatViewModel @Inject constructor(
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
                 val audioUrl = storageRepository.uploadChatAudio(audioUri, targetChatId)
-                databaseRepository.sendMediaMessage(
-                    chatId = targetChatId,
-                    mediaUrl = audioUrl,
-                    mediaType = "AUDIO",
-                    caption = ""
-                )
+                publishMedia(targetChatId, audioUrl, "AUDIO")
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -877,12 +1022,7 @@ class ChatViewModel @Inject constructor(
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
                 val videoUrl = storageRepository.uploadChatVideo(videoUri, targetChatId)
-                databaseRepository.sendMediaMessage(
-                    chatId = targetChatId,
-                    mediaUrl = videoUrl,
-                    mediaType = "VIDEO",
-                    caption = ""
-                )
+                publishMedia(targetChatId, videoUrl, "VIDEO")
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -903,12 +1043,7 @@ class ChatViewModel @Inject constructor(
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
                 val documentUrl = storageRepository.uploadChatDocument(documentUri, targetChatId, fileName)
-                databaseRepository.sendMediaMessage(
-                    chatId = targetChatId,
-                    mediaUrl = documentUrl,
-                    mediaType = "DOCUMENT",
-                    caption = fileName
-                )
+                publishMedia(targetChatId, documentUrl, "DOCUMENT", fileName)
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1142,7 +1277,7 @@ class ChatViewModel @Inject constructor(
             _state.value = _state.value.copy(
                 isSummarizing = false,
                 conversationSummary = result.getOrElse { e ->
-                    "No se pudo resumir: ${e.message ?: "error del proveedor de IA"}"
+                    "No se pudo resumir: ${e.message ?: tr("error del proveedor de IA")}"
                 }
             )
         }
@@ -1315,7 +1450,7 @@ class ChatViewModel @Inject constructor(
                 .onSuccess {
                     _state.value = _state.value.copy(isMuted = muteUntil != null)
                     reportarEnMain(
-                        if (muteUntil == null) "Notificaciones reactivadas" else "Chat silenciado",
+                        if (muteUntil == null) tr("Notificaciones reactivadas") else tr("Chat silenciado"),
                         onResult
                     )
                 }
@@ -1341,6 +1476,8 @@ class ChatViewModel @Inject constructor(
                 databaseRepository.clearChatMessages(chatId)
                 cacheManager.clearChatMessages(chatId)
             }.onSuccess {
+                olderMessages = emptyList()
+                lastLiveWindow = emptyList()
                 _state.value = _state.value.copy(
                     messages = emptyList(),
                     hasMoreMessages = false,
@@ -1350,7 +1487,7 @@ class ChatViewModel @Inject constructor(
                 reportarEnMain("Chat vaciado", onResult)
             }.onFailure { e ->
                 android.util.Log.e("ChatViewModel", "No se pudo vaciar el chat $chatId", e)
-                reportarEnMain("No se pudo vaciar: ${e.message ?: "error desconocido"}", onResult)
+                reportarEnMain("No se pudo vaciar: ${e.message ?: tr("error desconocido")}", onResult)
             }
         }
     }
@@ -1424,20 +1561,14 @@ class ChatViewModel @Inject constructor(
             try {
                 if (currentChatId.isBlank()) return@launch
                 
-                val updates = mapOf(
-                    "content" to newContent,
-                    "edited" to true,
-                    "editedAt" to System.currentTimeMillis()
+                val original = _state.value.messages.firstOrNull { it.messageId == messageId }
+                databaseRepository.editMessage(
+                    chatId = currentChatId,
+                    messageId = messageId,
+                    newContent = newContent,
+                    wasEncrypted = original?.isEncrypted == true
                 )
-                
-                FirebaseDatabase.getInstance().reference
-                    .child("chats")
-                    .child(currentChatId)
-                    .child("messages")
-                    .child(messageId)
-                    .updateChildren(updates)
-                    .await()
-                
+
                 _state.value = _state.value.copy(editingMessage = null)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1461,88 +1592,68 @@ class ChatViewModel @Inject constructor(
      */
     fun loadMoreMessages() {
         val state = _state.value
-        if (state.isLoadingMore || !state.hasMoreMessages || state.earliestMessageTimestamp <= 0L || currentChatId.isBlank()) return
+        val chatId = currentChatId
+        // El freno va aquí, antes de lanzar nada: comprobar un `isLoadingMore` que se activa
+        // dentro de la corrutina dejaba pasar dos cargas seguidas de la misma página, y sus
+        // mensajes acababan repetidos en la lista (crash "Key was already used").
+        if (loadMoreJob?.isActive == true || !state.hasMoreMessages ||
+            state.earliestMessageTimestamp <= 0L || chatId.isBlank()
+        ) return
 
-        viewModelScope.launch(Dispatchers.IO) {
-            _state.value = _state.value.copy(isLoadingMore = true)
+        _state.update { it.copy(isLoadingMore = true) }
+        loadMoreJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                val olderMessages = databaseRepository.loadMoreMessages(
-                    chatId = currentChatId,
+                val page = databaseRepository.loadMoreMessages(
+                    chatId = chatId,
                     beforeTimestamp = state.earliestMessageTimestamp,
                     limit = 30
                 )
 
-                if (olderMessages.isEmpty()) {
-                    _state.value = _state.value.copy(isLoadingMore = false, hasMoreMessages = false)
+                if (page.isEmpty()) {
+                    _state.update { it.copy(isLoadingMore = false, hasMoreMessages = false) }
                     return@launch
                 }
 
-                // Check if there are even older messages
-                val oldestNew = olderMessages.firstOrNull()?.get("timestamp") as? Long ?: state.earliestMessageTimestamp
+                // Se calcula sobre los datos crudos: una página entera de mensajes borrados
+                // para mí también tiene que hacer avanzar la paginación.
+                val oldestInPage = page.minOf {
+                    (it["timestamp"] as? Number)?.toLong() ?: state.earliestMessageTimestamp
+                }
                 val hasMore = databaseRepository.hasMoreMessages(
-                    chatId = currentChatId,
-                    beforeTimestamp = oldestNew
+                    chatId = chatId,
+                    beforeTimestamp = oldestInPage
                 )
 
                 val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-                val peerId = peerIdOf(currentChatId, currentUserId)
-                val newMessages = olderMessages.map { data ->
-                    val senderId = data["senderId"] as? String ?: ""
-                    val isEncrypted = data["isEncrypted"] as? Boolean ?: false
-                    val payload = data["encryptedPayload"] as? String
-                    val content = decryptedContent(
-                        rawContent = data["content"] as? String ?: "",
-                        isEncrypted = isEncrypted,
-                        payload = payload,
-                        peerId = peerId
+                val peerId = peerIdOf(chatId, currentUserId)
+                val now = databaseRepository.serverNow()
+                val newMessages = page.map { data -> mapMessage(data, chatId, peerId) }
+                    .filter { message -> message.deletedFor[currentUserId] != true }
+                    .filterNot { it.expiresAt in 1..now }
+
+                olderMessages = (newMessages + olderMessages).distinctBy { it.listKey() }
+                val merged = mergeMessages(lastLiveWindow, olderMessages)
+
+                _state.update { current ->
+                    current.copy(
+                        messages = merged,
+                        earliestMessageTimestamp = oldestInPage,
+                        earliestMessageId = merged.firstOrNull()?.messageId.orEmpty(),
+                        isLoadingMore = false,
+                        hasMoreMessages = hasMore
                     )
-                    val timestampRaw = data["timestamp"]
-                    val timestampVal = when (timestampRaw) {
-                        is Long -> timestampRaw
-                        is Double -> timestampRaw.toLong()
-                        is String -> timestampRaw.toLongOrNull() ?: System.currentTimeMillis()
-                        else -> System.currentTimeMillis()
-                    }
-                    Message(
-                        messageId = data["messageId"] as? String ?: "",
-                        chatId = currentChatId,
-                        senderId = senderId,
-                        senderName = data["senderName"] as? String ?: "",
-                        content = content,
-                        timestamp = timestampVal,
-                        status = parseMessageStatus(data["status"]),
-                        replyTo = data["replyTo"] as? String,
-                        reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
-                        mediaUrl = data["mediaUrl"] as? String,
-                        mediaType = data["mediaType"] as? String,
-                        deletedFor = (data["deletedFor"] as? Map<String, Boolean>) ?: emptyMap(),
-                        deletedForEveryone = data["deletedForEveryone"] as? Boolean ?: false,
-                        edited = data["edited"] as? Boolean ?: false,
-                        editedAt = data["editedAt"] as? Long ?: 0L,
-                        forwardedFrom = data["forwardedFrom"] as? String,
-                        isEncrypted = isEncrypted,
-                        encryptedPayload = payload
-                    )
-                }.filter { message ->
-                    message.deletedFor[currentUserId] != true
                 }
-
-                val earliestTimestamp = newMessages.minOfOrNull { it.timestamp } ?: state.earliestMessageTimestamp
-                val earliestId = newMessages.minByOrNull { it.timestamp }?.messageId ?: state.earliestMessageId
-
-                _state.value = _state.value.copy(
-                    messages = newMessages + _state.value.messages,
-                    earliestMessageTimestamp = earliestTimestamp,
-                    earliestMessageId = earliestId,
-                    isLoadingMore = false,
-                    hasMoreMessages = hasMore
-                )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                _state.update { it.copy(isLoadingMore = false) }
+                throw e
             } catch (e: Exception) {
                 e.printStackTrace()
-                _state.value = _state.value.copy(
-                    isLoadingMore = false,
-                    error = "Error al cargar más mensajes: ${e.message}"
-                )
+                _state.update {
+                    it.copy(
+                        isLoadingMore = false,
+                        error = "Error al cargar más mensajes: ${e.message}"
+                    )
+                }
             }
         }
     }

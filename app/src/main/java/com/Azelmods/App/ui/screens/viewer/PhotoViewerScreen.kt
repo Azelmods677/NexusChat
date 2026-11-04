@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.viewer
 
+import com.Azelmods.App.i18n.tr
+
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -121,7 +123,7 @@ fun PhotoViewerScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    "Could not load image",
+                    tr("No se pudo cargar la imagen"),
                     color = Color.White,
                     style = MaterialTheme.typography.bodyMedium
                 )
@@ -129,7 +131,7 @@ fun PhotoViewerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 TextButton(onClick = { navController.popBackStack() }) {
-                    Text("Go Back", color = Color.White)
+                    Text(tr("Volver"), color = Color.White)
                 }
             }
         }
@@ -144,7 +146,7 @@ fun PhotoViewerScreen(
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
+                contentDescription = tr("Atrás"),
                 tint = Color.White
             )
         }
@@ -177,9 +179,9 @@ fun PhotoViewerScreen(
                                 if (bmp != null &&
                                     com.Azelmods.App.ui.utils.ImageActions.saveToGallery(context, bmp)
                                 ) {
-                                    Toast.makeText(context, "Imagen guardada en la Galería", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, tr("Imagen guardada en la Galería"), Toast.LENGTH_SHORT).show()
                                 } else {
-                                    Toast.makeText(context, "No se pudo guardar la imagen", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, tr("No se pudo guardar la imagen"), Toast.LENGTH_SHORT).show()
                                 }
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -192,7 +194,7 @@ fun PhotoViewerScreen(
                 ) {
                     Icon(
                         Icons.Default.Download,
-                        contentDescription = "Save",
+                        contentDescription = tr("Guardar"),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -213,7 +215,7 @@ fun PhotoViewerScreen(
                 ) {
                     Icon(
                         Icons.Default.Share,
-                        contentDescription = "Share",
+                        contentDescription = tr("Compartir"),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -228,7 +230,7 @@ fun PhotoViewerScreen(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = tr("Eliminar"),
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
@@ -260,8 +262,8 @@ fun PhotoViewerScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Image?") },
-            text = { Text("Are you sure you want to delete this image? This action cannot be undone.") },
+            title = { Text(tr("¿Eliminar la imagen?")) },
+            text = { Text(tr("Esta imagen se borrará y no se puede deshacer.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -269,7 +271,7 @@ fun PhotoViewerScreen(
                         try {
                             val storageRef = com.google.firebase.storage.FirebaseStorage.getInstance().getReferenceFromUrl(decodedUrl)
                             storageRef.delete().addOnSuccessListener {
-                                Toast.makeText(context, "Imagen eliminada", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, tr("Imagen eliminada"), Toast.LENGTH_SHORT).show()
                                 navController.popBackStack()
                             }.addOnFailureListener { e ->
                                 Toast.makeText(context, "Error al eliminar: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -279,12 +281,12 @@ fun PhotoViewerScreen(
                         }
                     }
                 ) {
-                    Text("Delete", color = Color.Red)
+                    Text(tr("Eliminar"), color = Color.Red)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(tr("Cancelar"))
                 }
             }
         )

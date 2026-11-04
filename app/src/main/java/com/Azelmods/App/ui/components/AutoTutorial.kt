@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.components
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material3.Icon
@@ -69,7 +71,7 @@ fun TutorialButton(
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.HelpOutline,
-            contentDescription = "Tutorial"
+            contentDescription = tr("Tutorial")
         )
     }
     

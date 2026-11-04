@@ -1,4 +1,6 @@
 package com.Azelmods.App.ui.screens.profile
+
+import com.Azelmods.App.i18n.tr
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -67,14 +69,14 @@ class EditProfileViewModel @Inject constructor(
                     }.onFailure { exception ->
                         _state.value = _state.value.copy(
                             isLoading = false,
-                            error = exception.message ?: "Failed to load profile"
+                            error = exception.message ?: tr("No se pudo cargar el perfil")
                         )
                     }
                 }
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     isLoading = false,
-                    error = e.message ?: "Unknown error occurred"
+                    error = e.message ?: tr("Ocurrió un error desconocido")
                 )
             }
         }

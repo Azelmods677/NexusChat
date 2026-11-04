@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.security
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -52,7 +54,7 @@ fun TorCircuitInfo(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Conexión Tor",
+                    text = tr("Conexión Tor"),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -65,7 +67,7 @@ fun TorCircuitInfo(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
-                        contentDescription = "Comprobar de nuevo",
+                        contentDescription = tr("Comprobar de nuevo"),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -75,7 +77,7 @@ fun TorCircuitInfo(
             
             // Circuit ID
             CircuitInfoRow(
-                label = "Proxy",
+                label = tr("Proxy"),
                 value = circuitInfo.circuitId
             )
             
@@ -83,34 +85,34 @@ fun TorCircuitInfo(
             
             // Entry Node
             CircuitInfoRow(
-                label = "Entrada",
+                label = tr("Entrada"),
                 value = circuitInfo.entryNode,
-                description = "Your connection enters Tor here"
+                description = tr("Aquí entra tu conexión en Tor")
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             // Middle Node
             CircuitInfoRow(
-                label = "Red",
+                label = tr("Red"),
                 value = circuitInfo.middleNode,
-                description = "Traffic is relayed through this node"
+                description = tr("El tráfico pasa por este nodo")
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             // Exit Node
             CircuitInfoRow(
-                label = "Salida",
+                label = tr("Salida"),
                 value = circuitInfo.exitNode,
-                description = "Your traffic exits Tor from here"
+                description = tr("Aquí sale tu tráfico de Tor")
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
             // Bandwidth
             CircuitInfoRow(
-                label = "Ancho de banda",
+                label = tr("Ancho de banda"),
                 value = formatBandwidth(circuitInfo.bandwidth)
             )
             
@@ -132,7 +134,7 @@ fun TorCircuitInfo(
                 
                 Spacer(modifier = Modifier.width(8.dp))
                 
-                Text("Request New Identity")
+                Text(tr("Pedir identidad nueva"))
             }
             
             Spacer(modifier = Modifier.height(8.dp))

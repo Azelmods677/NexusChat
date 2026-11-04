@@ -6,18 +6,19 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 val Shapes = Shapes(
-    small = RoundedCornerShape(8.dp),       // Buttons, chips
-    medium = RoundedCornerShape(12.dp),     // Message bubbles
-    large = RoundedCornerShape(16.dp),      // Cards, dialogs
-    extraLarge = RoundedCornerShape(28.dp)  // Bottom sheets
+    extraSmall = RoundedCornerShape(6.dp),  // Etiquetas
+    small = RoundedCornerShape(8.dp),       // Chips, campos
+    medium = RoundedCornerShape(10.dp),     // Botones, tarjetas
+    large = RoundedCornerShape(14.dp),      // Diálogos
+    extraLarge = RoundedCornerShape(20.dp)  // Hojas inferiores
 )
 
-// Custom Shapes
-val AvatarShape = CircleShape                // 50% rounded (circle)
+// Formas propias
+val AvatarShape = CircleShape
 val StoryRingShape = CircleShape
 val MessageBubbleShape = RoundedCornerShape(
-    topStart = 16.dp,
-    topEnd = 16.dp,
+    topStart = 14.dp,
+    topEnd = 14.dp,
     bottomStart = 4.dp,
-    bottomEnd = 16.dp
+    bottomEnd = 14.dp
 )

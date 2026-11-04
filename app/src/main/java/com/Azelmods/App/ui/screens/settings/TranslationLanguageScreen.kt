@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -32,7 +34,7 @@ fun TranslationLanguageScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Translation Language",
+                        tr("Idioma de traducción"),
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -41,7 +43,7 @@ fun TranslationLanguageScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = tr("Atrás"),
                             tint = Color.White
                         )
                     }
@@ -60,7 +62,7 @@ fun TranslationLanguageScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "Auto-detect uses your device language",
+                text = tr("La detección automática usa el idioma del teléfono"),
                 color = Color.Gray,
                 fontSize = 14.sp,
                 modifier = Modifier.padding(16.dp)

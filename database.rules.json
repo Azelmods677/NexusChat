@@ -91,28 +91,67 @@
     "chats": {
       "$chatId": {
         ".read": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
-        ".write": "auth != null && (!data.exists() || root.child('chats').child($chatId).child('members').child(auth.uid).exists())",
-        
+        /*
+          El bloqueo se comprueba AQUI y no en messages/$messageId: en Firebase un
+          permiso concedido por el padre no se puede retirar en un hijo, asi que con
+          la comprobacion solo en el mensaje un usuario bloqueado seguia pudiendo
+          escribir.
+        */
+        ".write": "auth != null && (!data.exists() || (data.child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()))",
+
         "members": {
           "$memberId": {
             ".validate": "newData.val() === true"
           }
         },
-        
+
+        /*
+          Temporizador de mensajes temporales de la conversacion, en segundos.
+          0 = desactivado. Es compartido: lo que elige un participante vale para
+          los dos, y queda aviso en el chat de quien lo cambio.
+        */
+        "disappearingSeconds": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 604800"
+        },
+
         "messages": {
           ".indexOn": ["timestamp"],
           "$messageId": {
-            ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
-            /*
-              Escribir exige ser miembro Y no estar bloqueado por el otro miembro.
-              La comprobacion vive en la regla y no solo en la app: un bloqueo que
-              unicamente oculta mensajes en la interfaz no es un bloqueo, porque un
-              cliente modificado seguiria escribiendo en el chat.
-            */
-            ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()"
+            ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
           }
         }
       }
+    },
+
+    /*
+      Suscripcion Premium. SOLO la escribe el servidor (Cloud Functions, con el Admin
+      SDK) tras confirmar el pago con la pasarela: si un cliente pudiera escribir aqui,
+      cualquiera se regalaria Premium. Se puede leer para mostrar la insignia VIP.
+    */
+    "premium": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": false
+      }
+    },
+
+    /* Recibos de pago de cada usuario: solo el dueno los ve, solo el servidor escribe. */
+    "payments": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": false
+      }
+    },
+
+    /*
+      Indice de mensajes temporales por fecha de borrado. Lo mantienen las Cloud
+      Functions con el Admin SDK, que ignora estas reglas; ningun cliente lo lee
+      ni lo escribe (ni siquiera deja ver que chats tienen mensajes temporales).
+    */
+    "expiringMessages": {
+      ".indexOn": ["at"],
+      ".read": false,
+      ".write": false
     },
 
     /*

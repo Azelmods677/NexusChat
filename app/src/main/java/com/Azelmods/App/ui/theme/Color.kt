@@ -3,93 +3,90 @@ package com.Azelmods.App.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Color.kt — capa de COMPATIBILIDAD sobre el sistema canónico NexusTokens.
+// Color.kt — capa de compatibilidad sobre NexusTokens.Color.
 //
-// Regla del Nexus Design System (Fase 5, unificación de identidad):
-//   · Un color = UNA definición. El canon vive en NexusTokens.Color.
-//   · Este archivo solo re-exporta alias con los nombres que las pantallas
-//     ya usan, para no tocar 200+ archivos de UI.
-//   · Los colores genuinamente propios de un dominio (terminal, diálogos,
-//     paleta de avatares) sí se definen aquí porque no son roles del sistema.
-//   · PROHIBIDO añadir aquí un Color(0xFF…) que duplique un rol existente.
+// Los nombres antiguos ("Purple", "NeonGreen", "CyanAccent"…) siguen existiendo
+// para no tocar cada pantalla a la vez, pero ya apuntan a la paleta neutra: ningún
+// color neón sobrevive detrás de un alias. El código nuevo debe usar NexusTokens o
+// MaterialTheme.colorScheme.
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ── Marca (alias del canon) ────────────────────────────────────────────────
-val Purple = NexusTokens.Color.Primary          // Violeta de marca — ÚNICO en la app
-val Teal = Color(0xFF00BFA6)                    // Verde-azulado (estado "delivered")
-val Pink = NexusTokens.Color.Accent             // Rosa neón de acento
+// ── Marca ──────────────────────────────────────────────────────────────────
+val Purple = NexusTokens.Color.Primary
+val Teal = NexusTokens.Color.Primary
+val Pink = NexusTokens.Color.Accent
 
-// ── Superficies oscuras (alias de la escalera canónica) ────────────────────
+// ── Superficies oscuras ────────────────────────────────────────────────────
 val DarkBackground = NexusTokens.Color.BgBase
 val DarkSurface = NexusTokens.Color.BgSurface
 val DarkSurfaceVariant = NexusTokens.Color.BgElevated
-val DarkElevated = Color(0xFF2D2D44)            // Cuarto escalón: cards sobre cards
-val DarkBorder = Color(0xFF3D3D5C)              // Bordes de inputs y divisores
+val DarkElevated = NexusTokens.Color.BgHigh
+val DarkBorder = NexusTokens.Color.Hairline
 
-// ── Tema claro (soportado) ─────────────────────────────────────────────────
-val LightBackground = Color(0xFFFAFAFA)
+// ── Tema claro ─────────────────────────────────────────────────────────────
+val LightBackground = Color(0xFFF6F7F8)
 val LightSurface = Color(0xFFFFFFFF)
 
-// ── Semánticos (alias del canon) ───────────────────────────────────────────
+// ── Semánticos ─────────────────────────────────────────────────────────────
 val Success = NexusTokens.Color.Success
 val Error = NexusTokens.Color.Error
-val Warning = Color(0xFFFF9800)                 // Naranja de aviso (M3 no lo consume)
-val Info = Color(0xFF2196F3)
+val Warning = NexusTokens.Color.Warning
+val Info = NexusTokens.Color.Secondary
 
 // ── Estado de mensajes ─────────────────────────────────────────────────────
-val MessageSent = Color(0xFF9E9E9E)
-val MessageDelivered = Color(0xFFB0BEC5)        // Gris claro: entregado, aún no leído
-// Azul "visto": rol propio del canon. Antes era el violeta de marca, que se
-// confundía con cualquier otro acento y no se leía como "lo han leído".
+val MessageSent = NexusTokens.Color.TextMuted
+val MessageDelivered = NexusTokens.Color.TextSecondary
 val MessageRead = NexusTokens.Color.ReadReceipt
 
-// ── Gradiente de Stories (identidad Nexus, 5 paradas) ──────────────────────
+// ── Anillo de historias: un solo tono, no un arcoíris ──────────────────────
 val StoryGradient = listOf(
-    NexusTokens.Color.Accent,   // Rosa
-    Color(0xFFFF8E53),          // Naranja
-    Color(0xFFFFC837),          // Amarillo
-    Teal,                       // Teal
-    NexusTokens.Color.Primary   // Violeta
+    NexusTokens.Color.Primary,
+    NexusTokens.Color.Primary
 )
 
-// ── Acentos consolidados (antes duplicados con hex casi iguales) ───────────
-val ErrorRed = NexusTokens.Color.Error          // antes 0xFFEF4444
-val AmberAccent = Color(0xFFF59E0B)             // Ámbar para warnings suaves
-val NeonGreen = NexusTokens.Color.Online        // mismo hex que el canon
-val EmeraldGreen = NexusTokens.Color.Online     // antes 0xFF10B981 (mismo rol)
-val CyanAccent = NexusTokens.Color.Secondary    // mismo hex que el canon
-val PurpleLight = NexusTokens.Color.PrimaryLight // antes 0xFF9B75FF
-val PurpleBright = NexusTokens.Color.Primary    // antes 0xFF7B5CFA (mismo rol)
-val GoldPremium = NexusTokens.Color.Gold        // mismo hex que el canon
-val BlueAccent = Color(0xFF3B82F6)              // Azul (documentos, acciones 2ª)
-val RosePink = Color(0xFFFC5C7D)                // Rosa intenso (gradientes)
-val IndigoDeep = Color(0xFF2D1B69)              // Índigo (barra modo efímero)
-val RedDeep = Color(0xFFCC0000)                 // Rojo intenso (destructivas)
+// ── Acentos heredados ──────────────────────────────────────────────────────
+val ErrorRed = NexusTokens.Color.Error
+val AmberAccent = NexusTokens.Color.Gold
+val NeonGreen = NexusTokens.Color.Online
+val EmeraldGreen = NexusTokens.Color.Online
+val CyanAccent = NexusTokens.Color.Secondary
+val PurpleLight = NexusTokens.Color.PrimaryLight
+val PurpleBright = NexusTokens.Color.Primary
+val GoldPremium = NexusTokens.Color.Gold
+val BlueAccent = NexusTokens.Color.Secondary
+val RosePink = NexusTokens.Color.Accent
+val IndigoDeep = NexusTokens.Color.BgElevated
+val RedDeep = Color(0xFFB23A33)
 
-// ── Gradiente de burbujas oscuras ──────────────────────────────────────────
-val DarkBubbleDeep = Color(0xFF1E1E2E)
-val DarkBubbleLight = Color(0xFF2A2A3E)
-val DarkDeep = Color(0xFF0D0D1A)                // Fallback de video/wallpaper
+// ── Burbujas ───────────────────────────────────────────────────────────────
+val DarkBubbleDeep = NexusTokens.Color.BgElevated
+val DarkBubbleLight = NexusTokens.Color.BgElevated
+val DarkDeep = NexusTokens.Color.BgBase
 
-// ── Dominio: Terminal / Editor (paleta propia, no son roles del sistema) ───
-val TerminalGreen = Color(0xFF00FF41)
-val TerminalBlack = Color(0xFF0A0A0A)
-val TerminalGray = Color(0xFFCCCCCC)
-val TerminalRed = Color(0xFFFF4444)
-val TerminalAmber = Color(0xFFFFAA00)
-val TerminalSurface = Color(0xFF111111)
+// ── Dominio: terminal y editor ─────────────────────────────────────────────
+val TerminalGreen = Color(0xFF8BD5A0)
+val TerminalBlack = Color(0xFF0D0F11)
+val TerminalGray = Color(0xFFC9CDD1)
+val TerminalRed = Color(0xFFE57F78)
+val TerminalAmber = Color(0xFFE0B765)
+val TerminalSurface = Color(0xFF15181B)
 
-// ── Dominio: diálogos oscuros (color picker) ───────────────────────────────
-val DialogDark = Color(0xFF0F0F0F)
-val DialogField = Color(0xFF1A1A1A)
+// ── Dominio: diálogos oscuros (selector de color) ──────────────────────────
+val DialogDark = NexusTokens.Color.BgSurface
+val DialogField = NexusTokens.Color.BgElevated
 
-// ── Paleta determinista para avatares sin foto (indexada por hash) ─────────
-val CoralOrange = Color(0xFFFF8A65)
-val SkyBlue = Color(0xFF4FC3F7)
-val LavenderMist = Color(0xFFCE93D8)
+// ── Avatares sin foto: tonos apagados, deterministas por nombre ────────────
+val CoralOrange = Color(0xFFB9745F)
+val SkyBlue = Color(0xFF5B8DB0)
+val LavenderMist = Color(0xFF8C7BA8)
 
 val AvatarPalette = listOf(
-    NexusTokens.Color.Primary, CyanAccent, Pink,
-    NeonGreen, GoldPremium, CoralOrange,
-    SkyBlue, LavenderMist
+    Color(0xFF4F8F7E),
+    Color(0xFF5B8DB0),
+    Color(0xFF8C7BA8),
+    Color(0xFFA9708A),
+    Color(0xFFB9745F),
+    Color(0xFFA98E55),
+    Color(0xFF7A8F5A),
+    Color(0xFF6C7A89)
 )

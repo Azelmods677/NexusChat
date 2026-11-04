@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -49,7 +51,7 @@ fun NotificationsScreen(
             }
             if (uri != null) {
                 val ringtone = RingtoneManager.getRingtone(context, uri)
-                val name = ringtone.getTitle(context) ?: "Unknown"
+                val name = ringtone.getTitle(context) ?: tr("Desconocido")
                 viewModel.setNotificationSound(uri.toString(), name)
             }
         }
@@ -58,10 +60,10 @@ fun NotificationsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Notifications", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(tr("Notificaciones"), color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -78,8 +80,8 @@ fun NotificationsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             SettingsSwitchItem(
-                title = "Notifications",
-                subtitle = "Enable all notifications",
+                title = tr("Notificaciones"),
+                subtitle = tr("Activar todas las notificaciones"),
                 icon = Icons.Default.Notifications,
                 checked = notificationsEnabled,
                 onCheckedChange = { viewModel.setNotificationsEnabled(it) }
@@ -88,21 +90,21 @@ fun NotificationsScreen(
             HorizontalDivider(color = DarkSurface)
             
             SettingsSwitchItem(
-                title = "Sound",
-                subtitle = "Play sound for notifications",
+                title = tr("Sonido"),
+                subtitle = tr("Reproducir un sonido al recibir avisos"),
                 icon = Icons.AutoMirrored.Filled.VolumeUp,
                 checked = soundEnabled,
                 onCheckedChange = { viewModel.setSoundEnabled(it) }
             )
             
             SettingsItem(
-                title = "Notification Sound",
+                title = tr("Sonido de notificación"),
                 subtitle = notificationSoundName,
                 icon = Icons.Default.MusicNote,
                 onClick = {
                     val intent = android.content.Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                         putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION)
-                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select Notification Sound")
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, tr("Sonido de notificación"))
                         putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
                         putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
                     }
@@ -111,8 +113,8 @@ fun NotificationsScreen(
             )
             
             SettingsSwitchItem(
-                title = "Vibration",
-                subtitle = "Vibrate on new messages",
+                title = tr("Vibración"),
+                subtitle = tr("Vibrar con mensajes nuevos"),
                 icon = Icons.Default.Vibration,
                 checked = vibrationEnabled,
                 onCheckedChange = { viewModel.setVibrationEnabled(it) }
@@ -121,16 +123,16 @@ fun NotificationsScreen(
             HorizontalDivider(color = DarkSurface, modifier = Modifier.padding(vertical = 8.dp))
             
             SettingsSwitchItem(
-                title = "Message Preview",
-                subtitle = "Show message content in notifications",
+                title = tr("Vista previa del mensaje"),
+                subtitle = tr("Mostrar el contenido en la notificación"),
                 icon = Icons.Default.Preview,
                 checked = messagePreview,
                 onCheckedChange = { viewModel.setMessagePreview(it) }
             )
             
             SettingsSwitchItem(
-                title = "Group Notifications",
-                subtitle = "Receive notifications from groups",
+                title = tr("Notificaciones de grupos"),
+                subtitle = tr("Recibir avisos de los grupos"),
                 icon = Icons.Default.Group,
                 checked = groupNotifications,
                 onCheckedChange = { viewModel.setGroupNotifications(it) }

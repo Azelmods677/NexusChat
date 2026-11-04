@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -186,8 +188,8 @@ class AiKeyViewModel @Inject constructor(
                         // Marcador interno del servicio: traducirlo o el usuario vería
                         // literalmente "API_KEY_MISSING".
                         raw.contains(com.Azelmods.App.data.api.AzelAIApiService.API_KEY_MISSING) ->
-                            "Guarda primero tu API key para consultar los modelos."
-                        raw.isBlank() -> "No se pudo obtener la lista de modelos."
+                            tr("Guarda primero tu API key para consultar los modelos.")
+                        raw.isBlank() -> tr("No se pudo obtener la lista de modelos.")
                         else -> raw
                     }
                 }

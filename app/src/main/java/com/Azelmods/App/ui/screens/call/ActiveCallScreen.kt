@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.call
 
+import com.Azelmods.App.i18n.tr
+
 import android.content.Context
 import android.os.PowerManager
 import android.os.SystemClock
@@ -45,6 +47,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.Azelmods.App.data.model.CallType
+import com.Azelmods.App.ui.components.AvatarRing
+import com.Azelmods.App.ui.components.ProfileColors
 import com.Azelmods.App.ui.components.UserAvatar
 import com.Azelmods.App.ui.components.VideoRenderer
 import com.Azelmods.App.ui.theme.NexusTokens
@@ -143,11 +147,11 @@ fun ActiveCallScreen(
 
     val statusText = when {
         endReason != null -> endReason!!.label
-        phase == CallPhase.STARTING -> "Preparando llamada…"
-        phase == CallPhase.RINGING -> "Llamando…"
-        phase == CallPhase.CONNECTING -> "Conectando…"
-        phase == CallPhase.RECONNECTING -> "Reconectando…"
-        else -> durationText ?: "Conectado"
+        phase == CallPhase.STARTING -> tr("Preparando llamada…")
+        phase == CallPhase.RINGING -> tr("Llamando…")
+        phase == CallPhase.CONNECTING -> tr("Conectando…")
+        phase == CallPhase.RECONNECTING -> tr("Reconectando…")
+        else -> durationText ?: tr("Conectado")
     }
 
     // ── Al terminar (por cualquier motivo) se enseña el motivo y se sale ──
@@ -180,21 +184,29 @@ fun ActiveCallScreen(
     }
 
     val name = contact?.name?.takeIf { it.isNotBlank() } ?: "…"
+    val colors = ProfileColors.forUser(contact?.uid ?: name, contact?.profileColor ?: -1)
+
+    // La imagen del otro solo cuando ya conectó: su pista existe antes de que llegue nada y
+    // mientras tanto se vería en negro. Hasta entonces, tu cámara a pantalla completa.
+    val showRemote = isVideoCall && remoteVideoTrack != null && phase == CallPhase.CONNECTED
+    val showLocalFull = isVideoCall && !showRemote && localVideoTrack != null && isVideoEnabled
+    val showingVideo = showRemote || showLocalFull
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(NexusTokens.Gradient.Background))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { if (isVideoCall) controlsVisible = !controlsVisible }
     ) {
-        if (isVideoCall && remoteVideoTrack != null) {
+        CallBackdrop(photoUrl = contact?.photoUrl, colors = colors)
+        if (showingVideo) {
             VideoRenderer(
-                videoTrack = remoteVideoTrack,
+                videoTrack = if (showRemote) remoteVideoTrack else localVideoTrack,
+                eglContext = viewModel.eglContext,
                 modifier = Modifier.fillMaxSize(),
-                mirror = false
+                mirror = !showRemote && isFrontCamera
             )
             // Velo inferior para que los controles se lean sobre cualquier imagen.
             Box(
@@ -215,12 +227,13 @@ fun ActiveCallScreen(
                 photoUrl = contact?.photoUrl,
                 statusText = statusText,
                 pulsing = endReason == null && phase != CallPhase.CONNECTED,
-                isVideoCall = isVideoCall
+                isVideoCall = isVideoCall,
+                colors = colors
             )
         }
 
         // ── Cabecera (sobre el vídeo) ──
-        if (isVideoCall && remoteVideoTrack != null) {
+        if (showingVideo) {
             AnimatedVisibility(
                 visible = controlsVisible || phase != CallPhase.CONNECTED,
                 enter = fadeIn(), exit = fadeOut(),
@@ -238,7 +251,7 @@ fun ActiveCallScreen(
         }
 
         // ── Vista previa propia (PiP) ──
-        if (isVideoCall) {
+        if (showRemote) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -252,15 +265,17 @@ fun ActiveCallScreen(
                 if (localVideoTrack != null && isVideoEnabled) {
                     VideoRenderer(
                         videoTrack = localVideoTrack,
+                        eglContext = viewModel.eglContext,
                         modifier = Modifier.fillMaxSize(),
                         // Solo se espeja la cámara frontal, como un espejo; la
                         // trasera espejada mostraría el texto al revés.
-                        mirror = isFrontCamera
+                        mirror = isFrontCamera,
+                        overlay = true
                     )
                 } else {
                     Icon(
                         Icons.Default.VideocamOff,
-                        contentDescription = "Cámara apagada",
+                        contentDescription = tr("Cámara apagada"),
                         tint = NexusTokens.Color.TextMuted,
                         modifier = Modifier.align(Alignment.Center).size(28.dp)
                     )
@@ -273,12 +288,12 @@ fun ActiveCallScreen(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .padding(top = if (isVideoCall && remoteVideoTrack != null) 64.dp else 12.dp),
+                .padding(top = if (showingVideo) 64.dp else 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (!(isVideoCall && remoteVideoTrack != null && !controlsVisible)) {
-                SecurityBadge(icon = Icons.Default.Lock, text = "Cifrada de extremo a extremo")
-                if (isRelayOnly) SecurityBadge(icon = Icons.Default.Shield, text = "IP oculta")
+            if (!(showingVideo && !controlsVisible)) {
+                SecurityBadge(icon = Icons.Default.Lock, text = tr("Cifrada de extremo a extremo"))
+                if (isRelayOnly) SecurityBadge(icon = Icons.Default.Shield, text = tr("IP oculta"))
             }
         }
 
@@ -323,10 +338,10 @@ fun ActiveCallScreen(
         AlertDialog(
             onDismissRequest = { showHangupDialog = false },
             containerColor = NexusTokens.Color.BgSurface,
-            title = { Text("¿Colgar la llamada?", color = NexusTokens.Color.TextPrimary) },
+            title = { Text(tr("¿Colgar la llamada?"), color = NexusTokens.Color.TextPrimary) },
             text = {
                 Text(
-                    "Si sales de esta pantalla la llamada terminará.",
+                    tr("Si sales de esta pantalla la llamada terminará."),
                     color = NexusTokens.Color.TextSecondary
                 )
             },
@@ -337,11 +352,11 @@ fun ActiveCallScreen(
                         viewModel.endCall()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = NexusTokens.Color.Error)
-                ) { Text("Colgar") }
+                ) { Text(tr("Colgar")) }
             },
             dismissButton = {
                 TextButton(onClick = { showHangupDialog = false }) {
-                    Text("Seguir en la llamada", color = NexusTokens.Color.PrimaryLight)
+                    Text(tr("Seguir en la llamada"), color = NexusTokens.Color.PrimaryLight)
                 }
             }
         )
@@ -376,15 +391,15 @@ private fun CallPermissionGate(isVideoCall: Boolean, onGrant: () -> Unit, onCanc
             }
             Spacer(Modifier.height(24.dp))
             Text(
-                "Permisos necesarios",
+                tr("Permisos necesarios"),
                 color = NexusTokens.Color.TextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                if (isVideoCall) "Para la videollamada hacen falta el micrófono y la cámara."
-                else "Para la llamada de voz hace falta el micrófono.",
+                if (isVideoCall) tr("Para la videollamada hacen falta el micrófono y la cámara.")
+                else tr("Para la llamada de voz hace falta el micrófono."),
                 color = NexusTokens.Color.TextSecondary,
                 fontSize = 15.sp,
                 textAlign = TextAlign.Center
@@ -394,10 +409,10 @@ private fun CallPermissionGate(isVideoCall: Boolean, onGrant: () -> Unit, onCanc
                 onClick = onGrant,
                 colors = ButtonDefaults.buttonColors(containerColor = NexusTokens.Color.Primary),
                 shape = RoundedCornerShape(NexusTokens.Radius.pill)
-            ) { Text("Conceder permisos") }
+            ) { Text(tr("Conceder permisos")) }
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = onCancel) {
-                Text("Cancelar", color = NexusTokens.Color.TextSecondary)
+                Text(tr("Cancelar"), color = NexusTokens.Color.TextSecondary)
             }
         }
     }
@@ -410,7 +425,8 @@ private fun CallerHero(
     photoUrl: String?,
     statusText: String,
     pulsing: Boolean,
-    isVideoCall: Boolean
+    isVideoCall: Boolean,
+    colors: List<Color>
 ) {
     val transition = rememberInfiniteTransition(label = "pulse")
     val ring by transition.animateFloat(
@@ -436,19 +452,16 @@ private fun CallerHero(
                             .size(140.dp)
                             .scale(1f + progress * 0.55f)
                             .clip(CircleShape)
-                            .background(NexusTokens.Color.Primary.copy(alpha = (1f - progress) * 0.28f))
+                            .background(colors.last().copy(alpha = (1f - progress) * 0.32f))
                     )
                 }
             }
-            Box(
-                Modifier
-                    .size(140.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Brush.linearGradient(NexusTokens.Gradient.Brand), CircleShape)
-                    .padding(4.dp)
-            ) {
-                UserAvatar(name = name, photoUrl = photoUrl, size = 132.dp)
-            }
+            UserAvatar(
+                name = name,
+                photoUrl = photoUrl,
+                size = 140.dp,
+                ring = AvatarRing(colors, width = 3.dp, rotating = pulsing)
+            )
         }
         Spacer(Modifier.height(20.dp))
         Text(
@@ -468,7 +481,7 @@ private fun CallerHero(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            if (isVideoCall) "Videollamada NexusChat" else "Llamada de voz NexusChat",
+            if (isVideoCall) tr("Videollamada NexusChat") else tr("Llamada de voz NexusChat"),
             color = NexusTokens.Color.TextMuted,
             fontSize = 13.sp
         )
@@ -521,14 +534,14 @@ private fun CallControlsPanel(
         ) {
             CallControlButton(
                 icon = if (isAudioEnabled) Icons.Default.Mic else Icons.Default.MicOff,
-                label = if (isAudioEnabled) "Silenciar" else "Activar mic",
+                label = if (isAudioEnabled) tr("Silenciar") else tr("Activar mic"),
                 isActive = !isAudioEnabled,
                 enabled = enabled,
                 onClick = onToggleMic
             )
             CallControlButton(
                 icon = Icons.AutoMirrored.Filled.VolumeUp,
-                label = "Altavoz",
+                label = tr("Altavoz"),
                 isActive = isSpeakerOn,
                 enabled = enabled,
                 onClick = onToggleSpeaker
@@ -536,14 +549,14 @@ private fun CallControlsPanel(
             if (isVideoCall) {
                 CallControlButton(
                     icon = if (isVideoEnabled) Icons.Default.Videocam else Icons.Default.VideocamOff,
-                    label = if (isVideoEnabled) "Cámara" else "Cámara off",
+                    label = if (isVideoEnabled) tr("Cámara") else tr("Cámara off"),
                     isActive = !isVideoEnabled,
                     enabled = enabled,
                     onClick = onToggleVideo
                 )
                 CallControlButton(
                     icon = Icons.Default.Cameraswitch,
-                    label = "Girar",
+                    label = tr("Girar"),
                     isActive = false,
                     enabled = enabled && isVideoEnabled,
                     onClick = onFlipCamera
@@ -561,7 +574,7 @@ private fun CallControlsPanel(
                 disabledContainerColor = NexusTokens.Color.Error.copy(alpha = 0.4f)
             )
         ) {
-            Icon(Icons.Default.CallEnd, contentDescription = "Colgar", modifier = Modifier.size(32.dp))
+            Icon(Icons.Default.CallEnd, contentDescription = tr("Colgar"), modifier = Modifier.size(32.dp))
         }
     }
 }

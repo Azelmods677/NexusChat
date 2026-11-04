@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,10 +60,10 @@ fun HelpSupportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ayuda y soporte") },
+                title = { Text(tr("Ayuda y soporte")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -83,8 +85,8 @@ fun HelpSupportScreen(
             SectionHeader("Guías y aprendizaje")
 
             Text(
-                text = "Se leen dentro de la app, sin conexión. Describen únicamente " +
-                    "funciones que existen en esta versión.",
+                text = tr("Se leen dentro de la app, sin conexión. Describen únicamente " +
+                    "funciones que existen en esta versión."),
                 color = Color.Gray,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
@@ -94,62 +96,62 @@ fun HelpSupportScreen(
             // a "tutorial/gestures" mientras el tutorial se llamaba "touch_gestures":
             // el enlace abría una pantalla vacía.
             SettingsItem(
-                title = "🚀 Primeros pasos",
-                subtitle = "Crear tu cuenta y moverte por la app",
+                title = tr("🚀 Primeros pasos"),
+                subtitle = tr("Crear tu cuenta y moverte por la app"),
                 icon = Icons.Default.School,
                 onClick = { navController.navigate("tutorial/getting_started") }
             )
             SettingsItem(
-                title = "💬 Mensajería",
-                subtitle = "Chats, multimedia, cifrado y mensajes temporales",
+                title = tr("💬 Mensajería"),
+                subtitle = tr("Chats, multimedia, cifrado y mensajes temporales"),
                 icon = Icons.AutoMirrored.Filled.Message,
                 onClick = { navController.navigate("tutorial/messaging") }
             )
             SettingsItem(
-                title = "📸 Historias",
-                subtitle = "Crear historias con música y dibujo",
+                title = tr("📸 Historias"),
+                subtitle = tr("Crear historias con música y dibujo"),
                 icon = Icons.Default.PhotoLibrary,
                 onClick = { navController.navigate("tutorial/stories") }
             )
             SettingsItem(
-                title = "📞 Llamadas",
-                subtitle = "Voz y vídeo P2P con WebRTC",
+                title = tr("📞 Llamadas"),
+                subtitle = tr("Voz y vídeo P2P con WebRTC"),
                 icon = Icons.Default.Call,
                 onClick = { navController.navigate("tutorial/calls") }
             )
             SettingsItem(
-                title = "🤖 Azel IA",
-                subtitle = "Elegir proveedor, modelo y clave propia",
+                title = tr("🤖 Azel IA"),
+                subtitle = tr("Elegir proveedor, modelo y clave propia"),
                 icon = Icons.Default.Psychology,
                 onClick = { navController.navigate("tutorial/ai_features") }
             )
             SettingsItem(
-                title = "🔒 Privacidad",
-                subtitle = "Cifrado, bloqueo biométrico y copias cifradas",
+                title = tr("🔒 Privacidad"),
+                subtitle = tr("Cifrado, bloqueo biométrico y copias cifradas"),
                 icon = Icons.Default.Security,
                 onClick = { navController.navigate("tutorial/privacy") }
             )
             SettingsItem(
-                title = "🧅 Tor y Orbot",
-                subtitle = "Navegación anónima y sitios .onion",
+                title = tr("🧅 Tor y Orbot"),
+                subtitle = tr("Navegación anónima y sitios .onion"),
                 icon = Icons.Default.Shield,
                 onClick = { navController.navigate("tutorial/tor") }
             )
             SettingsItem(
-                title = "🎨 Apariencia",
-                subtitle = "25 acentos, tamaño de texto y fondos",
+                title = tr("🎨 Apariencia"),
+                subtitle = tr("25 acentos, tamaño de texto y fondos"),
                 icon = Icons.Default.Palette,
                 onClick = { navController.navigate("tutorial/appearance") }
             )
             SettingsItem(
-                title = "⚙️ Editor y terminal",
-                subtitle = "Editor con resaltado y emulador de terminal",
+                title = tr("⚙️ Editor y terminal"),
+                subtitle = tr("Editor con resaltado y emulador de terminal"),
                 icon = Icons.Default.DeveloperMode,
                 onClick = { navController.navigate("tutorial/tools") }
             )
             SettingsItem(
-                title = "👆 Gestos",
-                subtitle = "Atajos táctiles en chats, historias y fotos",
+                title = tr("👆 Gestos"),
+                subtitle = tr("Atajos táctiles en chats, historias y fotos"),
                 icon = Icons.Default.TouchApp,
                 onClick = { navController.navigate("tutorial/touch_gestures") }
             )
@@ -160,28 +162,28 @@ fun HelpSupportScreen(
             SectionHeader("Soporte")
 
             Text(
-                text = "Nexus Chat es un proyecto de un solo desarrollador. El canal de " +
-                    "soporte es el repositorio: ahí quedan registradas las incidencias y su estado.",
+                text = tr("Nexus Chat es un proyecto de un solo desarrollador. El canal de " +
+                    "soporte es el repositorio: ahí quedan registradas las incidencias y su estado."),
                 color = Color.Gray,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
             )
 
             SettingsItem(
-                title = "Reportar un error",
-                subtitle = "Abre una incidencia en GitHub",
+                title = tr("Reportar un error"),
+                subtitle = tr("Abre una incidencia en GitHub"),
                 icon = Icons.Default.BugReport,
                 onClick = { open(ISSUES_URL) }
             )
             SettingsItem(
-                title = "Proponer una función",
-                subtitle = "Comparte tu idea en el repositorio",
+                title = tr("Proponer una función"),
+                subtitle = tr("Comparte tu idea en el repositorio"),
                 icon = Icons.Default.Lightbulb,
                 onClick = { open(ISSUES_URL) }
             )
             SettingsItem(
-                title = "Código fuente",
-                subtitle = "github.com/Azelmods677/NexusChat",
+                title = tr("Código fuente"),
+                subtitle = tr("github.com/Azelmods677/NexusChat"),
                 icon = Icons.Default.Code,
                 onClick = { open(REPO_URL) }
             )
@@ -192,16 +194,16 @@ fun HelpSupportScreen(
             SectionHeader("Sobre el proyecto")
 
             SettingsItem(
-                title = "Acerca de Nexus Chat",
-                subtitle = "Versión, stack técnico y autoría",
+                title = tr("Acerca de NexusChat"),
+                subtitle = tr("Versión, stack técnico y autoría"),
                 icon = Icons.Default.Info,
                 // Ruta tipada, no un literal: la pantalla vive en "settings_about" y
                 // escribir "about" a mano habría sido otro enlace roto.
                 onClick = { navController.navigate(Screen.SettingsAbout.route) }
             )
             SettingsItem(
-                title = "Licencia MIT",
-                subtitle = "Puedes usar y modificar el código libremente",
+                title = tr("Licencia MIT"),
+                subtitle = tr("Puedes usar y modificar el código libremente"),
                 icon = Icons.Default.Description,
                 onClick = { open(LICENSE_URL) }
             )
@@ -235,19 +237,19 @@ fun HelpSupportScreen(
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "NexusChat es una plantilla original diseñada y " +
+                        tr("NexusChat es una plantilla original diseñada y " +
                             "desarrollada íntegramente por Azel Mods. Se distribuye bajo " +
                             "licencia MIT: eres libre de usarla, estudiarla y construir sobre " +
-                            "ella, conservando este aviso de copyright y la atribución al autor.",
+                            "ella, conservando este aviso de copyright y la atribución al autor."),
                         color = Color.Gray,
                         fontSize = 12.sp,
                         lineHeight = 17.sp
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "La autoría está firmada en el propio binario mediante verificación " +
+                        tr("La autoría está firmada en el propio binario mediante verificación " +
                             "criptográfica del certificado de la app. Reempaquetar o volver a " +
-                            "firmar el release con otra clave invalida esa firma.",
+                            "firmar el release con otra clave invalida esa firma."),
                         color = Color.Gray.copy(alpha = 0.8f),
                         fontSize = 11.sp,
                         lineHeight = 16.sp

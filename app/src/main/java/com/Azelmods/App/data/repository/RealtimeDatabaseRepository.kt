@@ -28,6 +28,11 @@ class RealtimeDatabaseRepository @Inject constructor(
     private val database = FirebaseDatabase.getInstance().reference
     private val auth = FirebaseAuth.getInstance()
 
+    companion object {
+        /** Un mensaje temporal que nadie abre desaparece igualmente a los 7 días. */
+        const val EPHEMERAL_MAX_UNREAD_MS = 7L * 24 * 60 * 60 * 1000
+    }
+
     fun getChatMessages(chatId: String): Flow<List<Map<String, Any>>> = callbackFlow {
         val messagesRef = database.child("chats").child(chatId).child("messages")
             .orderByChild("timestamp")
@@ -251,45 +256,161 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
 
         if (isEphemeral) {
-            val destructAt = if (isViewOnce) 0L else if (selfDestructDuration > 0) System.currentTimeMillis() + (selfDestructDuration * 1000) else 0L
+            // La cuenta atrás NO empieza aquí, sino cuando el destinatario lo abre
+            // (ver markEphemeralMessageViewed). expireAt es el tope si nunca lo abre.
             messageData["isEphemeral"] = true
             messageData["isViewOnce"] = isViewOnce
             messageData["selfDestructDuration"] = selfDestructDuration
-            messageData["selfDestructAt"] = destructAt
-            messageData["viewedBy"] = emptyList<String>()
-            if (!isEncrypted) {
-                messageData["content"] = content
-            }
+            messageData["expireAt"] = serverNow() + EPHEMERAL_MAX_UNREAD_MS
         }
 
         chatRef.child("messages").child(messageId).setValue(messageData).await()
 
-        val lastMessageText = if (isEphemeral) {
-            when {
-                isViewOnce -> "📷 Foto única"
-                selfDestructDuration > 0 -> "🕐 Mensaje temporal"
-                else -> content
-            }
-        } else {
-            content
+        // La vista previa del chat vive en el servidor. Guardar aquí el texto en claro
+        // anulaba el cifrado de extremo a extremo: Firebase podía leer el último mensaje
+        // de cada conversación. Ahora se guarda un rótulo y el texto va cifrado en
+        // `lastMessagePayload`; solo los dos participantes pueden descifrarlo.
+        val lastMessageText = when {
+            isEphemeral && isViewOnce -> "Mensaje de una sola vista"
+            isEphemeral -> "Mensaje temporal"
+            isEncrypted -> "Mensaje cifrado"
+            else -> content
         }
 
         val lastMessageData = mapOf(
             "lastMessage" to lastMessageText,
+            "lastMessagePayload" to (if (isEphemeral) null else encryptedPayload),
+            "lastMessageId" to messageId,
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
         )
         chatRef.updateChildren(lastMessageData).await()
 
-        sendFcmForMessage(
-            chatId = chatId,
-            senderId = currentUserId,
-            content = if (isEphemeral) {
-                if (isViewOnce) "📷 Foto única"
-                else if (selfDestructDuration > 0) "🕐 Mensaje temporal"
-                else content
-            } else content
+        sendFcmForMessage(chatId = chatId, senderId = currentUserId, content = lastMessageText)
+    }
+
+    // ── Mensajes temporales ──────────────────────────────────────────────────
+
+    /** Diferencia entre el reloj del servidor y el del teléfono. */
+    @Volatile
+    private var serverTimeOffsetMs: Long = 0L
+
+    init {
+        // Las cuentas atrás se comparan con la hora del servidor: con la del teléfono,
+        // un reloj mal puesto haría desaparecer los mensajes antes de tiempo o nunca.
+        FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset")
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    serverTimeOffsetMs = snapshot.getValue(Long::class.java) ?: 0L
+                }
+                override fun onCancelled(error: DatabaseError) = Unit
+            })
+    }
+
+    /** Hora actual según el servidor. */
+    fun serverNow(): Long = System.currentTimeMillis() + serverTimeOffsetMs
+
+    /** Temporizador del chat en segundos (0 = desactivado). Es común a los participantes. */
+    fun observeChatTimer(chatId: String): Flow<Long> = callbackFlow {
+        val ref = database.child("chats").child(chatId).child("disappearingSeconds")
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                trySend(snapshot.getValue(Long::class.java) ?: 0L)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    /** Cambia el temporizador del chat y deja constancia en la conversación. */
+    suspend fun setChatTimer(chatId: String, seconds: Long, notice: String) {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
+        val chatRef = database.child("chats").child(chatId)
+        chatRef.child("disappearingSeconds").setValue(seconds).await()
+        val messageId = chatRef.child("messages").push().key ?: return
+        chatRef.child("messages").child(messageId).setValue(
+            mapOf(
+                "messageId" to messageId,
+                "senderId" to currentUserId,
+                "content" to notice,
+                "mediaType" to "SYSTEM",
+                "timestamp" to ServerValue.TIMESTAMP,
+                "status" to "sent"
+            )
+        ).await()
+    }
+
+    /**
+     * El destinatario ha visto el mensaje: empieza la cuenta atrás (o, si es de una sola
+     * vista, queda registrado que se abrió). Solo la primera apertura marca el tiempo.
+     */
+    suspend fun markEphemeralMessageViewed(chatId: String, messageId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        val msgRef = database.child("chats").child(chatId).child("messages").child(messageId)
+        val updates = mutableMapOf<String, Any>("viewedBy/$userId" to true)
+        val alreadyViewed = msgRef.child("viewedAt").get().await().exists()
+        if (!alreadyViewed) updates["viewedAt"] = ServerValue.TIMESTAMP
+        msgRef.updateChildren(updates).await()
+    }
+
+    /**
+     * Borra de verdad un mensaje temporal: el nodo, el archivo en Storage y, si era la
+     * vista previa del chat, también el rótulo. Puede ejecutarlo cualquier participante
+     * y más de una vez: borrar lo que ya no está no hace nada.
+     */
+    suspend fun deleteEphemeralMessage(chatId: String, messageId: String, mediaUrl: String?) {
+        val chatRef = database.child("chats").child(chatId)
+        chatRef.child("messages").child(messageId).removeValue().await()
+        val lastId = chatRef.child("lastMessageId").get().await().getValue(String::class.java)
+        if (lastId == messageId) {
+            chatRef.updateChildren(
+                mapOf(
+                    "lastMessage" to "Mensaje eliminado",
+                    "lastMessagePayload" to null,
+                    "lastMessageId" to null
+                )
+            ).await()
+        }
+        if (!mediaUrl.isNullOrBlank()) {
+            runCatching {
+                com.google.firebase.storage.FirebaseStorage.getInstance()
+                    .getReferenceFromUrl(mediaUrl).delete().await()
+            }.onFailure { android.util.Log.w("RealtimeDB", "No se pudo borrar el archivo: ${it.message}") }
+        }
+    }
+
+    /**
+     * Edita un mensaje conservando su cifrado. Antes el texto nuevo se escribía en claro
+     * en `content`: quedaba legible en el servidor y el destinatario seguía viendo el
+     * texto antiguo, porque se descifraba el `encryptedPayload` sin cambios.
+     */
+    suspend fun editMessage(chatId: String, messageId: String, newContent: String, wasEncrypted: Boolean) {
+        val updates = hashMapOf<String, Any>(
+            "edited" to true,
+            "editedAt" to ServerValue.TIMESTAMP
         )
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
+        val recipientId = chatId.split("_").filter { it.isNotBlank() }
+            .takeIf { it.size == 2 }?.firstOrNull { it != currentUserId }
+        val encrypted = if (wasEncrypted && recipientId != null) {
+            e2eeCryptoService.ensureLocalKeys()
+            e2eeCryptoService.encryptFor(recipientId, newContent)
+                as? com.Azelmods.App.data.security.encryption.EncryptionResult.Success
+        } else null
+
+        if (encrypted != null) {
+            updates["encryptedPayload"] =
+                android.util.Base64.encodeToString(encrypted.ciphertext, android.util.Base64.NO_WRAP)
+        } else if (wasEncrypted) {
+            // Sin cifrar no se publica: era un mensaje cifrado y debe seguir siéndolo.
+            throw Exception("No se pudo cifrar el texto editado")
+        } else {
+            updates["content"] = newContent
+        }
+        database.child("chats").child(chatId).child("messages").child(messageId).updateChildren(updates).await()
     }
 
     /**
@@ -833,8 +954,6 @@ class RealtimeDatabaseRepository @Inject constructor(
         val messageId = chatRef.child("messages").push().key
             ?: throw Exception("Failed to generate message ID")
 
-        val destructAt = if (isViewOnce) 0L else if (selfDestructDuration > 0) System.currentTimeMillis() + (selfDestructDuration * 1000) else 0L
-
         val messageData = hashMapOf(
             "messageId" to messageId,
             "senderId" to currentUserId,
@@ -847,71 +966,28 @@ class RealtimeDatabaseRepository @Inject constructor(
             "isEphemeral" to true,
             "isViewOnce" to isViewOnce,
             "selfDestructDuration" to selfDestructDuration,
-            "selfDestructAt" to destructAt,
-            "viewedBy" to emptyList<String>()
+            "expireAt" to serverNow() + EPHEMERAL_MAX_UNREAD_MS
         )
 
         chatRef.child("messages").child(messageId).setValue(messageData).await()
 
-        val lastMessageText = when {
-            isViewOnce -> "📷 Foto única"
-            selfDestructDuration > 0 -> "🕐 Multimedia temporal"
-            else -> when (mediaType) {
-                "IMAGE" -> "📷 Foto"
-                "VIDEO" -> "🎥 Video"
-                "AUDIO" -> "🎤 Audio"
-                else -> if (caption.isNotEmpty()) caption else "[$mediaType]"
-            }
-        }
-        
-        val lastMessageData = mapOf(
-            "lastMessage" to lastMessageText,
-            "lastMessageTime" to ServerValue.TIMESTAMP,
-            "lastMessageSenderId" to currentUserId
-        )
-        chatRef.updateChildren(lastMessageData).await()
+        val lastMessageText = if (isViewOnce) "Mensaje de una sola vista" else "Mensaje temporal"
+        chatRef.updateChildren(
+            mapOf(
+                "lastMessage" to lastMessageText,
+                "lastMessagePayload" to null,
+                "lastMessageId" to messageId,
+                "lastMessageTime" to ServerValue.TIMESTAMP,
+                "lastMessageSenderId" to currentUserId
+            )
+        ).await()
 
         sendFcmForMessage(
             chatId = chatId,
             senderId = currentUserId,
-            content = if (isViewOnce) "📷 Foto única" 
-                      else if (selfDestructDuration > 0) "🕐 Multimedia temporal"
-                      else caption.ifEmpty { when (mediaType) {
-                          "IMAGE" -> "📷 Foto"
-                          "VIDEO" -> "🎥 Video"
-                          "AUDIO" -> "🎤 Audio"
-                          else -> mediaType
-                      } },
+            content = lastMessageText,
             mediaType = mediaType
         )
-    }
-
-    suspend fun markEphemeralMessageViewed(chatId: String, messageId: String) {
-        val userId = auth.currentUser?.uid ?: return
-        val msgRef = database.child("chats").child(chatId).child("messages").child(messageId)
-        val snapshot = msgRef.get().await()
-        val isViewOnce = snapshot.child("isViewOnce").getValue(Boolean::class.java) ?: false
-        
-        if (isViewOnce) {
-            msgRef.removeValue().await()
-        } else {
-            msgRef.child("viewedBy").push().setValue(userId).await()
-        }
-    }
-
-    suspend fun cleanupExpiredEphemeralMessages() {
-        val now = System.currentTimeMillis()
-        val chatsSnapshot = database.child("chats").get().await()
-        chatsSnapshot.children.forEach { chat ->
-            val messagesSnapshot = chat.child("messages")
-            messagesSnapshot.children.forEach { msg ->
-                val isEphemeral = msg.child("isEphemeral").getValue(Boolean::class.java) ?: false
-                val destructAt = msg.child("selfDestructAt").getValue(Long::class.java) ?: 0L
-                if (isEphemeral && destructAt > 0 && now > destructAt) {
-                    msg.ref.removeValue()
-                }
-            }
-        }
     }
 
     suspend fun sendMediaMessage(
@@ -957,12 +1033,14 @@ class RealtimeDatabaseRepository @Inject constructor(
         chatRef.child("messages").child(messageId).setValue(messageData).await()
 
         val lastMessageText = when (mediaType) {
-            "IMAGE" -> "📷 Foto"
-            "VIDEO" -> "🎥 Video"
-            "AUDIO" -> "🎤 Audio"
-            else -> if (caption.isNotEmpty()) caption else "[$mediaType]"
+            "IMAGE" -> "Foto"
+            "VIDEO" -> "Vídeo"
+            "GIF", "GIF_VIDEO" -> "GIF"
+            "AUDIO" -> "Audio"
+            "DOCUMENT" -> caption.ifEmpty { "Documento" }
+            else -> if (caption.isNotEmpty()) caption else "Archivo"
         }
-        
+
         val lastMessageData = mapOf(
             "lastMessage" to lastMessageText,
             "lastMessageTime" to ServerValue.TIMESTAMP,
@@ -1299,6 +1377,8 @@ class RealtimeDatabaseRepository @Inject constructor(
     suspend fun markMessagesAsRead(chatId: String) {
         val userId = auth.currentUser?.uid ?: return
         if (chatId.isBlank()) return
+        // Modo anónimo: los mensajes se leen sin avisar al remitente.
+        if (com.Azelmods.App.data.security.tor.AnonymityPolicy.hidesActivity) return
         val messagesRef = database.child("chats").child(chatId).child("messages")
         val snapshot = messagesRef.get().await()
         val updates = mutableMapOf<String, Any>()
@@ -1444,6 +1524,11 @@ class RealtimeDatabaseRepository @Inject constructor(
     suspend fun updatePresence(isOnline: Boolean) {
         val userId = auth.currentUser?.uid ?: return
         val userPresenceRef = database.child("users").child(userId)
+        // Modo anónimo: se publica "desconectado" y no se actualiza la última conexión.
+        if (com.Azelmods.App.data.security.tor.AnonymityPolicy.hidesActivity) {
+            userPresenceRef.updateChildren(mapOf("online" to false, "isOnline" to false)).await()
+            return
+        }
         userPresenceRef.updateChildren(
             mapOf(
                 "online" to isOnline,
@@ -1526,6 +1611,8 @@ class RealtimeDatabaseRepository @Inject constructor(
 
     suspend fun setTypingStatus(chatId: String, isTyping: Boolean) {
         val userId = auth.currentUser?.uid ?: return
+        // "Escribiendo" revela actividad en tiempo real: fuera en modo anónimo.
+        if (isTyping && com.Azelmods.App.data.security.tor.AnonymityPolicy.hidesActivity) return
         val typingRef = database.child("chats").child(chatId).child("typing").child(userId)
         if (isTyping) {
             typingRef.setValue(true).await()

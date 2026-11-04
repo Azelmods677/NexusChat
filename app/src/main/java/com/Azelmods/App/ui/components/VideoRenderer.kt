@@ -19,34 +19,21 @@ import org.webrtc.VideoTrack
 /**
  * Superficie de vídeo WebRTC.
  *
- * ## Por qué el contexto EGL ya no cuelga de [videoTrack]
- *
- * La versión anterior liberaba el `EglBase` dentro de un
- * `DisposableEffect(videoTrack)`. Como la pista siempre empieza en `null` y pasa
- * a existir cuando la llamada se conecta, ese cambio de clave disparaba el
- * `onDispose` de la clave anterior **justo después** de que el renderer se
- * hubiera inicializado con ese mismo contexto: el `SurfaceViewRenderer` se
- * quedaba pintando contra un contexto EGL ya liberado y la videollamada se veía
- * en negro de principio a fin, aunque la conexión estuviera perfectamente
- * establecida.
- *
- * Ahora hay dos efectos con responsabilidades separadas:
- * - uno atado a [videoTrack], que sólo engancha y desengancha el sink;
- * - otro atado a `Unit`, que libera renderer y contexto EGL una única vez,
- *   cuando el composable abandona la composición.
- *
- * Como efecto secundario, cambiar de pista en caliente (por ejemplo al girar la
- * cámara o al reconectar) ya funciona: antes el `factory` de `AndroidView` sólo
- * corría una vez y la pista nueva nunca llegaba a recibir un sink.
+ * @param eglContext el contexto gráfico de [com.Azelmods.App.webrtc.WebRTCManager]. Tiene que
+ *   ser ese y no uno propio: los fotogramas llegan como texturas que solo existen en él, y con
+ *   otro contexto la pantalla se queda en negro aunque la imagen esté llegando.
+ * @param overlay para el recuadro de la propia cámara. Dos superficies de vídeo superpuestas
+ *   necesitan decir cuál va encima, o el recuadro queda tapado por la imagen grande.
  */
 @Composable
 fun VideoRenderer(
     videoTrack: VideoTrack?,
+    eglContext: EglBase.Context,
     modifier: Modifier = Modifier,
-    mirror: Boolean = false
+    mirror: Boolean = false,
+    overlay: Boolean = false
 ) {
     val context = LocalContext.current
-    val eglBase = remember { EglBase.create() }
 
     val renderer = remember {
         SurfaceViewRenderer(context).apply {
@@ -54,8 +41,9 @@ fun VideoRenderer(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
+            if (overlay) setZOrderMediaOverlay(true)
             try {
-                init(eglBase.eglBaseContext, null)
+                init(eglContext, null)
                 setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
                 setEnableHardwareScaler(true)
             } catch (e: Exception) {
@@ -98,11 +86,6 @@ fun VideoRenderer(
                 renderer.release()
             } catch (e: Exception) {
                 android.util.Log.w("VideoRenderer", "Error liberando el renderer: ${e.message}")
-            }
-            try {
-                eglBase.release()
-            } catch (e: Exception) {
-                android.util.Log.w("VideoRenderer", "Error liberando eglBase: ${e.message}")
             }
         }
     }

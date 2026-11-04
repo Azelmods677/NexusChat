@@ -4,4 +4,6 @@
          Única fuente de verdad fuera de Compose: úsalo en NotificationCompat.setColor,
          payloads FCM y el meta-data default_notification_color del manifest. -->
     <color name="notification_accent">#FF7B5CFA</color>
+    <!-- Fondo de la ventana al abrir la app: el mismo negro de la animación de entrada. -->
+    <color name="nexus_window">#FF0B0C0E</color>
 </resources>

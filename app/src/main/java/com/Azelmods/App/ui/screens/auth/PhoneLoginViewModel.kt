@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.auth
 
+import com.Azelmods.App.i18n.tr
+
 import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -153,29 +155,34 @@ class PhoneLoginViewModel @Inject constructor(
         override fun onVerificationFailed(e: FirebaseException) {
             android.util.Log.e("PhoneLogin", "verifyPhoneNumber falló", e)
             val raw = e.message.orEmpty()
-            // La causa nº1 de "el SMS no llega nunca" NO es el número: es que el
-            // proyecto Firebase no puede verificar la app (falta la huella SHA-256
-            // del certificado de firma en la consola, o Play Integrity/reCAPTCHA no
-            // se completó). Firebase devuelve estos fallos con textos reconocibles;
-            // los traducimos a algo que el desarrollador pueda accionar en vez de un
-            // genérico "no se pudo enviar".
-            val looksLikeAppVerification = raw.contains("app verification", ignoreCase = true) ||
-                raw.contains("Integrity", ignoreCase = true) ||
-                raw.contains("reCAPTCHA", ignoreCase = true) ||
-                raw.contains("SafetyNet", ignoreCase = true) ||
-                raw.contains("missing", ignoreCase = true) && raw.contains("SHA", ignoreCase = true)
+            fun says(vararg words: String) = words.any { raw.contains(it, ignoreCase = true) }
+
+            // La causa nº1 de "el SMS no llega nunca" NO es el número: es que el proyecto
+            // Firebase no reconoce la firma de la app. Sin la huella SHA-256 registrada no
+            // pasa la verificación de la app y Firebase rechaza el envío.
+            val appNotRecognized = says(
+                "MISSING_CLIENT_IDENTIFIER", "INVALID_APP_CREDENTIAL", "app verification", "Integrity",
+                "reCAPTCHA", "SafetyNet", "app identifier", "not authorized to use Firebase"
+            )
 
             _state.value = _state.value.copy(
                 isLoading = false,
                 error = when {
-                    e is FirebaseAuthInvalidCredentialsException ->
-                        "El número no es válido. Revisa el prefijo del país y los dígitos."
+                    e is FirebaseAuthInvalidCredentialsException && !appNotRecognized ->
+                        tr("El número no es válido. Revisa el prefijo del país y los dígitos.")
                     e is FirebaseTooManyRequestsException ->
-                        "Demasiados intentos desde este dispositivo. Espera un rato antes de volver a probar."
-                    looksLikeAppVerification ->
-                        "Verificación de la app rechazada por Firebase. Registra la huella SHA-256 " +
-                        "de tu certificado de firma en la consola (Authentication → Sign-in → Teléfono) " +
-                        "y descarga de nuevo google-services.json."
+                        tr("Demasiados intentos desde este dispositivo. Espera un rato antes de volver a probar.")
+                    says("BILLING_NOT_ENABLED") ->
+                        tr("El envío de SMS requiere activar el plan de pago (Blaze) del proyecto en Firebase.")
+                    says("OPERATION_NOT_ALLOWED", "sign-in provider is disabled") ->
+                        tr("El acceso con teléfono no está activado en Firebase (Authentication, Sign-in method).")
+                    says("SMS_REGION", "region") ->
+                        tr("Firebase no tiene permitido enviar SMS a este país (Authentication, Settings, SMS region policy).")
+                    appNotRecognized ->
+                        "Firebase no reconoce esta versión de la app. Hay que registrar su huella SHA-256 " +
+                            "en la consola de Firebase (Configuración del proyecto, tu app Android)."
+                    e is com.google.firebase.FirebaseNetworkException ->
+                        tr("Sin conexión con Firebase. Si el modo anónimo está activo, espera a que conecte.")
                     else -> raw.ifBlank { "No se pudo enviar el SMS" }
                 }
             )
@@ -204,7 +211,7 @@ class PhoneLoginViewModel @Inject constructor(
                 is Resource.Error -> {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = result.message ?: "No se pudo iniciar sesión"
+                        error = result.message ?: tr("No se pudo iniciar sesión")
                     )
                 }
                 is Resource.Loading -> Unit

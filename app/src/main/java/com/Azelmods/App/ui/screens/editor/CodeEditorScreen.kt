@@ -1,41 +1,81 @@
 package com.Azelmods.App.ui.screens.editor
 
-import android.webkit.ConsoleMessage
+import com.Azelmods.App.i18n.tr
+
+import android.graphics.Typeface
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Redo
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.automirrored.filled.WrapText
+import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.FileOpen
+import androidx.compose.material.icons.outlined.SaveAlt
+import androidx.compose.material.icons.outlined.TextDecrease
+import androidx.compose.material.icons.outlined.TextIncrease
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.Azelmods.App.ui.theme.*
+import com.Azelmods.App.ui.components.NexusDivider
+import com.Azelmods.App.ui.components.NexusEmptyState
+import com.Azelmods.App.ui.components.NexusListRow
+import com.Azelmods.App.ui.components.NexusTopBar
+import com.Azelmods.App.ui.theme.NexusTokens
+import io.github.rosemoe.sora.event.ContentChangeEvent
+import io.github.rosemoe.sora.event.SelectionChangeEvent
+import io.github.rosemoe.sora.widget.CodeEditor
+import io.github.rosemoe.sora.widget.EditorSearcher
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+private val EditorSymbols = listOf(
+    "Tab", "{", "}", "(", ")", "[", "]", ";", "=", "\"", "'", "<", ">", "/", "\\", ".", ",", ":", "_", "-", "+", "*", "&", "|", "!", "#", "$", "%", "?"
+)
+
+/**
+ * Editor basado en Sora Editor: numeración de líneas, deshacer ilimitado, autocompletado,
+ * buscar y reemplazar, pestañas y guardado automático.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodeEditorScreen(
@@ -43,521 +83,719 @@ fun CodeEditorScreen(
     viewModel: CodeEditorViewModel = hiltViewModel()
 ) {
     val files by viewModel.files.collectAsState()
+    val tabs by viewModel.tabs.collectAsState()
     val currentFile by viewModel.currentFile.collectAsState()
+    val unsaved by viewModel.unsaved.collectAsState()
     val output by viewModel.output.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
     val jsToExecute by viewModel.jsToExecute.collectAsState()
     val htmlToPreview by viewModel.htmlToPreview.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
 
-    var showNewFileDialog by remember { mutableStateOf(false) }
-    var newFileName by remember { mutableStateOf("") }
-    var newFileLanguage by remember { mutableStateOf("python") }
-    var editorContent by remember { mutableStateOf("") }
-    var showFileList by remember { mutableStateOf(true) }
-
-    // 🔥 WebView for real JavaScript execution
     val context = LocalContext.current
-    val webViewRef = remember { mutableStateOf<WebView?>(null) }
+    val accent = MaterialTheme.colorScheme.primary.toArgb()
+    val editorRef = remember { arrayOfNulls<CodeEditor>(1) }
+
+    var showNewFile by remember { mutableStateOf(false) }
+    var showRename by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
+    var wordWrap by remember { mutableStateOf(false) }
+    var fontSize by remember { mutableFloatStateOf(14f) }
+    var cursorLine by remember { mutableIntStateOf(1) }
+    var cursorColumn by remember { mutableIntStateOf(1) }
+    var lineCount by remember { mutableIntStateOf(1) }
+    var outputExpanded by remember { mutableStateOf(true) }
+    var confirmDelete by remember { mutableStateOf<CodeFile?>(null) }
+
+    fun currentText(): String? = editorRef[0]?.text?.toString()
+
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let(viewModel::importDocument)
+    }
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        val text = currentText()
+        if (uri != null && text != null) viewModel.exportTo(uri, text)
+    }
+
+    // Motor de JavaScript: un WebView invisible que captura la consola.
     var jsOutput by remember { mutableStateOf("") }
     var jsError by remember { mutableStateOf<String?>(null) }
+    val jsEngine = remember { arrayOfNulls<WebView>(1) }
+    DisposableEffect(Unit) {
+        val web = WebView(context).apply {
+            settings.javaScriptEnabled = true
+            webViewClient = WebViewClient()
+            webChromeClient = WebChromeClient()
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun log(message: String) {
+                    jsOutput += message + "\n"
+                }
 
-    // Create hidden WebView for JS execution with proper lifecycle management
-    DisposableEffect(context) {
-        var webView: WebView? = null
-        try {
-            webView = WebView(context).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.databaseEnabled = true
-                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                layoutParams = android.view.ViewGroup.LayoutParams(1, 1) // 1x1 pixel — hidden
-                
-                webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        super.onPageFinished(view, url)
-                    }
-                    
-                    override fun onReceivedError(
-                        view: WebView?,
-                        request: android.webkit.WebResourceRequest?,
-                        error: android.webkit.WebResourceError?
-                    ) {
-                        super.onReceivedError(view, request, error)
-                        jsError = "WebView Error: ${error?.description}"
-                    }
+                @JavascriptInterface
+                fun error(message: String) {
+                    jsError = message
                 }
-                
-                webChromeClient = object : WebChromeClient() {
-                    override fun onConsoleMessage(message: ConsoleMessage?): Boolean {
-                        message?.let {
-                            val line = "[${it.messageLevel()}] ${it.message()}"
-                            jsOutput += line + "\n"
-                        }
-                        return true
-                    }
-                }
-                
-                addJavascriptInterface(object {
-                    @JavascriptInterface
-                    fun log(message: String) {
-                        jsOutput += message + "\n"
-                    }
-                    @JavascriptInterface
-                    fun error(message: String) {
-                        jsError = message
-                    }
-                }, "AndroidBridge")
-                
-                loadData(
-                    """
-                    <!DOCTYPE html>
-                    <html>
-                    <head><meta charset="UTF-8"></head>
-                    <body>
-                    <script>
-                        // Override console to capture output
-                        window.originalConsole = {
-                            log: console.log.bind(console),
-                            error: console.error.bind(console),
-                            warn: console.warn.bind(console)
-                        };
-                        console.log = function(...args) {
-                            try {
-                                window.originalConsole.log(...args);
-                                AndroidBridge.log(args.map(a => String(a)).join(' '));
-                            } catch(e) {}
-                        };
-                        console.error = function(...args) {
-                            try {
-                                window.originalConsole.error(...args);
-                                AndroidBridge.error(args.map(a => String(a)).join(' '));
-                            } catch(e) {}
-                        };
-                        console.warn = function(...args) {
-                            try {
-                                window.originalConsole.warn(...args);
-                                AndroidBridge.log('[WARN] ' + args.map(a => String(a)).join(' '));
-                            } catch(e) {}
-                        };
-                        // Error handler
-                        window.onerror = function(msg, url, line) {
-                            try {
-                                AndroidBridge.error(msg + ' (line ' + line + ')');
-                            } catch(e) {}
-                            return true;
-                        };
-                    </script>
-                    </body>
-                    </html>
-                    """.trimIndent(),
-                    "text/html",
-                    "UTF-8"
-                )
-            }
-            webViewRef.value = webView
-        } catch (e: Exception) {
-            jsError = "Error inicializando WebView: ${e.message}"
+            }, "AndroidBridge")
+            loadDataWithBaseURL(
+                null,
+                """<!DOCTYPE html><html><body><script>
+                    const fmt = a => a.map(x => { try { return typeof x === 'object' ? JSON.stringify(x, null, 2) : String(x) } catch (e) { return String(x) } }).join(' ');
+                    console.log = (...a) => AndroidBridge.log(fmt(a));
+                    console.info = console.log;
+                    console.warn = (...a) => AndroidBridge.log('[aviso] ' + fmt(a));
+                    console.error = (...a) => AndroidBridge.log('[error] ' + fmt(a));
+                    window.onerror = (m, u, l) => { AndroidBridge.error(m + ' (línea ' + l + ')'); return true; };
+                </script></body></html>""",
+                "text/html",
+                "UTF-8",
+                null
+            )
         }
-        
+        jsEngine[0] = web
         onDispose {
-            try {
-                webViewRef.value?.apply {
-                    stopLoading()
-                    loadUrl("about:blank")
-                    clearHistory()
-                    clearCache(true)
-                    removeAllViews()
-                    destroy()
-                }
-                webViewRef.value = null
-            } catch (e: Exception) {
-                // Ignore dispose errors
-            }
+            web.destroy()
+            jsEngine[0] = null
         }
     }
 
-    // Execute JS when ViewModel signals
     LaunchedEffect(jsToExecute) {
         val code = jsToExecute ?: return@LaunchedEffect
         jsOutput = ""
         jsError = null
-
-        // Wait for WebView to be ready
-        delay(500)
-
-        val wrappedCode = """
-            (function() {
-                try {
-                    $code
-                    return '__NEXUS_DONE__';
-                } catch (e) {
-                    AndroidBridge.error(e.name + ': ' + e.message);
-                    return '__NEXUS_ERROR__';
-                }
-            })()
-        """.trimIndent()
-
-        webViewRef.value?.evaluateJavascript(wrappedCode) { result ->
-            // No mostrar los centinelas internos ni "null" como si fueran salida real.
-            val cleanResult = result?.trim('"')?.takeIf {
-                it != "__NEXUS_DONE__" && it != "__NEXUS_ERROR__" && it != "null"
-            } ?: ""
-            viewModel.onJsResult(
-                if (jsOutput.isBlank()) cleanResult else jsOutput,
-                jsError
-            )
+        delay(150)
+        val wrapped = "(function(){try{\n$code\n}catch(e){AndroidBridge.error(e.name+': '+e.message)}})();void 0"
+        jsEngine[0]?.evaluateJavascript(wrapped) {
+            viewModel.onJsResult(jsOutput, jsError)
         }
     }
 
-    LaunchedEffect(currentFile) {
-        editorContent = currentFile?.content ?: ""
-        if (currentFile != null) showFileList = false
+    // Vuelve a la lista de archivos con la tecla atrás, guardando antes.
+    BackHandler(enabled = currentFile != null) {
+        currentFile?.let { file -> currentText()?.let { viewModel.saveFile(file.id, it) } }
+        viewModel.closeAllTabs()
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        currentFile?.name ?: "Code Editor",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (!showFileList) {
-                            showFileList = true
-                            viewModel.closeFile()
-                        } else {
-                            navController.popBackStack()
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
-                    }
-                },
-                actions = {
-                    if (!showFileList && currentFile != null) {
-                        IconButton(onClick = { viewModel.saveFile(editorContent) }) {
-                            Icon(Icons.Default.Save, null, tint = TerminalGreen)
-                        }
-                        IconButton(
-                            onClick = {
-                                currentFile?.let {
-                                    viewModel.executeCode(editorContent, it.language)
-                                }
-                            },
-                            enabled = !isRunning
-                        ) {
-                            if (isRunning) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White
-                                )
-                            } else {
-                                Icon(Icons.Default.PlayArrow, null, tint = TerminalGreen)
-                            }
-                        }
-                    }
-                    IconButton(onClick = { showNewFileDialog = true }) {
-                        Icon(Icons.Default.Add, null, tint = Color.White)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface
-                )
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = DarkBackground
-    ) { padding ->
-        if (showFileList) {
-            // File list
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp)
-            ) {
-                if (files.isEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(
-                                    Icons.Default.Code,
-                                    null,
-                                    tint = Color.Gray,
-                                    modifier = Modifier.size(64.dp)
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    "No code files yet",
-                                    color = Color.Gray,
-                                    fontSize = 16.sp
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = { showNewFileDialog = true }) {
-                                    Text("Create First File")
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    items(files) { file ->
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            color = DarkSurface,
-                            border = BorderStroke(
-                                1.dp,
-                                if (currentFile?.id == file.id) MaterialTheme.colorScheme.primary else Color.Transparent
-                            ),
-                            onClick = {
-                                viewModel.openFile(file)
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                @Suppress("DEPRECATION")
-                                Icon(
-                                    Icons.Default.InsertDriveFile,
-                                    null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        file.name,
-                                        color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        "${file.language} · ${file.size} bytes",
-                                        color = Color.Gray,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                Icon(
-                                    Icons.Default.ChevronRight,
-                                    null,
-                                    tint = Color.Gray
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // Editor + Output
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            ) {
-                // Editor
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    color = DarkSurface
-                ) {
-                    // El resaltado depende del lenguaje del archivo abierto; se recuerda
-                    // para no reconstruir la transformación en cada recomposición.
-                    val editorLanguage = currentFile?.language ?: "text"
-                    val syntaxTransformation = remember(editorLanguage) {
-                        CodeSyntaxTransformation(editorLanguage)
-                    }
-                    BasicTextField(
-                        value = editorContent,
-                        onValueChange = { editorContent = it },
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                            .verticalScroll(rememberScrollState()),
-                        textStyle = TextStyle(
-                            color = CodeColors.Plain,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
-                        ),
-                        visualTransformation = syntaxTransformation,
-                        cursorBrush = SolidColor(TerminalGreen)
-                    )
-                }
-
-                // Output
-                if (output.isNotEmpty()) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 200.dp),
-                        color = TerminalBlack
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "Output",
-                                    color = Color.Gray,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                IconButton(
-                                    onClick = { viewModel.clearOutput() },
-                                    modifier = Modifier.size(20.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Clear,
-                                        null,
-                                        tint = Color.Gray,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                output,
-                                color = TerminalGray,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 12.sp,
-                                modifier = Modifier.verticalScroll(rememberScrollState())
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // New File Dialog
-    if (showNewFileDialog) {
-        AlertDialog(
-            onDismissRequest = { showNewFileDialog = false },
-            title = { Text("New File", color = Color.White) },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = newFileName,
-                        onValueChange = { newFileName = it },
-                        label = { Text("File Name", color = Color.Gray) },
-                        placeholder = { Text("main.py", color = Color.Gray) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = Color.Gray
+    if (currentFile == null) {
+        FileList(
+            files = files,
+            onBack = { navController.popBackStack() },
+            onNew = { showNewFile = true },
+            onImport = { importLauncher.launch(arrayOf("*/*")) },
+            onOpen = viewModel::openFile,
+            onDelete = { confirmDelete = it }
+        )
+    } else {
+        val file = currentFile!!
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = (if (file.id in unsaved) "• " else "") + file.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text("Language:", color = Color.Gray, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    val languages = listOf(
-                        "html", "css", "js", "ts", "jsx", "tsx", "json",
-                        "python", "kotlin", "bash", "c"
-                    )
-                    Row(
-                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        languages.forEach { lang ->
-                            FilterChip(
-                                selected = newFileLanguage == lang,
-                                onClick = { newFileLanguage = lang },
-                                label = { Text(lang, color = Color.White) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary
-                                )
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (newFileName.isNotBlank()) {
-                            viewModel.newFile(newFileName, newFileLanguage)
-                            showNewFileDialog = false
-                            newFileName = ""
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            currentText()?.let { viewModel.saveFile(file.id, it) }
+                            viewModel.closeAllTabs()
+                        }) {
+                            Icon(Icons.Default.FolderOpen, "Archivos")
                         }
                     },
-                    enabled = newFileName.isNotBlank()
+                    actions = {
+                        IconButton(onClick = { showSearch = !showSearch }) { Icon(Icons.Default.Search, "Buscar") }
+                        IconButton(
+                            onClick = {
+                                if (isRunning) {
+                                    viewModel.stopExecution()
+                                } else {
+                                    outputExpanded = true
+                                    currentText()?.let { text ->
+                                        viewModel.saveFile(file.id, text)
+                                        viewModel.executeCode(text, file.language)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                if (isRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                                if (isRunning) tr("Detener") else tr("Ejecutar"),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Box {
+                            IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, "Más opciones") }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                containerColor = NexusTokens.Color.BgElevated
+                            ) {
+                                EditorMenuItem("Nuevo archivo", Icons.Default.Add) {
+                                    showMenu = false
+                                    showNewFile = true
+                                }
+                                EditorMenuItem("Abrir del teléfono", Icons.Outlined.FileOpen) {
+                                    showMenu = false
+                                    importLauncher.launch(arrayOf("*/*"))
+                                }
+                                EditorMenuItem("Guardar en el teléfono", Icons.Outlined.SaveAlt) {
+                                    showMenu = false
+                                    exportLauncher.launch(file.name)
+                                }
+                                EditorMenuItem("Renombrar", Icons.Outlined.DriveFileRenameOutline) {
+                                    showMenu = false
+                                    showRename = true
+                                }
+                                EditorMenuItem(if (wordWrap) tr("Sin ajuste de línea") else tr("Ajuste de línea"), Icons.AutoMirrored.Filled.WrapText) {
+                                    showMenu = false
+                                    wordWrap = !wordWrap
+                                }
+                                EditorMenuItem("Letra más grande", Icons.Outlined.TextIncrease) {
+                                    fontSize = (fontSize + 1f).coerceAtMost(28f)
+                                }
+                                EditorMenuItem("Letra más pequeña", Icons.Outlined.TextDecrease) {
+                                    fontSize = (fontSize - 1f).coerceAtLeast(9f)
+                                }
+                                EditorMenuItem("Eliminar archivo", Icons.Outlined.DeleteOutline) {
+                                    showMenu = false
+                                    confirmDelete = file
+                                }
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = NexusTokens.Color.BgSurface,
+                        titleContentColor = NexusTokens.Color.TextPrimary,
+                        navigationIconContentColor = NexusTokens.Color.TextSecondary,
+                        actionIconContentColor = NexusTokens.Color.TextSecondary
+                    )
+                )
+            },
+            containerColor = NexusTokens.Color.BgBase
+        ) { padding ->
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .consumeWindowInsets(padding)
+                    .imePadding()
+            ) {
+                if (tabs.size > 1) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(NexusTokens.Color.BgSurface)
+                            .horizontalScroll(rememberScrollState())
+                    ) {
+                        tabs.forEach { tab ->
+                            val selected = tab.id == file.id
+                            Row(
+                                modifier = Modifier
+                                    .background(if (selected) NexusTokens.Color.BgBase else NexusTokens.Color.BgSurface)
+                                    .clickable {
+                                        if (!selected) {
+                                            currentText()?.let { viewModel.saveFile(file.id, it) }
+                                            viewModel.openFile(tab)
+                                        }
+                                    }
+                                    .padding(start = 12.dp, end = 6.dp, top = 8.dp, bottom = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    (if (tab.id in unsaved) "• " else "") + tab.name,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (selected) NexusTokens.Color.TextPrimary else NexusTokens.Color.TextMuted,
+                                    maxLines = 1
+                                )
+                                Icon(
+                                    Icons.Default.Close,
+                                    "Cerrar pestaña",
+                                    tint = NexusTokens.Color.TextMuted,
+                                    modifier = Modifier
+                                        .padding(start = 6.dp)
+                                        .size(16.dp)
+                                        .clickable {
+                                            viewModel.closeTab(tab.id, if (selected) currentText() else null)
+                                        }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (showSearch) {
+                    SearchBar(
+                        editor = { editorRef[0] },
+                        onClose = {
+                            editorRef[0]?.searcher?.stopSearch()
+                            showSearch = false
+                        }
+                    )
+                }
+
+                key(file.id) {
+                    AndroidView(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        factory = { ctx ->
+                            CodeEditor(ctx).apply {
+                                editorRef[0] = this
+                                colorScheme = nexusEditorScheme(accent)
+                                typefaceText = Typeface.MONOSPACE
+                                typefaceLineNumber = Typeface.MONOSPACE
+                                setTextSize(fontSize)
+                                setTabWidth(4)
+                                isLineNumberEnabled = true
+                                setPinLineNumber(true)
+                                val density = resources.displayMetrics.density
+                                lineNumberMarginLeft = 8 * density
+                                setDividerMargin(8 * density, 6 * density)
+                                setEditorLanguage(NexusCodeLanguage(file.language))
+                                setText(file.content)
+                                lineCount = text.lineCount
+                                subscribeAlways(ContentChangeEvent::class.java) { event ->
+                                    lineCount = event.editor.text.lineCount
+                                    if (event.action != ContentChangeEvent.ACTION_SET_NEW_TEXT) {
+                                        viewModel.onContentChanged(file.id, event.editor.text.toString())
+                                    }
+                                }
+                                subscribeAlways(SelectionChangeEvent::class.java) { event ->
+                                    cursorLine = event.left.line + 1
+                                    cursorColumn = event.left.column + 1
+                                }
+                            }
+                        },
+                        update = { editor ->
+                            editor.setTextSize(fontSize)
+                            editor.isWordwrap = wordWrap
+                        },
+                        onRelease = { editor ->
+                            // Al cambiar de pestaña el editor nuevo ya se creó: no hay que
+                            // borrar su referencia al liberar el anterior.
+                            if (editorRef[0] === editor) editorRef[0] = null
+                            editor.release()
+                        }
+                    )
+                }
+
+                Text(
+                    "Ln $cursorLine, Col $cursorColumn · ${CodeLanguages.label(file.language)} · $lineCount líneas",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = NexusTokens.Color.TextMuted,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(NexusTokens.Color.BgSurface)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+
+                // Deshacer, rehacer y los símbolos que cuestan en el teclado del móvil.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(NexusTokens.Color.BgSurface)
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Create", color = MaterialTheme.colorScheme.primary)
+                    EditorToolKey(Icons.AutoMirrored.Filled.Undo, "Deshacer") { editorRef[0]?.undo() }
+                    EditorToolKey(Icons.AutoMirrored.Filled.Redo, "Rehacer") { editorRef[0]?.redo() }
+                    EditorSymbols.forEach { symbol ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(NexusTokens.Radius.xs))
+                                .clickable {
+                                    val insert = if (symbol == "Tab") "    " else symbol
+                                    editorRef[0]?.insertText(insert, insert.length)
+                                }
+                                .defaultMinSize(minWidth = 34.dp, minHeight = 34.dp)
+                                .padding(horizontal = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                symbol,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 14.sp,
+                                color = NexusTokens.Color.TextSecondary
+                            )
+                        }
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showNewFileDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+
+                if (output.isNotEmpty() || isRunning) {
+                    NexusDivider()
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(NexusTokens.Color.BgSurface)
+                            .clickable { outputExpanded = !outputExpanded }
+                            .padding(start = 12.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            if (isRunning) tr("Ejecutando…") else tr("Salida"),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = NexusTokens.Color.TextSecondary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            if (outputExpanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            if (outputExpanded) tr("Ocultar salida") else tr("Mostrar salida"),
+                            tint = NexusTokens.Color.TextMuted,
+                            modifier = Modifier.padding(8.dp).size(20.dp)
+                        )
+                    }
+                    if (outputExpanded) {
+                        SelectionContainer {
+                            Text(
+                                text = output,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                color = NexusTokens.Color.TextPrimary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 180.dp)
+                                    .background(NexusTokens.Color.BgDeep)
+                                    .verticalScroll(rememberScrollState())
+                                    .padding(12.dp)
+                            )
+                        }
+                    }
                 }
-            },
-            containerColor = DarkSurface
+            }
+        }
+    }
+
+    if (showNewFile) {
+        NameDialog(
+            title = tr("Nuevo archivo"),
+            initial = "",
+            hint = tr("main.py, index.html, script.sh…"),
+            confirm = "Crear",
+            onDismiss = { showNewFile = false },
+            onConfirm = {
+                currentFile?.let { file -> currentText()?.let { text -> viewModel.saveFile(file.id, text) } }
+                viewModel.newFile(it)
+                showNewFile = false
+            }
         )
     }
 
-    // ── HTML/CSS live preview (WebView visible, a pantalla completa) ──────────
-    htmlToPreview?.let { html ->
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { viewModel.clearHtmlPreview() },
-            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(modifier = Modifier.fillMaxSize(), color = DarkBackground) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(DarkSurface)
-                            .statusBarsPadding()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Language, null, tint = TerminalGreen)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Vista previa",
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = { viewModel.clearHtmlPreview() }) {
-                            Icon(Icons.Default.Close, null, tint = Color.White)
-                        }
-                    }
-                    androidx.compose.ui.viewinterop.AndroidView(
-                        factory = { ctx ->
-                            WebView(ctx).apply {
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                webViewClient = WebViewClient()
-                            }
-                        },
-                        update = { wv ->
-                            wv.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+    if (showRename) {
+        currentFile?.let { file ->
+            NameDialog(
+                title = tr("Renombrar"),
+                initial = file.name,
+                hint = file.name,
+                confirm = "Renombrar",
+                onDismiss = { showRename = false },
+                onConfirm = {
+                    viewModel.renameFile(file.id, it)
+                    showRename = false
+                    editorRef[0]?.setEditorLanguage(NexusCodeLanguage(CodeLanguages.fromFileName(it)))
                 }
+            )
+        }
+    }
+
+    confirmDelete?.let { target ->
+        AlertDialog(
+            onDismissRequest = { confirmDelete = null },
+            title = { Text("¿Eliminar ${target.name}?") },
+            text = { Text(tr("No se puede deshacer."), color = NexusTokens.Color.TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteFile(target)
+                    confirmDelete = null
+                }) { Text(tr("Eliminar"), color = NexusTokens.Color.Error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text(tr("Cancelar")) } },
+            containerColor = NexusTokens.Color.BgSurface
+        )
+    }
+
+    htmlToPreview?.let { html ->
+        Dialog(
+            onDismissRequest = { viewModel.clearHtmlPreview() },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        ) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .background(NexusTokens.Color.BgBase)
+                    .statusBarsPadding()
+            ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(NexusTokens.Color.BgSurface)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        tr("Vista previa"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = NexusTokens.Color.TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(onClick = { viewModel.clearHtmlPreview() }) {
+                        Icon(Icons.Default.Close, "Cerrar", tint = NexusTokens.Color.TextPrimary)
+                    }
+                }
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            webViewClient = WebViewClient()
+                        }
+                    },
+                    update = { it.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null) },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
 }
+
+@Composable
+private fun EditorToolKey(icon: ImageVector, description: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(NexusTokens.Radius.xs))
+            .clickable(onClick = onClick)
+            .defaultMinSize(minWidth = 38.dp, minHeight = 34.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, description, tint = NexusTokens.Color.TextSecondary, modifier = Modifier.size(20.dp))
+    }
+}
+
+@Composable
+private fun EditorMenuItem(label: String, icon: ImageVector, onClick: () -> Unit) {
+    DropdownMenuItem(
+        text = { Text(label, color = NexusTokens.Color.TextPrimary) },
+        leadingIcon = { Icon(icon, null, tint = NexusTokens.Color.TextSecondary) },
+        onClick = onClick
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FileList(
+    files: List<CodeFile>,
+    onBack: () -> Unit,
+    onNew: () -> Unit,
+    onImport: () -> Unit,
+    onOpen: (CodeFile) -> Unit,
+    onDelete: (CodeFile) -> Unit
+) {
+    Scaffold(
+        topBar = {
+            NexusTopBar(
+                title = tr("Editor de código"),
+                onBack = onBack,
+                actions = {
+                    IconButton(onClick = onImport) { Icon(Icons.Outlined.FileOpen, "Abrir del teléfono") }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = onNew,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                elevation = FloatingActionButtonDefaults.elevation(2.dp, 2.dp, 2.dp, 2.dp)
+            ) {
+                Icon(Icons.Default.Add, "Nuevo archivo")
+            }
+        },
+        containerColor = NexusTokens.Color.BgBase
+    ) { padding ->
+        if (files.isEmpty()) {
+            NexusEmptyState(
+                icon = Icons.Outlined.Code,
+                title = tr("Sin archivos"),
+                body = "Crea uno nuevo o abre uno del teléfono. Se guardan en tu cuenta.",
+                actionLabel = tr("Nuevo archivo"),
+                onAction = onNew,
+                modifier = Modifier.padding(padding)
+            )
+        } else {
+            val dateFormat = remember { SimpleDateFormat("d MMM, HH:mm", Locale.forLanguageTag("es")) }
+            LazyColumn(Modifier.fillMaxSize().padding(padding)) {
+                items(files, key = { it.id }) { file ->
+                    NexusListRow(
+                        title = file.name,
+                        subtitle = "${CodeLanguages.label(file.language)} · ${formatSize(file.size)} · ${dateFormat.format(Date(file.timestamp))}",
+                        icon = Icons.AutoMirrored.Outlined.InsertDriveFile,
+                        singleLineSubtitle = true,
+                        onClick = { onOpen(file) },
+                        trailing = {
+                            IconButton(onClick = { onDelete(file) }) {
+                                Icon(Icons.Outlined.DeleteOutline, "Eliminar", tint = NexusTokens.Color.TextMuted)
+                            }
+                        }
+                    )
+                }
+                item { Spacer(Modifier.height(88.dp)) }
+            }
+        }
+    }
+}
+
+private fun formatSize(bytes: Long): String =
+    if (bytes < 1024) "$bytes B" else "%.1f KB".format(bytes / 1024.0)
+
+@Composable
+private fun SearchBar(editor: () -> CodeEditor?, onClose: () -> Unit) {
+    var query by remember { mutableStateOf("") }
+    var replacement by remember { mutableStateOf("") }
+    var ignoreCase by remember { mutableStateOf(true) }
+    var useRegex by remember { mutableStateOf(false) }
+    var showReplace by remember { mutableStateOf(false) }
+    var matches by remember { mutableIntStateOf(0) }
+    var regexError by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) { focus.requestFocus() }
+
+    LaunchedEffect(query, ignoreCase, useRegex) {
+        val searcher = editor()?.searcher ?: return@LaunchedEffect
+        regexError = false
+        if (query.isEmpty()) {
+            runCatching { searcher.stopSearch() }
+            matches = 0
+            return@LaunchedEffect
+        }
+        runCatching {
+            val type = if (useRegex) EditorSearcher.SearchOptions.TYPE_REGULAR_EXPRESSION else EditorSearcher.SearchOptions.TYPE_NORMAL
+            searcher.search(query, EditorSearcher.SearchOptions(type, ignoreCase))
+        }.onFailure { regexError = true }
+        // El recuento se calcula en segundo plano.
+        delay(200)
+        matches = runCatching { searcher.matchedPositionCount }.getOrDefault(0)
+    }
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(NexusTokens.Color.BgSurface)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            EditorField(
+                value = query,
+                onValueChange = { query = it },
+                placeholder = tr("Buscar"),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focus)
+            )
+            Text(
+                text = if (regexError) tr("Regex no válida") else if (query.isEmpty()) "" else matches.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (regexError) NexusTokens.Color.Error else NexusTokens.Color.TextMuted,
+                modifier = Modifier.padding(horizontal = 6.dp)
+            )
+            IconButton(onClick = { runCatching { editor()?.searcher?.gotoPrevious() } }) {
+                Icon(Icons.Default.KeyboardArrowUp, "Anterior", tint = NexusTokens.Color.TextSecondary)
+            }
+            IconButton(onClick = { runCatching { editor()?.searcher?.gotoNext() } }) {
+                Icon(Icons.Default.KeyboardArrowDown, "Siguiente", tint = NexusTokens.Color.TextSecondary)
+            }
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, "Cerrar búsqueda", tint = NexusTokens.Color.TextSecondary)
+            }
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(vertical = 2.dp)
+        ) {
+            FilterChip(selected = !ignoreCase, onClick = { ignoreCase = !ignoreCase }, label = { Text(tr("Aa")) })
+            FilterChip(selected = useRegex, onClick = { useRegex = !useRegex }, label = { Text(tr("Regex")) })
+            FilterChip(selected = showReplace, onClick = { showReplace = !showReplace }, label = { Text(tr("Reemplazar")) })
+        }
+        if (showReplace) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                EditorField(
+                    value = replacement,
+                    onValueChange = { replacement = it },
+                    placeholder = tr("Reemplazar por"),
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = { runCatching { editor()?.searcher?.replaceThis(replacement) } }) { Text(tr("Uno")) }
+                TextButton(onClick = { runCatching { editor()?.searcher?.replaceAll(replacement) } }) { Text(tr("Todos")) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditorField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(
+            color = NexusTokens.Color.TextPrimary,
+            fontFamily = FontFamily.Monospace
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        modifier = modifier
+            .clip(RoundedCornerShape(NexusTokens.Radius.sm))
+            .background(NexusTokens.Color.BgElevated)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        decorationBox = { inner ->
+            if (value.isEmpty()) {
+                Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = NexusTokens.Color.TextMuted)
+            }
+            inner()
+        }
+    )
+}
+
+@Composable
+private fun NameDialog(
+    title: String,
+    initial: String,
+    hint: String,
+    confirm: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit
+) {
+    var name by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                singleLine = true,
+                placeholder = { Text(hint) },
+                supportingText = { Text(tr("El tipo de archivo se detecta por la extensión.")) },
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name) }) { Text(confirm) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } },
+        containerColor = NexusTokens.Color.BgSurface
+    )
+}
+

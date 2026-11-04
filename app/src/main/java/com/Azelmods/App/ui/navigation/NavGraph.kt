@@ -338,6 +338,10 @@ fun NavGraph(
         composable(Screen.Premium.route) {
             PremiumScreen(navController = navController)
         }
+
+        composable(Screen.ProfileCustomize.route) {
+            com.Azelmods.App.ui.screens.profile.ProfileCustomizeScreen(navController = navController)
+        }
         
         composable(Screen.AiFeatures.route) {
             AiFeaturesScreen(navController = navController)
@@ -384,7 +388,8 @@ fun NavGraph(
         composable(Screen.AzelAI.route) {
             com.Azelmods.App.ui.screens.azelai.AzelAIScreen(
                 onBack = { navController.popBackStack() },
-                onOpenSettings = { navController.navigate(Screen.AiFeatures.route) }
+                onOpenSettings = { navController.navigate(Screen.AiFeatures.route) },
+                onOpenEditor = { navController.navigate("code_editor") }
             )
         }
         

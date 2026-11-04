@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -83,10 +85,10 @@ fun AccountSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Account", color = Color.White, fontWeight = FontWeight.Bold) },
+                title = { Text(tr("Cuenta"), color = Color.White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { safeNavigateBack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"), tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -146,7 +148,7 @@ fun AccountSettingsScreen(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = if (username.isNotEmpty()) "@$username" else "Set username",
+                            text = if (username.isNotEmpty()) "@$username" else tr("Elegir usuario"),
                             color = Color.Gray,
                             fontSize = 14.sp
                         )
@@ -154,7 +156,7 @@ fun AccountSettingsScreen(
                     
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            text = "Edit Profile",
+                            text = tr("Editar perfil"),
                             color = MaterialTheme.colorScheme.primary,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
@@ -172,7 +174,7 @@ fun AccountSettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "Tap to edit your profile, photo, name, username, and bio",
+                text = tr("Toca para editar tu perfil, foto, nombre, usuario y biografía"),
                 color = Color.Gray,
                 fontSize = 12.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -186,7 +188,7 @@ fun AccountSettingsScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Account Information",
+                text = tr("Datos de la cuenta"),
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -196,7 +198,7 @@ fun AccountSettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             AccountInfoItem(
-                label = "Phone Number",
+                label = tr("Teléfono"),
                 value = phoneNumber.ifEmpty { "Not set" },
                 icon = Icons.Default.Phone,
                 onClick = {
@@ -207,7 +209,7 @@ fun AccountSettingsScreen(
             )
             
             AccountInfoItem(
-                label = "Email",
+                label = tr("Correo"),
                 value = email.ifEmpty { "Not set" },
                 icon = Icons.Default.Email,
                 onClick = {
@@ -223,7 +225,7 @@ fun AccountSettingsScreen(
             Spacer(modifier = Modifier.height(24.dp))
             
             Text(
-                text = "Danger Zone",
+                text = tr("Zona de peligro"),
                 color = Color.Red,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -233,15 +235,15 @@ fun AccountSettingsScreen(
             Spacer(modifier = Modifier.height(8.dp))
             
             SettingsItem(
-                title = "Change Password",
+                title = tr("Cambiar contraseña"),
                 icon = Icons.Default.Lock,
                 iconTint = Color.Yellow,
                 onClick = { showChangePasswordDialog = true }
             )
             
             SettingsItem(
-                title = "Delete Account",
-                subtitle = "Permanently delete your account and all data",
+                title = tr("Eliminar cuenta"),
+                subtitle = tr("Borra para siempre tu cuenta y todos tus datos"),
                 icon = Icons.Default.DeleteForever,
                 iconTint = Color.Red,
                 onClick = { showDeleteAccountDialog = true }
@@ -292,12 +294,12 @@ fun AccountSettingsScreen(
                         }
                     }
                 ) {
-                    Text("Save", color = MaterialTheme.colorScheme.primary)
+                    Text(tr("Guardar"), color = MaterialTheme.colorScheme.primary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text(tr("Cancelar"), color = Color.Gray)
                 }
             },
             containerColor = DarkSurface
@@ -308,13 +310,13 @@ fun AccountSettingsScreen(
     if (showChangePasswordDialog) {
         AlertDialog(
             onDismissRequest = { showChangePasswordDialog = false },
-            title = { Text("Change Password", color = Color.White) },
+            title = { Text(tr("Cambiar contraseña"), color = Color.White) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
-                        label = { Text("New Password", color = Color.Gray) },
+                        label = { Text(tr("Contraseña nueva"), color = Color.Gray) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
@@ -327,7 +329,7 @@ fun AccountSettingsScreen(
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
-                        label = { Text("Confirm Password", color = Color.Gray) },
+                        label = { Text(tr("Confirmar contraseña"), color = Color.Gray) },
                         singleLine = true,
                         isError = confirmPassword.isNotEmpty() && confirmPassword != newPassword,
                         colors = OutlinedTextFieldDefaults.colors(
@@ -356,13 +358,13 @@ fun AccountSettingsScreen(
                     if (accountActionState is SettingsViewModel.AccountActionState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
                     } else {
-                        Text("Change", color = MaterialTheme.colorScheme.primary)
+                        Text(tr("Cambiar"), color = MaterialTheme.colorScheme.primary)
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showChangePasswordDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text(tr("Cancelar"), color = Color.Gray)
                 }
             },
             containerColor = DarkSurface
@@ -373,16 +375,16 @@ fun AccountSettingsScreen(
     if (showDeleteAccountDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteAccountDialog = false },
-            title = { Text("Delete Account", color = ErrorRed) },
+            title = { Text(tr("Eliminar cuenta"), color = ErrorRed) },
             text = {
                 Column {
                     Text(
-                        "This will permanently delete your account and all data. This action cannot be undone.",
+                        tr("Esto borrará para siempre tu cuenta y todos tus datos. No se puede deshacer."),
                         color = Color.Gray
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Type 'DELETE' to confirm:",
+                        tr("Escribe DELETE para confirmar:"),
                         color = Color.White
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -416,13 +418,13 @@ fun AccountSettingsScreen(
                     if (accountActionState is SettingsViewModel.AccountActionState.Loading) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White)
                     } else {
-                        Text("Delete", color = ErrorRed)
+                        Text(tr("Eliminar"), color = ErrorRed)
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteAccountDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text(tr("Cancelar"), color = Color.Gray)
                 }
             },
             containerColor = DarkSurface

@@ -35,7 +35,7 @@ data class CachedUserEntity(
     val bio: String = "",
 
     @ColumnInfo(name = "status_text")
-    val statusText: String = "Hey there! I'm using Nexus Chat",
+    val statusText: String = "¡Hola! Estoy usando NexusChat",
 
     @ColumnInfo(name = "is_online")
     val isOnline: Boolean = false,

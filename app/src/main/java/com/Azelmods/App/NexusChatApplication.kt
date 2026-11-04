@@ -3,6 +3,7 @@ package com.Azelmods.App
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -16,6 +17,10 @@ import coil3.request.crossfade
 import coil3.util.DebugLogger
 import com.Azelmods.App.BuildConfig
 import com.Azelmods.App.data.demo.DemoAccountManager
+import com.Azelmods.App.data.security.tor.AnonymityPolicy
+import com.Azelmods.App.data.security.tor.TorPreferences
+import com.Azelmods.App.data.security.tor.TorService
+import com.Azelmods.App.data.security.tor.TorSocketRouter
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -41,9 +46,37 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
      */
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    // Lazy: TorService solo se crea si el usuario dejó activado el modo anónimo.
+    @Inject
+    lateinit var torService: dagger.Lazy<TorService>
+
+    @Inject
+    lateinit var torPreferences: TorPreferences
+
+    /**
+     * Modo anónimo de cierre seguro desde el primer instante: esto corre antes que los
+     * ContentProvider de Firebase, así que ninguna conexión Java sale por la red normal
+     * mientras Tor arranca, ni siquiera si la app la despierta una notificación.
+     */
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(base)
+        com.Azelmods.App.i18n.I18n.init(base)
+        val preferences = TorPreferences(base)
+        AnonymityPolicy.ghost = preferences.isGhostModeEnabled()
+        if (preferences.isAnonymousModeEnabled()) {
+            AnonymityPolicy.active = true
+            TorSocketRouter.enable(TorService.FAIL_CLOSED_PORT)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
-        
+
+        if (torPreferences.isAnonymousModeEnabled()) {
+            runCatching { torService.get().restoreIfEnabled(torPreferences) }
+                .onFailure { Log.e(TAG, "No se pudo restaurar el modo anónimo", it) }
+        }
+
         // ══════════════════════════════════════════════════════════════
         // INSTALL GLOBAL ERROR HANDLER — ENTERPRISE GRADE 2026
         // ══════════════════════════════════════════════════════════════
@@ -129,6 +162,16 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
      */
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         return ImageLoader.Builder(context)
+            .components {
+                // Coil no los registra solo: sin esto los GIF se ven quietos y un video no
+                // da miniatura.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    add(coil3.gif.AnimatedImageDecoder.Factory())
+                } else {
+                    add(coil3.gif.GifDecoder.Factory())
+                }
+                add(coil3.video.VideoFrameDecoder.Factory())
+            }
             .memoryCache {
                 MemoryCache.Builder()
                     .maxSizePercent(context, percent = 0.25)

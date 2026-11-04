@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.security
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -68,7 +70,7 @@ fun AnonymousModeToggle(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Anonymous Mode",
+                        text = tr("Modo anónimo"),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White

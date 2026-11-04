@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -58,7 +60,7 @@ fun FontSizeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Tamaño de Fuente",
+                        tr("Tamaño de Fuente"),
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -94,13 +96,13 @@ fun FontSizeScreen(
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Text(
-                        "Vista Previa",
+                        tr("Vista Previa"),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 12.sp
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Hola! ¿Cómo estás?",
+                        tr("Hola! ¿Cómo estás?"),
                         color = Color.White,
                         fontSize = when (selectedNorm) {
                             "SMALL" -> 13.sp

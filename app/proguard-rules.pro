@@ -216,3 +216,13 @@
 # ── Prevent R8 from removing entire packages ────────────────────
 -keep class com.Azelmods.App.** { *; }
 
+
+# Tor integrado: el JNI de libtor.so busca estas clases por nombre.
+-keep class org.torproject.jni.** { *; }
+-keep class net.freehaven.tor.control.** { *; }
+# Terminal real (Termux): el JNI de libtermux.so busca JNI.createSubprocess por nombre.
+-keep class com.termux.terminal.** { *; }
+-keep class com.termux.view.** { *; }
+# Sora Editor
+-keep class io.github.rosemoe.sora.** { *; }
+-dontwarn io.github.rosemoe.sora.**

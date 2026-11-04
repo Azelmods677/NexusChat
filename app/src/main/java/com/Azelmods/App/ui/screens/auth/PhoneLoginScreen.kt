@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.auth
 
+import com.Azelmods.App.i18n.tr
+
 import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -57,7 +59,7 @@ fun PhoneLoginScreen(
         containerColor = NexusTokens.Color.BgBase,
         topBar = {
             TopAppBar(
-                title = { Text("Entrar con teléfono") },
+                title = { Text(tr("Entrar con teléfono")) },
                 navigationIcon = {
                     IconButton(
                         onClick = {
@@ -65,7 +67,7 @@ fun PhoneLoginScreen(
                             else navController.popBackStack()
                         }
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = tr("Atrás"))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -112,7 +114,7 @@ fun PhoneLoginScreen(
                 text = if (state.step == PhoneAuthStep.PHONE) {
                     "Te enviaremos un SMS con un código de ${PhoneLoginState.CODE_LENGTH} dígitos. Pueden aplicarse tarifas de tu operador."
                 } else {
-                    state.info ?: "Revisa tus mensajes"
+                    state.info ?: tr("Revisa tus mensajes")
                 },
                 fontSize = 14.sp,
                 color = NexusTokens.Color.TextSecondary,
@@ -130,7 +132,7 @@ fun PhoneLoginScreen(
                         OutlinedTextField(
                             value = state.countryCode,
                             onValueChange = viewModel::onCountryCodeChange,
-                            label = { Text("País") },
+                            label = { Text(tr("País")) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                             modifier = Modifier.width(110.dp),
@@ -140,7 +142,7 @@ fun PhoneLoginScreen(
                         OutlinedTextField(
                             value = state.phoneNumber,
                             onValueChange = viewModel::onPhoneNumberChange,
-                            label = { Text("Número de teléfono") },
+                            label = { Text(tr("Número de teléfono")) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Phone,
@@ -166,7 +168,7 @@ fun PhoneLoginScreen(
                     Spacer(Modifier.height(NexusTokens.Space.lg))
 
                     NexusButton(
-                        text = "Enviar código",
+                        text = tr("Enviar código"),
                         onClick = {
                             if (activity == null) return@NexusButton
                             viewModel.sendVerificationCode(activity)
@@ -195,7 +197,7 @@ fun PhoneLoginScreen(
                     Spacer(Modifier.height(NexusTokens.Space.lg))
 
                     NexusButton(
-                        text = "Verificar y entrar",
+                        text = tr("Verificar y entrar"),
                         onClick = viewModel::verifyCode,
                         loading = state.isLoading,
                         enabled = state.canSubmitCode
@@ -244,7 +246,7 @@ fun PhoneLoginScreen(
             if (activity == null) {
                 Spacer(Modifier.height(NexusTokens.Space.md))
                 Text(
-                    text = "No se pudo acceder a la ventana de la app; reinicia NexusChat.",
+                    text = tr("No se pudo acceder a la ventana de la app; reinicia NexusChat."),
                     color = NexusTokens.Color.Error,
                     fontSize = 13.sp
                 )

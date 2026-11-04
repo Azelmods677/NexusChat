@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 520" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif" role="img" aria-label="NexusChat, mensajería privada con inteligencia artificial">
+  <defs>
+    <radialGradient id="halo"><stop offset="0" stop-color="#2FB38E" stop-opacity=".30"/><stop offset="1" stop-color="#2FB38E" stop-opacity="0"/></radialGradient>
+    <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#7FD6BC"/><stop offset="1" stop-color="#2FB38E"/></linearGradient>
+    <linearGradient id="stroke" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#2FB38E"/></linearGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.2" fill="#fff" fill-opacity=".05"/></pattern>
+  </defs>
+  <rect width="1280" height="520" rx="24" fill="#0B0C0E"/>
+  <rect width="1280" height="520" rx="24" fill="url(#grid)"/>
+  
+  <g>
+    <circle cx="255" cy="260" r="180" fill="url(#halo)"/>
+    <line x1="255.0" y1="140.0" x2="303.8" y2="369.6" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/><line x1="349.6" y1="186.1" x2="198.7" y2="366.0" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/><line x1="371.4" y1="289.0" x2="136.8" y2="280.8" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/><line x1="303.8" y1="369.6" x2="165.8" y2="179.7" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/><line x1="198.7" y1="366.0" x2="255.0" y2="140.0" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/><line x1="136.8" y1="280.8" x2="349.6" y2="186.1" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/><line x1="165.8" y1="179.7" x2="371.4" y2="289.0" stroke="#2FB38E" stroke-opacity=".16" stroke-width="1.2"/>
+    <circle cx="255" cy="260" r="120" fill="none" stroke="url(#ring)" stroke-width="5" stroke-linecap="round"
+      stroke-dasharray="754.0" transform="rotate(-90 255 260)"><animate attributeName="stroke-dashoffset" values="754.0;0;0;754.0" keyTimes="0;.28;.9;1" dur="7s" repeatCount="indefinite"/></circle>
+    <circle cx="255.0" cy="140.0" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="0.00s" repeatCount="indefinite"/></circle><circle cx="349.6" cy="186.1" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="0.32s" repeatCount="indefinite"/></circle><circle cx="371.4" cy="289.0" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="0.64s" repeatCount="indefinite"/></circle><circle cx="303.8" cy="369.6" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="0.96s" repeatCount="indefinite"/></circle><circle cx="198.7" cy="366.0" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="1.28s" repeatCount="indefinite"/></circle><circle cx="136.8" cy="280.8" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="1.60s" repeatCount="indefinite"/></circle><circle cx="165.8" cy="179.7" r="4" fill="#2FB38E"><animate attributeName="r" values="4;7;4" dur="3.2s" begin="1.92s" repeatCount="indefinite"/></circle>
+    <path d="M197.4 312.8 L197.4 207.2 L312.6 312.8 L312.6 207.2" fill="none" stroke="url(#stroke)" stroke-width="21.6" stroke-linecap="round" stroke-linejoin="round"
+      stroke-dasharray="367.5"><animate attributeName="stroke-dashoffset" values="367.5;367.5;0;0;367.5" keyTimes="0;.1;.38;.9;1" dur="7s" repeatCount="indefinite"/></path>
+  </g>
+  <text x="470" y="205" font-size="84" font-weight="800" fill="#ECEEF0" letter-spacing="-2">NexusChat</text>
+  <text x="472" y="262" font-size="29" fill="#A6ACB3">Tus conversaciones, tus llamadas y tu propia IA,</text>
+  <text x="472" y="302" font-size="29" fill="#A6ACB3">en una sola app pensada para tu privacidad.</text>
+  <g transform="translate(470 372)"><rect width="269" height="34" rx="17" fill="#7FD6BC" fill-opacity=".1" stroke="#7FD6BC" stroke-opacity=".4"/><text x="134" y="22" text-anchor="middle" font-size="14" fill="#7FD6BC" font-weight="600">Cifrado de extremo a extremo</text></g><g transform="translate(750.8 372)"><rect width="140" height="34" rx="17" fill="#A78BFA" fill-opacity=".1" stroke="#A78BFA" stroke-opacity=".4"/><text x="70" y="22" text-anchor="middle" font-size="14" fill="#A78BFA" font-weight="600">Agentes de IA</text></g><g transform="translate(902.5999999999999 372)"><rect width="140" height="34" rx="17" fill="#D9A441" fill-opacity=".1" stroke="#D9A441" stroke-opacity=".4"/><text x="70" y="22" text-anchor="middle" font-size="14" fill="#D9A441" font-weight="600">Tor integrado</text></g>
+  <text x="472" y="452" font-size="17" fill="#7C828A">Android 12 o superior · Gratis · Código abierto</text>
+</svg>
