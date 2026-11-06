@@ -325,6 +325,7 @@ fun HomeScreenRedesigned(
                 }
             }
             val hideFilters by com.Azelmods.App.ui.components.ChatLook.hideFilters.collectAsState()
+            val textFilters by com.Azelmods.App.ui.components.ChatLook.textFilters.collectAsState()
             if (!hideFilters) Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -338,7 +339,8 @@ fun HomeScreenRedesigned(
                         ChatFilter.ARCHIVED -> state.chats.count { it.isArchived }
                         else -> 0
                     }
-                    NexusFilterChip(
+                    HomeFilter(
+                        asText = textFilters,
                         label = when (filter) {
                             ChatFilter.ALL -> tr("Todos")
                             ChatFilter.UNREAD -> tr("No leídos")
@@ -354,7 +356,8 @@ fun HomeScreenRedesigned(
                     )
                 }
                 folders.forEach { folder ->
-                    NexusFilterChip(
+                    HomeFilter(
+                        asText = textFilters,
                         label = folder.name,
                         selected = folderId == folder.id,
                         onClick = {
@@ -1031,4 +1034,47 @@ private fun ChatFoldersDialog(
         confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } },
         containerColor = NexusTokens.Color.BgSurface
     )
+}
+
+/** Un filtro de la lista: como cápsula o como pestaña de texto con un punto de color. */
+@Composable
+private fun HomeFilter(
+    asText: Boolean,
+    label: String,
+    selected: Boolean,
+    count: Int = 0,
+    onClick: () -> Unit
+) {
+    if (!asText) {
+        NexusFilterChip(label = label, selected = selected, count = count, onClick = onClick)
+        return
+    }
+    val accent = MaterialTheme.colorScheme.primary
+    Row(
+        Modifier
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = if (selected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
+            color = if (selected) accent else NexusTokens.Color.TextMuted
+        )
+        if (count > 0) {
+            Spacer(Modifier.width(4.dp))
+            Text(count.toString(), style = MaterialTheme.typography.labelSmall, color = accent)
+        }
+        if (selected) {
+            Spacer(Modifier.width(5.dp))
+            Box(
+                Modifier
+                    .size(6.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(accent)
+            )
+        }
+    }
 }

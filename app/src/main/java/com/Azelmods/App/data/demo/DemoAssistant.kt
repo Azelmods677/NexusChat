@@ -139,7 +139,7 @@ object DemoAssistant {
             (starts("que") && (starts("nexus", "aplicacion") || word("es", "esto", "app"))) ||
                 (starts("para") && starts("sirve", "vale")) -> listOf(
                 "NexusChat es un mensajero con cifrado de extremo a extremo que además trae Tor, editor de código, terminal con Kali Linux y agentes de IA.",
-                "La idea no es competir en número de usuarios, sino enseñar cómo se construye una app así de completa: también sirve de plantilla para desarrolladores.",
+                "Es una app completa hecha por Azelmodsx677, con un estudio de diseño para que la tuya no se parezca a la de nadie.",
                 "Todo lo que ves —incluida esta conversación— funciona de verdad contra Firebase. Nada es una maqueta."
             )
 

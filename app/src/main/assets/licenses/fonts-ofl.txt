@@ -1,0 +1,12 @@
+Fuentes incluidas, bajo SIL Open Font License 1.1 (https://openfontlicense.org):
+Pacifico
+Lobster
+Courgette
+Caveat
+Bebas Neue
+Poppins
+Comfortaa
+Calistoga
+Exo 2
+Courier Prime
+Origen: https://github.com/google/fonts

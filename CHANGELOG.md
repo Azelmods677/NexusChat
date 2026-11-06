@@ -40,8 +40,14 @@
 - Efecto en las fotos de perfil: hundida o en esfera. Color de las filas a elegir.
 - Campo de escribir: cápsula, con tu foto, social, plano, 3D, contorno, línea y bloque, con texto propio.
 - Burbujas, marcas de lectura, colores, tamaño de letra y foto dentro de la burbuja.
-- Cinco diseños de inicio y cinco de ajustes, con búsqueda en ajustes.
-- Tipos de letra para toda la app.
+- Siete diseños de inicio y siete de ajustes, con búsqueda en ajustes.
+- 8 barras inferiores: clásica, flotante, solo iconos, aro central animado, con tu foto, accesos, línea y panel.
+- 7 juegos de iconos para la barra inferior.
+- Iconos de llamada y videollamada animados, que se pueden apagar.
+- Filtros como pestañas de texto y un engranaje animado en Ajustes.
+- 21 tipos de letra para toda la app y 36 colores de acento, o el tuyo en hexadecimal.
+- Fotos y portadas de perfil en vídeo de hasta 1 minuto y 30 segundos.
+- Panel de funciones rápidas dentro del chat.
 
 ### Mensajería
 - Grupos cifrados de extremo a extremo, con administradores y enlace de invitación.

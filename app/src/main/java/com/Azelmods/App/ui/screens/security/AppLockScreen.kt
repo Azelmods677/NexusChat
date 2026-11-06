@@ -584,7 +584,7 @@ class AppLockViewModel @Inject constructor(
                 val promptInfo = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
                     .setTitle("Desbloquear Aplicación")
                     .setSubtitle("Usa tu huella digital o reconocimiento facial")
-                    .setNegativeButtonText("Usar PIN")
+                    .setNegativeButtonText(com.Azelmods.App.i18n.tr("Usar PIN"))
                     .build()
                 
                 biometricPrompt.authenticate(promptInfo)

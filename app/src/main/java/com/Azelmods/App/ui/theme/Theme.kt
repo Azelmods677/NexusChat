@@ -204,7 +204,9 @@ private fun typographyWith(style: com.Azelmods.App.ui.components.AppFontStyle): 
     if (style == com.Azelmods.App.ui.components.AppFontStyle.SANS) return Typography
     // Fuentes que ya trae Android: funcionan sin descargar nada. Las que no existan en un
     // teléfono concreto caen en la normal.
-    val family = androidx.compose.ui.text.font.FontFamily(
+    val family = style.resource?.let {
+        androidx.compose.ui.text.font.FontFamily(androidx.compose.ui.text.font.Font(it))
+    } ?: androidx.compose.ui.text.font.FontFamily(
         android.graphics.Typeface.create(style.systemName, android.graphics.Typeface.NORMAL)
     )
     return Typography.copy(

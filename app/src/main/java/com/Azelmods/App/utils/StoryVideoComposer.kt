@@ -1,3 +1,4 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.Azelmods.App.utils
 
 import android.content.Context

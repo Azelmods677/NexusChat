@@ -508,7 +508,7 @@ fun CodeEditorScreen(
     confirmDelete?.let { target ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
-            title = { Text("¿Eliminar ${target.name}?") },
+            title = { Text(tr("¿Eliminar %s?", target.name)) },
             text = { Text(tr("No se puede deshacer."), color = NexusTokens.Color.TextSecondary) },
             confirmButton = {
                 TextButton(onClick = {

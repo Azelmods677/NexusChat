@@ -124,11 +124,12 @@ enum class SettingsStyle(val title: String, val hint: String) {
     LIST("Lista", "Filas limpias, sin tarjetas"),
     GRID("Cuadrícula", "Dos columnas de accesos grandes"),
     HEADER("Encabezado", "Título grande, tu foto y una cápsula de accesos"),
-    CARDS("Tarjetas grandes", "Tu nombre a la izquierda, la foto a la derecha y accesos grandes")
+    CARDS("Tarjetas grandes", "Tu nombre a la izquierda, la foto a la derecha y accesos grandes"),
+    COMPACT("Compacta", "Dos columnas pequeñas en una sola tarjeta, sin descripciones")
 }
 
 /** Tipografía de toda la app. Son las del sistema: funcionan sin descargar nada. */
-enum class AppFontStyle(val title: String, val systemName: String?) {
+enum class AppFontStyle(val title: String, val systemName: String?, val resource: Int? = null) {
     SANS("Normal", null),
     LIGHT("Ligera", "sans-serif-light"),
     MEDIUM("Media", "sans-serif-medium"),
@@ -139,7 +140,17 @@ enum class AppFontStyle(val title: String, val systemName: String?) {
     CURSIVE("Manuscrita", "cursive"),
     SERIF("Con remates", "serif"),
     MONO("Monoespaciada", "monospace"),
-    SERIF_MONO("Máquina de escribir", "serif-monospace")
+    SERIF_MONO("Máquina de escribir", "serif-monospace"),
+    PACIFICO("Pacifico", null, com.Azelmods.App.R.font.app_font_pacifico),
+    LOBSTER("Lobster", null, com.Azelmods.App.R.font.app_font_lobster),
+    COURGETTE("Courgette", null, com.Azelmods.App.R.font.app_font_courgette),
+    CAVEAT("Caveat", null, com.Azelmods.App.R.font.app_font_caveat),
+    BEBAS("Bebas Neue", null, com.Azelmods.App.R.font.app_font_bebasneue),
+    POPPINS("Poppins", null, com.Azelmods.App.R.font.app_font_poppins),
+    COMFORTAA("Comfortaa", null, com.Azelmods.App.R.font.app_font_comfortaa),
+    CALISTOGA("Calistoga", null, com.Azelmods.App.R.font.app_font_calistoga),
+    EXO("Exo 2", null, com.Azelmods.App.R.font.app_font_exo2),
+    COURIER("Courier Prime", null, com.Azelmods.App.R.font.app_font_courierprime)
 }
 
 /** Forma de las burbujas de mensaje. */
@@ -155,7 +166,14 @@ enum class TickStyle(val title: String) {
 
 /** Barra inferior de la pantalla principal. */
 enum class NavBarStyle(val title: String) {
-    BAR("Clásica"), FLOATING("Flotante"), ICONS("Solo iconos")
+    BAR("Clásica"), FLOATING("Flotante"), ICONS("Solo iconos"), CENTER("Aro central"),
+    PHOTO("Con tu foto"), ACCESS("Accesos"), LINE("Línea"), PANEL("Panel")
+}
+
+/** Juego de iconos de la barra inferior. Todos son Material Icons, incluidos en la app. */
+enum class NavIconSet(val title: String) {
+    OUTLINED("Contorno"), FILLED("Relleno"), ROUNDED("Redondeado"), SHARP("Afilado"),
+    TWO_TONE("Duotono"), PLANE("Avión"), BUBBLE("Burbuja")
 }
 
 /** La elección del usuario. Se aplica al momento en toda la app. */
@@ -173,12 +191,15 @@ object ChatLook {
     private val _bubbleStyle = MutableStateFlow(BubbleStyle.SOFT)
     private val _tickStyle = MutableStateFlow(TickStyle.CLASSIC)
     private val _navBarStyle = MutableStateFlow(NavBarStyle.BAR)
+    private val _navIconSet = MutableStateFlow(NavIconSet.OUTLINED)
     private val _ownBubbleColor = MutableStateFlow<Int?>(null)
     private val _peerBubbleColor = MutableStateFlow<Int?>(null)
     private val _textScale = MutableStateFlow(1f)
     private val _entryHint = MutableStateFlow("")
     private val _homeAvatar = MutableStateFlow(false)
     private val _hideFilters = MutableStateFlow(false)
+    private val _textFilters = MutableStateFlow(false)
+    private val _animatedCallIcons = MutableStateFlow(true)
     private val _wallpaperDim = MutableStateFlow(0.45f)
     private val _homeStyle = MutableStateFlow(HomeStyle.CLASSIC)
     private val _settingsStyle = MutableStateFlow(SettingsStyle.PANEL)
@@ -233,6 +254,10 @@ object ChatLook {
     val hideStoriesTab: StateFlow<Boolean> = _hideStoriesTab.asStateFlow()
     fun setHideStoriesTab(on: Boolean) { _hideStoriesTab.value = on; flag("hidestories", on) }
 
+    private val _quickFunctions = MutableStateFlow(true)
+    val quickFunctions: StateFlow<Boolean> = _quickFunctions.asStateFlow()
+    fun setQuickFunctions(on: Boolean) { _quickFunctions.value = on; flag("quickfunctions", on) }
+
     private val _fontStyle = MutableStateFlow(AppFontStyle.SANS)
     private val _homeSearchBar = MutableStateFlow(false)
     private val _quickBar = MutableStateFlow(false)
@@ -267,12 +292,15 @@ object ChatLook {
     val bubbleStyle: StateFlow<BubbleStyle> = _bubbleStyle.asStateFlow()
     val tickStyle: StateFlow<TickStyle> = _tickStyle.asStateFlow()
     val navBarStyle: StateFlow<NavBarStyle> = _navBarStyle.asStateFlow()
+    val navIconSet: StateFlow<NavIconSet> = _navIconSet.asStateFlow()
     val ownBubbleColor: StateFlow<Int?> = _ownBubbleColor.asStateFlow()
     val peerBubbleColor: StateFlow<Int?> = _peerBubbleColor.asStateFlow()
     val textScale: StateFlow<Float> = _textScale.asStateFlow()
     val entryHint: StateFlow<String> = _entryHint.asStateFlow()
     val homeAvatar: StateFlow<Boolean> = _homeAvatar.asStateFlow()
     val hideFilters: StateFlow<Boolean> = _hideFilters.asStateFlow()
+    val textFilters: StateFlow<Boolean> = _textFilters.asStateFlow()
+    val animatedCallIcons: StateFlow<Boolean> = _animatedCallIcons.asStateFlow()
     val wallpaperDim: StateFlow<Float> = _wallpaperDim.asStateFlow()
 
     fun init(context: Context) {
@@ -284,12 +312,15 @@ object ChatLook {
         _bubbleStyle.value = BubbleStyle.entries.firstOrNull { it.name == stored.getString("bubble", null) } ?: BubbleStyle.SOFT
         _tickStyle.value = TickStyle.entries.firstOrNull { it.name == stored.getString("tick", null) } ?: TickStyle.CLASSIC
         _navBarStyle.value = NavBarStyle.entries.firstOrNull { it.name == stored.getString("nav", null) } ?: NavBarStyle.BAR
+        _navIconSet.value = NavIconSet.entries.firstOrNull { it.name == stored.getString("nav_icons", null) } ?: NavIconSet.OUTLINED
         _ownBubbleColor.value = if (stored.contains("own")) stored.getInt("own", 0) else null
         _peerBubbleColor.value = if (stored.contains("peer")) stored.getInt("peer", 0) else null
         _textScale.value = stored.getFloat("text", 1f)
         _entryHint.value = stored.getString("hint", "").orEmpty()
         _homeAvatar.value = stored.getBoolean("avatar", false)
         _hideFilters.value = stored.getBoolean("filters", false)
+        _textFilters.value = stored.getBoolean("text_filters", false)
+        _animatedCallIcons.value = stored.getBoolean("call_motion", true)
         _wallpaperDim.value = stored.getFloat("dim", 0.45f)
         _homeStyle.value = HomeStyle.entries.firstOrNull { it.name == stored.getString("home", null) } ?: HomeStyle.CLASSIC
         _settingsStyle.value = SettingsStyle.entries.firstOrNull { it.name == stored.getString("settings", null) } ?: SettingsStyle.PANEL
@@ -300,6 +331,7 @@ object ChatLook {
         _entryTranslate.value = stored.getBoolean("entrytranslate", false)
         _bubblePhoto.value = stored.getBoolean("bubblephoto", false)
         _hideStoriesTab.value = stored.getBoolean("hidestories", false)
+        _quickFunctions.value = stored.getBoolean("quickfunctions", true)
         _fontStyle.value = AppFontStyle.entries.firstOrNull { it.name == stored.getString("font", null) } ?: AppFontStyle.SANS
         _homeSearchBar.value = stored.getBoolean("searchbar", false)
         _quickBar.value = stored.getBoolean("quickbar", false)
@@ -322,6 +354,11 @@ object ChatLook {
     fun setTickStyle(style: TickStyle) {
         _tickStyle.value = style
         prefs?.edit()?.putString("tick", style.name)?.apply()
+    }
+
+    fun setNavIconSet(set: NavIconSet) {
+        _navIconSet.value = set
+        prefs?.edit()?.putString("nav_icons", set.name)?.apply()
     }
 
     fun setNavBarStyle(style: NavBarStyle) {
@@ -357,6 +394,16 @@ object ChatLook {
     fun setHideFilters(hide: Boolean) {
         _hideFilters.value = hide
         prefs?.edit()?.putBoolean("filters", hide)?.apply()
+    }
+
+    fun setAnimatedCallIcons(enabled: Boolean) {
+        _animatedCallIcons.value = enabled
+        prefs?.edit()?.putBoolean("call_motion", enabled)?.apply()
+    }
+
+    fun setTextFilters(enabled: Boolean) {
+        _textFilters.value = enabled
+        prefs?.edit()?.putBoolean("text_filters", enabled)?.apply()
     }
 
     fun setWallpaperDim(dim: Float) {

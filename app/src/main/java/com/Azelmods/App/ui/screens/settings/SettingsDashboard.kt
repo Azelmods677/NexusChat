@@ -15,11 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BatteryStd
-import androidx.compose.material.icons.outlined.Public
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Smartphone
-import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -70,6 +67,13 @@ fun SettingsDashboard(
         val brand = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
         if (Build.MODEL.startsWith(Build.MANUFACTURER, ignoreCase = true)) Build.MODEL else "$brand ${Build.MODEL}"
     }
+    val storageUsed = remember {
+        runCatching {
+            val disk = android.os.StatFs(android.os.Environment.getDataDirectory().path)
+            ((disk.totalBytes - disk.availableBytes) * 100 / disk.totalBytes).toInt()
+        }.getOrDefault(0)
+    }
+    val accent = MaterialTheme.colorScheme.primary
     val timeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
     val dateFormat = remember { SimpleDateFormat("EEE, d MMM yyyy", Locale.getDefault()) }
     // Se anima solo al abrir la pantalla.
@@ -95,7 +99,7 @@ fun SettingsDashboard(
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        userName.ifBlank { "Tu perfil" },
+                        userName.ifBlank { tr("Tu perfil") },
                         style = MaterialTheme.typography.titleLarge,
                         color = NexusTokens.Color.TextPrimary,
                         maxLines = 1,
@@ -127,7 +131,7 @@ fun SettingsDashboard(
                 value = "${battery.percent} %",
                 detail = battery.statusLabel,
                 progress = battery.percent / 100f,
-                progressColor = batteryColor(battery.percent, battery.isCharging),
+                progressColor = if (battery.percent <= 15) NexusTokens.Color.Error else accent,
                 onClick = onOpenAbout,
                 modifier = Modifier
                     .weight(1f)
@@ -135,10 +139,12 @@ fun SettingsDashboard(
             )
             MetricCard(
                 icon = Icons.Outlined.Smartphone,
-                iconColor = Color(0xFF60A5FA),
+                iconColor = accent,
                 title = tr("Dispositivo"),
                 value = deviceName,
-                detail = "Android ${Build.VERSION.RELEASE}",
+                detail = "$storageUsed % " + tr("de memoria usada"),
+                progress = storageUsed / 100f,
+                progressColor = accent,
                 onClick = onOpenAbout,
                 modifier = Modifier
                     .weight(1f)
@@ -146,39 +152,56 @@ fun SettingsDashboard(
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             MetricCard(
                 icon = Icons.Outlined.Schedule,
-                iconColor = Color(0xFFC084FC),
+                iconColor = accent,
                 title = tr("Hora"),
                 value = timeFormat.format(Date(now)),
                 detail = dateFormat.format(Date(now)),
                 onClick = onOpenAbout,
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .staggeredEnter(3, enabled = animateEntry)
             )
             val anonymous = AnonymityPolicy.active
             val ghost = AnonymityPolicy.ghost
-            MetricCard(
-                icon = when {
-                    anonymous -> Icons.Outlined.Security
-                    ghost -> Icons.Outlined.VisibilityOff
-                    else -> Icons.Outlined.Public
-                },
-                iconColor = if (anonymous || ghost) NexusTokens.Color.Online else NexusTokens.Color.TextMuted,
-                title = tr("Privacidad"),
-                value = when {
-                    anonymous -> tr("Modo anónimo")
-                    ghost -> tr("Modo fantasma")
-                    else -> tr("Conexión normal")
-                },
-                detail = if (anonymous) tr("Tu IP está oculta") else tr("Toca para cambiarlo"),
+            DashboardCard(
                 onClick = onOpenSecurity,
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .staggeredEnter(4, enabled = animateEntry)
-            )
+            ) {
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    UserAvatar(
+                        name = userName.ifBlank { "?" },
+                        photoUrl = userPhoto,
+                        size = 44.dp,
+                        ring = AvatarRing(listOf(accent, accent), width = 2.dp)
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        userName.ifBlank { tr("Tu perfil") },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = accent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        when {
+                            anonymous -> tr("Modo anónimo")
+                            ghost -> tr("Modo fantasma")
+                            else -> tr("Conexión normal")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (anonymous || ghost) NexusTokens.Color.Online else NexusTokens.Color.TextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
     }
 }

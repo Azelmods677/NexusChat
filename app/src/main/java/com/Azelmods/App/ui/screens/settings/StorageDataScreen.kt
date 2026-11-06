@@ -226,10 +226,10 @@ fun StorageDataScreen(
                 Column {
                     Text(tr("Consumo aproximado de datos:"), color = Color.Gray)
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("Cache size: ${formatBytes(cacheSize)}", color = Color.White)
-                    Text("Storage used: ${formatBytes(usedStorage)}", color = Color.White)
+                    Text(tr("Caché: %s", formatBytes(cacheSize)), color = Color.White)
+                    Text(tr("Almacenamiento usado: %s", formatBytes(usedStorage)), color = Color.White)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Low Data Mode ${if (lowDataMode) "enabled" else "disabled"}", color = Color.Gray, fontSize = 12.sp)
+                    Text(if (lowDataMode) tr("Ahorro de datos activado") else tr("Ahorro de datos desactivado"), color = Color.Gray, fontSize = 12.sp)
                     Text(tr("Si lo activas, las fotos y los vídeos no se descargan solos."), color = Color.Gray, fontSize = 12.sp)
                 }
             },

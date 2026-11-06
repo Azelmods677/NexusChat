@@ -76,6 +76,19 @@ class ChatToolsTest {
     }
 
     @Test
+    fun `el contador separa por tipo e ignora los avisos del sistema`() {
+        val messages = listOf(
+            com.Azelmods.App.data.model.Message(messageId = "1", content = "hola"),
+            com.Azelmods.App.data.model.Message(messageId = "2", mediaType = "IMAGE"),
+            com.Azelmods.App.data.model.Message(messageId = "3", mediaType = "SYSTEM")
+        )
+        val counts = countMessages(messages).toMap()
+        assertEquals(1, counts["Mensajes"])
+        assertEquals(1, counts["Fotos"])
+        assertEquals(2, counts["Total"])
+    }
+
+    @Test
     fun `las carpetas sobreviven a guardarse`() {
         val folders = listOf(ChatFolder("1", "Trabajo", setOf("a", "b")), ChatFolder("2", "Vacía", emptySet()))
         assertEquals(folders, ChatOrganizer.parseFolders(ChatOrganizer.encodeFolders(folders)))

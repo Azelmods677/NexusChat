@@ -72,7 +72,7 @@ fun MediaGalleryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Media (${mediaMessages.size})") },
+                title = { Text(tr("Multimedia (%s)", mediaMessages.size.toString())) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")

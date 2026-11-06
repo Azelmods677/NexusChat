@@ -98,6 +98,7 @@ fun ChatScreen(
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var forwardMessages by remember { mutableStateOf<List<com.Azelmods.App.data.model.Message>>(emptyList()) }
     var showScheduled by remember { mutableStateOf(false) }
+    var showQuickFunctions by remember { mutableStateOf(false) }
     // Atrás primero suelta la selección, no se sale del chat con mensajes marcados.
     androidx.activity.compose.BackHandler(enabled = selectedIds.isNotEmpty()) { selectedIds = emptySet() }
     if (forwardMessages.isNotEmpty()) {
@@ -134,6 +135,22 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    if (showQuickFunctions) {
+        val quickScope = rememberCoroutineScope()
+        QuickFunctionsSheet(
+            chatId = viewModel.chatIdFor(contactId),
+            contact = state.contact,
+            messages = state.messages,
+            navController = navController,
+            onSelectAll = { selectedIds = state.messages.map { it.messageId }.toSet() },
+            onFirstMessage = {
+                quickScope.launch {
+                    if (state.messages.isNotEmpty()) listState.animateScrollToItem(0)
+                }
+            },
+            onDismiss = { showQuickFunctions = false }
+        )
+    }
     val haptic = LocalHapticFeedback.current
     
     // Load chat background from repository
@@ -467,10 +484,11 @@ fun ChatScreen(
                 }
 
                 // Messages List
+                Box(Modifier.weight(1f)) {
                 PullToRefreshBox(
                     isRefreshing = state.isLoading,
                     onRefresh = { viewModel.refreshChat() },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize()
                 ) {
                     LazyColumn(
                         state = listState,
@@ -641,6 +659,14 @@ fun ChatScreen(
                             viewModel.loadMoreMessages()
                         }
                     }
+                }
+                val quickFunctionsOn by com.Azelmods.App.ui.components.ChatLook.quickFunctions.collectAsState()
+                if (quickFunctionsOn && selectedIds.isEmpty()) {
+                    QuickFunctionsButton(
+                        onClick = { showQuickFunctions = true },
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
                 }
                 
                 // Reply Preview Bar + Input Area at bottom
@@ -1117,16 +1143,22 @@ fun ChatTopBar(
             )
             // Las llamadas son de dos personas: en un grupo no tienen a quién llamar.
             if (groupSubtitle == null) {
-                TopBarActionIcon(
-                    icon = Icons.Default.Phone,
-                    contentDescription = tr("Llamada de voz"),
-                    onClick = onPhoneClick
-                )
-                TopBarActionIcon(
-                    icon = Icons.Default.Videocam,
-                    contentDescription = tr("Videollamada"),
-                    onClick = onVideoClick
-                )
+                Box {
+                    TopBarActionIcon(
+                        icon = Icons.Default.Phone,
+                        contentDescription = tr("Llamada de voz"),
+                        onClick = onPhoneClick
+                    )
+                    com.Azelmods.App.ui.components.CallIconMotion(video = false, modifier = Modifier.matchParentSize())
+                }
+                Box {
+                    TopBarActionIcon(
+                        icon = Icons.Default.Videocam,
+                        contentDescription = tr("Videollamada"),
+                        onClick = onVideoClick
+                    )
+                    com.Azelmods.App.ui.components.CallIconMotion(video = true, modifier = Modifier.matchParentSize())
+                }
             }
             TopBarActionIcon(
                 icon = Icons.Default.MoreVert,

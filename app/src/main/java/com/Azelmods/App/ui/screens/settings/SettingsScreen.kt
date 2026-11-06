@@ -18,7 +18,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -71,7 +73,27 @@ fun SettingsScreen(
             NexusTopBar(
                 // El diseño con encabezado ya lleva su propio título grande.
                 title = if (style == com.Azelmods.App.ui.components.SettingsStyle.HEADER) "" else tr("Ajustes"),
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                actions = {
+                    // Engranaje que gira despacio: acceso directo al estudio de diseño.
+                    val spin = androidx.compose.animation.core.rememberInfiniteTransition(label = "engranaje")
+                    val angle by spin.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                            androidx.compose.animation.core.tween(6_000, easing = androidx.compose.animation.core.LinearEasing)
+                        ),
+                        label = "giroEngranaje"
+                    )
+                    androidx.compose.material3.IconButton(onClick = { navController.navigate("chat_studio") }) {
+                        Icon(
+                            Icons.Outlined.Settings,
+                            contentDescription = tr("Abrir el estudio de diseño"),
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.graphicsLayer { rotationZ = angle }
+                        )
+                    }
+                }
             )
         },
         containerColor = NexusTokens.Color.BgBase
@@ -131,7 +153,9 @@ fun SettingsScreen(
                         else -> SettingsProfileCard(me) { navController.navigate(Screen.Profile.createRoute(userId)) }
                     }
                     val sections = links.groupBy { it.section }
-                    sections.forEach { (section, items) ->
+                    if (style == com.Azelmods.App.ui.components.SettingsStyle.COMPACT) {
+                        SettingsCompactLayout(sections)
+                    } else sections.forEach { (section, items) ->
                         when (style) {
                             com.Azelmods.App.ui.components.SettingsStyle.LIST -> {
                                 NexusSectionHeader(tr(section))
@@ -147,6 +171,11 @@ fun SettingsScreen(
                             com.Azelmods.App.ui.components.SettingsStyle.GROUPS -> {
                                 NexusSectionHeader(tr(section))
                                 SettingsCardStack(items)
+                            }
+
+                            com.Azelmods.App.ui.components.SettingsStyle.PANEL -> {
+                                Spacer(Modifier.height(10.dp))
+                                SettingsGroup { items.forEach { SettingsCompactRow(it) } }
                             }
 
                             else -> SettingsSection(title = tr(section)) { items.forEach { SettingsEntry(it) } }
@@ -569,6 +598,74 @@ private fun SettingsGrid(items: List<SettingsLink>) {
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+    }
+}
+
+/** Lo principal en dos columnas pequeñas dentro de una tarjeta; herramientas e información, en filas. */
+@Composable
+private fun SettingsCompactLayout(sections: Map<String, List<SettingsLink>>) {
+    val entries = sections.entries.toList()
+    val main = entries.dropLast(2).flatMap { it.value }
+    val rest = entries.takeLast(2).flatMap { it.value }
+    NexusSectionHeader(tr("Configuración"))
+    SettingsGroup {
+        main.chunked(2).forEach { row ->
+            Row(Modifier.height(IntrinsicSize.Min)) {
+                row.forEach { link -> SettingsCompactCell(link, Modifier.weight(1f).fillMaxHeight()) }
+                if (row.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+    Spacer(Modifier.height(10.dp))
+    SettingsGroup { rest.forEach { SettingsCompactRow(it) } }
+}
+
+@Composable
+private fun SettingsCompactCell(link: SettingsLink, modifier: Modifier) {
+    Row(
+        modifier
+            .clickable(onClick = link.onClick)
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(link.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            tr(link.title),
+            style = MaterialTheme.typography.bodyMedium,
+            color = NexusTokens.Color.TextPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** Fila de una sola línea, sin descripción. */
+@Composable
+private fun SettingsCompactRow(link: SettingsLink) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = link.onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(link.icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(
+            tr(link.title),
+            style = MaterialTheme.typography.bodyLarge,
+            color = NexusTokens.Color.TextPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+            contentDescription = null,
+            tint = NexusTokens.Color.TextDisabled,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 

@@ -1,3 +1,4 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.Azelmods.App.ui.components.chat
 
 import com.Azelmods.App.i18n.tr

@@ -93,7 +93,7 @@ fun CallsScreen(
                     if (call.duration != null) {
                         Text(text = "Duración: ${call.duration}")
                     }
-                    Text(text = "Fecha: ${java.text.SimpleDateFormat("d MMM, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(call.startTime))}")
+                    Text(text = "Fecha: ${java.text.SimpleDateFormat("d MMM, HH:mm", androidx.compose.ui.platform.LocalConfiguration.current.locales[0]).format(java.util.Date(call.startTime))}")
                 }
             },
             confirmButton = {

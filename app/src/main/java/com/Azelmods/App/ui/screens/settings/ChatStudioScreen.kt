@@ -307,7 +307,7 @@ private fun ColorChoice(title: String, current: Int?, onSelect: (Int?) -> Unit) 
                 .clickable { onSelect(null) },
             contentAlignment = Alignment.Center
         ) { Text("A", color = NexusTokens.Color.TextSecondary) }
-        AppTheme.ACCENT_SWATCHES.take(17).forEach { swatch ->
+        AppTheme.ACCENT_SWATCHES.forEach { swatch ->
             val dark = androidx.compose.ui.graphics.lerp(swatch.color, Color.Black, 0.45f)
             val argb = dark.toArgb()
             Box(
@@ -375,6 +375,14 @@ private fun EntryOptions() {
         checked = entryTranslate,
         onCheckedChange = ChatLook::setEntryTranslate
     )
+    val quickFunctions by ChatLook.quickFunctions.collectAsState()
+    NexusSwitchRow(
+        title = tr("Botón de funciones rápidas"),
+        subtitle = tr("Atajos, seleccionar todo, primer mensaje y contador en el chat"),
+        icon = Icons.Outlined.Apps,
+        checked = quickFunctions,
+        onCheckedChange = ChatLook::setQuickFunctions
+    )
     val linkPreviews by ChatLook.linkPreviews.collectAsState()
     NexusSwitchRow(
         title = tr("Vista previa de enlaces"),
@@ -404,6 +412,17 @@ private fun HomeOptions() {
 
     NexusSectionHeader(tr("Barra inferior"))
     ChoiceChips(NavBarStyle.entries, nav, { it.title }, ChatLook::setNavBarStyle)
+    NexusSectionHeader(tr("Iconos de la barra"))
+    val navIcons by ChatLook.navIconSet.collectAsState()
+    ChoiceChips(com.Azelmods.App.ui.components.NavIconSet.entries, navIcons, { it.title }, ChatLook::setNavIconSet)
+    val callMotion by ChatLook.animatedCallIcons.collectAsState()
+    NexusSwitchRow(
+        title = tr("Iconos de llamada animados"),
+        subtitle = tr("Ondas en la llamada y un aro en la videollamada, arriba en cada chat"),
+        icon = Icons.Outlined.AccountCircle,
+        checked = callMotion,
+        onCheckedChange = ChatLook::setAnimatedCallIcons
+    )
     NexusSectionHeader(tr("Oscurecer el fondo"))
     Text(
         tr("Con un fondo de imagen o vídeo, para que los chats se lean bien."),
@@ -498,6 +517,14 @@ private fun HomeOptions() {
         icon = Icons.Outlined.FilterList,
         checked = hideFilters,
         onCheckedChange = ChatLook::setHideFilters
+    )
+    val textFilters by ChatLook.textFilters.collectAsState()
+    NexusSwitchRow(
+        title = tr("Filtros como pestañas de texto"),
+        subtitle = tr("Texto con un punto de color en lugar de cápsulas"),
+        icon = Icons.Outlined.FilterList,
+        checked = textFilters,
+        onCheckedChange = ChatLook::setTextFilters
     )
 }
 
@@ -677,6 +704,17 @@ private fun SettingsMiniature(style: com.Azelmods.App.ui.components.SettingsStyl
                     rect(left + full * 0.52f, y, full * 0.48f, h * 0.2f)
                     y += h * 0.235f
                 }
+            }
+
+            com.Azelmods.App.ui.components.SettingsStyle.COMPACT -> {
+                rect(left, h * 0.25f, full, h * 0.42f)
+                var y = h * 0.3f
+                while (y < h * 0.62f) {
+                    rect(w * 0.14f, y, w * 0.3f, h * 0.035f, line)
+                    rect(w * 0.56f, y, w * 0.3f, h * 0.035f, line)
+                    y += h * 0.1f
+                }
+                rect(left, h * 0.72f, full, h * 0.2f)
             }
 
             com.Azelmods.App.ui.components.SettingsStyle.GRID -> {

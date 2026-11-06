@@ -1,3 +1,4 @@
+@file:androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
 package com.Azelmods.App.ui.screens.conversation
 
 import com.Azelmods.App.i18n.tr
@@ -198,8 +199,8 @@ fun QRScannerScreen(
                     Text(tr("¿Deseas agregar a este usuario?"))
                     Spacer(modifier = Modifier.height(8.dp))
                     scannedData?.let { data ->
-                        Text("Nombre: ${data.name}", fontWeight = FontWeight.Bold)
-                        Text("Usuario: ${data.username}")
+                        Text(tr("Nombre: %s", data.name), fontWeight = FontWeight.Bold)
+                        Text(tr("Usuario: %s", data.username))
                     }
                 }
             },

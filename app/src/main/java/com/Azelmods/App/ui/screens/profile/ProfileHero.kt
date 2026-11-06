@@ -640,7 +640,7 @@ private fun ProfileInfoCard(user: User?) {
             if (bio.isNotBlank()) InfoLine(bio, tr("Biografía"))
             if (createdAt > 0L) {
                 InfoLine(
-                    SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(createdAt)),
+                    SimpleDateFormat("MMMM yyyy", androidx.compose.ui.platform.LocalConfiguration.current.locales[0]).format(Date(createdAt)),
                     tr("Miembro desde")
                 )
             }

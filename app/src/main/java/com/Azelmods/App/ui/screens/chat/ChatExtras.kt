@@ -471,7 +471,7 @@ fun SavedMessagesScreen(navController: NavController, viewModel: SavedMessagesVi
                         Column(Modifier.weight(1f)) {
                             Text(item.text, style = MaterialTheme.typography.bodyLarge, color = NexusTokens.Color.TextPrimary)
                             Text(
-                                SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(item.at)),
+                                SimpleDateFormat("d MMM, HH:mm", androidx.compose.ui.platform.LocalConfiguration.current.locales[0]).format(Date(item.at)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = NexusTokens.Color.TextMuted
                             )

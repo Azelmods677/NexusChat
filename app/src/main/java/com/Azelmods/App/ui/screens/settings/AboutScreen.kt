@@ -103,6 +103,7 @@ private const val REPO_URL = "https://github.com/Azelmods677/NexusChat"
 fun AboutScreen(navController: NavController) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val MaterialTheme_primary = MaterialTheme.colorScheme.primary
 
     val battery = rememberBatteryState(context)
     val now = rememberTicker(1_000L)
@@ -153,6 +154,25 @@ fun AboutScreen(navController: NavController) {
             NexusDetailRow(tr("Créditos"), "Azel Mods")
             NexusDetailRow(tr("Paquete"), BuildConfig.APPLICATION_ID, monospace = true)
             NexusDetailRow(tr("Versión"), BuildConfig.VERSION_NAME)
+
+            NexusSectionHeader(tr("Créditos"))
+            Row(
+                Modifier
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(NexusTokens.Radius.xl))
+                    .background(NexusTokens.Color.BgSurface)
+                    .clickable { uriHandler.openUri("https://t.me/AzelModsx7779") }
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Canvas(Modifier.size(50.dp)) { drawNexusEmblem(1f, MaterialTheme_primary) }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Azel Mods", style = MaterialTheme.typography.titleSmall, color = NexusTokens.Color.TextPrimary)
+                    Text(tr("Diseño y desarrollo de NexusChat"), style = MaterialTheme.typography.bodySmall, color = NexusTokens.Color.TextMuted)
+                }
+            }
 
             NexusSectionHeader(tr("Comunidad"))
             CommunityRow(onOpen = uriHandler::openUri)
@@ -303,9 +323,18 @@ private fun AboutHero() {
             if (me.name.isNotBlank()) {
                 Spacer(Modifier.height(14.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    com.Azelmods.App.ui.components.UserAvatar(me.name, me.photoUrl, size = 30.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(me.name, style = MaterialTheme.typography.labelLarge, color = NexusTokens.Color.TextSecondary, maxLines = 1)
+                    // Tu foto de 64 dp dentro de su marco, como una ficha de quien usa la app.
+                    Box(
+                        Modifier
+                            .size(71.dp)
+                            .clip(CircleShape)
+                            .background(accent.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        com.Azelmods.App.ui.components.UserAvatar(me.name, me.photoUrl, size = 64.dp)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Text(me.name, style = MaterialTheme.typography.titleMedium, color = NexusTokens.Color.TextPrimary, maxLines = 1)
                 }
             }
         }

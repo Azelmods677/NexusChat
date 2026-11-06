@@ -182,7 +182,7 @@ fun PhoneLoginScreen(
                     OutlinedTextField(
                         value = state.code,
                         onValueChange = viewModel::onCodeChange,
-                        label = { Text("Código de ${PhoneLoginState.CODE_LENGTH} dígitos") },
+                        label = { Text(tr("Código de %s dígitos", PhoneLoginState.CODE_LENGTH.toString())) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.NumberPassword,

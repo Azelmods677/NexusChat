@@ -153,7 +153,7 @@ private fun AppLockSetupDialog(onDismiss: () -> Unit) {
                     label = { Text(tr("Confirmar PIN")) },
                     singleLine = true
                 )
-                Text("Auto-bloqueo (minutos): $autoLock")
+                Text(tr("Auto-bloqueo (minutos): %s", autoLock.toString()))
                 Slider(
                     value = autoLock.toFloat(),
                     onValueChange = { autoLock = it.toInt() },

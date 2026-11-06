@@ -1,3 +1,4 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.Azelmods.App.ui.screens.stories
 
 import com.Azelmods.App.i18n.tr
