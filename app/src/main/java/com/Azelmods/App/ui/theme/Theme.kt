@@ -173,6 +173,9 @@ fun NexusChatTheme(
     val darkModeEnabled by userPreferences?.darkModeEnabled?.collectAsState()
         ?: androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(darkTheme) }
 
+    // Lo leen NexusTokens.Color.Primary y compañía, en toda la app.
+    if (AccentState.current != accentColor) AccentState.current = accentColor
+
     val colorScheme = when {
         // Dynamic color for Android 12+ (Material You) - only if explicitly enabled
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -186,11 +189,39 @@ fun NexusChatTheme(
 
     // La Typography se pasa SIN escalar: el escalado lo hace la densidad de fuente de
     // abajo, para no aplicar el factor dos veces sobre el texto que sí usa Typography.
+    val fontStyle by com.Azelmods.App.ui.components.ChatLook.fontStyle.collectAsState()
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = typographyWith(fontStyle),
         shapes = Shapes
     ) {
         CompositionLocalProvider(LocalDensity provides scaledDensity, content = content)
     }
+}
+
+/** La misma escala de texto con otra familia de letra: solo cambia el aspecto, no los tamaños. */
+private fun typographyWith(style: com.Azelmods.App.ui.components.AppFontStyle): androidx.compose.material3.Typography {
+    if (style == com.Azelmods.App.ui.components.AppFontStyle.SANS) return Typography
+    // Fuentes que ya trae Android: funcionan sin descargar nada. Las que no existan en un
+    // teléfono concreto caen en la normal.
+    val family = androidx.compose.ui.text.font.FontFamily(
+        android.graphics.Typeface.create(style.systemName, android.graphics.Typeface.NORMAL)
+    )
+    return Typography.copy(
+        displayLarge = Typography.displayLarge.copy(fontFamily = family),
+        displayMedium = Typography.displayMedium.copy(fontFamily = family),
+        displaySmall = Typography.displaySmall.copy(fontFamily = family),
+        headlineLarge = Typography.headlineLarge.copy(fontFamily = family),
+        headlineMedium = Typography.headlineMedium.copy(fontFamily = family),
+        headlineSmall = Typography.headlineSmall.copy(fontFamily = family),
+        titleLarge = Typography.titleLarge.copy(fontFamily = family),
+        titleMedium = Typography.titleMedium.copy(fontFamily = family),
+        titleSmall = Typography.titleSmall.copy(fontFamily = family),
+        bodyLarge = Typography.bodyLarge.copy(fontFamily = family),
+        bodyMedium = Typography.bodyMedium.copy(fontFamily = family),
+        bodySmall = Typography.bodySmall.copy(fontFamily = family),
+        labelLarge = Typography.labelLarge.copy(fontFamily = family),
+        labelMedium = Typography.labelMedium.copy(fontFamily = family),
+        labelSmall = Typography.labelSmall.copy(fontFamily = family)
+    )
 }

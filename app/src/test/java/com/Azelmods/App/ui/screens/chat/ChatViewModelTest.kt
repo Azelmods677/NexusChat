@@ -46,7 +46,10 @@ class ChatViewModelTest : StringSpec({
     val decryptMessageUseCase = mockk<DecryptMessageUseCase>(relaxed = true)
     val cacheManager = mockk<CacheManager>(relaxed = true)
     val translationService = mockk<TranslationService>(relaxed = true)
-    val userPreferences = mockk<com.Azelmods.App.data.preferences.UserPreferences>(relaxed = true)
+    // Un StateFlow simulado sin definir hace fallar su collect al crear el ViewModel.
+    val userPreferences = mockk<com.Azelmods.App.data.preferences.UserPreferences>(relaxed = true) {
+        every { autoDownloadVideos } returns kotlinx.coroutines.flow.MutableStateFlow(false)
+    }
     // Dependencia añadida en la v5 junto con el asistente del chat de bienvenida.
     val demoAccountManager = mockk<com.Azelmods.App.data.demo.DemoAccountManager>(relaxed = true)
     // Dependencias de la v6: funciones de IA sobre el chat y realce de fotos.
@@ -160,7 +163,8 @@ class ChatViewModelTest : StringSpec({
 
             viewModel.sendMessage(rawContent = "Hello!", chatId = "chat-1")
 
-            coVerify { databaseRepository.sendMessage("chat-1", "Hello!", null) }
+            // El envío corre en Dispatchers.IO, fuera del tiempo virtual de la prueba.
+            coVerify(timeout = 5_000) { databaseRepository.sendMessage("chat-1", "Hello!", null) }
         }
     }
 

@@ -48,7 +48,8 @@ data class ToolOutcome(val output: String, val ok: Boolean)
 class AgentToolbox @Inject constructor(
     private val torService: TorService,
     private val jsSandbox: JsSandbox,
-    private val api: AzelAIApiService
+    private val api: AzelAIApiService,
+    private val exporter: AgentFileExporter
 ) {
     companion object {
         private const val TAG = "AgentToolbox"
@@ -103,6 +104,7 @@ class AgentToolbox @Inject constructor(
                 AgentToolId.RUN_JS -> jsSandbox.run(stripFence(input))
                 AgentToolId.RUN_CODE -> runCode(input)
                 AgentToolId.SAVE_FILE -> saveFile(input)
+                AgentToolId.EXPORT_FILE -> exportFile(input)
                 AgentToolId.READ_FILE -> readFile(input)
                 AgentToolId.LIST_FILES -> listFiles()
             }
@@ -705,6 +707,17 @@ class AgentToolbox @Inject constructor(
         agentFileIds[rawName.lowercase()] = id
         agentFileIds[name.lowercase()] = id
         return ToolOutcome("Guardado «$name» en el Editor de código (${content.lines().size} líneas).", true)
+    }
+
+    private suspend fun exportFile(input: String): ToolOutcome {
+        val text = input.trim()
+        val name = text.substringBefore('\n').trim().trim('`', '"', '\'').substringAfterLast('/')
+        val content = stripFence(text.substringAfter('\n', ""))
+        if (name.isEmpty() || !name.contains('.') || name.length > 120) {
+            return ToolOutcome("La primera línea debe ser el nombre del archivo con extensión, p. ej. informe.pdf", false)
+        }
+        if (content.isBlank()) return ToolOutcome("El documento está vacío: pon el contenido debajo del nombre.", false)
+        return exporter.export(name, content)
     }
 
     private fun uniqueName(name: String, taken: List<String>): String {

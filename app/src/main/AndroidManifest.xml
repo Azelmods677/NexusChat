@@ -4,6 +4,11 @@
 
     <!-- Network permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 17: hablar con un modelo de IA en otro equipo de la misma red. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <!-- Instalar las versiones nuevas desde el aviso de la app. Si algún día se publica en
+         Google Play, hay que quitarlo: allí las actualizaciones las gestiona la tienda. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Notification permission (Android 13+) -->
@@ -119,6 +124,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="nexuschat" android:host="chat" />
                 <data android:scheme="nexuschat" android:host="profile" />
+                <data android:scheme="nexuschat" android:host="join" />
             </intent-filter>
         </activity>
 

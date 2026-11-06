@@ -366,7 +366,11 @@ fun CreateStoryScreen(
                 TextButton(onClick = { drawMode = false }) { Text(tr("Listo"), color = Color.White) }
             } else {
                 NexusButton(
-                    text = if (state.isUploading) tr("Publicando") else tr("Publicar"),
+                    text = when {
+                        !state.isUploading -> tr("Publicar")
+                        state.uploadProgress != null -> tr("Publicando %s", "${state.uploadProgress} %")
+                        else -> tr("Publicando")
+                    },
                     onClick = ::publish,
                     size = NexusButtonSize.Small,
                     fillWidth = false,
@@ -715,6 +719,7 @@ private fun StoryVideoPreview(uri: Uri) {
                 resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
             }
         },
+        update = { it.player = player },
         modifier = Modifier.fillMaxSize()
     )
 }

@@ -13,8 +13,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
+import androidx.compose.material.icons.automirrored.outlined.Forward
 import androidx.compose.material.icons.automirrored.outlined.Reply
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Timer
@@ -77,6 +82,10 @@ fun MessageBubble(
     autoplayVideos: Boolean = false,
     serverNow: () -> Long = { System.currentTimeMillis() },
     onReply: () -> Unit = {},
+    onPin: (() -> Unit)? = null,
+    onSave: (() -> Unit)? = null,
+    onForward: (() -> Unit)? = null,
+    onSelect: (() -> Unit)? = null,
     onReactionClick: (String) -> Unit = {},
     onImageClick: ((String, String, String) -> Unit)? = null,
     onDeleteClick: ((Boolean) -> Unit)? = null,
@@ -97,6 +106,7 @@ fun MessageBubble(
     var showActions by remember { mutableStateOf(false) }
     var confirmDeleteForAll by remember { mutableStateOf(false) }
     var viewOnceOpen by remember { mutableStateOf(false) }
+    val readableContent = remember(message.content) { com.Azelmods.App.ui.screens.chat.withoutLinkPreview(message.content) }
 
     val now = System.currentTimeMillis()
     val canEdit = isOwnMessage && now - message.timestamp < 15 * 60 * 1000 &&
@@ -139,20 +149,32 @@ fun MessageBubble(
             return@Column
         }
 
-        val shape = if (isOwnMessage) {
-            RoundedCornerShape(14.dp, 14.dp, 4.dp, 14.dp)
+        val bubbleStyle by com.Azelmods.App.ui.components.ChatLook.bubbleStyle.collectAsState()
+        val ownColor by com.Azelmods.App.ui.components.ChatLook.ownBubbleColor.collectAsState()
+        val peerColor by com.Azelmods.App.ui.components.ChatLook.peerBubbleColor.collectAsState()
+        val textScale by com.Azelmods.App.ui.components.ChatLook.textScale.collectAsState()
+        val shape = com.Azelmods.App.ui.components.chatBubbleShape(bubbleStyle, isOwnMessage)
+        val background = if (isOwnMessage) {
+            ownColor?.let { Color(it) } ?: MaterialTheme.colorScheme.primaryContainer
         } else {
-            RoundedCornerShape(14.dp, 14.dp, 14.dp, 4.dp)
+            peerColor?.let { Color(it) } ?: NexusTokens.Color.BgElevated
         }
-        val background = if (isOwnMessage) MaterialTheme.colorScheme.primaryContainer else NexusTokens.Color.BgElevated
         val isEmojiOnly = message.mediaType == null && !message.isViewOnce && message.content.isEmojiOnly()
+        val isSticker = message.mediaType == "STICKER" && !message.isViewOnce
         val edgeToEdgeMedia = message.mediaType in setOf("IMAGE", "GIF", "VIDEO", "GIF_VIDEO") && !message.isViewOnce
 
         Column(
             modifier = Modifier
                 .widthIn(max = BubbleMaxWidth)
-                .clip(shape)
-                .then(if (isEmojiOnly) Modifier else Modifier.background(background))
+                .then(
+                    if (isEmojiOnly || isSticker) {
+                        Modifier.clip(shape)
+                    } else {
+                        com.Azelmods.App.ui.components.chatBubbleSurface(
+                            bubbleStyle, shape, background, MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
                 .combinedClickable(
                     onClick = {
                         if (message.isViewOnce && !isOwnMessage) {
@@ -164,6 +186,22 @@ fun MessageBubble(
                 )
                 .padding(if (edgeToEdgeMedia) 3.dp else 0.dp)
         ) {
+            // En un grupo hay que saber quién habla, cada persona con su color.
+            val groupSender = com.Azelmods.App.ui.components.LocalBubbleSender.current
+            if (groupSender != null && !isOwnMessage) {
+                val senderColor = remember(groupSender.first) {
+                    com.Azelmods.App.ui.components.ProfileColors.forUser(groupSender.first).first()
+                }
+                Text(
+                    groupSender.second,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = senderColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp)
+                )
+            }
             if (repliedMessage != null) ReplyQuote(repliedMessage, isOwnMessage)
             if (message.replyTo?.startsWith("story:") == true) StoryReplyQuote()
 
@@ -183,17 +221,50 @@ fun MessageBubble(
                     onLongPress = { showActions = true }
                 )
 
-                val text = if (message.mediaType == "DOCUMENT" || message.mediaType == "LOCATION") "" else message.content
-                if (text.isNotEmpty()) {
+                val poll = remember(message.content) { com.Azelmods.App.ui.screens.chat.decodePoll(message.content) }
+                val sharedContact = remember(message.content) { com.Azelmods.App.ui.screens.chat.decodeContact(message.content) }
+                val text = if (message.mediaType in setOf("DOCUMENT", "LOCATION", "STICKER")) "" else readableContent
+                val linkPreview = remember(message.content) { com.Azelmods.App.ui.screens.chat.decodeLinkPreview(message.content) }
+                if (linkPreview != null) com.Azelmods.App.ui.screens.chat.LinkPreviewCard(linkPreview)
+                if (sharedContact != null) {
+                    com.Azelmods.App.ui.screens.chat.ContactCard(sharedContact)
+                } else if (poll != null) {
+                    com.Azelmods.App.ui.screens.chat.PollCard(
+                        poll = poll,
+                        chatId = com.Azelmods.App.service.ActiveChat.chatId.orEmpty(),
+                        messageId = message.messageId
+                    )
+                } else if (isSticker) {
+                    com.Azelmods.App.ui.components.StickerImage(
+                        sticker = message.mediaUrl?.takeIf { it.isNotBlank() } ?: message.content,
+                        size = 140.dp,
+                        modifier = Modifier.padding(4.dp)
+                    )
+                } else if (isEmojiOnly) {
+                    // Hasta tres emojis se animan; más serían una fila enorme de animaciones.
+                    val emojis = remember(text) { com.Azelmods.App.ui.components.splitGraphemes(text) }
+                    if (emojis.size <= 3) {
+                        Row(Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp)) {
+                            emojis.forEach { com.Azelmods.App.ui.components.AnimatedEmoji(it, if (emojis.size == 1) 96.dp else 64.dp) }
+                        }
+                    } else {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.displaySmall.copy(fontSize = 40.sp, lineHeight = 46.sp),
+                            color = NexusTokens.Color.TextPrimary,
+                            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp)
+                        )
+                    }
+                } else if (text.isNotEmpty()) {
                     var expanded by remember(message.messageId) { mutableStateOf(false) }
                     val isLong = text.length > LONG_MESSAGE_CHARS
+                    val mentionColor = MaterialTheme.colorScheme.primary
+                    val styledText = remember(text, mentionColor) {
+                        com.Azelmods.App.ui.screens.chat.highlightMentions(text, mentionColor)
+                    }
                     Text(
-                        text = text,
-                        style = if (isEmojiOnly) {
-                            MaterialTheme.typography.displaySmall.copy(fontSize = 40.sp, lineHeight = 46.sp)
-                        } else {
-                            MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp, lineHeight = 21.sp)
-                        },
+                        text = styledText,
+                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = (15 * textScale).sp, lineHeight = (21 * textScale).sp),
                         color = NexusTokens.Color.TextPrimary,
                         maxLines = if (isLong && !expanded) COLLAPSED_LINES else Int.MAX_VALUE,
                         overflow = TextOverflow.Ellipsis,
@@ -256,6 +327,16 @@ fun MessageBubble(
                     Spacer(Modifier.width(3.dp))
                     ReadReceiptIndicator(status = message.status)
                 }
+                val showBubblePhoto by com.Azelmods.App.ui.components.ChatLook.bubblePhoto.collectAsState()
+                if (showBubblePhoto) {
+                    val peer = com.Azelmods.App.ui.components.LocalBubblePeer.current
+                    val me = com.Azelmods.App.data.profile.rememberMyProfile()
+                    val author = if (isOwnMessage) me.name to me.photoUrl else peer
+                    author?.let { (name, photo) ->
+                        Spacer(Modifier.width(5.dp))
+                        com.Azelmods.App.ui.components.UserAvatar(name, photo, size = 26.dp)
+                    }
+                }
             }
         }
 
@@ -273,7 +354,7 @@ fun MessageBubble(
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(emoji, fontSize = 13.sp)
+                        com.Azelmods.App.ui.components.AnimatedEmoji(emoji, 18.dp, iterations = 1)
                         if (count > 1) {
                             Spacer(Modifier.width(3.dp))
                             Text(
@@ -323,9 +404,17 @@ fun MessageBubble(
                 showActions = false
                 onReply()
             }
+            if (message.mediaType == "STICKER") {
+                val stickers: com.Azelmods.App.ui.components.StickerViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                ActionRow(Icons.Outlined.Bookmark, "Añadir a mis stickers") {
+                    stickers.saveReceived(message.mediaUrl?.takeIf { it.isNotBlank() } ?: message.content)
+                    showActions = false
+                    android.widget.Toast.makeText(context, tr("Añadido a tus stickers"), android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
             if (message.content.isNotEmpty() && !message.isViewOnce) {
                 ActionRow(Icons.Outlined.ContentCopy, "Copiar") {
-                    clipboard.setText(AnnotatedString(message.content))
+                    clipboard.setText(AnnotatedString(readableContent))
                     showActions = false
                     android.widget.Toast.makeText(context, tr("Copiado"), android.widget.Toast.LENGTH_SHORT).show()
                 }
@@ -334,6 +423,31 @@ fun MessageBubble(
                 ActionRow(Icons.Outlined.Translate, "Traducir") {
                     showActions = false
                     onTranslate()
+                }
+            }
+            if (onForward != null && !message.isViewOnce) {
+                ActionRow(Icons.AutoMirrored.Outlined.Forward, "Reenviar") {
+                    showActions = false
+                    onForward()
+                }
+            }
+            if (onSelect != null) {
+                ActionRow(Icons.Outlined.CheckCircle, "Seleccionar") {
+                    showActions = false
+                    onSelect()
+                }
+            }
+            if (onPin != null && !message.isViewOnce) {
+                ActionRow(Icons.Outlined.PushPin, "Fijar") {
+                    showActions = false
+                    onPin()
+                }
+            }
+            if (onSave != null && message.content.isNotEmpty() && !message.isViewOnce) {
+                ActionRow(Icons.Outlined.BookmarkBorder, "Guardar") {
+                    showActions = false
+                    onSave()
+                    android.widget.Toast.makeText(context, tr("Guardado en Mensajes guardados"), android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
             if (canEdit) {

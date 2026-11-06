@@ -33,10 +33,12 @@ import androidx.navigation.NavController
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.NexusTokens
 import kotlin.math.cos
+import kotlinx.coroutines.launch
 import kotlin.math.sin
 
 private const val WORDMARK = "NexusChat"
-private const val DURATION_MS = 2_300
+private const val DURATION_MS = 2_500
+private const val EXIT_MS = 420
 private val EaseOut = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 /** Progreso de 0 a 1 de un tramo [start]..[end] de la animación completa. */
@@ -55,9 +57,16 @@ fun SplashScreen(
     val state by viewModel.state.collectAsState()
     val progress = remember { Animatable(if (viewModel.animated) 0f else 1f) }
     var animationDone by remember { mutableStateOf(!viewModel.animated) }
+    val exit = remember { Animatable(0f) }
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     LaunchedEffect(Unit) {
         if (viewModel.animated) {
+            launch {
+                // Un toque leve justo cuando el anillo se cierra: se siente que encaja.
+                kotlinx.coroutines.delay((DURATION_MS * RING_CLOSES).toLong())
+                haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+            }
             progress.animateTo(1f, tween(DURATION_MS, easing = LinearEasing))
         }
         animationDone = true
@@ -70,6 +79,8 @@ fun SplashScreen(
         // cerrada), no se navega: el popUpTo(splash) inclusive cerraría también esa pantalla y
         // se colgaría la llamada. Cuando el usuario vuelva atrás, el splash reaparece y navega.
         if (navController.currentDestination?.route != Screen.Splash.route) return@LaunchedEffect
+        // La salida atraviesa el emblema: la app parece abrirse desde dentro de él.
+        if (viewModel.animated) exit.animateTo(1f, tween(EXIT_MS, easing = EaseOut))
         navController.navigate(if (isAuth) Screen.Home.route else Screen.Login.route) {
             popUpTo(Screen.Splash.route) { inclusive = true }
         }
@@ -77,14 +88,24 @@ fun SplashScreen(
 
     val accent = MaterialTheme.colorScheme.primary
     val t = progress.value
+    val leaving = exit.value
 
     Box(
         Modifier
             .fillMaxSize()
-            .background(NexusTokens.Color.BgDeep),
+            .background(NexusTokens.Color.BgDeep)
+            .graphicsLayer { alpha = 1f - leaving },
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Canvas(Modifier.fillMaxSize()) { drawSplashField(t, accent) }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer {
+                val zoom = 1f + leaving * leaving * 2.4f
+                scaleX = zoom
+                scaleY = zoom
+            }
+        ) {
             Canvas(Modifier.size(180.dp)) { drawNexusEmblem(t, accent) }
             Spacer(Modifier.height(20.dp))
             Wordmark(t)
@@ -119,6 +140,65 @@ private fun Wordmark(t: Float) {
         }
     }
 }
+
+/**
+ * Lo que rodea al emblema: motas que caen hacia el centro con distinta velocidad, lo que da
+ * profundidad, y una onda que sale cuando el anillo se cierra.
+ */
+private fun DrawScope.drawSplashField(t: Float, accent: Color) {
+    val center = Offset(size.width / 2f, size.height * 0.44f)
+    val reach = maxOf(size.width, size.height) * 0.75f
+    val fadeOut = 1f - phase(t, 0.7f, 0.98f)
+    if (fadeOut > 0f) {
+        FIELD.forEach { mote ->
+            // Las más lejanas (depth bajo) tardan más: así se percibe la distancia.
+            val travel = phase(t, 0f, 0.42f + 0.4f * (1f - mote.depth))
+            val distance = reach * mote.distance * (1f - travel)
+            val radians = Math.toRadians((mote.angle + travel * 40f * mote.spin).toDouble())
+            val position = Offset(
+                center.x + (cos(radians) * distance).toFloat(),
+                center.y + (sin(radians) * distance).toFloat()
+            )
+            val appear = phase(t, 0f, 0.14f)
+            drawCircle(
+                if (mote.bright) Color.White else accent,
+                radius = 1.2f + mote.depth * 3f,
+                center = position,
+                alpha = (0.25f + mote.depth * 0.6f) * appear * fadeOut
+            )
+        }
+    }
+    // Onda expansiva: dos anillos que se alejan y se apagan.
+    listOf(0f, 0.09f).forEach { delayed ->
+        val wave = phase(t, RING_CLOSES + delayed, RING_CLOSES + delayed + 0.3f)
+        if (wave > 0f && wave < 1f) {
+            drawCircle(
+                accent.copy(alpha = (1f - wave) * 0.5f),
+                radius = size.minDimension * (0.2f + wave * 0.75f),
+                center = center,
+                style = Stroke(width = 3f * (1f - wave) + 0.5f)
+            )
+        }
+    }
+}
+
+private class Mote(val angle: Float, val distance: Float, val depth: Float, val spin: Float, val bright: Boolean)
+
+/** Siempre las mismas posiciones: la entrada se ve igual cada vez, como una marca. */
+private val FIELD: List<Mote> = kotlin.random.Random(7).let { random ->
+    List(70) {
+        Mote(
+            angle = random.nextFloat() * 360f,
+            distance = 0.35f + random.nextFloat() * 0.65f,
+            depth = random.nextFloat(),
+            spin = if (random.nextBoolean()) 1f else -1f,
+            bright = random.nextInt(4) == 0
+        )
+    }
+}
+
+/** En este punto de la animación el anillo termina de cerrarse. */
+private const val RING_CLOSES = 0.66f
 
 /** El emblema de NexusChat. Con [t] = 1 se ve completo, sin animar. */
 internal fun DrawScope.drawNexusEmblem(t: Float, accent: Color) {
@@ -208,6 +288,19 @@ internal fun DrawScope.drawNexusEmblem(t: Float, accent: Color) {
             ),
             style = Stroke(width = 10f * unit.coerceAtLeast(0.6f), cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
+        val sheen = phase(t, 0.76f, 0.95f)
+        if (sheen > 0f && sheen < 1f) {
+            val x = origin.x + (sheen * 160f - 30f) * unit
+            drawPath(
+                partial,
+                Brush.linearGradient(
+                    listOf(Color.Transparent, Color.White.copy(alpha = 0.95f), Color.Transparent),
+                    start = Offset(x - 22f * unit, origin.y),
+                    end = Offset(x + 22f * unit, origin.y + 44f * unit)
+                ),
+                style = Stroke(width = 11f * unit.coerceAtLeast(0.6f), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+        }
     }
 }
 

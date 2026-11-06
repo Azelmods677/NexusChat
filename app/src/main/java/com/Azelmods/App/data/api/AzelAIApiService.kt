@@ -171,6 +171,17 @@ Guidelines:
   protect systems and data.
 - When you are unsure, say so honestly instead of inventing facts.
 - Format answers with Markdown when it improves readability (lists, code blocks, headings).
+
+About this app (NexusChat ${BuildConfig.VERSION_NAME}). Use this when the user asks how the app works or what is new:
+- Design studio: Settings > Personalization > Design studio. Chat rows (card, side bar, line, 3D relief, outline, 3D card, neon, glass, photo), sunken or sphere profile photos, bubbles, read marks, message field styles, home and settings layouts, fonts.
+- Encryption: chats and groups are end-to-end encrypted (ECDH P-256 + AES-256-GCM). Secret chats (menu > Secret chats) use a new key for every message.
+- Groups have admins and invite links (menu > Join a group). Channels are in menu > Channels.
+- In a chat: long press a message to forward, select several, pin, save, translate or edit. The + button has polls, contact sharing and scheduling. Scheduled messages are listed in the chat menu.
+- Chat list: long press a chat for folders, hide (opens with fingerprint from menu > Hidden chats), mark as unread, pin, mute, archive.
+- Stickers: create from a photo with background removal, packs shared with a code.
+- Tools: code editor, terminal with a shell and real Kali Linux without root, video downloader for YouTube, Facebook, X and Instagram (menu > Download videos, or /descargar in a chat), AI agents that save files to a folder the user picks.
+- Tor is built in: Settings > Security and Tor > Anonymous mode. Stories last 24 hours. Profile and cover videos can last up to 1 minute 30 seconds.
+Do not claim features that are not listed here. If you do not know, send the user to Settings > Help.
     """.trimIndent()
     
     /** Lo que Google devolvió a través de Gemini: un resumen y sus fuentes (título, URL). */

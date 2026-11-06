@@ -62,6 +62,7 @@ fun StoriesScreen(
     }
 
     val currentUserId = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+    val storyCards by com.Azelmods.App.ui.components.ChatLook.storyCards.collectAsState()
     val others = state.stories.filter { it.userId != currentUserId }
     val mine = state.stories.firstOrNull { it.userId == currentUserId }
     val recent = others.filterNot { it.isViewed }
@@ -136,6 +137,19 @@ fun StoriesScreen(
                 }
 
                 else -> {
+                    if (storyCards && others.isNotEmpty()) {
+                        item(key = "cards") {
+                            androidx.compose.foundation.lazy.LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(others.size, key = { "c_" + others[it].storyId }) { index ->
+                                    val story = others[index]
+                                    StoryCard(story) { navController.navigate(Screen.StoryViewer.createRoute(story.userId)) }
+                                }
+                            }
+                        }
+                    }
                     if (recent.isNotEmpty()) {
                         item(key = "h_recent") { NexusSectionHeader(tr("Recientes")) }
                         items(recent, key = { "r_${it.storyId}" }) { story ->
@@ -161,6 +175,18 @@ fun StoriesScreen(
 
 @Composable
 private fun MyStoryRow(
+    photoUrl: String?,
+    hasStory: Boolean,
+    onClick: () -> Unit,
+    onAdd: () -> Unit
+) {
+    com.Azelmods.App.ui.components.ListRowFrame("yo", photoUrl) {
+        MyStoryRowBody(photoUrl, hasStory, onClick, onAdd)
+    }
+}
+
+@Composable
+private fun MyStoryRowBody(
     photoUrl: String?,
     hasStory: Boolean,
     onClick: () -> Unit,
@@ -208,12 +234,19 @@ private fun MyStoryRow(
                 )
             }
         }
-        NexusDivider()
+        com.Azelmods.App.ui.components.RowDivider()
     }
 }
 
 @Composable
 private fun StoryRow(story: StoryItemData, onClick: () -> Unit) {
+    com.Azelmods.App.ui.components.ListRowFrame(story.userName, story.userPhotoUrl) {
+        StoryRowBody(story, onClick)
+    }
+}
+
+@Composable
+private fun StoryRowBody(story: StoryItemData, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -265,5 +298,54 @@ private fun formatStoryTime(timestamp: Long): String {
         minutes < 60 -> "Hace $minutes min"
         minutes < 24 * 60 -> "Hace ${minutes / 60} h"
         else -> SimpleDateFormat("d MMM, HH:mm", Locale.forLanguageTag("es")).format(Date(timestamp))
+    }
+}
+
+/** Historia como tarjeta vertical: su imagen de fondo, con la foto y el nombre encima. */
+@Composable
+private fun StoryCard(story: StoryItemData, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .width(112.dp)
+            .height(176.dp)
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+            .background(NexusTokens.Color.BgElevated)
+            .clickable(onClick = onClick)
+    ) {
+        (story.mediaUrl ?: story.userPhotoUrl)?.let {
+            coil3.compose.AsyncImage(
+                model = it,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.matchParentSize()
+            )
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(androidx.compose.ui.graphics.Color.Transparent, androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f))
+                    )
+                )
+        )
+        Column(
+            Modifier
+                .align(Alignment.BottomStart)
+                .padding(10.dp)
+        ) {
+            StoryAvatar(
+                story.userName,
+                story.userPhotoUrl,
+                if (story.isViewed) NexusTokens.Color.Hairline else MaterialTheme.colorScheme.primary
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                story.userName,
+                style = MaterialTheme.typography.labelMedium,
+                color = androidx.compose.ui.graphics.Color.White,
+                maxLines = 1
+            )
+        }
     }
 }

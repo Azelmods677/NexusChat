@@ -29,6 +29,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.GroupAdd
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Lock
@@ -40,6 +45,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
@@ -71,7 +77,8 @@ import java.util.Locale
 @Composable
 fun HomeScreenRedesigned(
     navController: NavController,
-    viewModel: HomeViewModel = hiltViewModel()
+    viewModel: HomeViewModel = hiltViewModel(),
+    onOpenTab: (Int) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -85,6 +92,42 @@ fun HomeScreenRedesigned(
     val avatarRings = remember { com.Azelmods.App.data.preferences.ThemePreferences(context).areAvatarRingsEnabled() }
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
+    val me = com.Azelmods.App.data.profile.rememberMyProfile()
+    val folders by com.Azelmods.App.data.chat.ChatOrganizer.folders.collectAsState()
+    val hiddenChats by com.Azelmods.App.data.chat.ChatOrganizer.hidden.collectAsState()
+    var folderId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showHidden by remember { mutableStateOf(false) }
+    var folderChat by remember { mutableStateOf<Chat?>(null) }
+    var joinCode by remember { mutableStateOf<String?>(null) }
+    val pendingInvite by com.Azelmods.App.ui.screens.group.GroupLinks.pending.collectAsState()
+    LaunchedEffect(pendingInvite) {
+        pendingInvite?.let {
+            joinCode = it
+            com.Azelmods.App.ui.screens.group.GroupLinks.pending.value = null
+        }
+    }
+    // Al salir de la app los chats ocultos vuelven a esconderse.
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) showHidden = false
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+    val activeFolder = folders.firstOrNull { it.id == folderId }
+    val visibleChats = remember(state.filteredChats, hiddenChats, activeFolder, showHidden) {
+        state.filteredChats.filter { chat ->
+            when {
+                showHidden -> chat.chatId in hiddenChats
+                chat.chatId in hiddenChats -> false
+                activeFolder != null -> chat.chatId in activeFolder.chatIds
+                else -> true
+            }
+        }
+    }
+    val homeStyle by com.Azelmods.App.ui.components.ChatLook.homeStyle.collectAsState()
+
     fun toast(message: String) {
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
     }
@@ -93,21 +136,30 @@ fun HomeScreenRedesigned(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        tr("Chats"),
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = NexusTokens.Color.TextPrimary
-                    )
+                    val showAvatar by com.Azelmods.App.ui.components.ChatLook.homeAvatar.collectAsState()
+                    HomeTitle(homeStyle, me, showAvatar) {
+                        navController.navigate(Screen.Profile.createRoute(currentUserId))
+                    }
                 },
                 actions = {
-                    IconButton(onClick = { navController.navigate(Screen.Search.route) }) {
+                    val ghostButton by com.Azelmods.App.ui.components.ChatLook.ghostButton.collectAsState()
+                    if (ghostButton) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { viewModel.toggleGhostMode() }) {
+                            Icon(
+                                if (ghostMode) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                tr("Modo fantasma"),
+                                tint = if (ghostMode) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextSecondary
+                            )
+                        }
+                    }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate(Screen.Search.route) }) {
                         Icon(Icons.Default.Search, "Buscar", tint = NexusTokens.Color.TextSecondary)
                     }
-                    IconButton(onClick = { navController.navigate(Screen.AzelAI.route) }) {
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate(Screen.AzelAI.route) }) {
                         Icon(Icons.Outlined.SmartToy, "Azel IA", tint = NexusTokens.Color.TextSecondary)
                     }
                     Box {
-                        IconButton(onClick = { showMenu = true }) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, "Más opciones", tint = NexusTokens.Color.TextSecondary)
                         }
                         DropdownMenu(
@@ -123,7 +175,37 @@ fun HomeScreenRedesigned(
                                 viewModel.toggleGhostMode()
                                 toast(if (ghostMode) tr("Modo fantasma desactivado") else tr("Modo fantasma activado"))
                             }
-                            HomeMenuItem("Seguridad y Tor", Icons.Outlined.Lock) {
+                            HomeMenuItem(tr("Unirse a un grupo"), Icons.Outlined.GroupAdd) {
+                                showMenu = false
+                                joinCode = ""
+                            }
+                            HomeMenuItem(tr("Chats ocultos"), Icons.Outlined.VisibilityOff) {
+                                showMenu = false
+                                if (hiddenChats.isEmpty()) {
+                                    toast(tr("No tienes chats ocultos. Mantén pulsado un chat para ocultarlo."))
+                                } else {
+                                    confirmDeviceOwner(context, tr("Ver chats ocultos"), onNoLock = {
+                                        toast(tr("Pon un bloqueo de pantalla en el teléfono para usar los chats ocultos"))
+                                    }) { showHidden = true }
+                                }
+                            }
+                            HomeMenuItem(tr("Mensajes guardados"), Icons.Outlined.Bookmark) {
+                                showMenu = false
+                                navController.navigate("saved_messages")
+                            }
+                            HomeMenuItem(tr("Chats secretos"), Icons.Outlined.Lock) {
+                                showMenu = false
+                                navController.navigate("secret_chats")
+                            }
+                            HomeMenuItem(tr("Canales"), Icons.Outlined.Campaign) {
+                                showMenu = false
+                                navController.navigate("channels")
+                            }
+                            HomeMenuItem(tr("Descargar vídeos"), Icons.Outlined.Download) {
+                                showMenu = false
+                                navController.navigate("video_download")
+                            }
+                            HomeMenuItem("Seguridad y Tor", Icons.Outlined.Security) {
                                 showMenu = false
                                 navController.navigate(Screen.Security.route)
                             }
@@ -167,14 +249,90 @@ fun HomeScreenRedesigned(
         ) {
             // Filtros: la fila desplaza en horizontal para que "Archivados" siempre
             // sea alcanzable; es el único camino de vuelta de un chat archivado.
-            Row(
+            if (showHidden) {
+                Row(
+                    Modifier
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                        .fillMaxWidth()
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(NexusTokens.Radius.xl))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+                        .padding(start = 14.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        tr("Estás viendo tus chats ocultos"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NexusTokens.Color.TextPrimary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = { showHidden = false }) { Text(tr("Cerrar")) }
+                }
+            }
+            HomeHeader(
+                style = homeStyle,
+                me = me,
+                ghost = ghostMode,
+                anonymous = com.Azelmods.App.data.security.tor.AnonymityPolicy.active,
+                onOpenProfile = { onOpenTab(3) },
+                onOpenContacts = { navController.navigate(Screen.NewConversation.route) },
+                onOpenStories = { onOpenTab(1) },
+                onOpenCalls = { onOpenTab(2) }
+            )
+            val homeSearchBar by com.Azelmods.App.ui.components.ChatLook.homeSearchBar.collectAsState()
+            val quickBar by com.Azelmods.App.ui.components.ChatLook.quickBar.collectAsState()
+            val hideArchived by com.Azelmods.App.ui.components.ChatLook.hideArchived.collectAsState()
+            if (homeSearchBar) {
+                Row(
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(NexusTokens.Radius.pill))
+                        .background(NexusTokens.Color.BgElevated)
+                        .clickable { navController.navigate(Screen.Search.route) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Search, null, tint = NexusTokens.Color.TextMuted, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(tr("Buscar chats, mensajes y personas"), style = MaterialTheme.typography.bodyMedium, color = NexusTokens.Color.TextMuted)
+                }
+            }
+            if (quickBar) {
+                Row(
+                    Modifier
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .fillMaxWidth()
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(NexusTokens.Radius.xl))
+                        .background(NexusTokens.Color.BgSurface)
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate("secret_chats") }) {
+                        Icon(Icons.Outlined.Lock, tr("Chats secretos"), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate("channels") }) {
+                        Icon(Icons.Outlined.Campaign, tr("Canales"), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate("saved_messages") }) {
+                        Icon(Icons.Outlined.Bookmark, tr("Mensajes guardados"), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate("video_download") }) {
+                        Icon(Icons.Outlined.Download, tr("Descargar vídeos"), tint = MaterialTheme.colorScheme.primary)
+                    }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate("terminal") }) {
+                        Icon(Icons.Outlined.Terminal, tr("Terminal"), tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            val hideFilters by com.Azelmods.App.ui.components.ChatLook.hideFilters.collectAsState()
+            if (!hideFilters) Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ChatFilter.values().forEach { filter ->
+                ChatFilter.values().filter { !(hideArchived && it == ChatFilter.ARCHIVED) }.forEach { filter ->
                     val count = when (filter) {
                         ChatFilter.UNREAD -> state.chats.count { (it.unreadCount[currentUserId] ?: 0) > 0 && !it.isArchived }
                         ChatFilter.ARCHIVED -> state.chats.count { it.isArchived }
@@ -187,9 +345,22 @@ fun HomeScreenRedesigned(
                             ChatFilter.GROUPS -> tr("Grupos")
                             ChatFilter.ARCHIVED -> tr("Archivados")
                         },
-                        selected = state.selectedFilter == filter,
+                        selected = folderId == null && state.selectedFilter == filter,
                         count = count,
-                        onClick = { viewModel.onFilterChange(filter) }
+                        onClick = {
+                            folderId = null
+                            viewModel.onFilterChange(filter)
+                        }
+                    )
+                }
+                folders.forEach { folder ->
+                    NexusFilterChip(
+                        label = folder.name,
+                        selected = folderId == folder.id,
+                        onClick = {
+                            folderId = folder.id
+                            viewModel.onFilterChange(ChatFilter.ALL)
+                        }
                     )
                 }
             }
@@ -203,7 +374,16 @@ fun HomeScreenRedesigned(
                     )
                 }
 
-                state.filteredChats.isEmpty() -> EmptyChatsState(
+                activeFolder != null && visibleChats.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        tr("Esta carpeta está vacía. Mantén pulsado un chat para añadirlo."),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NexusTokens.Color.TextMuted,
+                        modifier = Modifier.padding(32.dp)
+                    )
+                }
+
+                visibleChats.isEmpty() -> EmptyChatsState(
                     filter = state.selectedFilter,
                     onStartConversation = { navController.navigate(Screen.NewConversation.route) },
                     onOpenAssistant = {
@@ -223,7 +403,7 @@ fun HomeScreenRedesigned(
                         listEntered = true
                     }
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        itemsIndexed(items = state.filteredChats, key = { _, chat -> chat.chatId }) { index, chat ->
+                        itemsIndexed(items = visibleChats, key = { _, chat -> chat.chatId }) { index, chat ->
                             val contactId = chat.participantIds.find { it != currentUserId }
                             val hasStory = contactId != null && contactId in storyOwners
                             Column(
@@ -248,7 +428,7 @@ fun HomeScreenRedesigned(
                                         }
                                     }
                                 )
-                                NexusDivider(startInset = 82.dp)
+                                com.Azelmods.App.ui.components.RowDivider(startInset = 82.dp)
                             }
                         }
                         item { Spacer(Modifier.height(88.dp)) }
@@ -256,6 +436,20 @@ fun HomeScreenRedesigned(
                 }
             }
         }
+    }
+
+    folderChat?.let { chat ->
+        ChatFoldersDialog(chatId = chat.chatId, folders = folders, onDismiss = { folderChat = null })
+    }
+    joinCode?.let { code ->
+        com.Azelmods.App.ui.screens.group.JoinGroupDialog(
+            initialCode = code,
+            onDismiss = { joinCode = null },
+            onJoined = { chatId ->
+                joinCode = null
+                navController.navigate("chat/$chatId")
+            }
+        )
     }
 
     // Acciones al mantener pulsado un chat
@@ -279,6 +473,48 @@ fun HomeScreenRedesigned(
                             showBottomSheet = false
                         }
                     )
+                    if ((chat.unreadCount[currentUserId] ?: 0) == 0) {
+                        ChatActionItem(
+                            icon = Icons.Default.MarkChatUnread,
+                            text = tr("Marcar como no leído"),
+                            onClick = {
+                                viewModel.markUnread(chat.chatId)
+                                showBottomSheet = false
+                            }
+                        )
+                    }
+                    ChatActionItem(
+                        icon = Icons.Default.Folder,
+                        text = tr("Carpetas"),
+                        onClick = {
+                            folderChat = chat
+                            showBottomSheet = false
+                        }
+                    )
+                    ChatActionItem(
+                        icon = if (chat.chatId in hiddenChats) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        text = if (chat.chatId in hiddenChats) tr("Dejar de ocultar") else tr("Ocultar chat"),
+                        onClick = {
+                            showBottomSheet = false
+                            val hide = chat.chatId !in hiddenChats
+                            confirmDeviceOwner(context, if (hide) tr("Ocultar chat") else tr("Dejar de ocultar"), onNoLock = {
+                                toast(tr("Pon un bloqueo de pantalla en el teléfono para usar los chats ocultos"))
+                            }) {
+                                com.Azelmods.App.data.chat.ChatOrganizer.setHidden(chat.chatId, hide)
+                                toast(if (hide) tr("Chat oculto. Lo encuentras en el menú, en Chats ocultos.") else tr("El chat vuelve a la lista"))
+                            }
+                        }
+                    )
+                    if (chat.chatType == ChatType.GROUP) {
+                        ChatActionItem(
+                            icon = Icons.Default.Groups,
+                            text = tr("Información del grupo"),
+                            onClick = {
+                                showBottomSheet = false
+                                navController.navigate("group_info/${chat.chatId}")
+                            }
+                        )
+                    }
                     ChatActionItem(
                         icon = if (chat.isMuted) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
                         text = if (chat.isMuted) tr("Reactivar notificaciones") else tr("Silenciar"),
@@ -417,6 +653,7 @@ private fun HomeMenuItem(
 
 /** Fila de conversación: plana, a todo el ancho, con el acento solo en lo que está sin leer. */
 @OptIn(ExperimentalFoundationApi::class)
+/** Una conversación de la lista, con el estilo de fila que haya elegido el usuario. */
 @Composable
 fun ChatRow(
     chat: Chat,
@@ -426,10 +663,36 @@ fun ChatRow(
     hasStory: Boolean = false,
     colorRing: Boolean = true
 ) {
+    val rowStyle by com.Azelmods.App.ui.components.ChatLook.rowStyle.collectAsState()
+    val selfId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+    val peerId = chat.participantIds.ifEmpty { chat.participants }.firstOrNull { it != selfId }
+    val frameColors = remember(peerId, chat.contactName, chat.contactColor) {
+        ProfileColors.forUser(peerId ?: chat.contactName, chat.contactColor)
+    }
+    com.Azelmods.App.ui.components.ChatRowFrame(
+        style = rowStyle,
+        contactColors = frameColors,
+        photoUrl = peerId?.let { chat.participantPhotos[it] } ?: chat.contactPhotoUrl
+    ) {
+        ChatRowBody(chat, onClick, onLongPress, onAvatarClick, hasStory, colorRing)
+    }
+}
+
+@Composable
+private fun ChatRowBody(
+    chat: Chat,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    onAvatarClick: (() -> Unit)?,
+    hasStory: Boolean,
+    colorRing: Boolean
+) {
     val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
     val otherUserId = chat.participantIds.ifEmpty { chat.participants }
         .firstOrNull { it != currentUserId }
-    val contactName = otherUserId?.let { chat.participantNames[it] }
+    // El asistente siempre se llama igual, tenga lo que tenga su ficha en el servidor.
+    val contactName = "Azel Assistant".takeIf { chat.chatId.contains(com.Azelmods.App.data.demo.DemoAssistant.USER_ID) }
+        ?: otherUserId?.let { chat.participantNames[it] }
         ?: chat.contactName.ifBlank { null }
         ?: chat.participantNames.values.firstOrNull()
         ?: tr("Sin nombre")
@@ -524,6 +787,19 @@ fun ChatRow(
             val showSecondLine = isPeerTyping || chat.lastMessage.isNotBlank() || chat.isPinned || hasUnread
             if (showSecondLine) Spacer(Modifier.height(3.dp))
 
+            if (com.Azelmods.App.ui.components.LocalChatRowDivider.current) {
+                val lineTint by com.Azelmods.App.ui.components.ChatLook.rowTint.collectAsState()
+                Box(
+                    Modifier
+                        .padding(vertical = 1.2.dp)
+                        .fillMaxWidth()
+                        .height(0.8.dp)
+                        .background(
+                            if (lineTint == com.Azelmods.App.ui.components.RowTint.BLUE) Color(0xFF0077FF)
+                            else MaterialTheme.colorScheme.primary
+                        )
+                )
+            }
             if (showSecondLine) Row(verticalAlignment = Alignment.CenterVertically) {
                 if (isPeerTyping) {
                     Text(
@@ -670,4 +946,89 @@ private fun formatTimestamp(timestamp: Long): String {
         sameYear -> SimpleDateFormat("d MMM", locale).format(date)
         else -> SimpleDateFormat("dd/MM/yy", locale).format(date)
     }
+}
+
+/** Pide la huella o el bloqueo del teléfono. Sin bloqueo puesto no hay nada que proteja el chat. */
+private fun confirmDeviceOwner(
+    context: android.content.Context,
+    title: String,
+    onNoLock: () -> Unit,
+    onConfirmed: () -> Unit
+) {
+    val keyguard = context.getSystemService(android.app.KeyguardManager::class.java)
+    if (keyguard?.isDeviceSecure != true) {
+        onNoLock()
+        return
+    }
+    val authenticators = android.hardware.biometrics.BiometricManager.Authenticators.BIOMETRIC_WEAK or
+        android.hardware.biometrics.BiometricManager.Authenticators.DEVICE_CREDENTIAL
+    android.hardware.biometrics.BiometricPrompt.Builder(context)
+        .setTitle(title)
+        .setAllowedAuthenticators(authenticators)
+        .build()
+        .authenticate(
+            android.os.CancellationSignal(),
+            context.mainExecutor,
+            object : android.hardware.biometrics.BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: android.hardware.biometrics.BiometricPrompt.AuthenticationResult) {
+                    onConfirmed()
+                }
+            }
+        )
+}
+
+@Composable
+private fun ChatFoldersDialog(
+    chatId: String,
+    folders: List<com.Azelmods.App.data.chat.ChatFolder>,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Carpetas")) },
+        text = {
+            Column {
+                folders.forEach { folder ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = chatId in folder.chatIds,
+                            onCheckedChange = { com.Azelmods.App.data.chat.ChatOrganizer.toggleInFolder(folder.id, chatId) }
+                        )
+                        Text(
+                            folder.name,
+                            color = NexusTokens.Color.TextPrimary,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f)
+                        )
+                        com.Azelmods.App.ui.components.AnimatedIconButton(
+                            onClick = { com.Azelmods.App.data.chat.ChatOrganizer.deleteFolder(folder.id) }
+                        ) {
+                            Icon(Icons.Default.DeleteOutline, tr("Borrar carpeta"), tint = NexusTokens.Color.TextMuted)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(24) },
+                    singleLine = true,
+                    label = { Text(tr("Nueva carpeta")) },
+                    trailingIcon = {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(
+                            enabled = name.isNotBlank(),
+                            onClick = {
+                                com.Azelmods.App.data.chat.ChatOrganizer.createFolder(name, chatId)
+                                name = ""
+                            }
+                        ) {
+                            Icon(Icons.Default.Add, tr("Crear"))
+                        }
+                    }
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } },
+        containerColor = NexusTokens.Color.BgSurface
+    )
 }

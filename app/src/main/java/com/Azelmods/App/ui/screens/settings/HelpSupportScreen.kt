@@ -34,7 +34,6 @@ import com.Azelmods.App.ui.theme.*
  */
 private const val REPO_URL = "https://github.com/Azelmods677/NexusChat"
 private const val ISSUES_URL = "$REPO_URL/issues"
-private const val LICENSE_URL = "$REPO_URL/blob/main/LICENSE"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,6 +95,12 @@ fun HelpSupportScreen(
             // a "tutorial/gestures" mientras el tutorial se llamaba "touch_gestures":
             // el enlace abría una pantalla vacía.
             SettingsItem(
+                title = tr("🆕 Novedades de la 8.0"),
+                subtitle = tr("Todo lo que trae esta versión"),
+                icon = Icons.Default.NewReleases,
+                onClick = { navController.navigate("tutorial/whats_new") }
+            )
+            SettingsItem(
                 title = tr("🚀 Primeros pasos"),
                 subtitle = tr("Crear tu cuenta y moverte por la app"),
                 icon = Icons.Default.School,
@@ -106,6 +111,36 @@ fun HelpSupportScreen(
                 subtitle = tr("Chats, multimedia, cifrado y mensajes temporales"),
                 icon = Icons.AutoMirrored.Filled.Message,
                 onClick = { navController.navigate("tutorial/messaging") }
+            )
+            SettingsItem(
+                title = tr("👥 Grupos, canales y chats secretos"),
+                subtitle = tr("Administradores, enlaces y cifrado"),
+                icon = Icons.Default.Groups,
+                onClick = { navController.navigate("tutorial/groups") }
+            )
+            SettingsItem(
+                title = tr("🗂️ Organizar tus chats"),
+                subtitle = tr("Carpetas, ocultos, reenviar y programar"),
+                icon = Icons.Default.Folder,
+                onClick = { navController.navigate("tutorial/organize") }
+            )
+            SettingsItem(
+                title = tr("😀 Stickers"),
+                subtitle = tr("Crear, guardar y compartir paquetes"),
+                icon = Icons.Default.EmojiEmotions,
+                onClick = { navController.navigate("tutorial/stickers") }
+            )
+            SettingsItem(
+                title = tr("🎨 Estudio de diseño"),
+                subtitle = tr("Filas, burbujas, campo, inicio y ajustes"),
+                icon = Icons.Default.Style,
+                onClick = { navController.navigate("tutorial/studio") }
+            )
+            SettingsItem(
+                title = tr("⬇️ Descargar vídeos"),
+                subtitle = tr("YouTube, Facebook, X e Instagram"),
+                icon = Icons.Default.Download,
+                onClick = { navController.navigate("tutorial/downloads") }
             )
             SettingsItem(
                 title = tr("📸 Historias"),
@@ -121,31 +156,31 @@ fun HelpSupportScreen(
             )
             SettingsItem(
                 title = tr("🤖 Azel IA"),
-                subtitle = tr("Elegir proveedor, modelo y clave propia"),
+                subtitle = tr("Proveedor, modelo, clave propia y agentes"),
                 icon = Icons.Default.Psychology,
                 onClick = { navController.navigate("tutorial/ai_features") }
             )
             SettingsItem(
                 title = tr("🔒 Privacidad"),
-                subtitle = tr("Cifrado, bloqueo biométrico y copias cifradas"),
+                subtitle = tr("Cifrado, huella, chats ocultos y copias"),
                 icon = Icons.Default.Security,
                 onClick = { navController.navigate("tutorial/privacy") }
             )
             SettingsItem(
-                title = tr("🧅 Tor y Orbot"),
-                subtitle = tr("Navegación anónima y sitios .onion"),
+                title = tr("🧅 Tor"),
+                subtitle = tr("Integrado: modo anónimo y sitios .onion"),
                 icon = Icons.Default.Shield,
                 onClick = { navController.navigate("tutorial/tor") }
             )
             SettingsItem(
                 title = tr("🎨 Apariencia"),
-                subtitle = tr("25 acentos, tamaño de texto y fondos"),
+                subtitle = tr("Color de acento, tamaño de texto y fondos"),
                 icon = Icons.Default.Palette,
                 onClick = { navController.navigate("tutorial/appearance") }
             )
             SettingsItem(
                 title = tr("⚙️ Editor y terminal"),
-                subtitle = tr("Editor con resaltado y emulador de terminal"),
+                subtitle = tr("Editor con resaltado, shell y Kali Linux"),
                 icon = Icons.Default.DeveloperMode,
                 onClick = { navController.navigate("tutorial/tools") }
             )
@@ -202,10 +237,10 @@ fun HelpSupportScreen(
                 onClick = { navController.navigate(Screen.SettingsAbout.route) }
             )
             SettingsItem(
-                title = tr("Licencia MIT"),
-                subtitle = tr("Puedes usar y modificar el código libremente"),
+                title = tr("Licencia"),
+                subtitle = tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
                 icon = Icons.Default.Description,
-                onClick = { open(LICENSE_URL) }
+                onClick = { navController.navigate(Screen.SettingsAbout.route) }
             )
 
             // ── AUTORÍA Y PROPIEDAD ──────────────────────────────────────────
@@ -229,7 +264,7 @@ fun HelpSupportScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Plantilla desarrollada por ${com.Azelmods.App.data.security.IntegrityGuard.owner()}",
+                            "Desarrollada por ${com.Azelmods.App.data.security.IntegrityGuard.owner()}",
                             color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
@@ -237,10 +272,7 @@ fun HelpSupportScreen(
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        tr("NexusChat es una plantilla original diseñada y " +
-                            "desarrollada íntegramente por Azel Mods. Se distribuye bajo " +
-                            "licencia MIT: eres libre de usarla, estudiarla y construir sobre " +
-                            "ella, conservando este aviso de copyright y la atribución al autor."),
+                        tr("NexusChat fue diseñada y desarrollada íntegramente por Azel Mods."),
                         color = Color.Gray,
                         fontSize = 12.sp,
                         lineHeight = 17.sp
@@ -256,7 +288,7 @@ fun HelpSupportScreen(
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        "© 2026 ${com.Azelmods.App.data.security.IntegrityGuard.owner()} · Licencia MIT",
+                        tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
                         color = Color.Gray.copy(alpha = 0.6f),
                         fontSize = 11.sp
                     )

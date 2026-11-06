@@ -38,9 +38,18 @@ object DemoAssistant {
      */
     val welcome: List<String> = listOf(
         "¡Hola! 👋 Soy Azel Assistant. Esto es un chat de verdad: lo que escribas viaja por la misma base de datos que cualquier otra conversación de la app.",
-        "*¿Qué es NexusChat?* Un mensajero completo —chats, grupos, llamadas e historias— que además trae dentro herramientas que normalmente viven en otras apps: navegador Tor, editor de código, terminal y un asistente de IA con tu propia clave.",
+        "*¿Qué es NexusChat?* Un mensajero completo —chats, grupos, llamadas e historias— que además trae dentro herramientas que normalmente viven en otras apps: Tor, editor de código, terminal con Kali Linux y agentes de IA con tu propia clave.",
         "*¿Por qué existe?* Porque casi todos los mensajeros te piden confiar en su palabra. Aquí el cifrado ocurre en tu dispositivo, la clave privada no sale de él, y el código está publicado para que lo compruebes en vez de creértelo.",
-        "*¿Qué puedo hacer?* Pregúntame por *cifrado*, *llamadas*, *historias*, *grupos*, *IA*, *Tor*, *traducción*, *privacidad*, *código* o *diseño*. Escribe *funciones* y te doy el índice completo. ✨"
+        "*¿Qué puedo hacer?* Pregúntame por *novedades*, *personalizar*, *cifrado*, *chats secretos*, *grupos*, *canales*, *stickers*, *carpetas*, *agentes*, *Kali* o *Tor*. Escribe *funciones* y te doy el índice completo. ✨"
+    )
+
+    /** Lo que se le cuenta una sola vez a quien ya tenía la app al llegar esta versión. */
+    val whatsNew: List<String> = listOf(
+        "🆕 ¡NexusChat 8.0 ya está aquí! Te cuento lo que trae:",
+        "🎨 *Personaliza todo* en Ajustes → Personalización → Estudio de diseño: filas, burbujas, campo de escribir, inicio y ajustes.",
+        "🔐 *Grupos cifrados*, *chats secretos* con una clave nueva en cada mensaje, y *canales*.",
+        "💬 Reenviar, seleccionar varios mensajes, encuestas, mensajes programados, carpetas, chats ocultos y stickers propios.",
+        "🛠️ *Kali Linux* en la terminal y *descarga de vídeos*. Escríbeme *novedades* cuando quieras el detalle."
     )
 
     /**
@@ -65,17 +74,71 @@ object DemoAssistant {
             // ── Índice de funciones ──
             starts("funcion", "menu", "indice") || word("ayuda", "help", "opciones") -> listOf(
                 "Esto es lo que hay dentro, por bloques 👇",
-                "💬 *Comunicación* — chats 1:1, grupos, llamadas de voz y vídeo, historias de 24 h.",
-                "🔒 *Privacidad* — cifrado de extremo a extremo, navegación Tor, bloqueo con huella, bloqueo de contactos.",
-                "🛠️ *Herramientas* — asistente de IA, editor de código, terminal, traducción de mensajes.",
-                "🎨 *Personalización* — fondos propios, 25 acentos de color, tamaño de letra.",
+                "💬 *Comunicación* — chats, grupos, canales, llamadas de voz y vídeo, historias de 24 h, encuestas y stickers.",
+                "🔒 *Privacidad* — cifrado de extremo a extremo, chats secretos, Tor integrado, chats ocultos, bloqueo con huella.",
+                "🛠️ *Herramientas* — agentes de IA, editor de código, terminal con Kali Linux, descarga de vídeos, traducción.",
+                "🎨 *Personalización* — Estudio de diseño, 36 colores más el que tú quieras, fondos propios y tipos de letra.",
+                "🗂️ *Organización* — carpetas, mensajes guardados y programados.",
                 "Escríbeme el nombre de cualquiera y te cuento el detalle."
+            )
+
+            // ── Novedades de la versión ──
+            starts("novedad", "actualiz", "version") || word("nuevo", "nueva", "nuevas", "nuevos") -> listOf(
+                "🆕 NexusChat 8.0 es la actualización más grande hasta ahora:",
+                "🎨 *Estudio de diseño*: filas, burbujas, campo de escribir, inicio y ajustes a tu gusto.",
+                "🔐 *Grupos cifrados*, *chats secretos* y *canales*.",
+                "💬 *Reenviar*, seleccionar, *encuestas*, *programar*, *carpetas*, *chats ocultos* y *stickers* propios.",
+                "🛠️ *Kali Linux* en la terminal, *descarga de vídeos* y agentes que guardan archivos con tu permiso.",
+                "Escríbeme el nombre de cualquiera y te lo explico."
+            )
+
+            starts("personaliz", "estudio", "fila", "burbuj", "entry", "row") -> listOf(
+                "🎨 Ve a Ajustes → Personalización → *Estudio de diseño*.",
+                "Filas: tarjeta, barra lateral, línea, relieve 3D, borde, tarjeta 3D, neón, cristal o foto de fondo. También en llamadas, historias y contactos.",
+                "Burbujas, marcas de lectura, campo de escribir, inicio y ajustes tienen sus propias opciones, y lo ves al momento arriba."
+            )
+
+            starts("secret") -> listOf(
+                "🔐 Los chats secretos están en el menú ⋮ → *Chats secretos*.",
+                "Cada mensaje usa una clave nueva, no se pueden hacer capturas y el servidor lo borra al entregarlo.",
+                "Solo existen en el teléfono donde se crearon."
+            )
+
+            starts("canal") -> listOf(
+                "📣 Los canales están en el menú ⋮ → *Canales*.",
+                "Crea el tuyo y publica para tus seguidores, o sigue los de otros. Solo el dueño publica."
+            )
+
+            starts("sticker", "pegatina") -> listOf(
+                "😀 En el panel de stickers del chat creas uno desde una foto: quitas el fondo, añades texto y un borde.",
+                "Agrúpalos en paquetes y compártelos con un código.",
+                "Y si te envían uno que te gusta: mantenlo pulsado → *Añadir a mis stickers*."
+            )
+
+            starts("carpeta", "ocult", "archiv") -> listOf(
+                "🗂️ Mantén pulsado un chat para añadirlo a una *carpeta*, *ocultarlo* o archivarlo.",
+                "Los ocultos se abren desde el menú ⋮ → *Chats ocultos*, con tu huella."
+            )
+
+            starts("reenvi", "selecc", "encuest", "programar", "programad", "guardad", "fijad") -> listOf(
+                "💬 Mantén pulsado un mensaje para *reenviarlo*, *seleccionar* varios, *fijarlo* o *guardarlo*.",
+                "En el botón + del chat tienes *Encuesta*, *Contacto* y *Programar*. Lo programado se ve y se cancela en el menú ⋮ del chat."
+            )
+
+            starts("descarg", "youtube", "instagram", "facebook") -> listOf(
+                "⬇️ Menú ⋮ → *Descargar vídeos*, o escribe /descargar y el enlace en un chat.",
+                "Funciona con YouTube, Facebook, X e Instagram, y se guarda en Descargas."
+            )
+
+            starts("agente") -> listOf(
+                "🤖 Encarga una tarea a los agentes de Azel IA y míralos trabajar: investigan, analizan, programan, prueban y redactan.",
+                "Si crean un archivo o un PDF, te piden permiso y lo guardan en la carpeta que elijas."
             )
 
             // ── Identidad del proyecto ──
             (starts("que") && (starts("nexus", "aplicacion") || word("es", "esto", "app"))) ||
                 (starts("para") && starts("sirve", "vale")) -> listOf(
-                "NexusChat es un mensajero con cifrado de extremo a extremo que además trae navegador Tor, editor de código, terminal y un asistente de IA.",
+                "NexusChat es un mensajero con cifrado de extremo a extremo que además trae Tor, editor de código, terminal con Kali Linux y agentes de IA.",
                 "La idea no es competir en número de usuarios, sino enseñar cómo se construye una app así de completa: también sirve de plantilla para desarrolladores.",
                 "Todo lo que ves —incluida esta conversación— funciona de verdad contra Firebase. Nada es una maqueta."
             )
@@ -89,22 +152,22 @@ object DemoAssistant {
 
             // ── Seguridad y privacidad ──
             starts("cifr", "encript", "encrypt") || word("e2ee") -> listOf(
-                "🔒 Tus mensajes 1:1 van cifrados de extremo a extremo con ECDH (P-256) + AES-256-GCM.",
+                "🔒 Tus chats y tus grupos van cifrados de extremo a extremo con ECDH (P-256) + AES-256-GCM.",
                 "La clave se deriva entre tu dispositivo y el del otro; el servidor solo almacena el resultado cifrado.",
-                "Aviso honesto: los *grupos* todavía NO van cifrados de extremo a extremo, y no hay secreto hacia adelante. Está escrito tal cual en Ajustes → Acerca de."
+                "Si quieres aún más, los *chats secretos* usan una clave nueva en cada mensaje. Lo tienes detallado en Ajustes → Acerca de."
             )
 
             starts("privac", "segur", "anonim") -> listOf(
                 "🛡️ La privacidad aquí son cuatro cosas concretas, no un eslogan:",
-                "1) Cifrado de extremo a extremo en los chats 1:1.  2) Navegación por Tor con Orbot.",
+                "1) Cifrado de extremo a extremo en chats y grupos.  2) Tor integrado, sin instalar nada.",
                 "3) Bloqueo de la app con huella o PIN.  4) Bloqueo de contactos que aplican las reglas del servidor, no solo la interfaz.",
                 "Pregúntame por *cifrado* o *Tor* para el detalle de cada uno."
             )
 
             starts("tor", "onion", "orbot") -> listOf(
-                "🧅 Con Orbot instalado puedes navegar por Tor desde el navegador integrado.",
-                "Activa el *Modo anónimo* en Seguridad y podrás abrir sitios .onion.",
-                "Si Orbot no está corriendo, te aviso y te dejo el enlace para instalarlo."
+                "🧅 Tor viene dentro de la app: no hace falta instalar nada.",
+                "Activa el *Modo anónimo* en Seguridad y Tor y podrás abrir sitios .onion.",
+                "Si prefieres Orbot, también puedes abrirlo desde esa misma pantalla."
             )
 
             // ── Historias ──
@@ -124,8 +187,8 @@ object DemoAssistant {
 
             starts("grupo") -> listOf(
                 "👥 Puedes crear grupos desde *Nueva conversación* → *Nuevo grupo*.",
-                "Tienen administradores, permisos y ajustes propios.",
-                "Aviso honesto: los grupos NO usan cifrado de extremo a extremo todavía. Los mensajes 1:1 sí."
+                "Van cifrados de extremo a extremo y tienen administradores.",
+                "En la información del grupo creas un *enlace de invitación*. Para entrar con uno: menú ⋮ → *Unirse a un grupo*."
             )
 
             starts("traduc", "translat", "idioma") -> listOf(
@@ -142,15 +205,16 @@ object DemoAssistant {
                 "La clave se guarda cifrada en tu dispositivo y las peticiones salen directas al proveedor: no pasan por ningún servidor intermedio."
             )
 
-            starts("codigo", "editor", "program", "terminal", "consola") || word("code") -> listOf(
+            starts("codigo", "editor", "program", "terminal", "consola", "kali", "linux") || word("code") -> listOf(
                 "💻 Hay un editor de código con resaltado (Kotlin, JS, React, JSON…) y una terminal real.",
-                "Búscalos en el menú: son perfectos para trastear sin salir de la app."
+                "En la terminal, el botón *Kali Linux* instala un Kali de verdad, sin root: funcionan apt y los comandos de Linux.",
+                "Búscalos en el menú ⋮."
             )
 
             // "disen" y no "diseñ": tokenize() ya ha quitado la tilde de la ñ.
             starts("disen", "tema", "color", "fondo", "aparienc") -> listOf(
-                "🎨 La app usa el *Nexus Design System*: un solo violeta de marca, una escalera de superficies y tokens compartidos por todas las pantallas.",
-                "En Ajustes → Apariencia cambias el acento entre 25 colores, pones tu propio fondo (imagen o vídeo) y ajustas el tamaño de letra.",
+                "🎨 En Ajustes → Personalización tienes el *Estudio de diseño*: filas, burbujas, campo de escribir, inicio y ajustes.",
+                "En *Color y fondo* cambias el acento entre 36 colores o eliges cualquier otro, pones tu propio fondo (imagen o vídeo) y ajustas el tamaño de letra.",
                 "La pantalla de inicio es translúcida a propósito: el fondo que elijas se ve a través de las tarjetas."
             )
 
@@ -166,7 +230,7 @@ object DemoAssistant {
 
             starts("hola", "buenas", "saludos") || word("hey", "hello", "hi") -> listOf(
                 "¡Hola otra vez! 👋 ¿Por dónde quieres seguir?",
-                "Prueba con *cifrado*, *llamadas*, *historias*, *IA* o *Tor*."
+                "Prueba con *novedades*, *personalizar*, *cifrado*, *grupos*, *agentes* o *Tor*."
             )
 
             else -> tourStep(turnIndex)
@@ -183,7 +247,7 @@ object DemoAssistant {
         val steps = listOf(
             listOf(
                 "Te leo. 👀 Te sigo enseñando cosas mientras tanto.",
-                "🔒 Los mensajes 1:1 van cifrados de extremo a extremo. Escríbeme *cifrado* y te cuento con qué."
+                "🔒 Tus chats y grupos van cifrados de extremo a extremo. Escríbeme *cifrado* y te cuento con qué."
             ),
             listOf(
                 "📞 Las llamadas son P2P: el audio va directo entre los dos móviles, sin pasar por un servidor. Escríbeme *llamadas*."
@@ -192,7 +256,10 @@ object DemoAssistant {
                 "🤖 Puedes conectar tu propia IA, incluso una local con Ollama, y la clave nunca sale de tu dispositivo. Escríbeme *IA*."
             ),
             listOf(
-                "🧅 Y si te va la privacidad, hay navegación por Tor integrada. Escríbeme *Tor*."
+                "🧅 Y si te va la privacidad, hay Tor integrado. Escríbeme *Tor*."
+            ),
+            listOf(
+                "🎨 Puedes cambiar casi todo el aspecto de la app. Escríbeme *personalizar*."
             ),
             listOf(
                 "📸 También hay Historias de 24 h con foto, vídeo, texto y música. Escríbeme *historias*."

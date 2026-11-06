@@ -77,6 +77,12 @@ class CacheManager @Inject constructor(
         chatDao.insertChats(chats.map { it.toEntity() })
     }
 
+    /** Deja en caché exactamente estos chats: los que ya no existen no vuelven a asomar al abrir. */
+    suspend fun replaceChats(chats: List<Chat>) {
+        chatDao.deleteAllChats()
+        chatDao.insertChats(chats.map { it.toEntity() })
+    }
+
     /** Cache a single Chat. */
     suspend fun cacheChat(chat: Chat) {
         chatDao.insertChat(chat.toEntity())

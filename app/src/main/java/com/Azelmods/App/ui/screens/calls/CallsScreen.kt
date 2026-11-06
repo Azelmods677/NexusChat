@@ -127,7 +127,7 @@ fun CallsScreen(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { 
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { 
                             isSearchActive = false
                             searchQuery = "" 
                         }) {
@@ -136,7 +136,7 @@ fun CallsScreen(
                     },
                     actions = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
+                            com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { searchQuery = "" }) {
                                 Icon(Icons.Default.Close, contentDescription = tr("Borrar"), tint = Color.White)
                             }
                         }
@@ -155,7 +155,7 @@ fun CallsScreen(
                         )
                     },
                     actions = {
-                        IconButton(onClick = { isSearchActive = true }) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { isSearchActive = true }) {
                             Icon(Icons.Default.Search, contentDescription = tr("Buscar"))
                         }
                     },
@@ -274,6 +274,17 @@ fun CallItemRow(
     onCallClick: () -> Unit,
     onInfoClick: () -> Unit = {}
 ) {
+    com.Azelmods.App.ui.components.ListRowFrame(call.userId.ifBlank { call.userName }, call.userPhotoUrl) {
+        CallItemRowBody(call, onCallClick, onInfoClick)
+    }
+}
+
+@Composable
+private fun CallItemRowBody(
+    call: CallHistoryItem,
+    onCallClick: () -> Unit,
+    onInfoClick: () -> Unit = {}
+) {
     val context = LocalContext.current
     
     Row(
@@ -362,7 +373,7 @@ fun CallItemRow(
         }
         
         // Call button
-        IconButton(
+        com.Azelmods.App.ui.components.AnimatedIconButton(
             onClick = onCallClick
         ) {
             Icon(

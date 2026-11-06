@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.i18n.tr
+
 import com.Azelmods.App.data.manager.AppBackgroundManager
 import com.Azelmods.App.data.model.BackgroundConfig
 import com.Azelmods.App.data.model.BackgroundType
@@ -301,13 +303,32 @@ class SettingsViewModel @Inject constructor(
                     _accountActionState.value = AccountActionState.Error("No user signed in")
                     return@launch
                 }
-                // Firebase requires re-authentication for password change
-                // For now, we use the direct update (works if user recently signed in)
                 user.updatePassword(newPassword).await()
-                _accountActionState.value = AccountActionState.Success("Password updated successfully")
+                _accountActionState.value = AccountActionState.Success(tr("Contraseña actualizada"))
+            } catch (e: com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException) {
+                // Firebase exige una sesión reciente para esto: el enlace por correo no.
+                _accountActionState.value = AccountActionState.Error(
+                    tr("Por seguridad hace falta haber entrado hace poco. Usa «Recibir enlace por correo».")
+                )
             } catch (e: Exception) {
-                _accountActionState.value = AccountActionState.Error("Failed: ${e.message}")
+                _accountActionState.value = AccountActionState.Error(tr("No se pudo cambiar la contraseña"))
             }
+        }
+    }
+
+    /** Enlace para crear una contraseña nueva, al correo de la cuenta. Sirve a cuentas de Google. */
+    fun sendPasswordResetEmail() {
+        viewModelScope.launch {
+            _accountActionState.value = AccountActionState.Loading
+            val email = firebaseAuth.currentUser?.email
+            if (email.isNullOrBlank()) {
+                _accountActionState.value = AccountActionState.Error(tr("Tu cuenta no tiene correo: añádelo primero"))
+                return@launch
+            }
+            _accountActionState.value = runCatching { firebaseAuth.sendPasswordResetEmail(email).await() }.fold(
+                onSuccess = { AccountActionState.Success(tr("Enlace enviado a %s", email)) },
+                onFailure = { AccountActionState.Error(tr("No se pudo enviar el enlace")) }
+            )
         }
     }
     

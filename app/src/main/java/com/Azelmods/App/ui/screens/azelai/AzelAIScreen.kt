@@ -40,7 +40,7 @@ import java.util.*
 // ── Paleta  Premium (Onyx & Slate) ───────────────────
 private val BgDark = NexusTokens.Color.BgBase       
 private val SurfaceDark = NexusTokens.Color.BgSurface  
-private val AzelPurple = NexusTokens.Color.PrimaryLight   
+private val AzelPurple get() = NexusTokens.Color.PrimaryLight   
 private val AzelBlue = NexusTokens.Color.Secondary     
 private val TextPrimary = NexusTokens.Color.TextPrimary
 private val TextSecondary = NexusTokens.Color.TextSecondary

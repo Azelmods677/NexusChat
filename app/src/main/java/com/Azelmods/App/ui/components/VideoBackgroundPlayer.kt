@@ -105,6 +105,7 @@ fun VideoBackgroundPlayer(
             )
         } else {
             AndroidView(
+                update = { it.player = exoPlayer },
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = exoPlayer

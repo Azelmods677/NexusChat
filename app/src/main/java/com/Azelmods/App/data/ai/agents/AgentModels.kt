@@ -75,6 +75,13 @@ enum class AgentToolId(val id: String, val label: String, val emoji: String, val
         "guarda un archivo en el Editor de código del usuario, donde puede abrirlo y ejecutarlo. input: el " +
             "nombre del archivo con extensión en la primera línea y el contenido completo debajo."
     ),
+    EXPORT_FILE(
+        "export_file", "Guardar en el teléfono", "📥",
+        "guarda un documento en la carpeta del teléfono que elija el usuario, tras pedirle permiso. Úsalo cuando " +
+            "pida un PDF, un informe o un archivo para conservar. input: el nombre con extensión en la primera línea " +
+            "(.pdf, .txt, .md, .html, .csv, .json) y el contenido debajo. Un .pdf se maqueta solo; las líneas que " +
+            "empiezan por # son títulos."
+    ),
     READ_FILE(
         "read_file", "Leer archivo", "📄",
         "lee un archivo del Editor de código del usuario. input: el nombre del archivo."
@@ -104,6 +111,7 @@ enum class AgentToolId(val id: String, val label: String, val emoji: String, val
             "javascript" to RUN_JS, "js" to RUN_JS, "node" to RUN_JS,
             "python" to RUN_CODE, "code" to RUN_CODE, "execute" to RUN_CODE, "execute_code" to RUN_CODE,
             "code_interpreter" to RUN_CODE, "run" to RUN_CODE, "run_python" to RUN_CODE,
+            "pdf" to EXPORT_FILE, "export" to EXPORT_FILE, "download" to EXPORT_FILE,
             "write_file" to SAVE_FILE, "create_file" to SAVE_FILE, "write" to SAVE_FILE, "save" to SAVE_FILE,
             "open_file" to READ_FILE, "cat" to READ_FILE, "ls" to LIST_FILES, "files" to LIST_FILES
         )

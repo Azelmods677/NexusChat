@@ -242,6 +242,14 @@ fun AccountSettingsScreen(
             )
             
             SettingsItem(
+                title = tr("Recibir enlace por correo"),
+                subtitle = tr("Para crear una contraseña nueva si la perdiste o entras con Google"),
+                icon = Icons.Default.Lock,
+                iconTint = Color.Yellow,
+                onClick = { viewModel.sendPasswordResetEmail() }
+            )
+
+            SettingsItem(
                 title = tr("Eliminar cuenta"),
                 subtitle = tr("Borra para siempre tu cuenta y todos tus datos"),
                 icon = Icons.Default.DeleteForever,

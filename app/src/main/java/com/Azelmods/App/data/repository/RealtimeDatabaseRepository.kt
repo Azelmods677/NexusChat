@@ -22,7 +22,15 @@ private val TERMINAL_CALL_STATUSES = setOf("ENDED", "DECLINED", "MISSED", "FAILE
 
 @Suppress("UNCHECKED_CAST")
 @Singleton
+/** Lo que la lista de chats necesita de cada conversación, sin su historial. */
+private val CHAT_PREVIEW_FIELDS = listOf(
+    "members", "participants", "type", "isGroup", "groupName",
+    "lastMessage", "lastMessagePayload", "lastMessageKeyId", "lastMessageId", "lastMessageTime", "lastMessageSenderId",
+    "unreadCount", "isTyping", "isE2EE"
+)
+
 class RealtimeDatabaseRepository @Inject constructor(
+    private val groupCrypto: com.Azelmods.App.data.security.encryption.GroupCrypto,
     private val e2eeCryptoService: E2EECryptoService
 ) {
     private val database = FirebaseDatabase.getInstance().reference
@@ -209,9 +217,18 @@ class RealtimeDatabaseRepository @Inject constructor(
         var displayContent = content
         var isEncrypted = false
         var encryptedPayload: String? = null
+        var groupKeyId: String? = null
         val members = chatId.split("_").filter { it.isNotBlank() }
-        
-        if (members.size == 2) {
+
+        if (chatId.startsWith("group_")) {
+            // Si algún miembro aún no tiene claves, el mensaje se envía sin cifrar para que le llegue.
+            groupCrypto.encrypt(chatId, content)?.let { sealed ->
+                isEncrypted = true
+                encryptedPayload = sealed.payload
+                groupKeyId = sealed.keyId
+                displayContent = "🔒 Mensaje cifrado de extremo a extremo"
+            }
+        } else if (members.size == 2) {
             val recipientId = members.firstOrNull { it != currentUserId }
             if (recipientId != null) {
                 // La encriptación E2EE NUNCA debe bloquear el envío: si las claves
@@ -244,9 +261,8 @@ class RealtimeDatabaseRepository @Inject constructor(
             "reactions" to emptyMap<String, String>(),
             "isEncrypted" to isEncrypted
         )
-        if (encryptedPayload != null) {
-            messageData["encryptedPayload"] = encryptedPayload
-        }
+        encryptedPayload?.let { messageData["encryptedPayload"] = it }
+        groupKeyId?.let { messageData["groupKeyId"] = it }
         if (isEncrypted) {
             chatRef.child("isE2EE").setValue(true).await()
         }
@@ -280,6 +296,7 @@ class RealtimeDatabaseRepository @Inject constructor(
         val lastMessageData = mapOf(
             "lastMessage" to lastMessageText,
             "lastMessagePayload" to (if (isEphemeral) null else encryptedPayload),
+            "lastMessageKeyId" to (if (isEphemeral) null else groupKeyId),
             "lastMessageId" to messageId,
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
@@ -288,6 +305,10 @@ class RealtimeDatabaseRepository @Inject constructor(
 
         sendFcmForMessage(chatId = chatId, senderId = currentUserId, content = lastMessageText)
     }
+
+    /** Texto de un mensaje de grupo cifrado, o null si este teléfono no tiene su clave. */
+    suspend fun decryptGroupMessage(chatId: String, keyId: String, payload: String): String? =
+        groupCrypto.decrypt(chatId, keyId, payload)
 
     // ── Mensajes temporales ──────────────────────────────────────────────────
 
@@ -441,6 +462,7 @@ class RealtimeDatabaseRepository @Inject constructor(
         chatRef.updateChildren(
             mapOf(
                 "lastMessage" to content,
+                "lastMessagePayload" to null,
                 "lastMessageTime" to ServerValue.TIMESTAMP,
                 "lastMessageSenderId" to senderId
             )
@@ -528,39 +550,84 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
     }
 
+    /**
+     * Los chats del usuario, en vivo: cualquier mensaje nuevo actualiza la lista.
+     *
+     * Se escucha campo por campo y no el nodo del chat, que contiene todo su historial:
+     * antes se leía entero una sola vez y la lista no se enteraba de los mensajes nuevos,
+     * así que al salir de un chat seguía mostrando el mensaje anterior.
+     */
     fun getUserChats(userId: String): Flow<List<Map<String, Any>>> = callbackFlow {
-        val userChatsIndexRef = database.child("userChats").child(userId)
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val chatIds = snapshot.children.mapNotNull { it.key }
-                if (chatIds.isEmpty()) {
-                    trySend(emptyList())
-                    return
+        // Firebase entrega todas estas respuestas en el hilo principal: no hace falta bloquear.
+        val fields = mutableMapOf<String, MutableMap<String, Any>>()
+        val watchers = mutableMapOf<String, List<Pair<DatabaseReference, ValueEventListener>>>()
+        var pendingFirstLoads = 0
+
+        fun publish() {
+            if (pendingFirstLoads > 0) return
+            trySend(
+                fields.mapNotNull { (chatId, chat) ->
+                    if ("members" in chat || "participants" in chat) chat + ("chatId" to chatId) else null
                 }
-                launch {
-                    val chats = mutableListOf<Map<String, Any>>()
-                    chatIds.forEach { chatId ->
-                        try {
-                            val chatSnapshot = database.child("chats").child(chatId).get().await()
-                            if (chatSnapshot.exists()) {
-                                val map = chatSnapshot.value as? Map<String, Any>
-                                if (map != null) {
-                                    chats.add(map.toMutableMap().apply { put("chatId", chatId) })
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e("RealtimeDB", "Failed to fetch chat $chatId: ${e.message}")
+            )
+        }
+
+        fun watch(chatId: String) {
+            val chat = mutableMapOf<String, Any>()
+            fields[chatId] = chat
+            pendingFirstLoads += CHAT_PREVIEW_FIELDS.size
+            watchers[chatId] = CHAT_PREVIEW_FIELDS.map { field ->
+                val ref = database.child("chats").child(chatId).child(field)
+                val listener = object : ValueEventListener {
+                    private var loaded = false
+
+                    private fun settled() {
+                        if (!loaded) {
+                            loaded = true
+                            pendingFirstLoads--
                         }
+                        publish()
                     }
-                    trySend(chats)
+
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val value = snapshot.value
+                        if (value != null) chat[field] = value else chat.remove(field)
+                        settled()
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("RealtimeDB", "Chat $chatId, campo $field: ${error.message}")
+                        settled()
+                    }
                 }
+                ref.addValueEventListener(listener)
+                ref to listener
             }
+        }
+
+        fun unwatch(chatId: String) {
+            watchers.remove(chatId)?.forEach { (ref, listener) -> ref.removeEventListener(listener) }
+            fields.remove(chatId)
+        }
+
+        val indexRef = database.child("userChats").child(userId)
+        val indexListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val chatIds = snapshot.children.mapNotNull { it.key }.toSet()
+                (watchers.keys - chatIds).toList().forEach(::unwatch)
+                (chatIds - watchers.keys).forEach(::watch)
+                publish()
+            }
+
             override fun onCancelled(error: DatabaseError) {
                 close(error.toException())
             }
         }
-        userChatsIndexRef.addValueEventListener(listener)
-        awaitClose { userChatsIndexRef.removeEventListener(listener) }
+        indexRef.addValueEventListener(indexListener)
+        awaitClose {
+            indexRef.removeEventListener(indexListener)
+            watchers.keys.toList().forEach(::unwatch)
+        }
     }
 
     suspend fun setChatBooleanField(chatId: String, field: String, value: Boolean) {
@@ -828,6 +895,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "chatId" to groupId,
             "groupName" to groupName,
             "members" to membersMap,
+            "admins" to mapOf(currentUserId to true),
             "createdAt" to ServerValue.TIMESTAMP,
             "createdBy" to currentUserId,
             "isGroup" to true,
@@ -1043,6 +1111,7 @@ class RealtimeDatabaseRepository @Inject constructor(
 
         val lastMessageData = mapOf(
             "lastMessage" to lastMessageText,
+            "lastMessagePayload" to null,
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
         )
@@ -1256,7 +1325,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "IMAGE", "mediaUrl" to imageUrl, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessage" to (if (caption.isNotEmpty()) caption else "📷 Foto"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to (if (caption.isNotEmpty()) caption else "📷 Foto"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, if (caption.isNotEmpty()) caption else "📷 Foto", "IMAGE")
     }
 
@@ -1277,7 +1346,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "VIDEO", "mediaUrl" to videoUrl, "duration" to duration, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessage" to (if (caption.isNotEmpty()) caption else "🎥 Video"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to (if (caption.isNotEmpty()) caption else "🎥 Video"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, if (caption.isNotEmpty()) caption else "🎥 Video", "VIDEO")
     }
 
@@ -1298,7 +1367,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessage" to "📄 $fileName", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "📄 $fileName", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "📄 $fileName", "DOCUMENT")
     }
 
@@ -1319,7 +1388,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "AUDIO", "mediaUrl" to audioUrl, "duration" to duration, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessage" to "🎤 Audio", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "🎤 Audio", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "🎤 Audio", "AUDIO")
     }
 
@@ -1338,7 +1407,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "LOCATION", "latitude" to latitude, "longitude" to longitude, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessage" to "📍 Ubicación", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "📍 Ubicación", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "📍 Ubicación", "LOCATION")
     }
 
@@ -1358,7 +1427,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "STICKER", "stickerUrl" to stickerUrl, "stickerPack" to stickerPack, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessage" to "Sticker", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "Sticker", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "Sticker", "STICKER")
     }
 

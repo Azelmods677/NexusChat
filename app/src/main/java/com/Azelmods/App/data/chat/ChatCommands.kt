@@ -15,6 +15,7 @@ object ChatCommands {
     data class Info(val name: String, val usage: String, val description: String)
 
     val all: List<Info> = listOf(
+        Info("/descargar", "/descargar https://…", "Descarga un vídeo"),
         Info("/calc", "/calc 5+7*2", "Calculadora"),
         Info("/dado", "/dado", "Lanza un dado"),
         Info("/moneda", "/moneda", "Cara o cruz"),

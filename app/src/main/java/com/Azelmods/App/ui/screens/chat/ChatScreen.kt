@@ -1,4 +1,5 @@
 package com.Azelmods.App.ui.screens.chat
+import kotlinx.coroutines.launch
 
 import com.Azelmods.App.i18n.tr
 
@@ -10,6 +11,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -93,7 +95,42 @@ fun ChatScreen(
 ) {
     val context = LocalContext.current
     
+    var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var forwardMessages by remember { mutableStateOf<List<com.Azelmods.App.data.model.Message>>(emptyList()) }
+    var showScheduled by remember { mutableStateOf(false) }
+    // Atrás primero suelta la selección, no se sale del chat con mensajes marcados.
+    androidx.activity.compose.BackHandler(enabled = selectedIds.isNotEmpty()) { selectedIds = emptySet() }
+    if (forwardMessages.isNotEmpty()) {
+        ForwardDialog(forwardMessages, onDismiss = { forwardMessages = emptyList() })
+    }
+    if (showScheduled) {
+        ScheduledMessagesDialog(viewModel.chatIdFor(contactId), onDismiss = { showScheduled = false })
+    }
+
+    // Mientras se ve este chat, sus mensajes no generan avisos.
+    val chatLifecycle = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(chatLifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> com.Azelmods.App.service.ActiveChat.isVisible = true
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> com.Azelmods.App.service.ActiveChat.isVisible = false
+                else -> Unit
+            }
+        }
+        chatLifecycle.lifecycle.addObserver(observer)
+        onDispose {
+            chatLifecycle.lifecycle.removeObserver(observer)
+            com.Azelmods.App.service.ActiveChat.isVisible = false
+        }
+    }
+
+    val savedMessages: SavedMessagesViewModel = hiltViewModel()
+    var showSafetyNumber by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val state by viewModel.state.collectAsState()
+    if (showSafetyNumber) {
+        state.contact?.uid?.let { peer -> SafetyNumberDialog(peer, onDismiss = { showSafetyNumber = false }) }
+    }
     var messageText by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -214,12 +251,40 @@ fun ChatScreen(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(sendErrorSnackbar) },
         topBar = {
-            ChatTopBar(
-                contact = state.contact,
+            if (selectedIds.isNotEmpty()) {
+                SelectionTopBar(
+                    count = selectedIds.size,
+                    onClose = { selectedIds = emptySet() },
+                    onCopy = {
+                        val text = state.messages.filter { it.messageId in selectedIds && !it.isViewOnce }
+                            .joinToString("\n") { withoutLinkPreview(it.content) }
+                        (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                            .setPrimaryClip(android.content.ClipData.newPlainText("mensajes", text))
+                        selectedIds = emptySet()
+                    },
+                    onForward = {
+                        forwardMessages = state.messages.filter { it.messageId in selectedIds && !it.isViewOnce }
+                        selectedIds = emptySet()
+                    },
+                    onDelete = {
+                        state.messages.filter { it.messageId in selectedIds }.forEach { viewModel.deleteMessage(it, false) }
+                        selectedIds = emptySet()
+                    }
+                )
+            } else ChatTopBar(
+                // Un grupo no tiene "contacto": se muestra con su nombre y sus miembros.
+                contact = state.contact ?: state.groupName?.let {
+                    com.Azelmods.App.data.model.User(name = it, displayName = it)
+                },
+                groupSubtitle = state.groupName?.let { tr("%s miembros", state.groupMembers.size.toString()) },
                 isTyping = state.isTyping,
                 onBackClick = { navController.navigateUp() },
                 onProfileClick = {
                     try {
+                        if (contactId.startsWith("group_")) {
+                            navController.navigate("group_info/$contactId")
+                            return@ChatTopBar
+                        }
                         // Navigate using the REAL contact uid, not the chatId.
                         val profileId = state.contact?.uid?.takeIf { it.isNotBlank() } ?: contactId
                         navController.navigate("profile_viewer/$profileId")
@@ -292,20 +357,20 @@ fun ChatScreen(
                                 color = if (state.searchResults.isEmpty()) ErrorRed else Color.Gray,
                                 fontSize = 12.sp
                             )
-                            IconButton(
+                            com.Azelmods.App.ui.components.AnimatedIconButton(
                                 onClick = { viewModel.previousSearchResult() },
                                 enabled = state.searchResults.isNotEmpty()
                             ) {
                                 Icon(Icons.Default.KeyboardArrowUp, "Anterior", tint = Color.White)
                             }
-                            IconButton(
+                            com.Azelmods.App.ui.components.AnimatedIconButton(
                                 onClick = { viewModel.nextSearchResult() },
                                 enabled = state.searchResults.isNotEmpty()
                             ) {
                                 Icon(Icons.Default.KeyboardArrowDown, "Siguiente", tint = Color.White)
                             }
                         }
-                        IconButton(onClick = { viewModel.closeSearch() }) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { viewModel.closeSearch() }) {
                             Icon(Icons.Default.Close, "Cerrar búsqueda", tint = Color.White)
                         }
                     }
@@ -386,6 +451,21 @@ fun ChatScreen(
                         WindowInsets.ime.exclude(WindowInsets.navigationBars)
                     )
             ) {
+                val pinnedId = rememberPinnedMessageId(viewModel.chatIdFor(contactId))
+                val pinnedMessage = pinnedId?.let { id -> state.messages.firstOrNull { it.messageId == id } }
+                if (pinnedMessage != null) {
+                    PinnedMessageBanner(
+                        preview = pollPreview(pinnedMessage.content) ?: pinnedMessage.content.ifBlank { tr("Foto o archivo") },
+                        onOpen = {
+                            coroutineScope.launch {
+                                val position = state.messages.indexOfFirst { it.messageId == pinnedMessage.messageId }
+                                if (position >= 0) listState.animateScrollToItem(position)
+                            }
+                        },
+                        onUnpin = { setPinnedMessage(viewModel.chatIdFor(contactId), null) }
+                    )
+                }
+
                 // Messages List
                 PullToRefreshBox(
                     isRefreshing = state.isLoading,
@@ -466,12 +546,24 @@ fun ChatScreen(
                             val isFresh = remember(message.messageId) {
                                 System.currentTimeMillis() - message.timestamp < FRESH_MESSAGE_MS
                             }
+                            val isSelected = message.messageId in selectedIds
                             Box(
                                 modifier = Modifier
                                     .animateItem()
                                     .messageEnter(animate = isFresh, fromEnd = message.senderId == currentUserId)
                                     .fillMaxWidth()
-                                    .background(resalte, RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.22f) else resalte,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                            ) {
+                            androidx.compose.runtime.CompositionLocalProvider(
+                                com.Azelmods.App.ui.components.LocalBubblePeer provides (
+                                    state.groupMembers[message.senderId]?.let { it.name to it.photoUrl }
+                                        ?: state.contact?.let { peer -> peer.displayName.ifBlank { peer.name } to peer.photoUrl }
+                                ),
+                                com.Azelmods.App.ui.components.LocalBubbleSender provides state.groupMembers[message.senderId]
+                                    ?.let { message.senderId to it.name }
                             ) {
                             MessageBubble(
                                 message = message,
@@ -481,6 +573,10 @@ fun ChatScreen(
                                     ?.let { id -> state.messages.firstOrNull { it.messageId == id } },
                                 autoplayVideos = state.autoplayVideos,
                                 serverNow = viewModel::serverNow,
+                                onPin = { setPinnedMessage(viewModel.chatIdFor(contactId), message.messageId) },
+                                onSave = { savedMessages.save(com.Azelmods.App.ui.screens.chat.withoutLinkPreview(message.content)) },
+                                onForward = { forwardMessages = listOf(message) },
+                                onSelect = { selectedIds = selectedIds + message.messageId },
                                 onReply = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.setReplyingTo(message)
@@ -507,6 +603,20 @@ fun ChatScreen(
                                     viewModel.translateMessage(message.messageId, message.content)
                                 }
                             )
+                            }
+                            // Mientras se selecciona, un toque en un mensaje solo lo marca o desmarca.
+                            if (selectedIds.isNotEmpty()) {
+                                Box(
+                                    Modifier
+                                        .matchParentSize()
+                                        .clickable(
+                                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                            indication = null
+                                        ) {
+                                            selectedIds = if (isSelected) selectedIds - message.messageId else selectedIds + message.messageId
+                                        }
+                                )
+                            }
                             }
                         }
 
@@ -668,7 +778,13 @@ fun ChatScreen(
                                 messageText = ""
                             } ?: run {
                                 // Normal mode - send new message
-                                viewModel.sendMessage(messageText, contactId)
+                                val downloadUrl = messageText.trim().takeIf { it.startsWith("/descargar ", ignoreCase = true) }
+                                    ?.substringAfter(' ')?.trim()
+                                if (downloadUrl != null) {
+                                    navController.navigate("video_download?url=${android.net.Uri.encode(downloadUrl)}")
+                                } else {
+                                    viewModel.sendMessage(messageText, contactId)
+                                }
                                 messageText = ""
                             }
                         },
@@ -689,9 +805,15 @@ fun ChatScreen(
                 modifier = Modifier.background(DarkSurface)
             ) {
                 DropdownMenuItem(
-                    text = { Text(tr("Ver perfil"), color = Color.White) },
+                    text = {
+                        Text(if (contactId.startsWith("group_")) tr("Información del grupo") else tr("Ver perfil"), color = Color.White)
+                    },
                     onClick = {
                         showMenu = false
+                        if (contactId.startsWith("group_")) {
+                            navController.navigate("group_info/$contactId")
+                            return@DropdownMenuItem
+                        }
                         try {
                             val profileId = state.contact?.uid?.takeIf { it.isNotBlank() } ?: contactId
                             navController.navigate("profile/$profileId")
@@ -699,6 +821,25 @@ fun ChatScreen(
                     },
                     leadingIcon = { Icon(Icons.Default.Person, null, tint = Color.White) }
                 )
+                DropdownMenuItem(
+                    text = { Text(tr("Mensajes programados"), color = Color.White) },
+                    onClick = {
+                        showMenu = false
+                        showScheduled = true
+                    },
+                    leadingIcon = { Icon(Icons.Default.Schedule, null, tint = Color.White) }
+                )
+                val safetyPeer = state.contact?.uid?.takeIf { it.isNotBlank() }
+                if (safetyPeer != null) {
+                    DropdownMenuItem(
+                        text = { Text(tr("Número de seguridad"), color = Color.White) },
+                        onClick = {
+                            showMenu = false
+                            showSafetyNumber = true
+                        },
+                        leadingIcon = { Icon(Icons.Default.VerifiedUser, null, tint = Color.White) }
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(tr("Fondo del chat"), color = Color.White) },
                     onClick = {
@@ -928,6 +1069,7 @@ private fun formatLastSeen(timestamp: Long): String {
 @Composable
 fun ChatTopBar(
     contact: com.Azelmods.App.data.model.User?,
+    groupSubtitle: String? = null,
     isTyping: Boolean,
     onBackClick: () -> Unit,
     onProfileClick: () -> Unit,
@@ -946,6 +1088,7 @@ fun ChatTopBar(
     // Status text dinámico
     val statusText = when {
         isTyping -> "escribiendo..."
+        groupSubtitle != null -> groupSubtitle
         contact?.isOnline == true -> tr("en línea")
         // formatLastSeen ya devuelve la frase completa; anteponer "última vez"
         // aquí producía "última vez visto hace 5min".
@@ -972,16 +1115,19 @@ fun ChatTopBar(
                 contentDescription = tr("Galería del chat"),
                 onClick = onGalleryClick
             )
-            TopBarActionIcon(
-                icon = Icons.Default.Phone,
-                contentDescription = tr("Llamada de voz"),
-                onClick = onPhoneClick
-            )
-            TopBarActionIcon(
-                icon = Icons.Default.Videocam,
-                contentDescription = tr("Videollamada"),
-                onClick = onVideoClick
-            )
+            // Las llamadas son de dos personas: en un grupo no tienen a quién llamar.
+            if (groupSubtitle == null) {
+                TopBarActionIcon(
+                    icon = Icons.Default.Phone,
+                    contentDescription = tr("Llamada de voz"),
+                    onClick = onPhoneClick
+                )
+                TopBarActionIcon(
+                    icon = Icons.Default.Videocam,
+                    contentDescription = tr("Videollamada"),
+                    onClick = onVideoClick
+                )
+            }
             TopBarActionIcon(
                 icon = Icons.Default.MoreVert,
                 contentDescription = tr("Más opciones"),

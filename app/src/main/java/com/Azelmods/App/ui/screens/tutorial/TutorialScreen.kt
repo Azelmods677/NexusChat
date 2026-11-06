@@ -114,7 +114,7 @@ fun TutorialSectionCard(section: TutorialSection) {
             )
 
             Text(
-                text = section.content,
+                text = com.Azelmods.App.i18n.tr(section.content),
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 lineHeight = 22.sp

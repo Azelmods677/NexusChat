@@ -170,6 +170,13 @@ exports.onMessageCreate = functions.database
             displayText = messageData.isViewOnce === true ? "Mensaje de una sola vista" : "Mensaje temporal";
         }
 
+        // El servidor no puede leer un mensaje cifrado: lo que hay en `content` es solo
+        // un rótulo. El texto real lo descifra el teléfono al recibir el aviso.
+        const isEncrypted = messageData.isEncrypted === true && !!messageData.encryptedPayload;
+        if (isEncrypted && messageData.isEphemeral !== true) {
+            displayText = "Nuevo mensaje";
+        }
+
         // ── 7. Obtener FCM tokens de los destinatarios ──
         const tokenLists = await Promise.all(recipientIds.map((uid) => getFcmTokens(uid)));
         const fcmTokens = [...new Set(tokenLists.flat())];
@@ -185,10 +192,19 @@ exports.onMessageCreate = functions.database
         const dataPayload = {
             type: "message",
             chatId: chatId,
+            messageId: messageId,
             senderId: senderId,
             senderName: senderName,
             body: displayText,
         };
+        if (isEncrypted && messageData.isEphemeral !== true) {
+            dataPayload.isEncrypted = "true";
+            // El límite de un aviso son 4 KB: si no cabe, el teléfono lo lee de la base de datos.
+            if (messageData.encryptedPayload.length <= 2500) {
+                dataPayload.encryptedPayload = messageData.encryptedPayload;
+            }
+            if (messageData.groupKeyId) dataPayload.groupKeyId = messageData.groupKeyId;
+        }
         if (senderPhotoUrl) dataPayload.senderPhotoUrl = senderPhotoUrl;
         if (mediaType) dataPayload.mediaType = mediaType;
 
@@ -197,31 +213,10 @@ exports.onMessageCreate = functions.database
             fcmTokens.map((token) =>
                 admin.messaging().send({
                     token: token,
-                    notification: {
-                        title: senderName,
-                        body: displayText,
-                    },
+                    // Sin bloque `notification`: si no, Android pinta el aviso por su cuenta
+                    // con la app cerrada y nunca llega a descifrarse.
                     data: dataPayload,
-                    android: {
-                        priority: "high",
-                        notification: {
-                            channelId: "nexus_messages",
-                            icon: "ic_notification",
-                            color: "#7B5CFA",
-                            sound: "default",
-                            priority: "high",
-                            clickAction: "OPEN_CHAT",
-                        },
-                    },
-                    apns: {
-                        payload: {
-                            aps: {
-                                sound: "default",
-                                badge: 1,
-                                "content-available": 1,
-                            },
-                        },
-                    },
+                    android: { priority: "high" },
                 })
             )
         );
@@ -915,4 +910,120 @@ exports.premiumApi = functions
             console.error("❌ premiumApi:", e);
             res.status(500).json({ error: "Error del servidor de pagos." });
         }
+    });
+
+/**
+ * Vigila las versiones publicadas en GitHub. Cuando aparece una nueva la deja en
+ * /config/appUpdate, que las apps abiertas escuchan en directo, y avisa a todos los teléfonos.
+ * Publicar una versión en GitHub basta: no hay que tocar nada más.
+ */
+/**
+ * Las versiones anteriores a la 8.0 no escuchan el aviso de actualización: lo único que les llega
+ * es una notificación normal, y por eso se envía a cada dispositivo con su token.
+ */
+async function notifyOlderClients(versionName, pageUrl) {
+    const stored = (await db.ref("/fcmTokens").once("value")).val() || {};
+    const tokens = [...new Set(
+        Object.values(stored).flatMap((devices) => Object.values(devices || {}))
+            .filter((token) => typeof token === "string" && token.length > 0)
+    )];
+    const BATCH = 500;
+    for (let i = 0; i < tokens.length; i += BATCH) {
+        await admin.messaging().sendEachForMulticast({
+            tokens: tokens.slice(i, i + BATCH),
+            notification: {
+                title: `NexusChat ${versionName} ya está aquí`,
+                body: `Actualiza para seguir usando la app: ${pageUrl}`,
+            },
+            android: { priority: "high" },
+        });
+    }
+    console.log(`Aviso de ${versionName} enviado a ${tokens.length} dispositivos`);
+}
+
+exports.checkAppRelease = functions.pubsub
+    .schedule("every 15 minutes")
+    .onRun(async () => {
+        const response = await fetch(
+            "https://api.github.com/repos/Azelmods677/NexusChat/releases/latest",
+            { headers: { "Accept": "application/vnd.github+json", "User-Agent": "NexusChat-functions" } }
+        );
+        if (!response.ok) {
+            console.warn(`GitHub respondió ${response.status}`);
+            return null;
+        }
+        const release = await response.json();
+        const versionName = String(release.tag_name || "").replace(/^v/, "");
+        if (!versionName) return null;
+
+        const configRef = db.ref("/config/appUpdate");
+        const known = (await configRef.child("versionName").once("value")).val();
+        if (known === versionName) return null;
+
+        const assets = {};
+        for (const asset of release.assets || []) {
+            if (!asset.name.endsWith(".apk")) continue;
+            const abi = ["arm64-v8a", "armeabi-v7a", "x86_64", "x86"].find((a) => asset.name.includes(a)) || "universal";
+            assets[abi] = asset.browser_download_url;
+        }
+        await configRef.set({
+            versionName: versionName,
+            notes: String(release.body || "").slice(0, 1500),
+            pageUrl: release.html_url,
+            assets: assets,
+            mandatory: !/\[opcional\]/i.test(String(release.body || "")),
+            publishedAt: admin.database.ServerValue.TIMESTAMP,
+        });
+        await admin.messaging().send({
+            topic: "app_updates",
+            data: { type: "app_update", versionName: versionName },
+            android: { priority: "high" },
+        });
+        await notifyOlderClients(versionName, release.html_url);
+        console.log(`Nueva versión anunciada: ${versionName}`);
+        return null;
+    });
+
+/**
+ * Chat secreto: solo avisa de que hay algo nuevo. Ni quién ni qué: el servidor no lo puede leer
+ * y el aviso tampoco lo enseña en la pantalla de bloqueo.
+ */
+exports.onSecretMessage = functions.database
+    .ref("/secretChats/{chatId}/messages/{messageId}")
+    .onCreate(async (snapshot, context) => {
+        const senderId = snapshot.child("s").val();
+        const members = (await db.ref(`/secretChats/${context.params.chatId}/members`).once("value")).val() || {};
+        const peers = Object.keys(members).filter((uid) => uid !== senderId);
+        const tokens = [...new Set((await Promise.all(peers.map((uid) => getFcmTokens(uid)))).flat())];
+        await Promise.allSettled(tokens.map((token) => admin.messaging().send({
+            token: token,
+            data: { type: "secret" },
+            android: { priority: "high" },
+        })));
+        return null;
+    });
+
+/** Avisa a los suscriptores de un canal cuando se publica algo. */
+exports.onChannelPost = functions.database
+    .ref("/channelPosts/{channelId}/{postId}")
+    .onCreate(async (snapshot, context) => {
+        const channelId = context.params.channelId;
+        const name = (await db.ref(`/channels/${channelId}/name`).once("value")).val() || "Canal";
+        const text = String(snapshot.child("text").val() || "Foto").slice(0, 200);
+        await admin.messaging().send({
+            topic: `channel_${channelId.replace(/[^a-zA-Z0-9_-]/g, "_")}`,
+            data: { type: "channel", title: name, body: text },
+            android: { priority: "high" },
+        });
+        return null;
+    });
+
+/** Mantiene el número de seguidores: un cliente no debe poder inventárselo. */
+exports.onChannelSubscriber = functions.database
+    .ref("/channelSubscribers/{channelId}/{uid}")
+    .onWrite(async (change, context) => {
+        const delta = (change.after.exists() ? 1 : 0) - (change.before.exists() ? 1 : 0);
+        if (delta === 0) return null;
+        await db.ref(`/channels/${context.params.channelId}/subscribers`).transaction((n) => Math.max(0, (n || 0) + delta));
+        return null;
     });

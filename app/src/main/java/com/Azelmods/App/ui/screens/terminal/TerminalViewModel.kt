@@ -27,8 +27,40 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class TerminalViewModel @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val linux: com.Azelmods.App.data.terminal.LinuxEnvironment
 ) : ViewModel() {
+
+    val linuxState = linux.state
+
+    fun installLinux() = linux.install()
+
+    fun uninstallLinux() {
+        // Ninguna sesión puede seguir usando esos archivos mientras se borran.
+        _sessions.value.filter { it in linuxSessions }.forEach { close(it) }
+        linux.uninstall()
+    }
+
+    /** Las sesiones que son de Kali, para poder rotularlas. */
+    private val linuxSessions = mutableSetOf<TerminalSession>()
+
+    fun isLinuxSession(session: TerminalSession) = session in linuxSessions
+
+    fun newLinuxSession(): TerminalSession {
+        val command = linux.shellCommand()
+        val session = TerminalSession(
+            command.executable,
+            command.workingDirectory,
+            command.args,
+            command.environment,
+            TRANSCRIPT_ROWS,
+            client
+        )
+        linuxSessions += session
+        _sessions.value = _sessions.value + session
+        _current.value = session
+        return session
+    }
 
     private val _sessions = MutableStateFlow<List<TerminalSession>>(emptyList())
     val sessions: StateFlow<List<TerminalSession>> = _sessions.asStateFlow()
@@ -104,6 +136,7 @@ class TerminalViewModel @Inject constructor(
     }
 
     fun removeFinished(session: TerminalSession) {
+        linuxSessions -= session
         val remaining = _sessions.value - session
         _sessions.value = remaining
         if (_current.value === session) _current.value = remaining.lastOrNull()

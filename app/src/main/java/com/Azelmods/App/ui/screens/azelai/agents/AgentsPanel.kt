@@ -83,7 +83,7 @@ private val TextPrimary = NexusTokens.Color.TextPrimary
 private val TextSecondary = NexusTokens.Color.TextSecondary
 private val TextMuted = NexusTokens.Color.TextMuted
 private val Border = NexusTokens.Color.GlassBorder
-private val Accent = NexusTokens.Color.PrimaryLight
+private val Accent get() = NexusTokens.Color.PrimaryLight
 
 /**
  * Pestaña "Agentes" de Azel IA.
@@ -106,6 +106,8 @@ fun AgentsPanel(
     val run by viewModel.run.collectAsState()
 
     LaunchedEffect(Unit) { viewModel.refreshProvider() }
+
+    AgentFilePermissionDialog(viewModel.fileExporter)
 
     AnimatedContent(
         targetState = run == null,
@@ -1168,4 +1170,40 @@ private fun wordCount(text: String): Int = text.split(Regex("\\s+")).count { it.
 private fun formatElapsed(ms: Long): String {
     val s = (ms / 1000).coerceAtLeast(0)
     return if (s >= 60) "${s / 60}:${(s % 60).toString().padStart(2, '0')} min" else "$s s"
+}
+
+/** Un agente nunca guarda fuera de la app sin que el usuario vea qué y dónde, y lo apruebe. */
+@Composable
+private fun AgentFilePermissionDialog(exporter: com.Azelmods.App.data.ai.agents.AgentFileExporter) {
+    val request by exporter.pending.collectAsState()
+    val folder by exporter.folder.collectAsState()
+    val pickFolder = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()
+    ) { uri -> uri?.let(exporter::setFolder) }
+    val current = request ?: return
+    val destination = remember(folder) { exporter.folderLabel() ?: tr("Descargas/NexusChat") }
+
+    AlertDialog(
+        onDismissRequest = { exporter.answer(false) },
+        title = { Text(tr("¿Guardar este archivo?")) },
+        text = {
+            Column {
+                Text(current.fileName, style = MaterialTheme.typography.titleSmall, color = NexusTokens.Color.TextPrimary)
+                Spacer(Modifier.height(4.dp))
+                Text(tr("Se guardará en: %s", destination), style = MaterialTheme.typography.bodySmall, color = NexusTokens.Color.TextSecondary)
+                TextButton(onClick = { pickFolder.launch(null) }, contentPadding = PaddingValues(0.dp)) {
+                    Text(tr("Elegir otra carpeta"))
+                }
+                Text(
+                    current.preview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NexusTokens.Color.TextMuted,
+                    maxLines = 8
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { exporter.answer(true) }) { Text(tr("Guardar")) } },
+        dismissButton = { TextButton(onClick = { exporter.answer(false) }) { Text(tr("No guardar")) } },
+        containerColor = NexusTokens.Color.BgSurface
+    )
 }

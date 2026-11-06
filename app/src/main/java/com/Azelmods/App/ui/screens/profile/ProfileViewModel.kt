@@ -533,12 +533,12 @@ class ProfileViewModel @Inject constructor(
         val uid = ownUid() ?: return
         viewModelScope.launch(Dispatchers.IO) {
             if (videoDurationMs(uri) > MAX_PROFILE_VIDEO_MS) {
-                _state.value = _state.value.copy(error = "El vídeo de perfil puede durar hasta 30 segundos")
+                _state.value = _state.value.copy(error = "El vídeo de perfil puede durar hasta 1 minuto y 30 segundos")
                 return@launch
             }
             _state.value = _state.value.copy(isUploadingProfile = true, error = null)
             runCatching {
-                val videoUrl = storageRepository.uploadUserBackground(uri, uid, true)
+                val videoUrl = storageRepository.uploadUserBackground(com.Azelmods.App.utils.StoryVideoComposer.fitUploadLimit(context, uri), uid, true)
                 val photoUrl = videoPoster(uri)?.let { storageRepository.uploadProfilePhoto(it, uid) }
                 val changes = buildMap<String, Any> {
                     put("profileVideoUrl", videoUrl)
@@ -592,13 +592,13 @@ class ProfileViewModel @Inject constructor(
         val uid = ownUid() ?: return
         viewModelScope.launch(Dispatchers.IO) {
             if (videoDurationMs(uri) > MAX_PROFILE_VIDEO_MS) {
-                _state.value = _state.value.copy(error = "El vídeo de portada puede durar hasta 30 segundos")
+                _state.value = _state.value.copy(error = "El vídeo de portada puede durar hasta 1 minuto y 30 segundos")
                 return@launch
             }
             _state.value = _state.value.copy(isUploadingProfile = true, error = null)
             runCatching {
                 val old = _state.value.user?.coverVideoUrl
-                val videoUrl = storageRepository.uploadUserBackground(uri, uid, true)
+                val videoUrl = storageRepository.uploadUserBackground(com.Azelmods.App.utils.StoryVideoComposer.fitUploadLimit(context, uri), uid, true)
                 val poster = videoPoster(uri)?.let { storageRepository.uploadCoverPhoto(it, uid) }
                 val changes = buildMap<String, Any> {
                     put("coverVideoUrl", videoUrl)
@@ -706,7 +706,7 @@ class ProfileViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "ProfileViewModel"
-        private const val MAX_PROFILE_VIDEO_MS = 31_000L
+        private const val MAX_PROFILE_VIDEO_MS = 91_000L
         private const val FREE_GALLERY_LIMIT = 10
     }
 }

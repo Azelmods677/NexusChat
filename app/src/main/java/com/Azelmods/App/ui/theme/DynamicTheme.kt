@@ -19,6 +19,8 @@ import com.Azelmods.App.ui.screens.settings.SettingsViewModel
  */
 object AppTheme {
 
+    private val CUSTOM_HEX = Regex("^#[0-9a-fA-F]{6}$")
+
     /** Triplete de colores de un tema (para gradientes y variantes). */
     data class ThemeColors(
         val primary: Color,
@@ -57,7 +59,32 @@ object AppTheme {
         accent("AMBER", "Ámbar", 0xFFD9A441),
         accent("OLIVE", "Oliva", 0xFF8FA35A),
         accent("SLATE", "Pizarra", 0xFF8796A5),
-        accent("GRAPHITE", "Grafito", 0xFFC2C7CC)
+        accent("GRAPHITE", "Grafito", 0xFFC2C7CC),
+        // Más vivos
+        accent("ELECTRIC", "Azul eléctrico", 0xFF0077FF),
+        accent("ROYAL", "Azul rey", 0xFF2F5BEA),
+        accent("NAVY", "Marino", 0xFF476599),
+        accent("SKYBLUE", "Celeste", 0xFF38B6FF),
+        accent("TURQUOISE", "Turquesa", 0xFF14C8C8),
+        accent("AQUAMARINE", "Aguamarina", 0xFF2DD4BF),
+        accent("EMERALD_GREEN", "Esmeralda", 0xFF10B981),
+        accent("TRUE_GREEN", "Verde", 0xFF22C55E),
+        accent("LIME_GREEN", "Lima", 0xFF84CC16),
+        accent("LEMON", "Limón", 0xFFD4D62B),
+        accent("SUN", "Amarillo", 0xFFFACC15),
+        accent("TANGERINE", "Mandarina", 0xFFF59E0B),
+        accent("TRUE_ORANGE", "Naranja", 0xFFF97316),
+        accent("TERRACOTTA", "Terracota", 0xFFC2613F),
+        accent("BROWN", "Chocolate", 0xFF9C6B4A),
+        accent("VIVID_RED", "Rojo vivo", 0xFFEF2B2D),
+        accent("BLOOD", "Sangre", 0xFFBF293F),
+        accent("WINE", "Vino", 0xFFA74563),
+        accent("HOT_PINK", "Fucsia", 0xFFEC4899),
+        accent("BUBBLEGUM", "Chicle", 0xFFF472B6),
+        accent("NEON_MAGENTA", "Magenta", 0xFFD946EF),
+        accent("AMETHYST", "Amatista", 0xFFA855F7),
+        accent("TRUE_VIOLET", "Violeta", 0xFF8B5CF6),
+        accent("LILAC", "Lila", 0xFFB39DDB)
     )
 
     // ── Lookup por id (mayúsculas) ────────────────────────────────────────
@@ -107,12 +134,25 @@ object AppTheme {
         }
     }
 
+    /** Un color libre elegido por el usuario se guarda como "#RRGGBB". */
+    fun isCustom(name: String): Boolean = CUSTOM_HEX.matches(name.trim())
+
+    private fun customColors(name: String): ThemeColors {
+        val color = Color(0xFF000000 or name.trim().removePrefix("#").toLong(16))
+        return ThemeColors(color, color, lerp(color, Color.Black, 0.45f))
+    }
+
     /** Busca los colores de un acento; si no se reconoce, Jade. */
-    private fun lookup(name: String): ThemeColors =
-        THEME_MAP[normalise(name)] ?: THEME_MAP.getValue("JADE")
+    private fun lookup(name: String): ThemeColors = when {
+        isCustom(name) -> customColors(name)
+        else -> THEME_MAP[normalise(name)] ?: THEME_MAP.getValue("JADE")
+    }
 
     /** Id canónico de un valor guardado, para marcar el acento activo en el selector. */
-    fun canonicalId(name: String): String = normalise(name).takeIf { it in THEME_MAP } ?: "JADE"
+    fun canonicalId(name: String): String = when {
+        isCustom(name) -> name.trim().uppercase()
+        else -> normalise(name).takeIf { it in THEME_MAP } ?: "JADE"
+    }
 
     // ── Public helpers ────────────────────────────────────────────────────
     fun getPrimaryColor(theme: String): Color = lookup(theme).primary

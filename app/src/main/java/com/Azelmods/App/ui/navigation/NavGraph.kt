@@ -339,6 +339,43 @@ fun NavGraph(
             PremiumScreen(navController = navController)
         }
 
+        composable("group_info/{chatId}") { entry ->
+            com.Azelmods.App.ui.screens.group.GroupInfoScreen(
+                chatId = entry.arguments?.getString("chatId").orEmpty(),
+                navController = navController
+            )
+        }
+        composable("saved_messages") {
+            com.Azelmods.App.ui.screens.chat.SavedMessagesScreen(navController)
+        }
+        composable("chat_studio") {
+            com.Azelmods.App.ui.screens.settings.ChatStudioScreen(navController)
+        }
+        composable("channels") {
+            com.Azelmods.App.ui.screens.channels.ChannelsScreen(navController)
+        }
+        composable("channel/{id}") { entry ->
+            com.Azelmods.App.ui.screens.channels.ChannelScreen(navController, entry.arguments?.getString("id").orEmpty())
+        }
+        composable("secret_chats") {
+            com.Azelmods.App.ui.screens.secret.SecretChatsScreen(navController)
+        }
+        composable("secret_chat/{id}/{peer}") { entry ->
+            com.Azelmods.App.ui.screens.secret.SecretChatScreen(
+                navController,
+                entry.arguments?.getString("id").orEmpty(),
+                entry.arguments?.getString("peer").orEmpty()
+            )
+        }
+        composable(
+            "video_download?url={url}",
+            arguments = listOf(androidx.navigation.navArgument("url") {
+                type = androidx.navigation.NavType.StringType
+                defaultValue = ""
+            })
+        ) { entry ->
+            com.Azelmods.App.ui.screens.downloader.VideoDownloaderScreen(navController, entry.arguments?.getString("url").orEmpty())
+        }
         composable(Screen.ProfileCustomize.route) {
             com.Azelmods.App.ui.screens.profile.ProfileCustomizeScreen(navController = navController)
         }

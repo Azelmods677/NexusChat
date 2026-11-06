@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/Azelmods677/NexusChat">
-    <img src="https://img.shields.io/badge/Version-7.0.0-2FB38E?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
+    <img src="https://img.shields.io/badge/Version-8.0.0-2FB38E?style=for-the-badge&logo=android&logoColor=white&labelColor=0d1117" alt="Version" />
   </a>
   <a href="https://github.com/Azelmods677/NexusChat/releases">
     <img src="https://img.shields.io/github/v/release/Azelmods677/NexusChat?style=for-the-badge&logo=github&color=00E676&labelColor=0d1117" alt="Latest Release" />
@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="#v800">🎨 v8.0.0</a> ·
   <a href="#v700">🚀 v7.0.0</a> ·
   <a href="#v610">v6.1.0</a> ·
   <a href="#v301">v3.0.1</a> ·
@@ -28,6 +29,38 @@
 </p>
 
 </div>
+
+---
+
+<a id="v800"></a>
+## v8.0.0: tu app, a tu manera
+
+### Estudio de diseño
+- Filas de chat: tarjeta, barra lateral, línea, relieve 3D con la foto hundida, borde, tarjeta 3D, neón, cristal y foto de fondo. Se aplican también a llamadas, historias, contactos y búsqueda.
+- Efecto en las fotos de perfil: hundida o en esfera. Color de las filas a elegir.
+- Campo de escribir: cápsula, con tu foto, social, plano, 3D, contorno, línea y bloque, con texto propio.
+- Burbujas, marcas de lectura, colores, tamaño de letra y foto dentro de la burbuja.
+- Cinco diseños de inicio y cinco de ajustes, con búsqueda en ajustes.
+- Tipos de letra para toda la app.
+
+### Mensajería
+- Grupos cifrados de extremo a extremo, con administradores y enlace de invitación.
+- Chats secretos con una clave nueva en cada mensaje.
+- Canales, encuestas, mensajes fijados, guardados y programados.
+- Reenviar, seleccionar varios mensajes, compartir contactos y vista previa de enlaces.
+- Carpetas de chats, chats ocultos con tu huella y marcar como no leído.
+- Stickers propios y animados, con paquetes para crear y compartir.
+
+### Herramientas
+- Kali Linux de verdad dentro de la terminal.
+- Descarga de vídeos de YouTube, Facebook, X e Instagram.
+- Los agentes guardan sus archivos y PDF en la carpeta que elijas, con tu permiso.
+
+### Todo lo demás
+- Nueva animación de entrada e iconos con movimiento.
+- Aviso de actualización al momento y recuperación de contraseña desde la app.
+- Las notificaciones muestran el mensaje real y la lista de chats, el último mensaje.
+- Preparada para Android 17.
 
 ---
 

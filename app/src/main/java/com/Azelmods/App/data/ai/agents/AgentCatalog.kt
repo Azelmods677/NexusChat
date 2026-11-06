@@ -15,7 +15,7 @@ object AgentCatalog {
         AgentToolId.GITHUB, AgentToolId.WIKIPEDIA, AgentToolId.DATETIME
     )
     private val CODE_TOOLS = setOf(
-        AgentToolId.RUN_CODE, AgentToolId.RUN_JS, AgentToolId.SAVE_FILE, AgentToolId.READ_FILE, AgentToolId.LIST_FILES,
+        AgentToolId.RUN_CODE, AgentToolId.RUN_JS, AgentToolId.SAVE_FILE, AgentToolId.EXPORT_FILE, AgentToolId.READ_FILE, AgentToolId.LIST_FILES,
         AgentToolId.GITHUB, AgentToolId.STACKOVERFLOW, AgentToolId.PACKAGE_INFO, AgentToolId.READ_URL, AgentToolId.WEB_SEARCH
     )
 
@@ -125,7 +125,7 @@ object AgentCatalog {
             "corriges el código, vuelves a ejecutar y guardas la versión corregida con save_file. Entregas el " +
             "código final completo y una lista de lo que probaste con su resultado real.",
         tools = setOf(
-            AgentToolId.RUN_CODE, AgentToolId.RUN_JS, AgentToolId.SAVE_FILE, AgentToolId.READ_FILE,
+            AgentToolId.RUN_CODE, AgentToolId.RUN_JS, AgentToolId.SAVE_FILE, AgentToolId.EXPORT_FILE, AgentToolId.READ_FILE,
             AgentToolId.LIST_FILES, AgentToolId.STACKOVERFLOW
         ),
         maxSteps = 10
@@ -139,7 +139,7 @@ object AgentCatalog {
         color = 0xFFFF6B9D,
         instructions = "Eres un redactor profesional. Escribes textos claros, bien estructurados con " +
             "títulos y listas en Markdown, adaptados al público y sin relleno. Si te falta un dato, lo buscas.",
-        tools = setOf(AgentToolId.WEB_SEARCH, AgentToolId.READ_URL, AgentToolId.SAVE_FILE),
+        tools = setOf(AgentToolId.WEB_SEARCH, AgentToolId.READ_URL, AgentToolId.SAVE_FILE, AgentToolId.EXPORT_FILE),
         maxSteps = 5
     )
 

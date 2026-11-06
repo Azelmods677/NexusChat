@@ -2,6 +2,9 @@ package com.Azelmods.App.ui.screens.home
 
 import com.Azelmods.App.i18n.tr
 
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import androidx.lifecycle.ViewModel
@@ -44,6 +47,10 @@ enum class ChatFilter { ALL, UNREAD, GROUPS, ARCHIVED }
 
 // ── ViewModel ─────────────────────────────────────────────────────────────────
 
+/** Rótulo que deja en el servidor un mensaje cifrado (ver sendMessageInternal). */
+private const val ENCRYPTED_PREVIEW_LABEL = "Mensaje cifrado"
+private const val USER_CACHE_MS = 60_000L
+
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val databaseRepository: RealtimeDatabaseRepository,
@@ -70,16 +77,39 @@ class HomeViewModel @Inject constructor(
     private suspend fun lastMessagePreview(data: Map<String, Any>, peerUid: String): String {
         val label = data["lastMessage"] as? String ?: ""
         val payload = data["lastMessagePayload"] as? String
-        if (payload.isNullOrBlank() || peerUid.isBlank()) return label
+        // Una foto, un audio o un sticker dejan su propio rótulo: el texto cifrado que siga
+        // guardado es del mensaje anterior, y mostrarlo enseñaba el penúltimo.
+        if (label != ENCRYPTED_PREVIEW_LABEL || payload.isNullOrBlank()) return label
+        val groupKeyId = data["lastMessageKeyId"] as? String
+        val chatId = data["chatId"] as? String
+        if (groupKeyId != null && chatId != null) {
+            return runCatching { databaseRepository.decryptGroupMessage(chatId, groupKeyId, payload) }.getOrNull() ?: label
+        }
+        if (peerUid.isBlank()) return label
         return runCatching {
             val bytes = android.util.Base64.decode(payload, android.util.Base64.NO_WRAP)
             when (val result = decryptMessageUseCase(
                 peerUid, bytes, com.Azelmods.App.data.security.encryption.MessageType.WHISPER
             )) {
-                is com.Azelmods.App.data.security.encryption.DecryptionResult.Success -> result.plaintext
+                is com.Azelmods.App.data.security.encryption.DecryptionResult.Success ->
+                    com.Azelmods.App.ui.screens.chat.pollPreview(result.plaintext) ?: result.plaintext
                 else -> label
             }
         }.getOrDefault(label)
+    }
+
+    /**
+     * La lista se reconstruye con cada mensaje: sin esto se volvería a pedir el perfil de
+     * cada contacto cada vez.
+     */
+    private val userCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, Map<String, Any>?>>()
+
+    private suspend fun cachedUser(uid: String): Map<String, Any>? {
+        val now = System.currentTimeMillis()
+        userCache[uid]?.takeIf { now - it.first < USER_CACHE_MS }?.let { return it.second }
+        val user = databaseRepository.getUserById(uid)
+        userCache[uid] = now to user
+        return user
     }
 
     private val _state = MutableStateFlow(HomeState())
@@ -97,6 +127,9 @@ class HomeViewModel @Inject constructor(
      * Firebase entero.
      */
     private var chatSettings: Map<String, com.Azelmods.App.data.model.ChatSettings> = emptyMap()
+
+    /** Hasta que llegan, nadie sabe qué chats están archivados: pintarlos antes los hace parpadear. */
+    private val settingsReady = kotlinx.coroutines.flow.MutableStateFlow(false)
 
     init {
         loadChats()
@@ -132,6 +165,14 @@ class HomeViewModel @Inject constructor(
                 filter = filter
             )
         )
+    }
+
+    /** Como en WhatsApp: el chat vuelve a aparecer pendiente hasta que se abra otra vez. */
+    fun markUnread(chatId: String) {
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: return
+        com.google.firebase.database.FirebaseDatabase.getInstance().reference
+            .child("chats").child(chatId).child("unreadCount").child(uid).setValue(1)
+            .addOnFailureListener { android.util.Log.w("HomeViewModel", "No se pudo marcar como no leído: ${it.message}") }
     }
 
     fun togglePin(chatId: String) {
@@ -259,6 +300,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             databaseRepository.observeChatSettings(userId).collect { settings ->
                 chatSettings = settings
+                settingsReady.value = true
                 val actualizados = _state.value.chats.map { chat ->
                     val s = settings[chat.chatId]
                     chat.copy(
@@ -324,6 +366,7 @@ class HomeViewModel @Inject constructor(
 
     // ── Core logic ────────────────────────────────────────────────────────────
 
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun loadChats() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
@@ -341,10 +384,20 @@ class HomeViewModel @Inject constructor(
             android.util.Log.d("HomeVM", "✅ Loading chats for user: $userId")
 
             try {
+                // Sin conexión los ajustes no llegan: no se deja esperando la lista por ellos.
+                kotlinx.coroutines.withTimeoutOrNull(SETTINGS_WAIT_MS) { settingsReady.first { it } }
+
                 // ── OFFLINE CACHE: show cached chats immediately ──
                 val cachedEntities = cacheManager.getCachedChats()
                 if (cachedEntities.isNotEmpty()) {
-                    val cachedChats = cachedEntities.map { it.toChat() }
+                    val cachedChats = cachedEntities.map { it.toChat() }.map { chat ->
+                        val saved = chatSettings[chat.chatId]
+                        chat.copy(
+                            isPinned = saved?.isPinned ?: chat.isPinned,
+                            isMuted = saved?.isCurrentlyMuted() ?: chat.isMuted,
+                            isArchived = saved?.isArchived ?: chat.isArchived
+                        )
+                    }
                     android.util.Log.d("HomeVM", "📦 Loaded ${cachedChats.size} cached chats")
                     // Aggregate participant info from cache
                     val allNames = mutableMapOf<String, String>()
@@ -368,7 +421,8 @@ class HomeViewModel @Inject constructor(
                     android.util.Log.d("HomeVM", "📭 No cached chats found")
                 }
 
-                databaseRepository.getUserChats(userId).collect { rawChats ->
+                // Un mensaje nuevo cambia varios campos a la vez: se espera a que lleguen todos.
+                databaseRepository.getUserChats(userId).debounce(120L).collectLatest { rawChats ->
                     android.util.Log.d("HomeVM", "🔄 Received ${rawChats.size} chats from Firebase")
                     
                     if (rawChats.isEmpty()) {
@@ -379,7 +433,7 @@ class HomeViewModel @Inject constructor(
                             isLoading = false,
                             error = null // No es error, simplemente no hay chats
                         )
-                        return@collect
+                        return@collectLatest
                     }
                     
                     // All Firebase user-profile look-ups run on the IO dispatcher.
@@ -408,7 +462,7 @@ class HomeViewModel @Inject constructor(
 
                     // ── SAVE CHATS TO ROOM CACHE ──
                     try {
-                        cacheManager.cacheChats(enriched)
+                        cacheManager.replaceChats(enriched)
                         android.util.Log.d("HomeVM", "💾 Cached ${enriched.size} chats successfully")
                     } catch (e: Exception) {
                         android.util.Log.e("HomeVM", "❌ Failed to cache chats: ${e.message}", e)
@@ -503,9 +557,7 @@ class HomeViewModel @Inject constructor(
 
         val otherUserData: Map<String, Any>? = if (otherUid.isNotBlank()) {
             try {
-                databaseRepository.getUserById(otherUid).also {
-                    android.util.Log.d("HomeVM", "✅ Fetched user data for $otherUid: ${it?.get("displayName")}")
-                }
+                cachedUser(otherUid)
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "❌ Failed to fetch user $otherUid: ${e.message}")
                 null
@@ -549,7 +601,8 @@ class HomeViewModel @Inject constructor(
                 ?.takeIf { it.isNotBlank() }
                 ?: (otherUserData?.get("username") as? String)
                     ?.takeIf { it.isNotBlank() }
-                ?: tr("Anónimo")
+                // La cuenta del asistente no existe en el servidor: su nombre se conoce aquí.
+                ?: if (otherUid == com.Azelmods.App.data.demo.DemoAssistant.USER_ID) "Azel Assistant" else tr("Anónimo")
         }
 
         // Prefer photoUrl, fall back to profilePhotoUrl.
@@ -638,3 +691,5 @@ class HomeViewModel @Inject constructor(
         }
     }
 }
+
+private const val SETTINGS_WAIT_MS = 1_500L

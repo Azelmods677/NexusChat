@@ -44,9 +44,15 @@ internal fun Message.listKey(): String =
 internal fun mergeMessages(live: List<Message>, older: List<Message>): List<Message> =
     (live + older).distinctBy { it.listKey() }.sortedBy { it.timestamp }
 
+/** Un miembro de un grupo, para saber quién escribe y poder mencionarlo. */
+data class GroupChatMember(val uid: String, val name: String, val photoUrl: String?)
+
 data class ChatState(
     val messages: List<Message> = emptyList(),
     val contact: User? = null,
+    /** Solo en grupos: su nombre y sus miembros. */
+    val groupName: String? = null,
+    val groupMembers: Map<String, GroupChatMember> = emptyMap(),
     val isTyping: Boolean = false,
     val typingUserName: String? = null,
     val isLoading: Boolean = false,
@@ -404,6 +410,25 @@ class ChatViewModel @Inject constructor(
         return peer.takeIf { it.isNotBlank() && it != currentUserId }
     }
 
+    private suspend fun loadGroupInfo(chatId: String) {
+        runCatching {
+            val chat = FirebaseDatabase.getInstance().reference.child("chats").child(chatId)
+            val name = chat.child("groupName").get().await().getValue(String::class.java).orEmpty()
+            val ids = chat.child("members").get().await().children.mapNotNull { it.key }
+            val members = ids.associateWith { uid ->
+                val user = runCatching { databaseRepository.getUserById(uid) }.getOrNull()
+                GroupChatMember(
+                    uid = uid,
+                    name = (user?.get("displayName") as? String)?.ifBlank { null }
+                        ?: (user?.get("name") as? String)?.ifBlank { null }
+                        ?: tr("Usuario"),
+                    photoUrl = (user?.get("photoUrl") as? String)?.ifBlank { null }
+                )
+            }
+            _state.value = _state.value.copy(groupName = name, groupMembers = members)
+        }.onFailure { android.util.Log.w("ChatViewModel", "No se pudo leer el grupo: ${it.message}") }
+    }
+
     /**
      * Resolves the contact for a chat. Prefers the chat's `members` node (covers
      * legacy / group structures) and falls back to deriving the peer from the
@@ -446,9 +471,10 @@ class ChatViewModel @Inject constructor(
             databaseRepository.getUserById(uid)?.let { data ->
                 User(
                     uid = data["uid"] as? String ?: uid,
-                    name = data["displayName"] as? String
+                    name = DEMO_USER_NAME.takeIf { isDemoContact }
+                        ?: data["displayName"] as? String
                         ?: data["name"] as? String
-                        ?: if (isDemoContact) DEMO_USER_NAME else tr("Usuario"),
+                        ?: tr("Usuario"),
                     username = data["username"] as? String ?: "",
                     email = data["email"] as? String ?: "",
                     photoUrl = data["photoUrl"] as? String,
@@ -485,6 +511,9 @@ class ChatViewModel @Inject constructor(
      * Returns the canonical chatId resolved during [loadChat]. Falls back to the
      * passed value only if a chat hasn't been loaded yet.
      */
+    /** El identificador real del chat abierto. */
+    fun chatIdFor(passed: String): String = effectiveChatId(passed)
+
     private fun effectiveChatId(passed: String): String =
         currentChatId.ifBlank { passed }
 
@@ -508,6 +537,7 @@ class ChatViewModel @Inject constructor(
                 // its members and its messages always live under the same node.
                 val chatId = resolveCanonicalChatId(rawChatId, currentUserId)
                 currentChatId = chatId
+                com.Azelmods.App.service.ActiveChat.chatId = chatId
 
                 // El chat de bienvenida se sembraba SOLO al abrirlo desde "Nueva
                 // conversación". Entrando por la tarjeta Demo de la pantalla principal
@@ -527,6 +557,7 @@ class ChatViewModel @Inject constructor(
                     contact = contact,
                     isLoading = false
                 )
+                if (chatId.startsWith("group_")) loadGroupInfo(chatId)
 
                 // ── OFFLINE CACHE: show cached messages immediately ──
                 val cachedMessages = cacheManager.getCachedMessages(chatId)
@@ -653,12 +684,17 @@ class ChatViewModel @Inject constructor(
     private suspend fun mapMessage(data: Map<String, Any>, chatId: String, peerId: String): Message {
         val isEncrypted = data["isEncrypted"] as? Boolean ?: false
         val payload = data["encryptedPayload"] as? String
-        val content = decryptedContent(
-            rawContent = data["content"] as? String ?: "",
-            isEncrypted = isEncrypted,
-            payload = payload,
-            peerId = peerId
-        )
+        val groupKeyId = data["groupKeyId"] as? String
+        val content = if (isEncrypted && groupKeyId != null && payload != null) {
+            databaseRepository.decryptGroupMessage(chatId, groupKeyId, payload) ?: tr("🔒 No se pudo descifrar")
+        } else {
+            decryptedContent(
+                rawContent = data["content"] as? String ?: "",
+                isEncrypted = isEncrypted,
+                payload = payload,
+                peerId = peerId
+            )
+        }
         val timestamp = when (val raw = data["timestamp"]) {
             is Number -> raw.toLong()
             is String -> raw.toLongOrNull() ?: System.currentTimeMillis()
@@ -816,6 +852,7 @@ class ChatViewModel @Inject constructor(
                 
                 val state = _state.value
                 if (state.viewOnceNext || state.chatTimerSeconds > 0) {
+                    // Sin vista previa: lo temporal no debe dejar rastro en ninguna web.
                     databaseRepository.sendEphemeralMessage(
                         chatId = targetChatId,
                         content = content,
@@ -827,7 +864,7 @@ class ChatViewModel @Inject constructor(
                 } else {
                     databaseRepository.sendMessage(
                         chatId = targetChatId,
-                        content = content,
+                        content = LinkPreviews.attachTo(content),
                         replyTo = state.replyingTo?.messageId
                     )
                 }
@@ -1105,6 +1142,20 @@ class ChatViewModel @Inject constructor(
      * Translate a message into the preferred language using [TranslationService].
      * Toggles: if a translation already exists for the message, it is removed.
      */
+    /** Traduce lo que estás escribiendo antes de enviarlo, para responder en otro idioma. */
+    fun translateDraft(text: String, onTranslated: (String) -> Unit) {
+        if (text.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefLang = userPreferences.translationLanguage.value
+            val targetLang = if (prefLang == "auto" || prefLang.isBlank()) {
+                java.util.Locale.getDefault().language.ifBlank { "es" }
+            } else prefLang
+            translationService.translate(text, targetLang = targetLang)
+                .onSuccess { result -> withContext(Dispatchers.Main) { onTranslated(result.text) } }
+                .onFailure { _state.value = _state.value.copy(translationError = it.message) }
+        }
+    }
+
     fun translateMessage(messageId: String, text: String) {
         if (messageId.isBlank() || text.isBlank()) return
         // Toggle off if already translated

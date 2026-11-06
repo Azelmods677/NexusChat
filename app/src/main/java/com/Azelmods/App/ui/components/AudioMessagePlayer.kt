@@ -1,5 +1,7 @@
 package com.Azelmods.App.ui.components
 
+import androidx.compose.foundation.clickable
+
 import com.Azelmods.App.i18n.tr
 
 import android.media.MediaPlayer
@@ -45,6 +47,7 @@ fun AudioMessagePlayer(
     var duration by remember { mutableStateOf(0) }
     var isError by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
+    var speed by remember { mutableStateOf(1f) }
     
     val mediaPlayer = remember(audioUrl) {
         MediaPlayer().apply {
@@ -192,6 +195,7 @@ fun AudioMessagePlayer(
                                     currentPosition = 0
                                 }
                                 mediaPlayer.start()
+                                if (speed != 1f) mediaPlayer.playbackParams = mediaPlayer.playbackParams.setSpeed(speed)
                                 isPlaying = true
                             }
                         },
@@ -300,6 +304,17 @@ fun AudioMessagePlayer(
                             )
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
+                        Text(
+                            text = if (speed == 1f) "1x" else if (speed == 1.5f) "1,5x" else "2x",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accentColor,
+                            modifier = Modifier
+                                .clickable {
+                                    speed = if (speed == 1f) 1.5f else if (speed == 1.5f) 2f else 1f
+                                    if (isPlaying) mediaPlayer.playbackParams = mediaPlayer.playbackParams.setSpeed(speed)
+                                }
+                                .padding(horizontal = 8.dp)
+                        )
                         Text(
                             text = formatDuration(duration),
                             color = Color.White.copy(alpha = 0.8f),

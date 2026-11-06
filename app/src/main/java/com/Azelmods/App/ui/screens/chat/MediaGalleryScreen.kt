@@ -414,6 +414,7 @@ private fun FullscreenVideoPlayer(
 
     Box(modifier = Modifier.fillMaxSize()) {
         androidx.compose.ui.viewinterop.AndroidView(
+            update = { it.player = exoPlayer },
             factory = { ctx ->
                 androidx.media3.ui.PlayerView(ctx).apply {
                     player = exoPlayer

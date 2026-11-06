@@ -36,7 +36,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Android
 import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.Gavel
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.Sell
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.BatteryFull
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.Code
@@ -103,6 +110,11 @@ fun AboutScreen(navController: NavController) {
     val locale = remember { Locale.getDefault() }
     val staticInfo = remember { readStaticDeviceInfo(context) }
     var showDetails by rememberSaveable { mutableStateOf(false) }
+    var showLicenses by rememberSaveable { mutableStateOf(false) }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
+
+    if (showLicenses) LicensesDialog { showLicenses = false }
+    if (showHistory) HistoryDialog { showHistory = false }
 
     Scaffold(
         topBar = { NexusTopBar(title = tr("Acerca de"), onBack = { navController.popBackStack() }) },
@@ -115,16 +127,51 @@ fun AboutScreen(navController: NavController) {
                 .verticalScroll(rememberScrollState())
         ) {
             AboutHero()
+
+            NexusSectionHeader(tr("Sobre NexusChat"))
+            Column(
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AboutTile(Icons.Outlined.Gavel, tr("Licencia"), "Azel Mods 2027", 0, Modifier.weight(1f)) {
+                        showLicenses = true
+                    }
+                    AboutTile(Icons.Outlined.NewReleases, tr("Versión"), "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", 1, Modifier.weight(1f))
+                }
+                AboutTile(Icons.Outlined.History, tr("Historia"), tr("Cómo ha crecido NexusChat, versión a versión"), 2, Modifier.fillMaxWidth()) {
+                    showHistory = true
+                }
+            }
             HighlightsGrid()
 
             NexusSectionHeader(tr("Novedades de esta versión"))
             ChangelogCard()
 
+            NexusSectionHeader(tr("Información de la app"))
+            NexusDetailRow(tr("Base"), tr("Android %s con Jetpack Compose", "17"))
+            NexusDetailRow(tr("Créditos"), "Azel Mods")
+            NexusDetailRow(tr("Paquete"), BuildConfig.APPLICATION_ID, monospace = true)
+            NexusDetailRow(tr("Versión"), BuildConfig.VERSION_NAME)
+
             NexusSectionHeader(tr("Comunidad"))
             CommunityRow(onOpen = uriHandler::openUri)
 
-            NexusSectionHeader(tr("Tu dispositivo"))
+            NexusSectionHeader(tr("Sobre tu dispositivo"))
             LiveDeviceCard(now, battery, staticInfo, locale)
+            Column(
+                Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AboutTile(Icons.Outlined.Android, tr("Android"), "Android ${Build.VERSION.RELEASE}", 3, Modifier.weight(1f))
+                    AboutTile(Icons.Outlined.Wifi, tr("Red"), memory.network, 4, Modifier.weight(1f))
+                }
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    AboutTile(Icons.Outlined.Sell, tr("Marca"), staticInfo.brand, 5, Modifier.weight(1f))
+                    AboutTile(Icons.Outlined.PhoneAndroid, tr("Modelo"), staticInfo.model, 6, Modifier.weight(1f))
+                }
+            }
 
             DetailsToggle(expanded = showDetails, onClick = { showDetails = !showDetails })
             AnimatedVisibility(visible = showDetails) {
@@ -144,11 +191,11 @@ fun AboutScreen(navController: NavController) {
                     NexusDetailRow(tr("Compilación"), "${BuildConfig.VERSION_CODE} · ${if (BuildConfig.DEBUG) tr("depuración") else tr("producción")}")
                     NexusDetailRow(tr("Paquete"), BuildConfig.APPLICATION_ID, monospace = true)
                     Text(
-                        text = tr("Los chats de dos personas se cifran en el dispositivo con ECDH P-256 y " +
+                        text = tr("Los chats y los grupos se cifran en el dispositivo con ECDH P-256 y " +
                             "AES-256-GCM: la clave privada no sale del teléfono y el servidor solo guarda " +
-                            "texto cifrado.\n\nLos grupos todavía no van cifrados de extremo a extremo, no " +
-                            "hay secreto hacia adelante y el servidor ve los metadatos: quién habla con " +
-                            "quién y cuándo."),
+                            "texto cifrado.\n\nLos chats secretos cambian de clave en cada mensaje. En el " +
+                            "resto no hay secreto hacia adelante. El servidor ve los metadatos: quién habla " +
+                            "con quién y cuándo."),
                         style = MaterialTheme.typography.bodySmall,
                         color = NexusTokens.Color.TextMuted,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -170,7 +217,7 @@ fun AboutScreen(navController: NavController) {
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    "© ${SimpleDateFormat("yyyy", locale).format(Date(now))} · ${tr("Licencia MIT")}",
+                    tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
                     style = MaterialTheme.typography.bodySmall,
                     color = NexusTokens.Color.TextMuted
                 )
@@ -183,6 +230,7 @@ fun AboutScreen(navController: NavController) {
 @Composable
 private fun AboutHero() {
     val accent = MaterialTheme.colorScheme.primary
+    val me = com.Azelmods.App.data.profile.rememberMyProfile()
     val transition = rememberInfiniteTransition(label = "emblema")
     val angle by transition.animateFloat(
         0f, 360f,
@@ -252,8 +300,125 @@ private fun AboutHero() {
                     .background(accent.copy(alpha = 0.16f))
                     .padding(horizontal = 14.dp, vertical = 5.dp)
             )
+            if (me.name.isNotBlank()) {
+                Spacer(Modifier.height(14.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.Azelmods.App.ui.components.UserAvatar(me.name, me.photoUrl, size = 30.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(me.name, style = MaterialTheme.typography.labelLarge, color = NexusTokens.Color.TextSecondary, maxLines = 1)
+                }
+            }
         }
     }
+}
+
+/** Una tarjeta de dato. Con [onClick] se puede abrir; sin él solo informa. */
+@Composable
+private fun AboutTile(
+    icon: ImageVector,
+    title: String,
+    value: String,
+    index: Int,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Column(
+        modifier
+            .fillMaxHeight()
+            .staggeredEnter(index)
+            .pressScale(interaction, 0.96f)
+            .clip(RoundedCornerShape(NexusTokens.Radius.xl))
+            .background(NexusTokens.Color.BgSurface)
+            .then(
+                if (onClick != null) Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                else Modifier
+            )
+            .padding(20.dp)
+    ) {
+        Box(
+            Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(NexusTokens.Color.BgDeep),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(title, style = MaterialTheme.typography.titleSmall, color = NexusTokens.Color.TextPrimary)
+        Spacer(Modifier.height(2.dp))
+        Text(value, style = MaterialTheme.typography.bodySmall, color = NexusTokens.Color.TextMuted)
+    }
+}
+
+@Composable
+private fun LicensesDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Licencia")) },
+        text = {
+            Text(
+                tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
+                style = MaterialTheme.typography.bodyLarge,
+                color = NexusTokens.Color.TextPrimary
+            )
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } },
+        containerColor = NexusTokens.Color.BgSurface
+    )
+}
+
+private val HISTORY = listOf(
+    "8.0" to "Personalización completa, Kali Linux, stickers propios, chats secretos, grupos cifrados y canales",
+    "7.0" to "Perfiles con fotos y vídeos, 40 colores y agentes de IA reales",
+    "6.1" to "Llamadas fiables, agentes de IA que se ven trabajar y Tor verificado",
+    "5.0" to "Versiones firmadas para publicar",
+    "4.0" to "Gran ronda de correcciones y estabilidad",
+    "3.0" to "Multimedia, llamadas y presencia reales, y un nuevo sistema de IA",
+    "1.0" to "Primera versión de NexusChat"
+)
+
+@Composable
+private fun HistoryDialog(onDismiss: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Historia")) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                HISTORY.forEachIndexed { index, (version, text) ->
+                    Row(Modifier.height(IntrinsicSize.Min)) {
+                        // La línea de tiempo une cada versión con la anterior.
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                Modifier
+                                    .padding(top = 4.dp)
+                                    .size(12.dp)
+                                    .clip(CircleShape)
+                                    .background(accent)
+                            )
+                            if (index != HISTORY.lastIndex) {
+                                Box(
+                                    Modifier
+                                        .width(2.dp)
+                                        .weight(1f)
+                                        .background(accent.copy(alpha = 0.35f))
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.padding(bottom = 16.dp)) {
+                            Text(version, style = MaterialTheme.typography.titleSmall, color = accent)
+                            Text(tr(text), style = MaterialTheme.typography.bodyMedium, color = NexusTokens.Color.TextPrimary)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } },
+        containerColor = NexusTokens.Color.BgSurface
+    )
 }
 
 private class Highlight(val icon: ImageVector, val title: String, val text: String)
@@ -304,16 +469,16 @@ private fun HighlightsGrid() {
 }
 
 private val CHANGELOG = listOf(
-    "Agentes que programan de verdad: escriben, ejecutan y corrigen código, y guardan los archivos en tu editor",
-    "Búsqueda en varios buscadores a la vez, con Google a través de Gemini",
-    "Perfiles con fotos y vídeos deslizables a pantalla completa",
-    "Personaliza tu perfil con 40 colores y tu portada, en su propia pantalla",
-    "Videollamadas renovadas a pantalla completa, con tono de llamada",
-    "Premium con pago por Mercado Pago",
-    "Música en todas las historias, también en vídeos y GIF",
-    "Nueva animación de entrada",
-    "La app completa en español e inglés",
-    "Mayor estabilidad al moverte por tus chats"
+    "Estudio de diseño: filas, burbujas, campo de escribir, inicio y ajustes a tu gusto",
+    "Filas en 3D, neón y cristal, también en llamadas, historias y contactos",
+    "Stickers propios y animados, con paquetes para crear y compartir",
+    "Kali Linux de verdad dentro de la terminal",
+    "Chats secretos con una clave nueva en cada mensaje",
+    "Grupos cifrados de extremo a extremo y canales",
+    "Encuestas, mensajes guardados, fijados y programados",
+    "Descarga vídeos de YouTube, Facebook, X e Instagram",
+    "Aviso de actualización al momento y recuperación de contraseña",
+    "Nueva animación de entrada y preparada para Android 17"
 )
 
 private const val CHANGELOG_PREVIEW = 4
@@ -410,11 +575,6 @@ private fun LiveDeviceCard(now: Long, battery: BatteryState, info: StaticDeviceI
             color = NexusTokens.Color.TextSecondary
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            "${info.brand} ${info.model}",
-            style = MaterialTheme.typography.bodySmall,
-            color = NexusTokens.Color.TextMuted
-        )
         Spacer(Modifier.height(16.dp))
         BatteryMeter(battery)
     }

@@ -39,6 +39,164 @@ data class Tutorial(
 object TutorialContent {
     val tutorials = listOf(
         Tutorial(
+            id = "whats_new",
+            title = tr("Novedades de la 8.0"),
+            icon = "🆕",
+            sections = listOf(
+                TutorialSection(
+                    title = tr("Personalización completa"),
+                    content = "En Ajustes → Personalización → Estudio de diseño cambias las filas de los chats, las burbujas, las marcas de lectura, el campo de escribir, el inicio y los ajustes. Lo que elijas en filas se aplica también a llamadas, historias, contactos y búsqueda."
+                ),
+                TutorialSection(
+                    title = tr("Más formas de hablar"),
+                    content = "Grupos cifrados con administradores y enlace de invitación, chats secretos con una clave nueva en cada mensaje y canales para publicar a tus seguidores."
+                ),
+                TutorialSection(
+                    title = tr("En cada chat"),
+                    content = "Reenviar y seleccionar varios mensajes, encuestas, mensajes fijados, guardados y programados, compartir contactos, vista previa de enlaces y stickers propios."
+                ),
+                TutorialSection(
+                    title = tr("Tu lista de chats"),
+                    content = "Carpetas, chats ocultos con tu huella y marcar como no leído. Mantén pulsado un chat para verlo."
+                ),
+                TutorialSection(
+                    title = tr("Herramientas"),
+                    content = "Kali Linux de verdad en la terminal, descarga de vídeos y agentes de IA que guardan sus archivos en la carpeta que elijas."
+                ),
+                TutorialSection(
+                    title = tr("Y además"),
+                    content = "Avisos con el mensaje real, aviso de actualización al momento, recuperación de contraseña, vídeos de perfil de hasta 1 minuto y 30 segundos y nueva animación de entrada."
+                )
+            )
+        ),
+        Tutorial(
+            id = "studio",
+            title = tr("Estudio de diseño"),
+            icon = "🎨",
+            sections = listOf(
+                TutorialSection(
+                    title = tr("Dónde está"),
+                    content = "Ajustes → Personalización → Estudio de diseño. Arriba ves el resultado al momento, y cada pestaña cambia una parte de la app."
+                ),
+                TutorialSection(
+                    title = tr("Filas"),
+                    content = "Tarjeta, barra lateral, línea, relieve 3D, borde, tarjeta 3D, neón, cristal o la foto de fondo. También eliges el color de las filas y el efecto de las fotos de perfil: hundida o en esfera."
+                ),
+                TutorialSection(
+                    title = tr("Burbujas"),
+                    content = "Forma, marcas de lectura, colores, tamaño de letra y una foto pequeña dentro de la burbuja."
+                ),
+                TutorialSection(
+                    title = tr("Campo de escribir"),
+                    content = "Cápsula, con tu foto, social, plano, 3D, contorno, línea o bloque. Puedes cambiar el texto del campo, quitar el emoji y añadir un botón para traducir lo que escribes."
+                ),
+                TutorialSection(
+                    title = tr("Inicio"),
+                    content = "Clásico, con tu perfil, tarjeta, portada o barra de accesos. Además: barra de búsqueda, accesos rápidos, botón de modo fantasma, historias en tarjetas y tipo de letra."
+                ),
+                TutorialSection(
+                    title = tr("Ajustes"),
+                    content = "Panel, grupos, lista, cuadrícula o encabezado. La barra de búsqueda de Ajustes encuentra cualquier opción."
+                )
+            )
+        ),
+        Tutorial(
+            id = "groups",
+            title = tr("Grupos, canales y chats secretos"),
+            icon = "👥",
+            sections = listOf(
+                TutorialSection(
+                    title = tr("Grupos"),
+                    content = "Créalos desde Nueva conversación. Los mensajes van cifrados de extremo a extremo: cuando alguien entra o sale se crea una clave nueva, así que quien sale no lee lo que venga después."
+                ),
+                TutorialSection(
+                    title = tr("Administrar un grupo"),
+                    content = "Toca el nombre del grupo para ver sus miembros. Un administrador puede cambiar el nombre, añadir o quitar personas y nombrar a otros administradores."
+                ),
+                TutorialSection(
+                    title = tr("Enlace de invitación"),
+                    content = "En la información del grupo creas un enlace para compartir. Cámbialo cuando quieras: el anterior deja de servir. Para entrar con un enlace o un código: menú ⋮ → Unirse a un grupo."
+                ),
+                TutorialSection(
+                    title = tr("Chats secretos"),
+                    content = "Menú ⋮ → Chats secretos. Cada mensaje usa una clave nueva, no se pueden hacer capturas y el servidor borra el mensaje al entregarlo. Solo existen en el teléfono donde se crearon."
+                ),
+                TutorialSection(
+                    title = tr("Canales"),
+                    content = "Menú ⋮ → Canales. Publica para quien te siga o sigue los que te interesen. Solo el dueño publica."
+                )
+            )
+        ),
+        Tutorial(
+            id = "organize",
+            title = tr("Organizar tus chats"),
+            icon = "🗂️",
+            sections = listOf(
+                TutorialSection(
+                    title = tr("Carpetas"),
+                    content = "Mantén pulsado un chat → Carpetas. Crea las que quieras: aparecen junto a los filtros de arriba. Se guardan solo en tu teléfono."
+                ),
+                TutorialSection(
+                    title = tr("Chats ocultos"),
+                    content = "Mantén pulsado un chat → Ocultar chat. Para verlos: menú ⋮ → Chats ocultos, con tu huella o tu bloqueo de pantalla. No salen en la búsqueda y sus avisos no dicen de quién son."
+                ),
+                TutorialSection(
+                    title = tr("No leídos y fijados"),
+                    content = "Mantén pulsado un chat para marcarlo como no leído, fijarlo, silenciarlo o archivarlo."
+                ),
+                TutorialSection(
+                    title = tr("Seleccionar y reenviar"),
+                    content = "Mantén pulsado un mensaje → Seleccionar, y toca los demás. Arriba puedes copiarlos, reenviarlos o eliminarlos."
+                ),
+                TutorialSection(
+                    title = tr("Mensajes programados"),
+                    content = "En el botón + del chat, escribe tu mensaje y elige Programar. Para ver o cancelar los pendientes: menú ⋮ del chat → Mensajes programados."
+                ),
+                TutorialSection(
+                    title = tr("Mensajes guardados"),
+                    content = "Mantén pulsado un mensaje → Guardar. Los encuentras en el menú ⋮ → Mensajes guardados."
+                )
+            )
+        ),
+        Tutorial(
+            id = "stickers",
+            title = tr("Stickers"),
+            icon = "😀",
+            sections = listOf(
+                TutorialSection(
+                    title = tr("Crear un sticker"),
+                    content = "Abre el panel de stickers del chat y crea uno desde una foto: puedes quitar el fondo, añadir texto y un borde blanco."
+                ),
+                TutorialSection(
+                    title = tr("Paquetes"),
+                    content = "Agrupa tus stickers en paquetes y compártelos con un código. Con el código de otra persona instalas el suyo."
+                ),
+                TutorialSection(
+                    title = tr("Stickers recibidos"),
+                    content = "Mantén pulsado un sticker → Añadir a mis stickers."
+                ),
+                TutorialSection(
+                    title = tr("Emojis animados"),
+                    content = "Un mensaje con hasta tres emojis se muestra animado. En modo anónimo no se descargan las animaciones."
+                )
+            )
+        ),
+        Tutorial(
+            id = "downloads",
+            title = tr("Descargar vídeos"),
+            icon = "⬇️",
+            sections = listOf(
+                TutorialSection(
+                    title = tr("Cómo se usa"),
+                    content = "Menú ⋮ → Descargar vídeos y pega el enlace. También puedes escribir /descargar en un chat, seguido del enlace."
+                ),
+                TutorialSection(
+                    title = tr("De dónde"),
+                    content = "YouTube, Facebook, X e Instagram. Se guarda en la carpeta Descargas del teléfono."
+                )
+            )
+        ),
+        Tutorial(
             id = "getting_started",
             title = tr("Primeros Pasos"),
             icon = "🚀",
@@ -108,9 +266,9 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = tr("Grupos"),
-                    content = "Desde **New Chat** puedes crear un grupo, ponerle nombre y elegir " +
-                        "miembros.\n\nAviso honesto: los grupos NO usan cifrado de extremo a extremo; " +
-                        "esa protección está activa en los chats de dos personas."
+                    content = "Desde **Nueva conversación** puedes crear un grupo, ponerle nombre y elegir " +
+                        "miembros. Van cifrados de extremo a extremo. Mira la guía de grupos para los " +
+                        "administradores y el enlace de invitación."
                 ),
                 TutorialSection(
                     title = tr("Estados del mensaje"),
@@ -211,6 +369,13 @@ object TutorialContent {
                         "5. Guarda y abre 'Acceder a Azel IA'"
                 ),
                 TutorialSection(
+                    title = tr("Agentes que trabajan por ti"),
+                    content = "Encárgales una tarea y mira cómo la resuelven: investigan, analizan, " +
+                        "programan, prueban y redactan.\n\n" +
+                        "Cuando crean un archivo o un PDF te piden permiso y lo guardan en la " +
+                        "carpeta que elijas."
+                ),
+                TutorialSection(
                     title = tr("Modelos siempre al día"),
                     content = "La lista de modelos no está grabada dentro de la app: **Buscar " +
                         "modelos** consulta el endpoint del proveedor y muestra lo que hay en tu " +
@@ -243,7 +408,7 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = tr("Qué protege el cifrado"),
-                    content = "En los chats de dos personas, el contenido se cifra en tu " +
+                    content = "En los chats y en los grupos, el contenido se cifra en tu " +
                         "dispositivo con ECDH P-256 + AES-256-GCM y el servidor solo ve texto " +
                         "cifrado.\n\n" +
                         "Qué NO oculta: que existe una conversación entre dos cuentas y cuándo " +
@@ -282,22 +447,20 @@ object TutorialContent {
             sections = listOf(
                 TutorialSection(
                     title = tr("Qué necesitas"),
-                    content = "La navegación por Tor se apoya en **Orbot**, la app oficial del " +
-                        "Proyecto Tor. Nexus Chat no incluye un demonio Tor propio: habla con el " +
-                        "que Orbot expone en tu dispositivo.\n\n" +
-                        "Instálalo desde Google Play o F-Droid: org.torproject.android"
+                    content = "Tor viene dentro de la app: no hace falta instalar nada. Activa el " +
+                        "**Modo anónimo** en Seguridad y Tor y la app arranca Tor por su cuenta.\n\n" +
+                        "Si ya usas **Orbot**, también puedes abrirlo desde esa misma pantalla."
                 ),
                 TutorialSection(
                     title = tr("Activarlo"),
-                    content = "1. Abre Orbot y pulsa **Iniciar**\n" +
-                        "2. Espera a que confirme la conexión a la red Tor\n" +
-                        "3. Vuelve a Nexus Chat\n\n" +
-                        "La app detecta Orbot sola: comprueba si su proxy responde y se conecta " +
-                        "sin que tengas que reiniciar nada."
+                    content = "1. Ajustes → **Seguridad y Tor**\n" +
+                        "2. Activa **Modo anónimo**\n" +
+                        "3. Espera a que confirme la conexión\n\n" +
+                        "La pantalla muestra el progreso y el circuito real que está usando Tor."
                 ),
                 TutorialSection(
                     title = tr("Navegar sitios .onion"),
-                    content = "Con Orbot activo, abre el navegador integrado y escribe la " +
+                    content = "Con el modo anónimo activo, abre el navegador integrado y escribe la " +
                         "dirección .onion.\n\n" +
                         "Una dirección válida de hoy (v3) tiene 56 caracteres antes de .onion. " +
                         "Las antiguas de 16 caracteres (v2) ya no funcionan: la red Tor las " +
@@ -306,7 +469,7 @@ object TutorialContent {
                 TutorialSection(
                     title = tr("Modo anónimo"),
                     content = "El interruptor de modo anónimo enruta el tráfico de la app a " +
-                        "través de Orbot.\n\n" +
+                        "través de Tor.\n\n" +
                         "Ten en cuenta que Tor añade latencia: las llamadas y la carga de " +
                         "multimedia irán más lentas mientras esté activo."
                 )
@@ -323,9 +486,14 @@ object TutorialContent {
                         "predeterminado y es donde la interfaz está más cuidada."
                 ),
                 TutorialSection(
-                    title = tr("25 colores de acento"),
-                    content = "Desde el violeta de marca hasta Luna de Sangre, pasando por " +
-                        "esmeralda, ámbar, magenta o pizarra.\n\n" +
+                    title = tr("Estudio de diseño"),
+                    content = "Filas, burbujas, campo de escribir, inicio y ajustes se cambian en " +
+                        "Ajustes → Personalización → Estudio de diseño."
+                ),
+                TutorialSection(
+                    title = tr("36 colores y el que quieras"),
+                    content = "Desde el jade de marca hasta el azul eléctrico o el sangre. Con el botón " +
+                        "de colores del final eliges cualquier otro.\n\n" +
                         "El color elegido se aplica a toda la interfaz: botones, acentos, " +
                         "insignias y detalles de las tarjetas de chat."
                 ),
@@ -365,11 +533,10 @@ object TutorialContent {
                 ),
                 TutorialSection(
                     title = tr("Terminal"),
-                    content = "Un emulador de terminal que ejecuta los comandos disponibles " +
-                        "dentro del entorno de la aplicación en Android.\n\n" +
-                        "No es una shell de sistema con privilegios: Android aísla cada app, " +
-                        "así que solo alcanza lo que la propia app puede ver. Escribe 'help' " +
-                        "para ver lo que admite de verdad."
+                    content = "Tiene dos modos. **Shell** ejecuta los comandos del propio teléfono, " +
+                        "con los permisos de la app.\n\n" +
+                        "**Kali Linux** instala un sistema Kali real, sin root: la primera vez descarga " +
+                        "unos 126 MB y ocupa cerca de 860 MB. Dentro funcionan apt y los comandos de Linux."
                 )
             )
         ),
@@ -381,8 +548,8 @@ object TutorialContent {
                 TutorialSection(
                     title = tr("En la lista de chats"),
                     content = "• Toca una tarjeta para abrir la conversación\n" +
-                        "• **Mantén pulsada** una tarjeta para fijar, silenciar, archivar o " +
-                        "eliminar el chat\n" +
+                        "• **Mantén pulsada** una tarjeta para fijar, marcar como no leído, " +
+                        "añadir a una carpeta, ocultar, silenciar, archivar o eliminar el chat\n" +
                         "• Toca el avatar para ver el perfil de la persona"
                 ),
                 TutorialSection(
@@ -390,7 +557,8 @@ object TutorialContent {
                     content = "• **Mantén pulsado** un mensaje para responder a él: queda citado " +
                         "sobre la barra de escritura\n" +
                         "• Toca un emoji de la fila de reacciones para reaccionar\n" +
-                        "• Usa el menú del mensaje para traducirlo, editarlo o eliminarlo\n" +
+                        "• Usa el menú del mensaje para reenviarlo, seleccionar varios, fijarlo, " +
+                        "guardarlo, traducirlo, editarlo o eliminarlo\n" +
                         "• Tira hacia abajo para recargar los mensajes"
                 ),
                 TutorialSection(

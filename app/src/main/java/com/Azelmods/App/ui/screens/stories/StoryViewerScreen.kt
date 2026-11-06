@@ -76,14 +76,13 @@ fun StoryViewerScreen(
     val currentStory = state.stories.getOrNull(state.currentIndex)
 
     // ── Auto-advance progress timer (images and fallback) ────────────────────
-    LaunchedEffect(state.currentIndex, isPaused, currentStory) {
-        if (currentStory?.type?.uppercase() == "VIDEO") {
+    LaunchedEffect(currentStory?.storyId) { progress = 0f }
+    LaunchedEffect(currentStory?.storyId, isPaused) {
+        if (currentStory == null || currentStory.type.uppercase() == "VIDEO") {
             // Video progress is handled by ExoPlayer sync, not this timer
-            progress = 0f
             return@LaunchedEffect
         }
-        
-        progress = 0f
+
         val duration = 5000L // 5 seconds for images
         val step = 50L
         val totalSteps = duration / step
@@ -304,7 +303,7 @@ fun StoryViewerScreen(
             }
 
             // ── VIDEO ────────────────────────────────────────────────────────
-            "VIDEO" -> {
+            "VIDEO" -> androidx.compose.runtime.key(currentStory.storyId) {
                 val videoUrl = currentStory.mediaUrl ?: ""
                 var isBuffering by remember { mutableStateOf(true) }
                 var videoError by remember { mutableStateOf<String?>(null) }
@@ -435,6 +434,7 @@ fun StoryViewerScreen(
                                         setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                                     }
                                 },
+                                update = { view -> view.player = exoPlayer },
                                 modifier = Modifier.fillMaxSize()
                             )
                             if (isBuffering) {

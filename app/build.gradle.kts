@@ -3,7 +3,6 @@ import java.io.FileInputStream
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.parcelize")
     id("com.google.devtools.ksp")
@@ -41,14 +40,17 @@ if (hasReleaseKeystore) {
 
 android {
     namespace = "com.Azelmods.App"
-    compileSdk = 36
+    compileSdk {
+        // tor-android exige la subversión 37.1 del SDK.
+        version = release(37) { minorApiLevel = 1 }
+    }
 
     defaultConfig {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
-        targetSdk = 36  // Android 16 - Compatibilidad absoluta con Redmi 15 5G
-        versionCode = 700
-        versionName = "7.0.0"
+        targetSdk = 37  // Android 17
+        versionCode = 800
+        versionName = "8.0.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
@@ -107,13 +109,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-opt-in=kotlin.RequiresOptIn",
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
-        )
-    }
 
     buildFeatures {
         compose = true
@@ -159,12 +154,14 @@ android {
     }
 }
 
-// tor-android 0.4.9.x declara minCompileSdk=37 aunque su código Java no usa nada de esa API
-// (solo envuelve libtor.so y funciona desde la API 24). Se prefiere la última versión de Tor
-// por sus parches de seguridad antes que quedarse en una rama vieja solo por este metadato.
-// Al subir el proyecto a compileSdk 37 (requiere un AGP más nuevo) se puede quitar este bloque.
-tasks.matching { it.name.startsWith("check") && it.name.endsWith("AarMetadata") }.configureEach {
-    enabled = false
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.RequiresOptIn",
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
+        )
+    }
 }
 
 dependencies {
@@ -175,14 +172,14 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0-alpha07")
 
     // ── Core Android 2026 ──────────────────────────────────
-    implementation("androidx.core:core-ktx:1.16.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.0")
-    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.core:core-ktx:1.19.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.11.0")
+    implementation("androidx.activity:activity-compose:1.13.0")
     // ── Compose Stability / Performance 2026 ───────────────
     implementation("androidx.compose.runtime:runtime-tracing:1.7.6")
 
     // ── Compose BOM 2026 ───────────────────────────────────
-    implementation(platform("androidx.compose:compose-bom:2025.06.01"))
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -197,66 +194,72 @@ dependencies {
     implementation("androidx.compose.material3:material3-window-size-class")
 
     // ── Navigation 2026 ────────────────────────────────────
-    implementation("androidx.navigation:navigation-compose:2.8.5")
+    implementation("androidx.navigation:navigation-compose:2.10.2")
 
     // ── Lifecycle 2026 ─────────────────────────────────────
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.11.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.11.0")
 
     // ── Hilt 2026 ──────────────────────────────────────────
-    implementation("com.google.dagger:hilt-android:2.54")
-    ksp("com.google.dagger:hilt-android-compiler:2.54")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
-    implementation("androidx.hilt:hilt-work:1.2.0")
-    ksp("androidx.hilt:hilt-compiler:1.2.0")
+    implementation("com.google.dagger:hilt-android:2.60.1")
+    ksp("com.google.dagger:hilt-android-compiler:2.60.1")
+    implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
+    implementation("androidx.hilt:hilt-work:1.4.0")
+    ksp("androidx.hilt:hilt-compiler:1.4.0")
 
     // ── Firebase BOM 2026 ──────────────────────────────────
-    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-database-ktx")
-    implementation("com.google.firebase:firebase-storage-ktx")
-    implementation("com.google.firebase:firebase-messaging-ktx")
-    implementation("com.google.firebase:firebase-crashlytics-ktx")
+    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-database")
+    implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-crashlytics")
 
     // ── Google Auth 2026 (Credential Manager) ──────────────
     implementation("com.google.android.gms:play-services-auth:21.3.0")
-    implementation("androidx.credentials:credentials:1.5.0")
-    implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // ── Coroutines 2026 ────────────────────────────────────
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.1")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("app.cash.turbine:turbine:1.2.0")
 
+    // Quitar el fondo al crear stickers; funciona en el teléfono.
+    implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
+
+    // ── Emojis y stickers animados ─────────────────────────
+    implementation("com.airbnb.android:lottie-compose:6.7.1")
+
     // ── Coil 3.x (2026) ────────────────────────────────────
-    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.2.0")
-    implementation("io.coil-kt.coil3:coil-video:3.2.0")
-    implementation("io.coil-kt.coil3:coil-gif:3.2.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
+    implementation("io.coil-kt.coil3:coil-video:3.6.3")
+    implementation("io.coil-kt.coil3:coil-gif:3.6.3")
 
     // ── Media3 ExoPlayer 2026 ──────────────────────────────
-    implementation("androidx.media3:media3-exoplayer:1.6.1")
-    implementation("androidx.media3:media3-ui:1.6.1")
-    implementation("androidx.media3:media3-common:1.6.1")
-    implementation("androidx.media3:media3-datasource-okhttp:1.6.1")
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-ui:1.11.1")
+    implementation("androidx.media3:media3-common:1.11.1")
+    implementation("androidx.media3:media3-datasource-okhttp:1.11.1")
     // Transformer + GL effects: used to BURN story overlays (text/stickers/emojis)
     // into the exported video frames so the published file matches the editor preview.
-    implementation("androidx.media3:media3-transformer:1.6.1")
-    implementation("androidx.media3:media3-effect:1.6.1")
+    implementation("androidx.media3:media3-transformer:1.11.1")
+    implementation("androidx.media3:media3-effect:1.11.1")
 
     // ── Room Database (Offline Cache) 2026 ─────────────────
-    implementation("androidx.room:room-runtime:2.7.1")
-    implementation("androidx.room:room-ktx:2.7.1")
-    ksp("androidx.room:room-compiler:2.7.1")
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     // ── DataStore 2026 ─────────────────────────────────────
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
     implementation("androidx.biometric:biometric:1.1.0")
 
     // ── WorkManager 2026 ───────────────────────────────────
-    implementation("androidx.work:work-runtime-ktx:2.10.1")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     // ── Networking 2026 ────────────────────────────────────
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -264,7 +267,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp-sse:4.12.0") // SSE para streaming
 
     // ── Serialization 2026 ─────────────────────────────────
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
     implementation("org.json:json:20240303")
 
     // ── Emoji Support ──────────────────────────────────────
@@ -275,7 +278,7 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.36.0")
 
     // ── WebKit (ProxyController for WebView proxy) ──────────
-    implementation("androidx.webkit:webkit:1.16.0")
+    implementation("androidx.webkit:webkit:1.18.0")
 
     // ── WebRTC ─────────────────────────────────────────────
     implementation("io.getstream:stream-webrtc-android:1.1.3")
@@ -310,9 +313,9 @@ dependencies {
     implementation("net.engawapg.lib:zoomable:1.6.2")
 
     // ── CameraX and ML Kit (QR Scanner) ────────────────────
-    implementation("androidx.camera:camera-camera2:1.3.1")
-    implementation("androidx.camera:camera-lifecycle:1.3.1")
-    implementation("androidx.camera:camera-view:1.3.1")
+    implementation("androidx.camera:camera-camera2:1.6.2")
+    implementation("androidx.camera:camera-lifecycle:1.6.2")
+    implementation("androidx.camera:camera-view:1.6.2")
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
 
     // ── Terminal real (PTY + emulación VT100/xterm) ────────
@@ -320,6 +323,14 @@ dependencies {
     // estos dos: la app Termux completa es GPLv3 y causaba colisiones de DEX.
     implementation("com.github.termux.termux-app:terminal-emulator:v0.118.3")
     implementation("com.github.termux.termux-app:terminal-view:v0.118.3")
+    // Para desempaquetar el sistema Linux que se instala bajo petición (ver LinuxEnvironment).
+    implementation("org.apache.commons:commons-compress:1.28.0")
+    implementation("org.tukaani:xz:1.12")
+    // Descargas de vídeo (yt-dlp y ffmpeg integrados).
+    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
+    // Guardar lo que crean los agentes en la carpeta que elija el usuario.
+    implementation("androidx.documentfile:documentfile:1.1.0")
 
     // ── Sora Editor 0.23.5 ─────────────────────────────────
     val soraVersion = "0.23.5"
@@ -332,12 +343,12 @@ dependencies {
     testImplementation("io.kotest:kotest-runner-junit5:5.8.0")
     testImplementation("io.kotest:kotest-assertions-core:5.8.0")
     testImplementation("io.kotest:kotest-property:5.8.0")
-    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation("io.mockk:mockk:1.14.11")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2025.06.01"))
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("io.mockk:mockk-android:1.13.9")
+    androidTestImplementation("io.mockk:mockk-android:1.14.11")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 

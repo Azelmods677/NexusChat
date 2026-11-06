@@ -18,12 +18,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.tasks.await
 
 data class LoginState(
     val email: String = "",
     val password: String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
+    val notice: String? = null,
     val isSuccess: Boolean = false,
     val anonymousModeOn: Boolean = false
 )
@@ -90,6 +93,34 @@ class LoginViewModel @Inject constructor(
                 )
                 is Resource.Loading -> Unit
             }
+        }
+    }
+
+    /**
+     * Envía el enlace para crear una contraseña nueva. Sirve también para quien entró
+     * siempre con Google y nunca llegó a tener una.
+     */
+    fun sendPasswordReset() {
+        val email = _state.value.email.trim()
+        if (!email.contains("@")) {
+            _state.value = _state.value.copy(error = tr("Escribe tu correo arriba y vuelve a tocar aquí"), notice = null)
+            return
+        }
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true, error = null, notice = null)
+            _state.value = runCatching {
+                FirebaseAuth.getInstance().sendPasswordResetEmail(email).await()
+            }.fold(
+                onSuccess = {
+                    _state.value.copy(
+                        isLoading = false,
+                        notice = tr("Listo. Si ese correo tiene una cuenta, te llegó un enlace para crear tu contraseña nueva. Mira también en spam.")
+                    )
+                },
+                onFailure = {
+                    _state.value.copy(isLoading = false, error = tr("No se pudo enviar el enlace. Revisa el correo y tu conexión."))
+                }
+            )
         }
     }
 

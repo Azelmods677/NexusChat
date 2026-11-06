@@ -1,5 +1,8 @@
 package com.Azelmods.App.ui.components
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -8,6 +11,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -126,6 +130,21 @@ fun UserAvatar(
         backgroundColor ?: AvatarPalette[(name.hashCode() and 0x7FFFFFFF) % AvatarPalette.size]
     }
 
+    val chosenEffect by ChatLook.avatarEffect.collectAsState()
+    val rowStyle by ChatLook.rowStyle.collectAsState()
+    val effect = when {
+        // En un perfil a pantalla la foto se ve tal cual: el relieve es cosa de las listas.
+        size > AVATAR_EFFECT_MAX_SIZE -> AvatarEffect.NONE
+        chosenEffect != AvatarEffect.AUTO -> chosenEffect
+        rowStyle == ChatRowStyle.FRAME -> AvatarEffect.INSET
+        rowStyle == ChatRowStyle.DEPTH -> AvatarEffect.ORB
+        else -> AvatarEffect.NONE
+    }
+
+    // La foto hundida necesita todo el tamaño: un aro de adorno la encoge y tapa el relieve.
+    // El aro que gira avisa de algo (una historia nueva), y ese se queda.
+    val ring = ring.takeUnless { effect == AvatarEffect.INSET && it?.rotating != true }
+
     // El aro va dentro del tamaño pedido: activarlo no descoloca la fila.
     val inner = if (ring != null) size - (ring.width + 2.dp) * 2 else size
 
@@ -160,7 +179,101 @@ fun UserAvatar(
                 )
             }
         }
+        if (effect != AvatarEffect.NONE) {
+            // Algo mayor que la foto: la sombra y el brillo sobresalen sobre la tarjeta.
+            androidx.compose.foundation.Canvas(Modifier.requiredSize(inner * AVATAR_EFFECT_SCALE)) {
+                if (effect == AvatarEffect.INSET) drawInsetPhoto() else drawOrbPhoto()
+            }
+        }
     }
+}
+
+private val AVATAR_EFFECT_MAX_SIZE = 72.dp
+private const val AVATAR_EFFECT_SCALE = 1.08f
+
+/**
+ * Foto hundida: una media luna de sombra por dentro arriba, como si la tarjeta le hiciera sombra,
+ * y un labio de luz abajo. Se dibuja por código para que valga a cualquier tamaño.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawInsetPhoto() {
+    val radius = this.size.minDimension / 2f
+    val bounds = androidx.compose.ui.geometry.Rect(Offset.Zero, this.size)
+    val canvas = drawContext.canvas
+
+    canvas.saveLayer(bounds, androidx.compose.ui.graphics.Paint())
+    drawRect(
+        Brush.radialGradient(
+            0.53f to Color.Transparent,
+            0.60f to Color.Black.copy(alpha = 0.25f),
+            0.664f to Color.Black.copy(alpha = 0.49f),
+            0.736f to Color.Black.copy(alpha = 0.545f),
+            0.864f to Color.Black.copy(alpha = 0.62f),
+            1f to Color.Black.copy(alpha = 0.62f),
+            center = Offset(center.x, center.y + radius * 0.25f),
+            radius = radius * 1.25f
+        )
+    )
+    drawRect(
+        Brush.radialGradient(
+            0f to Color.White,
+            0.85f to Color.White,
+            0.92f to Color.White.copy(alpha = 0.6f),
+            1f to Color.Transparent,
+            center = center,
+            radius = radius
+        ),
+        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+    )
+    canvas.restore()
+
+    canvas.saveLayer(bounds, androidx.compose.ui.graphics.Paint())
+    drawRect(
+        Brush.radialGradient(
+            0.74f to Color.Transparent,
+            0.76f to Color.White.copy(alpha = 0.76f),
+            0.83f to Color.White.copy(alpha = 0.71f),
+            0.885f to Color.White.copy(alpha = 0.5f),
+            0.94f to Color.White.copy(alpha = 0.21f),
+            1f to Color.Transparent,
+            center = center,
+            radius = radius
+        )
+    )
+    drawRect(
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            0.5f to Color.Transparent,
+            0.9f to Color.White,
+            1f to Color.White,
+            startY = 0f,
+            endY = this.size.height
+        ),
+        blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+    )
+    canvas.restore()
+}
+
+/** Foto en esfera: lo contrario de hundida, con luz arriba a la izquierda y sombra abajo. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawOrbPhoto() {
+    val radius = this.size.minDimension / 2f / AVATAR_EFFECT_SCALE
+    drawCircle(
+        Brush.radialGradient(
+            0.62f to Color.Transparent,
+            1f to Color.Black.copy(alpha = 0.6f),
+            center = Offset(center.x, center.y - radius * 0.22f),
+            radius = radius * 1.22f
+        ),
+        radius = radius
+    )
+    drawCircle(
+        Brush.radialGradient(
+            0f to Color.White.copy(alpha = 0.55f),
+            1f to Color.Transparent,
+            center = Offset(center.x - radius * 0.32f, center.y - radius * 0.42f),
+            radius = radius * 0.62f
+        ),
+        radius = radius
+    )
 }
 
 @Composable

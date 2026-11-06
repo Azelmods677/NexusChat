@@ -219,6 +219,24 @@ class E2EECryptoService @Inject constructor(
         synchronized(sharedKeyCache) { sharedKeyCache.remove("$localUid|$peerId") }
     }
 
+    /**
+     * 60 dígitos en grupos, iguales en los dos teléfonos: resumen de las dos claves públicas en
+     * orden fijo. null si la otra persona aún no tiene claves.
+     */
+    suspend fun safetyNumber(peerId: String): String? {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return null
+        ensureLocalKeys()
+        val mine = getLocalKeyPair(uid).public.encoded
+        val theirs = fetchRemotePublicKeyBytes(peerId) ?: return null
+        val ordered = listOf(uid to mine, peerId to theirs).sortedBy { it.first }
+        val digest = java.security.MessageDigest.getInstance("SHA-512")
+        ordered.forEach { (id, key) ->
+            digest.update(id.toByteArray())
+            digest.update(key)
+        }
+        return safetyDigits(digest.digest())
+    }
+
     private fun getLocalKeyPair(userId: String): KeyPair {
         val pubStr = prefs.getString(publicKeyPref(userId), "") ?: ""
         val privStr = prefs.getString(privateKeyPref(userId), "") ?: ""
@@ -333,3 +351,14 @@ class E2EECryptoService @Inject constructor(
         }
     }
 }
+
+/** Convierte un resumen en 12 grupos de 5 dígitos, fáciles de comparar en voz alta. */
+internal fun safetyDigits(digest: ByteArray): String =
+    (0 until 12).joinToString(" ") { group ->
+        val offset = group * 4
+        val value = ((digest[offset].toLong() and 0xFF) shl 24) or
+            ((digest[offset + 1].toLong() and 0xFF) shl 16) or
+            ((digest[offset + 2].toLong() and 0xFF) shl 8) or
+            (digest[offset + 3].toLong() and 0xFF)
+        (value % 100_000).toString().padStart(5, '0')
+    }

@@ -236,7 +236,13 @@ fun SearchScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        items(filteredResults) { result ->
+                        // Los chats ocultos tampoco aparecen al buscar.
+                        items(
+                            filteredResults.filter { result ->
+                                result !is SearchResult.ChatResult ||
+                                    !com.Azelmods.App.data.chat.ChatOrganizer.isHidden(result.chatId)
+                            }
+                        ) { result ->
                             when (result) {
                                 is SearchResult.ChatResult -> {
                                     ChatSearchResultItem(
@@ -274,6 +280,16 @@ fun SearchScreen(
 
 @Composable
 fun ChatSearchResultItem(
+    result: SearchResult.ChatResult,
+    onClick: () -> Unit
+) {
+    com.Azelmods.App.ui.components.ListRowFrame(result.toString(), null) {
+        ChatSearchResultItemBody(result, onClick)
+    }
+}
+
+@Composable
+private fun ChatSearchResultItemBody(
     result: SearchResult.ChatResult,
     onClick: () -> Unit
 ) {
@@ -321,6 +337,16 @@ fun ChatSearchResultItem(
 
 @Composable
 fun ContactSearchResultItem(
+    result: SearchResult.ContactResult,
+    onClick: () -> Unit
+) {
+    com.Azelmods.App.ui.components.ListRowFrame(result.toString(), null) {
+        ContactSearchResultItemBody(result, onClick)
+    }
+}
+
+@Composable
+private fun ContactSearchResultItemBody(
     result: SearchResult.ContactResult,
     onClick: () -> Unit
 ) {

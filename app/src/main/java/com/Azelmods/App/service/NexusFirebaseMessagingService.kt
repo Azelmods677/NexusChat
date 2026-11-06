@@ -22,6 +22,14 @@ import com.google.firebase.messaging.RemoteMessage
 import com.Azelmods.App.data.preferences.UserPreferences
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import com.Azelmods.App.domain.usecase.DecryptMessageUseCase
+import com.Azelmods.App.data.security.encryption.DecryptionResult
+import com.Azelmods.App.data.security.encryption.MessageType
+import com.Azelmods.App.i18n.tr
+import com.google.android.gms.tasks.Tasks
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.TimeUnit
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -41,8 +49,16 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     @Inject
     lateinit var userPreferences: UserPreferences
 
+    @Inject
+    lateinit var decryptMessage: DecryptMessageUseCase
+
+    @Inject
+    lateinit var groupCrypto: com.Azelmods.App.data.security.encryption.GroupCrypto
+
     companion object {
         private const val TAG = "NexusFCM"
+        private const val NETWORK_WAIT_SECONDS = 4L
+        private const val DECRYPT_WAIT_MS = 4_000L
 
         // ── Notification Channels ─────────────────────────────
         const val CHANNEL_MESSAGES     = "nexus_messages"
@@ -50,6 +66,8 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
         const val CHANNEL_MISSED_CALLS = "nexus_missed_calls"
         const val CHANNEL_STORIES      = "nexus_stories"
         const val CHANNEL_AI           = "nexus_ai"
+        const val CHANNEL_UPDATES      = "nexus_updates"
+        private const val UPDATE_NOTIFICATION_ID = 1001
 
         // ── Notification IDs ──────────────────────────────────
         private const val NOTIFICATION_GROUP_MESSAGES = "nexus_group_messages"
@@ -100,6 +118,9 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
             "message"       -> withChatNotMuted(data) { showMessageNotification(data) }
             "story"         -> showStoryNotification(data)
             "ai"            -> showAINotification(data)
+            "app_update"    -> showUpdateNotification(data)
+            "secret"        -> showPrivateNotice(tr("Chat secreto"), tr("Tienes un mensaje secreto"))
+            "channel"       -> showPrivateNotice(data["title"] ?: tr("Canales"), data["body"].orEmpty())
             else            -> withChatNotMuted(data) { showMessageNotification(data) }
         }
     }
@@ -119,28 +140,52 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
             return
         }
 
-        FirebaseDatabase.getInstance()
-            .getReference("chat_settings/$uid/$chatId")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                val isMuted = snapshot.child("isMuted").getValue(Boolean::class.java) ?: false
-                val muteUntil = snapshot.child("muteUntil").getValue(Long::class.java) ?: 0L
-                val silenciado = com.Azelmods.App.data.model.ChatSettings(
-                    chatId = chatId,
-                    isMuted = isMuted,
-                    muteUntil = muteUntil
-                ).isCurrentlyMuted()
+        // Este método ya corre en un hilo de fondo: esperar aquí permite descargar la foto y
+        // descifrar después, cosa que en un callback del hilo principal fallaría.
+        val silenced = runCatching {
+            val snapshot = Tasks.await(
+                FirebaseDatabase.getInstance().getReference("chat_settings/$uid/$chatId").get(),
+                NETWORK_WAIT_SECONDS, TimeUnit.SECONDS
+            )
+            com.Azelmods.App.data.model.ChatSettings(
+                chatId = chatId,
+                isMuted = snapshot.child("isMuted").getValue(Boolean::class.java) ?: false,
+                muteUntil = snapshot.child("muteUntil").getValue(Long::class.java) ?: 0L
+            ).isCurrentlyMuted()
+        }.getOrDefault(false)
+        if (!silenced) onAllowed()
+    }
 
-                if (silenciado) {
-                    Log.d(TAG, "🔕 Chat $chatId silenciado: no se notifica")
-                } else {
-                    onAllowed()
-                }
+    /**
+     * El texto real del aviso. Un mensaje cifrado llega como texto cifrado: el servidor no
+     * puede leerlo, así que se descifra aquí, con las mismas claves que usa el chat.
+     */
+    private fun messageText(data: Map<String, String>, chatId: String, senderId: String): String {
+        val body = data["body"] ?: data["message"] ?: ""
+        // Rótulo que enviaban las versiones antiguas del servidor.
+        val fallback = if (body.isBlank() || body.startsWith("🔒")) tr("Nuevo mensaje") else body
+        if (data["isEncrypted"] != "true") return fallback
+
+        val payload = data["encryptedPayload"]?.takeIf { it.isNotBlank() } ?: runCatching {
+            val messageId = data["messageId"].orEmpty()
+            Tasks.await(
+                FirebaseDatabase.getInstance()
+                    .getReference("chats/$chatId/messages/$messageId/encryptedPayload").get(),
+                NETWORK_WAIT_SECONDS, TimeUnit.SECONDS
+            ).getValue(String::class.java)
+        }.getOrNull() ?: return fallback
+
+        data["groupKeyId"]?.let { keyId ->
+            return runCatching {
+                runBlocking { withTimeoutOrNull(DECRYPT_WAIT_MS) { groupCrypto.decrypt(chatId, keyId, payload) } }
+            }.getOrNull() ?: fallback
+        }
+        return runCatching {
+            val bytes = android.util.Base64.decode(payload, android.util.Base64.NO_WRAP)
+            runBlocking {
+                withTimeoutOrNull(DECRYPT_WAIT_MS) { decryptMessage(senderId, bytes, MessageType.WHISPER) }
             }
-            .addOnFailureListener { e ->
-                Log.w(TAG, "No se pudo leer el silencio de $chatId, se notifica igual: ${e.message}")
-                onAllowed()
-            }
+        }.getOrNull().let { (it as? DecryptionResult.Success)?.plaintext } ?: fallback
     }
 
     // ╔══════════════════════════════════════════════════════════╗
@@ -190,13 +235,18 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
     private fun showMessageNotification(data: Map<String, String>) {
         val chatId       = data["chatId"] ?: return
         val senderId     = data["senderId"] ?: return
-        val senderName   = data["senderName"] ?: "Anónimo"
-        val body         = data["body"] ?: data["message"] ?: ""
-        val senderPhoto  = data["senderPhotoUrl"]
+        // Un chat oculto no debe delatarse en la barra de notificaciones.
+        com.Azelmods.App.data.chat.ChatOrganizer.init(applicationContext)
+        val hiddenChat   = com.Azelmods.App.data.chat.ChatOrganizer.isHidden(chatId)
+        val senderName   = if (hiddenChat) "NexusChat" else data["senderName"] ?: "Anónimo"
+        // Quien está leyendo ese chat ya está viendo el mensaje.
+        if (ActiveChat.isShowing(chatId)) return
+        val body         = messageText(data, chatId, senderId).let { com.Azelmods.App.ui.screens.chat.pollPreview(it) ?: it }
+        val senderPhoto  = if (hiddenChat) null else data["senderPhotoUrl"]
         val mediaType    = data["mediaType"]
 
         // ── Determinar texto a mostrar según el tipo de media ──
-        val displayText = when (mediaType) {
+        val displayText = if (hiddenChat) tr("Mensaje nuevo") else when (mediaType) {
             "IMAGE"    -> "📷 Foto"
             "VIDEO"    -> "🎥 Video"
             "AUDIO"    -> "🎤 Mensaje de voz"
@@ -219,8 +269,13 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
             .build()
 
         // ── MessagingStyle (como WhatsApp/Telegram) ──
-        val messagingStyle = NotificationCompat.MessagingStyle(sender)
-            .setConversationTitle(senderName)
+        // Los mensajes seguidos del mismo chat se acumulan en vez de reemplazarse.
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val previous = manager.activeNotifications.firstOrNull { it.id == chatId.hashCode() }?.notification
+        val messagingStyle = (previous?.let {
+            NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it)
+        } ?: NotificationCompat.MessagingStyle(Person.Builder().setName(tr("Tú")).build()))
+            .setConversationTitle(data["groupName"]?.takeIf { it.isNotBlank() } ?: senderName)
             .addMessage(displayText, System.currentTimeMillis(), sender)
 
         // ── Abrir chat ──
@@ -302,8 +357,6 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
             }
             .build()
 
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-
         // Usar el chatId como ID para agrupar notificaciones del mismo chat
         // (Android agrupa automáticamente por ID si usamos el mismo)
         manager.notify(chatId.hashCode(), notification)
@@ -377,6 +430,59 @@ class NexusFirebaseMessagingService : FirebaseMessagingService() {
 
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+
+    /** Aviso simple, que abre la app. Un chat secreto nunca muestra de quién ni qué dice. */
+    private fun showPrivateNotice(title: String, body: String) {
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val open = PendingIntent.getActivity(
+            this, title.hashCode(),
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        manager.notify(
+            title.hashCode(),
+            NotificationCompat.Builder(this, CHANNEL_MESSAGES)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .build()
+        )
+    }
+
+    // ╔══════════════════════════════════════════════════════════╗
+    // ║  APP UPDATE                                             ║
+    // ╚══════════════════════════════════════════════════════════╝
+    private fun showUpdateNotification(data: Map<String, String>) {
+        val version = data["versionName"] ?: return
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(
+            android.app.NotificationChannel(
+                CHANNEL_UPDATES, tr("Actualizaciones"), NotificationManager.IMPORTANCE_DEFAULT
+            )
+        )
+        val open = PendingIntent.getActivity(
+            this, version.hashCode(),
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        manager.notify(
+            UPDATE_NOTIFICATION_ID,
+            NotificationCompat.Builder(this, CHANNEL_UPDATES)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(tr("NexusChat %s ya está aquí", version))
+                .setContentText(tr("Toca para actualizar"))
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .build()
+        )
     }
 
     // ╔══════════════════════════════════════════════════════════╗

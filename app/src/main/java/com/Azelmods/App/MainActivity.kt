@@ -39,7 +39,10 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : androidx.fragment.app.FragmentActivity() {
+
+    @Inject
+    lateinit var appUpdateManager: com.Azelmods.App.data.update.AppUpdateManager
     
     companion object {
         private const val TAG = "MainActivity"
@@ -105,8 +108,13 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        appUpdateManager.start()
+        com.Azelmods.App.ui.components.ChatLook.init(this)
+        com.Azelmods.App.data.chat.ChatOrganizer.init(this)
+
         setContent {
             NexusChatTheme(userPreferences = userPreferences) {
+                com.Azelmods.App.ui.components.AppUpdateDialog(appUpdateManager)
                 
                 // ── Runtime permission: POST_NOTIFICATIONS (Android 13+) ──
                 val context = LocalContext.current
@@ -301,6 +309,7 @@ class MainActivity : ComponentActivity() {
                 "profile" -> {
                     deepLinkNavRequest.value = DeepLinkNavRequest("profile", path)
                 }
+                "join" -> com.Azelmods.App.ui.screens.group.GroupLinks.pending.value = path
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse deep link: ${e.message}", e)

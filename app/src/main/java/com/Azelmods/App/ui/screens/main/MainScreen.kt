@@ -1,4 +1,15 @@
 ﻿package com.Azelmods.App.ui.screens.main
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.animateContentSize
 
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -93,11 +104,13 @@ fun MainScreen(
 
     val missedCallCount by NotificationHelper.missedCallCount.collectAsStateWithLifecycle()
 
-    val tabOrder = remember { themePrefs.getTabOrder() }
-    val tabs = remember(tabOrder) {
-        tabOrder.mapNotNull { index -> allTabs.getOrNull(index) }
-            .takeIf { it.size == allTabs.size } ?: allTabs
+    val savedTabOrder = remember { themePrefs.getTabOrder() }
+    val hideStoriesTab by com.Azelmods.App.ui.components.ChatLook.hideStoriesTab.collectAsState()
+    val tabOrder = remember(savedTabOrder, hideStoriesTab) {
+        val complete = savedTabOrder.takeIf { it.size == allTabs.size } ?: allTabs.indices.toList()
+        if (hideStoriesTab) complete.filter { it != 1 } else complete
     }
+    val tabs = remember(tabOrder) { tabOrder.mapNotNull { index -> allTabs.getOrNull(index) } }
 
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val coroutineScope = rememberCoroutineScope()
@@ -111,6 +124,48 @@ fun MainScreen(
             // Barra opaca con un filo superior. Sobre un fondo de imagen o vídeo una
             // barra transparente hace ilegibles las etiquetas.
             Column(Modifier.fillMaxWidth()) {
+                val navStyle by com.Azelmods.App.ui.components.ChatLook.navBarStyle.collectAsState()
+                if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.FLOATING) {
+                    // Barra flotante: una cápsula elevada; la pestaña elegida muestra su nombre.
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                            .shadow(10.dp, androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
+                            .background(NexusTokens.Color.BgElevated)
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        tabs.forEachIndexed { index, tab ->
+                            val selected = currentPage == index
+                            Row(
+                                Modifier
+                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
+                                    .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent)
+                                    .clickable {
+                                        if (tab.route == Screen.Calls.route) NotificationHelper.resetMissedCallCount()
+                                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                                    }
+                                    .animateContentSize()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    if (selected) tab.selectedIcon else tab.unselectedIcon,
+                                    contentDescription = tab.label,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted
+                                )
+                                if (selected) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(tab.label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+                } else {
                 NexusDivider()
                 NavigationBar(
                     containerColor = NexusTokens.Color.BgBase,
@@ -137,9 +192,18 @@ fun MainScreen(
                                     ),
                                     label = "iconoPestana"
                                 )
+                                val iconTurn by animateFloatAsState(
+                                    targetValue = if (selected) 0f else -12f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    ),
+                                    label = "giroPestana"
+                                )
                                 val iconModifier = Modifier.graphicsLayer {
                                     scaleX = iconScale
                                     scaleY = iconScale
+                                    rotationZ = if (selected) iconTurn else 0f
                                 }
                                 if (isCallsTab && missedCallCount > 0) {
                                     BadgedBox(badge = {
@@ -153,8 +217,10 @@ fun MainScreen(
                                     Icon(icon, contentDescription = null, modifier = iconModifier)
                                 }
                             },
-                            label = {
-                                Text(tab.label, style = MaterialTheme.typography.labelMedium)
+                            label = if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.ICONS) {
+                                null
+                            } else {
+                                { Text(tab.label, style = MaterialTheme.typography.labelMedium) }
                             },
                             alwaysShowLabel = true,
                             colors = NavigationBarItemDefaults.colors(
@@ -167,11 +233,21 @@ fun MainScreen(
                         )
                     }
                 }
+                }
             }
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
             AppBackgroundLayer(backgroundConfig)
+            // Sobre una imagen o un vídeo, sin este velo los chats no se leen.
+            val wallpaperDim by com.Azelmods.App.ui.components.ChatLook.wallpaperDim.collectAsState()
+            val backgroundType = backgroundConfig?.type
+            if (backgroundType != null &&
+                backgroundType != com.Azelmods.App.data.model.BackgroundType.NONE &&
+                backgroundType != com.Azelmods.App.data.model.BackgroundType.SOLID_COLOR
+            ) {
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = wallpaperDim)))
+            }
 
             HorizontalPager(
                 state = pagerState,
@@ -182,7 +258,13 @@ fun MainScreen(
                 beyondViewportPageCount = 1
             ) { page ->
                 when (tabOrder.getOrNull(page) ?: page) {
-                    0 -> HomeScreenRedesigned(navController = navController)
+                    0 -> HomeScreenRedesigned(
+                        navController = navController,
+                        onOpenTab = { logical ->
+                            val target = tabOrder.indexOf(logical).takeIf { it >= 0 } ?: logical
+                            coroutineScope.launch { pagerState.animateScrollToPage(target) }
+                        }
+                    )
                     1 -> StoriesScreen(navController = navController)
                     2 -> CallsScreen(navController = navController)
                     3 -> {

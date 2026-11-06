@@ -44,6 +44,9 @@ import kotlin.coroutines.resumeWithException
 object StoryVideoComposer {
 
     private const val TAG = "StoryVideoComposer"
+    private const val UPLOAD_SAFE_BYTES = 90L * 1024 * 1024
+    private const val FIT_HEIGHT = 720
+    private const val FIT_TIMEOUT_MS = 300_000L
 
     /**
      * Produce a new MP4 in the app cache with [overlayBitmap] burned into the video at
@@ -69,6 +72,58 @@ object StoryVideoComposer {
         Log.d(TAG, "Composed story video saved to ${outputFile.absolutePath} (${outputFile.length()} bytes)")
         Uri.fromFile(outputFile)
     }
+
+    /**
+     * El servidor rechaza archivos de 100 MB o más. Un vídeo que se acerque a ese tope se convierte
+     * a 720p antes de subirlo; si no se puede, se devuelve tal cual y el servidor decide.
+     */
+    suspend fun fitUploadLimit(context: Context, uri: Uri): Uri {
+        val size = runCatching {
+            context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+        }.getOrNull() ?: return uri
+        if (size in 0 until UPLOAD_SAFE_BYTES) return uri
+
+        val outputDir = File(context.cacheDir, "story_exports").apply { mkdirs() }
+        val outputFile = File(outputDir, "fit_${System.currentTimeMillis()}.mp4")
+        return try {
+            kotlinx.coroutines.withTimeout(FIT_TIMEOUT_MS) {
+                withContext(Dispatchers.Main) { runDownscale(context, uri, outputFile) }
+            }
+            Uri.fromFile(outputFile)
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            Log.w(TAG, "No dio tiempo a convertir el vídeo", e)
+            outputFile.delete()
+            uri
+        } catch (e: ExportException) {
+            Log.w(TAG, "No se pudo convertir el vídeo", e)
+            outputFile.delete()
+            uri
+        }
+    }
+
+    private suspend fun runDownscale(context: Context, inputUri: Uri, outputFile: File) =
+        suspendCancellableCoroutine<Unit> { continuation ->
+            val editedMediaItem = EditedMediaItem.Builder(MediaItem.fromUri(inputUri))
+                .setEffects(Effects(emptyList(), listOf<Effect>(Presentation.createForHeight(FIT_HEIGHT))))
+                .build()
+            val transformer = Transformer.Builder(context)
+                .addListener(object : Transformer.Listener {
+                    override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                        if (continuation.isActive) continuation.resume(Unit)
+                    }
+
+                    override fun onError(
+                        composition: Composition,
+                        exportResult: ExportResult,
+                        exportException: ExportException
+                    ) {
+                        if (continuation.isActive) continuation.resumeWithException(exportException)
+                    }
+                })
+                .build()
+            continuation.invokeOnCancellation { runCatching { transformer.cancel() } }
+            transformer.start(editedMediaItem, outputFile.absolutePath)
+        }
 
     private suspend fun runTransformer(
         context: Context,

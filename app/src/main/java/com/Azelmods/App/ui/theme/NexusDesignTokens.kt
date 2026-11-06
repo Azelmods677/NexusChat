@@ -1,5 +1,8 @@
 package com.Azelmods.App.ui.theme
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 import androidx.compose.animation.core.SpringSpec
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.Color
@@ -22,14 +25,23 @@ import androidx.compose.ui.unit.sp
  *  - El acento marca lo importante (no leídos, acción primaria). Si todo tiene
  *    color, nada destaca.
  */
+/** El acento en uso. Es estado de Compose: al cambiarlo se repinta todo lo que lo lea. */
+object AccentState {
+    var current by androidx.compose.runtime.mutableStateOf(androidx.compose.ui.graphics.Color(0xFF2FB38E))
+}
+
 object NexusTokens {
 
     // ── COLORES ─────────────────────────────────────
     object Color {
         // Marca
-        val Primary       = Color(0xFF2FB38E)   // Jade: acento por defecto
-        val PrimaryLight  = Color(0xFF7FD6BC)   // Jade claro (texto sobre oscuro)
-        val PrimaryDeep   = Color(0xFF14503F)   // Jade profundo (burbuja enviada)
+        // Siguen al acento que elige el usuario: con valores fijos, media app se quedaba en
+        // jade aunque hubiera elegido rojo.
+        val Primary: androidx.compose.ui.graphics.Color get() = AccentState.current
+        val PrimaryLight: androidx.compose.ui.graphics.Color
+            get() = androidx.compose.ui.graphics.lerp(AccentState.current, androidx.compose.ui.graphics.Color.White, 0.45f)
+        val PrimaryDeep: androidx.compose.ui.graphics.Color
+            get() = androidx.compose.ui.graphics.lerp(AccentState.current, androidx.compose.ui.graphics.Color.Black, 0.6f)
         val Secondary     = Color(0xFF8FA3B5)   // Pizarra: rol secundario neutro
         val Accent        = Color(0xFFE07A5F)   // Coral: avisos cálidos puntuales
         val Gold          = Color(0xFFD9A441)   // Ámbar apagado
@@ -58,7 +70,7 @@ object NexusTokens {
         val Online        = Color(0xFF3CC68A)
         val Away          = Color(0xFFD9A441)
         val Offline       = Color(0xFF5F666E)
-        val Error         = Color(0xFFE5534B)
+        val Error         = Color(0xFFEF6B63)
         val Success       = Color(0xFF3CC68A)
         val Warning       = Color(0xFFD9A441)
 

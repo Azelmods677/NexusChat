@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,8 +75,32 @@ fun ReadReceiptIndicator(
         label = "receipt_pop"
     )
 
+    val tickStyle by com.Azelmods.App.ui.components.ChatLook.tickStyle.collectAsState()
+
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         when (status) {
+            MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.READ ->
+                if (tickStyle != com.Azelmods.App.ui.components.TickStyle.CLASSIC) {
+                    com.Azelmods.App.ui.components.ReceiptMark(
+                        style = tickStyle,
+                        color = animatedColor,
+                        double = status != MessageStatus.SENT,
+                        read = status == MessageStatus.READ,
+                        modifier = Modifier
+                            .size(width = if (status == MessageStatus.SENT) 14.dp else 18.dp, height = 12.dp)
+                            .scale(pop)
+                    )
+                } else {
+                    CheckMarks(
+                        color = animatedColor,
+                        double = status != MessageStatus.SENT,
+                        glow = status == MessageStatus.READ,
+                        modifier = Modifier
+                            .size(width = if (status == MessageStatus.SENT) 14.dp else 18.dp, height = 12.dp)
+                            .scale(pop)
+                    )
+                }
+
             MessageStatus.SENDING -> {
                 val infiniteTransition = rememberInfiniteTransition(label = "receipt")
                 val rotation by infiniteTransition.animateFloat(
@@ -106,27 +131,6 @@ fun ReadReceiptIndicator(
                 )
             }
 
-            MessageStatus.SENT -> {
-                CheckMarks(
-                    color = animatedColor,
-                    double = false,
-                    glow = false,
-                    modifier = Modifier
-                        .size(width = 14.dp, height = 12.dp)
-                        .scale(pop)
-                )
-            }
-
-            MessageStatus.DELIVERED, MessageStatus.READ -> {
-                CheckMarks(
-                    color = animatedColor,
-                    double = true,
-                    glow = status == MessageStatus.READ,
-                    modifier = Modifier
-                        .size(width = 18.dp, height = 12.dp)
-                        .scale(pop)
-                )
-            }
         }
     }
 }

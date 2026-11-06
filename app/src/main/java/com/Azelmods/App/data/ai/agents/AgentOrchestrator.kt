@@ -346,6 +346,7 @@ class AgentOrchestrator @Inject constructor(
             AgentToolId.RUN_JS -> "Ejecutando JavaScript"
             AgentToolId.RUN_CODE -> "Ejecutando en ${shortInput.ifBlank { "el servidor" }}"
             AgentToolId.SAVE_FILE -> "Guardando $shortInput"
+            AgentToolId.EXPORT_FILE -> "Pidiendo permiso para guardar $shortInput"
             AgentToolId.READ_FILE -> "Leyendo $shortInput"
             AgentToolId.LIST_FILES -> "Mirando tus archivos"
         }

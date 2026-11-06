@@ -49,7 +49,8 @@ data class AgentsUiState(
 @HiltViewModel
 class AgentsViewModel @Inject constructor(
     private val orchestrator: AgentOrchestrator,
-    private val apiService: AzelAIApiService
+    private val apiService: AzelAIApiService,
+    val fileExporter: com.Azelmods.App.data.ai.agents.AgentFileExporter
 ) : ViewModel() {
 
     private companion object {

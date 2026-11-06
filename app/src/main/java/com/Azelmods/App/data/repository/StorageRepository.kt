@@ -409,7 +409,11 @@ class StorageRepository @Inject constructor(
      * Upload story video to Firebase Storage
      * Pattern: stories/{userId}/{timestamp}.mp4
      */
-    suspend fun uploadStoryVideo(videoUri: Uri, userId: String): String = suspendCoroutine { continuation ->
+    suspend fun uploadStoryVideo(
+        videoUri: Uri,
+        userId: String,
+        onProgress: (Int) -> Unit = {}
+    ): String = kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
         try {
             // Verify user is authenticated
             val currentUser = FirebaseAuth.getInstance().currentUser
@@ -417,29 +421,35 @@ class StorageRepository @Inject constructor(
                 continuation.resumeWithException(
                     Exception("User not authenticated. Please log in to upload files.")
                 )
-                return@suspendCoroutine
+                return@suspendCancellableCoroutine
             }
-            
+
             val timestamp = System.currentTimeMillis()
-            val storageRef = storage.reference
-            val fileRef = storageRef.child("stories/$userId/$timestamp.mp4")
-            
-            fileRef.putFile(videoUri, mediaMetadata("video/mp4"))
+            val fileRef = storage.reference.child("stories/$userId/$timestamp.mp4")
+
+            val task = fileRef.putFile(videoUri, mediaMetadata("video/mp4"))
+            // Salir de la pantalla cancela la subida: no se queda ocupando la red.
+            continuation.invokeOnCancellation { task.cancel() }
+            task
+                .addOnProgressListener { snapshot ->
+                    val total = snapshot.totalByteCount
+                    if (total > 0) onProgress((snapshot.bytesTransferred * 100 / total).toInt())
+                }
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
-                        continuation.resume(uri.toString())
+                        if (continuation.isActive) continuation.resume(uri.toString())
                     }.addOnFailureListener { exception ->
-                        continuation.resumeWithException(exception)
+                        if (continuation.isActive) continuation.resumeWithException(exception)
                     }
                 }
                 .addOnFailureListener { exception ->
-                    continuation.resumeWithException(exception)
+                    if (continuation.isActive) continuation.resumeWithException(exception)
                 }
         } catch (e: Exception) {
-            continuation.resumeWithException(e)
+            if (continuation.isActive) continuation.resumeWithException(e)
         }
     }
-    
+
     /**
      * Delete file from Firebase Storage
      */

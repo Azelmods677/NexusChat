@@ -71,7 +71,7 @@ class LoginViewModelTest : StringSpec({
         val viewModel = createViewModel(loginUseCase, googleLoginUseCase)
 
         viewModel.login()
-        viewModel.state.value.error shouldBe "Email is required"
+        viewModel.state.value.error shouldBe "Escribe tu correo"
         viewModel.state.value.isLoading shouldBe false
     }
 
@@ -80,7 +80,7 @@ class LoginViewModelTest : StringSpec({
 
         viewModel.onEmailChange("invalid")
         viewModel.login()
-        viewModel.state.value.error shouldBe "Invalid email format"
+        viewModel.state.value.error shouldBe "Ese correo no parece válido"
     }
 
     "login with blank password should show error" {
@@ -88,7 +88,7 @@ class LoginViewModelTest : StringSpec({
 
         viewModel.onEmailChange("test@example.com")
         viewModel.login()
-        viewModel.state.value.error shouldBe "Password is required"
+        viewModel.state.value.error shouldBe "Escribe tu contraseña"
     }
 
     "login with short password should show error" {
@@ -97,7 +97,7 @@ class LoginViewModelTest : StringSpec({
         viewModel.onEmailChange("test@example.com")
         viewModel.onPasswordChange("12345")
         viewModel.login()
-        viewModel.state.value.error shouldBe "Password must be at least 6 characters"
+        viewModel.state.value.error shouldBe "La contraseña tiene al menos 6 caracteres"
     }
 
     "login with valid credentials should call loginUseCase" {

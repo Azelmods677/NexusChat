@@ -74,8 +74,13 @@ class NexusPaletteContrastTest : StringSpec({
         }
     }
 
-    "Texto blanco sobre el violeta de marca cumple 3:1 (texto de botones)" {
-        contrast(NexusTokens.Color.TextPrimary, NexusTokens.Color.Primary) shouldBeGreaterThanOrEqual 3.0
+    // La app elige texto claro u oscuro según el acento (readableOn, en Theme.kt).
+    "El texto de los botones se lee sobre el color de marca" {
+        val best = maxOf(
+            contrast(androidx.compose.ui.graphics.Color.White, NexusTokens.Color.Primary),
+            contrast(androidx.compose.ui.graphics.Color.Black, NexusTokens.Color.Primary)
+        )
+        best shouldBeGreaterThanOrEqual 4.5
     }
 
     "Los acentos de los 25 temas cumplen 3:1 sobre el fondo base (iconos/indicadores)" {

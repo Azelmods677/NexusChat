@@ -1,5 +1,7 @@
 ﻿package com.Azelmods.App.ui.screens.settings
 
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.graphics.toArgb
 import com.Azelmods.App.i18n.tr
 
 import androidx.compose.material.icons.outlined.Palette
@@ -55,10 +57,21 @@ fun AppearanceScreen(
         else -> tr("Normal")
     }
     val activeAccent = AppTheme.canonicalId(accentColor)
+    var showAccentPicker by remember { mutableStateOf(false) }
+    if (showAccentPicker) {
+        CustomAccentDialog(
+            initial = AppTheme.getPrimaryColor(accentColor),
+            onDismiss = { showAccentPicker = false },
+            onPick = { hex ->
+                viewModel.setAccentColor(hex)
+                showAccentPicker = false
+            }
+        )
+    }
     val activeAccentName = AppTheme.ACCENT_SWATCHES.firstOrNull { it.id == activeAccent }?.displayName.orEmpty()
 
     Scaffold(
-        topBar = { NexusTopBar(title = tr("Apariencia"), onBack = { navController.popBackStack() }) },
+        topBar = { NexusTopBar(title = tr("Color y fondo"), onBack = { navController.popBackStack() }) },
         containerColor = NexusTokens.Color.BgBase
     ) { paddingValues ->
         Column(
@@ -106,7 +119,37 @@ fun AppearanceScreen(
                         }
                     }
                 }
+                // El último hueco abre el selector libre: cualquier color, no solo los de la lista.
+                val customActive = AppTheme.isCustom(activeAccent)
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (customActive) {
+                                androidx.compose.ui.graphics.SolidColor(AppTheme.getPrimaryColor(activeAccent))
+                            } else {
+                                androidx.compose.ui.graphics.Brush.sweepGradient(
+                                    listOf(
+                                        Color.Red, Color.Yellow, Color.Green, Color.Cyan,
+                                        Color.Blue, Color.Magenta, Color.Red
+                                    )
+                                )
+                            }
+                        )
+                        .then(if (customActive) Modifier.border(2.dp, NexusTokens.Color.TextPrimary, CircleShape) else Modifier)
+                        .clickable { showAccentPicker = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (customActive) Icons.Default.Check else Icons.Default.Add,
+                        contentDescription = tr("Elegir cualquier color"),
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
+
 
             NexusSectionHeader(tr("Avatares"))
             val context = androidx.compose.ui.platform.LocalContext.current
@@ -166,5 +209,47 @@ fun SettingsRadioItem(
                 colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
             )
         }
+    )
+}
+
+/** Cualquier color: tono, intensidad y brillo, viendo el resultado mientras se mueve. */
+@Composable
+private fun CustomAccentDialog(initial: Color, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+    val start = remember {
+        FloatArray(3).also { android.graphics.Color.colorToHSV(initial.toArgb(), it) }
+    }
+    var hue by remember { mutableStateOf(start[0]) }
+    var saturation by remember { mutableStateOf(start[1]) }
+    var brightness by remember { mutableStateOf(start[2]) }
+    val argb = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, brightness))
+    val hex = "#%06X".format(argb and 0xFFFFFF)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Elegir cualquier color")) },
+        text = {
+            Column {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(NexusTokens.Radius.lg))
+                        .background(Color(argb)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(hex, color = if (Color(argb).luminance() > 0.34f) Color(0xFF0B0F0D) else Color.White)
+                }
+                Spacer(Modifier.height(12.dp))
+                Text(tr("Tono"), style = MaterialTheme.typography.labelMedium, color = NexusTokens.Color.TextMuted)
+                Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f)
+                Text(tr("Intensidad"), style = MaterialTheme.typography.labelMedium, color = NexusTokens.Color.TextMuted)
+                Slider(value = saturation, onValueChange = { saturation = it })
+                Text(tr("Brillo"), style = MaterialTheme.typography.labelMedium, color = NexusTokens.Color.TextMuted)
+                Slider(value = brightness, onValueChange = { brightness = it })
+            }
+        },
+        confirmButton = { TextButton(onClick = { onPick(hex) }) { Text(tr("Usar este color")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } },
+        containerColor = NexusTokens.Color.BgSurface
     )
 }

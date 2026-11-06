@@ -1,5 +1,11 @@
 package com.Azelmods.App.ui.screens.chat
 
+import androidx.compose.foundation.border
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.togetherWith
+import com.Azelmods.App.ui.components.staggeredEnter
+
 import com.Azelmods.App.i18n.tr
 
 import android.net.Uri
@@ -22,6 +28,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Poll
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.outlined.StickyNote2
 import androidx.compose.material.icons.filled.Add
@@ -142,7 +150,7 @@ fun ReplyPreviewBar(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        IconButton(onClick = onCancel) {
+        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = onCancel) {
             Icon(Icons.Default.Close, "Cancelar", tint = NexusTokens.Color.TextMuted)
         }
     }
@@ -237,6 +245,10 @@ fun ChatInputArea(
     val context = LocalContext.current
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showStickerPicker by remember { mutableStateOf(false) }
+    var showPollCreator by remember { mutableStateOf(false) }
+    var showContactPicker by remember { mutableStateOf(false) }
+    var pendingSticker by remember { mutableStateOf<String?>(null) }
+    var showScheduler by remember { mutableStateOf(false) }
     var showAttachments by remember { mutableStateOf(false) }
     var showGifPicker by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
@@ -417,6 +429,35 @@ fun ChatInputArea(
             }
         }
 
+        // Al escribir @ en un grupo se proponen sus miembros.
+        val chatState by viewModel.state.collectAsState()
+        val mentionQuery = com.Azelmods.App.ui.screens.chat.currentMentionQuery(messageText)
+        val mentionMatches = remember(mentionQuery, chatState.groupMembers) {
+            if (mentionQuery == null) emptyList()
+            else chatState.groupMembers.values.filter { it.name.contains(mentionQuery, ignoreCase = true) }.take(5)
+        }
+        if (mentionMatches.isNotEmpty()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(NexusTokens.Color.BgElevated)
+            ) {
+                mentionMatches.forEach { member ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { onMessageChange(com.Azelmods.App.ui.screens.chat.applyMention(messageText, member.name)) }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.Azelmods.App.ui.components.UserAvatar(member.name, member.photoUrl, size = 30.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text(member.name, color = NexusTokens.Color.TextPrimary, maxLines = 1)
+                    }
+                }
+            }
+        }
+
         AnimatedVisibility(visible = !isRecording) {
             Row(
                 modifier = Modifier
@@ -424,35 +465,93 @@ fun ChatInputArea(
                     .padding(horizontal = 6.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.Bottom
             ) {
-                IconButton(onClick = {
+                val entryStyle by com.Azelmods.App.ui.components.ChatLook.entryStyle.collectAsState()
+                val entryHint by com.Azelmods.App.ui.components.ChatLook.entryHint.collectAsState()
+                val hideEmoji by com.Azelmods.App.ui.components.ChatLook.hideEntryEmoji.collectAsState()
+                val entryTranslate by com.Azelmods.App.ui.components.ChatLook.entryTranslate.collectAsState()
+                val isPhotoEntry = entryStyle == com.Azelmods.App.ui.components.ChatEntryStyle.PHOTO
+                val isSocialEntry = entryStyle == com.Azelmods.App.ui.components.ChatEntryStyle.SOCIAL
+                val isFlatEntry = entryStyle == com.Azelmods.App.ui.components.ChatEntryStyle.FLAT
+                // En Social y Plana los iconos llevan el color de acento y van sin círculo de fondo.
+                val coloredIcons = isSocialEntry || isFlatEntry
+                val iconTint = if (coloredIcons) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted
+
+                val openAttachments = {
                     showAttachments = true
                     showEmojiPicker = false
-                }) {
-                    Icon(Icons.Default.Add, "Adjuntar", tint = NexusTokens.Color.TextSecondary)
+                }
+                val toggleEmoji = {
+                    showEmojiPicker = !showEmojiPicker
+                    showStickerPicker = false
                 }
 
+                when {
+                    // Tu foto fuera del campo, con un aro fino de color.
+                    isPhotoEntry -> {
+                        val me = com.Azelmods.App.data.profile.rememberMyProfile()
+                        Box(
+                            Modifier
+                                .padding(start = 6.dp, end = 6.dp, bottom = 2.dp)
+                                .size(40.dp)
+                                .border(1.4.dp, MaterialTheme.colorScheme.primary, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            com.Azelmods.App.ui.components.UserAvatar(name = me.name, photoUrl = me.photoUrl, size = 35.dp)
+                        }
+                    }
+
+                    // Adjuntar y cámara fuera, a mano del pulgar.
+                    isSocialEntry -> {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openAttachments, modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Default.Add, "Adjuntar", tint = iconTint, modifier = Modifier.size(26.dp))
+                        }
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = {
+                            if (context.checkSelfPermission(android.Manifest.permission.CAMERA) ==
+                                android.content.pm.PackageManager.PERMISSION_GRANTED
+                            ) launchCamera()
+                            else cameraPermission.launch(android.Manifest.permission.CAMERA)
+                        }, modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Outlined.PhotoCamera, tr("Cámara"), tint = iconTint, modifier = Modifier.size(24.dp))
+                        }
+                        Spacer(Modifier.width(2.dp))
+                    }
+
+                    isFlatEntry -> {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openAttachments, modifier = Modifier.size(47.dp)) {
+                            Icon(Icons.Default.Add, "Adjuntar", tint = iconTint)
+                        }
+                    }
+
+                    else -> {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openAttachments) {
+                            Icon(Icons.Default.Add, "Adjuntar", tint = NexusTokens.Color.TextSecondary)
+                        }
+                    }
+                }
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 44.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(NexusTokens.Color.BgElevated)
+                        .then(
+                            com.Azelmods.App.ui.components.chatEntryModifier(
+                                entryStyle,
+                                MaterialTheme.colorScheme.primary
+                            )
+                        )
                         .padding(start = 4.dp, end = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(
-                        onClick = {
-                            showEmojiPicker = !showEmojiPicker
-                            showStickerPicker = false
-                        },
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Icon(
-                            if (showEmojiPicker) Icons.Outlined.Keyboard else Icons.Outlined.EmojiEmotions,
-                            "Emoji",
-                            tint = NexusTokens.Color.TextMuted,
-                            modifier = Modifier.size(22.dp)
-                        )
+                    if (!hideEmoji && !isFlatEntry) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = toggleEmoji, modifier = Modifier.size(38.dp)) {
+                            Icon(
+                                if (showEmojiPicker) Icons.Outlined.Keyboard else Icons.Outlined.EmojiEmotions,
+                                "Emoji",
+                                tint = iconTint,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    } else if (hideEmoji) {
+                        Spacer(Modifier.width(10.dp))
                     }
                     BasicTextField(
                         value = messageText,
@@ -466,7 +565,7 @@ fun ChatInputArea(
                         decorationBox = { inner ->
                             if (messageText.isEmpty()) {
                                 Text(
-                                    tr("Mensaje"),
+                                    entryHint.ifBlank { tr("Mensaje") },
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = NexusTokens.Color.TextMuted
                                 )
@@ -474,7 +573,21 @@ fun ChatInputArea(
                             inner()
                         }
                     )
-                    IconButton(
+                    if (entryTranslate && messageText.isNotBlank()) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(
+                            onClick = { viewModel.translateDraft(messageText) { onMessageChange(it) } },
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Icon(Icons.Outlined.Translate, tr("Traducir"), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    // Con tu foto, adjuntar deja la izquierda y se queda dentro del campo.
+                    if (isPhotoEntry) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openAttachments, modifier = Modifier.size(38.dp)) {
+                            Icon(Icons.Default.Add, "Adjuntar", tint = NexusTokens.Color.TextMuted, modifier = Modifier.size(22.dp))
+                        }
+                    }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(
                         onClick = { viewModel.toggleEphemeralPicker() },
                         modifier = Modifier.size(38.dp)
                     ) {
@@ -486,6 +599,16 @@ fun ChatInputArea(
                             modifier = Modifier.size(20.dp)
                         )
                     }
+                    // En la plana el emoji va a la derecha.
+                    if (!hideEmoji && isFlatEntry) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = toggleEmoji, modifier = Modifier.size(47.dp)) {
+                            Icon(
+                                if (showEmojiPicker) Icons.Outlined.Keyboard else Icons.Outlined.EmojiEmotions,
+                                "Emoji",
+                                tint = iconTint
+                            )
+                        }
+                    }
                 }
 
                 Spacer(Modifier.width(6.dp))
@@ -495,7 +618,13 @@ fun ChatInputArea(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (hasText) MaterialTheme.colorScheme.primary else NexusTokens.Color.BgElevated)
+                        .background(
+                            when {
+                                coloredIcons -> Color.Transparent
+                                hasText -> MaterialTheme.colorScheme.primary
+                                else -> NexusTokens.Color.BgElevated
+                            }
+                        )
                         .clickable {
                             if (hasText) {
                                 onSendClick()
@@ -507,20 +636,34 @@ fun ChatInputArea(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (hasText) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            "Enviar",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    } else {
-                        Icon(
-                            Icons.Default.Mic,
-                            "Grabar audio",
-                            tint = NexusTokens.Color.TextSecondary,
-                            modifier = Modifier.size(22.dp)
-                        )
+                    androidx.compose.animation.AnimatedContent(
+                        targetState = hasText,
+                        transitionSpec = {
+                            (androidx.compose.animation.scaleIn(
+                                androidx.compose.animation.core.spring(
+                                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy
+                                ),
+                                initialScale = 0.4f
+                            ) + androidx.compose.animation.fadeIn()) togetherWith
+                                (androidx.compose.animation.scaleOut(targetScale = 0.4f) + androidx.compose.animation.fadeOut())
+                        },
+                        label = "enviarMicro"
+                    ) { sending ->
+                        if (sending) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.Send,
+                                "Enviar",
+                                tint = if (coloredIcons) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(if (coloredIcons) 24.dp else 20.dp)
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Mic,
+                                "Grabar audio",
+                                tint = if (coloredIcons) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextSecondary,
+                                modifier = Modifier.size(if (coloredIcons) 26.dp else 22.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -532,10 +675,70 @@ fun ChatInputArea(
         AnimatedVisibility(visible = showStickerPicker) {
             StickerPicker(
                 onStickerSelected = { sticker ->
-                    viewModel.sendStickerMessage(sticker, contactId)
+                    if (com.Azelmods.App.ui.components.ChatLook.confirmSticker.value) {
+                        pendingSticker = sticker
+                    } else {
+                        viewModel.sendStickerMessage(sticker, contactId)
+                    }
                     showStickerPicker = false
                 },
                 onDismiss = { showStickerPicker = false }
+            )
+        }
+    }
+
+    pendingSticker?.let { sticker ->
+        AlertDialog(
+            onDismissRequest = { pendingSticker = null },
+            title = { Text(tr("¿Enviar este sticker?")) },
+            text = { com.Azelmods.App.ui.components.StickerImage(sticker, 120.dp) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.sendStickerMessage(sticker, contactId)
+                    pendingSticker = null
+                }) { Text(tr("Enviar")) }
+            },
+            dismissButton = { TextButton(onClick = { pendingSticker = null }) { Text(tr("Cancelar")) } },
+            containerColor = NexusTokens.Color.BgSurface
+        )
+    }
+
+    if (showContactPicker) {
+        ContactPickerDialog(
+            onDismiss = { showContactPicker = false },
+            onPick = { contact ->
+                viewModel.sendMessage(encodeContact(contact), contactId)
+                showContactPicker = false
+            }
+        )
+    }
+
+    if (showPollCreator) {
+        PollCreateDialog(
+            onDismiss = { showPollCreator = false },
+            onCreate = { poll ->
+                viewModel.sendMessage(encodePoll(poll), contactId)
+                showPollCreator = false
+            }
+        )
+    }
+
+    if (showScheduler) {
+        if (messageText.isBlank()) {
+            LaunchedEffect(Unit) {
+                android.widget.Toast.makeText(context, tr("Escribe primero el mensaje que quieres programar"), android.widget.Toast.LENGTH_LONG).show()
+                showScheduler = false
+            }
+        } else {
+            ScheduleMessageDialog(
+                text = messageText,
+                chatId = viewModel.chatIdFor(contactId),
+                onDismiss = { showScheduler = false },
+                onScheduled = { time ->
+                    onMessageChange("")
+                    showScheduler = false
+                    android.widget.Toast.makeText(context, tr("Se enviará el %s", time), android.widget.Toast.LENGTH_LONG).show()
+                }
             )
         }
     }
@@ -576,13 +779,17 @@ fun ChatInputArea(
                     )
                 },
                 Triple(Icons.Outlined.Person, "Contacto") { contactPicker.launch(null) },
-                Triple(Icons.AutoMirrored.Outlined.StickyNote2, "Sticker") { showStickerPicker = true }
+                Triple(Icons.AutoMirrored.Outlined.StickyNote2, "Sticker") { showStickerPicker = true },
+                Triple(Icons.Outlined.Person, "Contacto") { showContactPicker = true },
+                Triple(Icons.Outlined.Poll, "Encuesta") { showPollCreator = true },
+                Triple(Icons.Outlined.Schedule, "Programar") { showScheduler = true }
             )
             Column(Modifier.padding(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
                 options.chunked(3).forEach { row ->
                     Row(Modifier.fillMaxWidth()) {
                         row.forEach { (icon, label, action) ->
-                            AttachmentTile(icon, label, Modifier.weight(1f)) {
+                            val tileIndex = options.indexOfFirst { it.second == label }
+                            AttachmentTile(icon, label, Modifier.weight(1f).staggeredEnter(tileIndex)) {
                                 showAttachments = false
                                 action()
                             }
@@ -696,7 +903,7 @@ private fun GifPickerDialog(
                     .padding(horizontal = 4.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onDismiss) {
+                com.Azelmods.App.ui.components.AnimatedIconButton(onClick = onDismiss) {
                     Icon(Icons.Default.Close, "Cerrar", tint = NexusTokens.Color.TextPrimary)
                 }
                 if (hasKey) {
@@ -840,7 +1047,7 @@ private fun RecordingBar(onCancel: () -> Unit, onSend: () -> Unit) {
             .padding(horizontal = 6.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onCancel) {
+        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = onCancel) {
             Icon(Icons.Default.Close, "Cancelar", tint = NexusTokens.Color.TextSecondary)
         }
         Box(

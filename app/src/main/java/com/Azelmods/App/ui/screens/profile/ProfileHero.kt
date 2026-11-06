@@ -551,7 +551,7 @@ private fun ProfileTopBar(name: String, collapse: Float, onBack: (() -> Unit)?, 
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (onBack != null) {
-            IconButton(onClick = onBack) {
+            com.Azelmods.App.ui.components.AnimatedIconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Volver"), tint = Color.White)
             }
         } else {
@@ -573,7 +573,7 @@ private fun ProfileTopBar(name: String, collapse: Float, onBack: (() -> Unit)?, 
         }
         if (collapse <= 0.9f) Spacer(Modifier.weight(1f))
         if (onSettings != null) {
-            IconButton(onClick = onSettings) {
+            com.Azelmods.App.ui.components.AnimatedIconButton(onClick = onSettings) {
                 Icon(Icons.Outlined.Settings, tr("Ajustes"), tint = Color.White)
             }
         }

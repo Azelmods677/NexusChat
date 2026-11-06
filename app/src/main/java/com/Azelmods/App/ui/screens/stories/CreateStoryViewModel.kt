@@ -20,6 +20,8 @@ import javax.inject.Inject
 
 data class CreateStoryState(
     val isUploading: Boolean = false,
+    /** Porcentaje de la subida, o null mientras no se sabe (al preparar el vídeo). */
+    val uploadProgress: Int? = null,
     val uploadSuccess: Boolean = false,
     val error: String? = null
 )
@@ -70,7 +72,7 @@ class CreateStoryViewModel @Inject constructor(
         musicName: String = ""
     ) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            _state.value = _state.value.copy(isUploading = true, uploadProgress = null, error = null, uploadSuccess = false)
 
             try {
                 val userId = auth.currentUser?.uid
@@ -128,7 +130,7 @@ class CreateStoryViewModel @Inject constructor(
         musicName: String = ""
     ) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            _state.value = _state.value.copy(isUploading = true, uploadProgress = null, error = null, uploadSuccess = false)
             
             try {
                 // Get userId at the exact moment of upload
@@ -175,7 +177,7 @@ class CreateStoryViewModel @Inject constructor(
      */
     fun uploadAnimatedStory(imageUri: Uri, caption: String, musicUri: Uri? = null, musicName: String = "") {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            _state.value = _state.value.copy(isUploading = true, uploadProgress = null, error = null, uploadSuccess = false)
             try {
                 val userId = auth.currentUser?.uid
                 if (userId.isNullOrBlank()) {
@@ -223,7 +225,7 @@ class CreateStoryViewModel @Inject constructor(
         musicName: String = ""
     ) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            _state.value = _state.value.copy(isUploading = true, uploadProgress = null, error = null, uploadSuccess = false)
 
             try {
                 val userId = auth.currentUser?.uid
@@ -235,15 +237,29 @@ class CreateStoryViewModel @Inject constructor(
                     return@launch
                 }
 
-                val uploadUri: Uri = try {
-                    StoryVideoComposer.composeVideoWithOverlay(context, originalUri, overlayBitmap)
+                // Con tope de tiempo: un vídeo que el teléfono no logra procesar no puede dejar
+                // la pantalla en "Publicando" para siempre.
+                val composed: Uri? = try {
+                    kotlinx.coroutines.withTimeoutOrNull(COMPOSE_TIMEOUT_MS) {
+                        StoryVideoComposer.composeVideoWithOverlay(context, originalUri, overlayBitmap)
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    // Fall back to the original clip if burning the overlays failed.
-                    originalUri
+                    null
                 }
+                // Si no se pudo, se publica el vídeo original.
+                val uploadUri = composed ?: originalUri
 
-                val videoUrl = storageRepository.uploadStoryVideo(uploadUri, userId)
+                val videoUrl = try {
+                    storageRepository.uploadStoryVideo(uploadUri, userId) { percent ->
+                        _state.value = _state.value.copy(uploadProgress = percent)
+                    }
+                } finally {
+                    // El vídeo procesado ya no hace falta y pesa lo mismo que el original.
+                    composed?.path?.let { runCatching { java.io.File(it).delete() } }
+                }
                 val musicUrl = uploadMusicOrNull(musicUri, userId)
 
                 databaseRepository.createStory(
@@ -275,7 +291,7 @@ class CreateStoryViewModel @Inject constructor(
      */
     fun uploadVideoStory(videoUri: Uri, caption: String, musicUri: Uri? = null, musicName: String = "") {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            _state.value = _state.value.copy(isUploading = true, uploadProgress = null, error = null, uploadSuccess = false)
             
             try {
                 val userId = auth.currentUser?.uid
@@ -288,7 +304,10 @@ class CreateStoryViewModel @Inject constructor(
                 }
                 
                 // Step 1: Upload video to Storage FIRST and AWAIT completion
-                val videoUrl = storageRepository.uploadStoryVideo(videoUri, userId)
+                val fitted = StoryVideoComposer.fitUploadLimit(context, videoUri)
+                val videoUrl = storageRepository.uploadStoryVideo(fitted, userId) { percent ->
+                    _state.value = _state.value.copy(uploadProgress = percent)
+                }
                 val musicUrl = uploadMusicOrNull(musicUri, userId)
 
                 // Step 2: ONLY after upload succeeds, save to Realtime Database
@@ -325,7 +344,7 @@ class CreateStoryViewModel @Inject constructor(
         musicName: String = ""
     ) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(isUploading = true, error = null, uploadSuccess = false)
+            _state.value = _state.value.copy(isUploading = true, uploadProgress = null, error = null, uploadSuccess = false)
             
             try {
                 val userId = auth.currentUser?.uid
@@ -374,3 +393,5 @@ class CreateStoryViewModel @Inject constructor(
         _state.value = _state.value.copy(uploadSuccess = false)
     }
 }
+
+private const val COMPOSE_TIMEOUT_MS = 180_000L

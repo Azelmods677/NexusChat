@@ -226,3 +226,6 @@
 # Sora Editor
 -keep class io.github.rosemoe.sora.** { *; }
 -dontwarn io.github.rosemoe.sora.**
+
+# Formatos opcionales de commons-compress: solo se usa XZ para descomprimir Kali.
+-dontwarn com.github.luben.zstd.ZstdInputStream

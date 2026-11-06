@@ -99,9 +99,20 @@
         */
         ".write": "auth != null && (!data.exists() || (data.child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()))",
 
+        /*
+          Entrar con un enlace: un no miembro solo puede añadirse a si mismo y solo si manda,
+          en la misma escritura, el codigo vigente del grupo. Quien fue expulsado no vuelve
+          por el enlace; tiene que anadirlo un administrador.
+        */
         "members": {
           "$memberId": {
+            ".write": "auth != null && auth.uid === $memberId && !data.exists() && root.child('chats').child($chatId).child('inviteCode').exists() && newData.parent().parent().child('joinCodes').child($memberId).val() === root.child('chats').child($chatId).child('inviteCode').val() && !root.child('chats').child($chatId).child('removed').child($memberId).exists()",
             ".validate": "newData.val() === true"
+          }
+        },
+        "joinCodes": {
+          "$memberId": {
+            ".write": "auth != null && auth.uid === $memberId && newData.val() === root.child('chats').child($chatId).child('inviteCode').val()"
           }
         },
 
@@ -287,6 +298,105 @@
 
     "terminal": {
       "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    /*
+      Claves de grupo, cifradas por separado para cada miembro: el servidor no puede leerlas.
+    */
+    "groupInvites": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((data.exists() && root.child('chats').child(data.child('chatId').val()).child('members').child(auth.uid).exists()) || (!data.exists() && newData.exists() && root.child('chats').child(newData.child('chatId').val()).child('members').child(auth.uid).exists()))"
+      }
+    },
+
+    "groupKeys": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
+      }
+    },
+
+    /*
+      Chats secretos. El servidor solo guarda texto cifrado hasta entregarlo.
+    */
+    "secretChats": {
+      "$chatId": {
+        ".read": "auth != null && data.child('members').child(auth.uid).exists()",
+        ".write": "auth != null && ((!data.exists() && newData.child('members').child(auth.uid).exists()) || data.child('members').child(auth.uid).exists())",
+        "messages": { ".indexOn": ["n"] }
+      }
+    },
+    "userSecretChats": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$chatId": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('secretChats').child($chatId).child('members').child(auth.uid).exists())"
+        }
+      }
+    },
+
+    /*
+      Canales: públicos para leer, solo su dueño publica. Los seguidores los cuenta el servidor.
+    */
+    "channels": {
+      ".read": "auth != null",
+      "$channelId": {
+        ".write": "auth != null && ((!data.exists() && newData.child('ownerId').val() === auth.uid) || data.child('ownerId').val() === auth.uid)",
+        "subscribers": {
+          ".validate": "!data.exists() ? newData.val() === 1 : newData.val() === data.val()"
+        }
+      }
+    },
+    "channelPosts": {
+      "$channelId": {
+        ".read": "auth != null",
+        ".indexOn": ["at"],
+        ".write": "auth != null && root.child('channels').child($channelId).child('ownerId').val() === auth.uid"
+      }
+    },
+    "channelHandles": {
+      ".read": "auth != null",
+      "$handle": {
+        ".write": "auth != null && !data.exists() && newData.isString() && $handle.length >= 3"
+      }
+    },
+    "channelSubscribers": {
+      "$channelId": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid"
+        }
+      }
+    },
+    "userChannels": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    /* Paquetes de stickers propios, y los publicados con un código para compartirlos. */
+    "userStickerPacks": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "publicStickerPacks": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && ((!data.exists() && newData.child('owner').val() === auth.uid) || data.child('owner').val() === auth.uid)"
+      }
+    },
+
+    /* Notas y mensajes guardados: cifrados por el propio usuario. */
+    "savedMessages": {
+      "$uid": {
+        ".indexOn": ["at"],
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid"
       }

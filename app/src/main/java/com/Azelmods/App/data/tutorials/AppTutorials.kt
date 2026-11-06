@@ -223,11 +223,13 @@ Mensaje original → Cifrado AES-GCM → Firebase (solo texto cifrado) → Desci
 • El secreto compartido se deriva con ECDH entre las dos identidades
 • AES-256-GCM aporta cifrado autenticado: detecta manipulaciones del mensaje
 
-Qué NO ofrece hoy, dicho claramente:
-• No hay secreto hacia adelante (Perfect Forward Secrecy): las claves de identidad
-  son estables, no efímeras por sesión
-• No implementa X3DH ni doble ratchet
-• Los grupos aún no van cifrados de extremo a extremo
+También cifrados:
+• Grupos: una clave por grupo, repartida cifrada a cada miembro y renovada al entrar o salir alguien
+• Chats secretos: una clave nueva en cada mensaje, con secreto hacia adelante
+
+Qué conviene saber:
+• En los chats normales y en los grupos las claves son estables: para secreto hacia
+  adelante usa un chat secreto
 • Los metadatos (quién habla con quién y cuándo) siguen siendo visibles en el servidor
 
 ## Bloqueo Biométrico
@@ -238,11 +240,11 @@ Protege la app con huella digital o reconocimiento facial:
 2. Activa "Bloqueo biométrico"
 3. Configura tiempo de bloqueo (inmediato / 1 min / 5 min)
 
-## Tor / Orbot
+## Tor
 
-Navegación anónima integrada:
+Viene integrado, sin instalar nada (y también admite Orbot):
 
-• **Orbot Setup:** Guía para instalar y configurar Tor en tu dispositivo
+• **Modo anónimo:** arranca Tor dentro de la app desde Seguridad y Tor
 • **Navegación .onion:** Acceso a sitios onion desde la app
 • **Proxy automático:** Redirección de tráfico a través de Tor
 
@@ -264,8 +266,7 @@ Realiza copias de seguridad cifradas con AES-256:
 
 Sin esa contraseña la copia no se puede restaurar. No hay forma de recuperarla.
 
-⚠️ El cifrado E2EE está activo por defecto en los chats de dos personas.
-Los grupos NO lo usan todavía.
+⚠️ El cifrado E2EE está activo por defecto en los chats y en los grupos.
 
 ℹ️ El bloqueo biométrico usa el hardware de tu dispositivo (no almacena huellas).
     """.trimIndent()
@@ -336,7 +337,6 @@ PeerConnection → Audio/Video streams cifrados
 **Privacidad y Seguridad:**
 • Última vez visto (Todos / Contactos / Nadie)
 • Foto de perfil (Todos / Contactos / Nadie)
-• Stories (Todos / Contactos / Seleccionados)
 • Bloqueo biométrico
 • Cifrado E2EE
 • Bloqueo de contactos
@@ -347,9 +347,13 @@ PeerConnection → Audio/Video streams cifrados
 • Vibración
 • Canales FCM configurados
 
+**Personalización:**
+• Estudio de diseño: filas, burbujas, campo de escribir, inicio y ajustes
+• Mi perfil: color, foto y portada, con vídeo de hasta 1 minuto y 30 segundos
+
 **Apariencia:**
 • Tema: interruptor de modo oscuro (el oscuro es el predeterminado)
-• **25 colores de acento:** de Púrpura y Violeta a Esmeralda, Ámbar, Coral, Carmesí, Magenta, Pizarra o Luna de Sangre
+• **36 colores de acento**, más un selector para elegir cualquier otro
 • Tamaño de fuente: Pequeño / Normal / Grande / Muy Grande (se aplica a toda la app)
 • Wallpaper de chat: Predeterminado / Galería / Colores sólidos / Degradados / Video
 
@@ -359,12 +363,6 @@ PeerConnection → Audio/Video streams cifrados
 • Limpiar caché
 • Backup cifrado
 • Restaurar backup
-
-## Temas
-
-• **Claro:** Fondo blanco, texto oscuro. Ideal para exteriores
-• **Oscuro:** Fondo negro, texto claro. Ahorra batería OLED
-• **Automático:** Sigue la configuración del sistema
 
 ## Wallpaper de Chat
 
@@ -459,12 +457,14 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 
 ### Paso 4: Explorar Funciones
 
-**💬 Mensajería:** Texto, fotos, videos, voz, E2EE
+**💬 Mensajería:** Texto, fotos, vídeos, voz, encuestas, stickers propios, E2EE
+**👥 Grupos y canales:** Grupos cifrados, chats secretos y canales
 **📸 Stories:** Contenido temporal de 24h con emojis draggables
 **📞 Llamadas:** Audio y video HD con WebRTC
-**🤖 Azel IA:** Asistente con el proveedor y modelo que tú elijas (incluidos locales)
-**🔒 Seguridad:** Cifrado E2EE (ECDH + AES-256-GCM), bloqueo biométrico, Tor/Orbot
-**🎨 Personalización:** 25 colores de acento, fondos de imagen/vídeo, tamaño de texto
+**🤖 Azel IA:** Asistente y agentes con el proveedor y modelo que tú elijas (incluidos locales)
+**🔒 Seguridad:** Cifrado E2EE (ECDH + AES-256-GCM), bloqueo biométrico, chats ocultos, Tor integrado
+**🎨 Personalización:** Estudio de diseño, 36 colores de acento, fondos de imagen/vídeo
+**🛠️ Herramientas:** Editor de código, terminal con Kali Linux y descarga de vídeos
 
 ## Tecnologías Clave
 
@@ -475,7 +475,7 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 • **Llamadas:** WebRTC
 • **Cifrado:** ECDH P-256 + AES-256-GCM
 • **IA:** proveedor y modelo a elección del usuario (incluidos locales)
-• **Anonimato:** Tor / Orbot
+• **Anonimato:** Tor integrado
 
 ⚠️ Activa el bloqueo biométrico en Ajustes → Privacidad para proteger tu app.
 

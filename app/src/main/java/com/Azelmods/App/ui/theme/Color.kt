@@ -12,8 +12,8 @@ import androidx.compose.ui.graphics.Color
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── Marca ──────────────────────────────────────────────────────────────────
-val Purple = NexusTokens.Color.Primary
-val Teal = NexusTokens.Color.Primary
+val Purple get() = NexusTokens.Color.Primary
+val Teal get() = NexusTokens.Color.Primary
 val Pink = NexusTokens.Color.Accent
 
 // ── Superficies oscuras ────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ val MessageDelivered = NexusTokens.Color.TextSecondary
 val MessageRead = NexusTokens.Color.ReadReceipt
 
 // ── Anillo de historias: un solo tono, no un arcoíris ──────────────────────
-val StoryGradient = listOf(
+val StoryGradient: List<Color> get() = listOf(
     NexusTokens.Color.Primary,
     NexusTokens.Color.Primary
 )
@@ -50,8 +50,8 @@ val AmberAccent = NexusTokens.Color.Gold
 val NeonGreen = NexusTokens.Color.Online
 val EmeraldGreen = NexusTokens.Color.Online
 val CyanAccent = NexusTokens.Color.Secondary
-val PurpleLight = NexusTokens.Color.PrimaryLight
-val PurpleBright = NexusTokens.Color.Primary
+val PurpleLight get() = NexusTokens.Color.PrimaryLight
+val PurpleBright get() = NexusTokens.Color.Primary
 val GoldPremium = NexusTokens.Color.Gold
 val BlueAccent = NexusTokens.Color.Secondary
 val RosePink = NexusTokens.Color.Accent

@@ -1,5 +1,6 @@
 package com.Azelmods.App.data.demo
 
+import com.Azelmods.App.BuildConfig
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
@@ -24,6 +25,7 @@ class DemoAccountManager @Inject constructor(
     companion object {
         private const val TAG = "DemoAccountManager"
         private const val DEMO_ACCOUNT_CREATED_KEY = "demo_account_created"
+        private const val ANNOUNCED_VERSION_KEY = "demo_announced_version"
         private const val DEMO_USER_ID = "demo_azel_assistant"
         private const val DEMO_USER_NAME = "Azel Assistant"
         private const val DEMO_USERNAME = "@azel"
@@ -40,6 +42,7 @@ class DemoAccountManager @Inject constructor(
             // Check if demo account already created
             if (prefs.getBoolean(DEMO_ACCOUNT_CREATED_KEY, false)) {
                 Log.d(TAG, "Demo account already created, skipping initialization")
+                announceUpdate(currentUserId)
                 return
             }
             
@@ -55,7 +58,11 @@ class DemoAccountManager @Inject constructor(
             createDemoMessages(currentUserId)
             
             // Mark as created
-            prefs.edit().putBoolean(DEMO_ACCOUNT_CREATED_KEY, true).apply()
+            // Quien la instala nuevo ya recibe la bienvenida actual: no necesita las novedades.
+            prefs.edit()
+                .putBoolean(DEMO_ACCOUNT_CREATED_KEY, true)
+                .putInt(ANNOUNCED_VERSION_KEY, BuildConfig.VERSION_CODE)
+                .apply()
             
             Log.d(TAG, "Demo account initialized successfully")
             
@@ -64,6 +71,38 @@ class DemoAccountManager @Inject constructor(
         }
     }
     
+    /** Azel Assistant cuenta las novedades una sola vez a quien ya tenía la app. */
+    private suspend fun announceUpdate(currentUserId: String) {
+        val version = BuildConfig.VERSION_CODE
+        if (prefs.getInt(ANNOUNCED_VERSION_KEY, 0) >= version) return
+        val chatId = if (currentUserId < DEMO_USER_ID) "${currentUserId}_$DEMO_USER_ID" else "${DEMO_USER_ID}_$currentUserId"
+        val chat = database.reference.child("chats").child(chatId)
+        val now = System.currentTimeMillis()
+        val texts = DemoAssistant.whatsNew
+        texts.forEachIndexed { index, body ->
+            val messageId = "demo_update_${version}_$index"
+            chat.child("messages").child(messageId).setValue(
+                mapOf(
+                    "messageId" to messageId,
+                    "senderId" to DEMO_USER_ID,
+                    "content" to body,
+                    "timestamp" to now + index,
+                    "status" to "sent",
+                    "isEncrypted" to false,
+                    "reactions" to emptyMap<String, String>()
+                )
+            ).await()
+        }
+        chat.updateChildren(
+            mapOf(
+                "lastMessage" to texts.last(),
+                "lastMessageTime" to now + texts.size,
+                "lastMessageSenderId" to DEMO_USER_ID
+            )
+        ).await()
+        prefs.edit().putInt(ANNOUNCED_VERSION_KEY, version).apply()
+    }
+
     /**
      * Create demo user in Firebase
      */

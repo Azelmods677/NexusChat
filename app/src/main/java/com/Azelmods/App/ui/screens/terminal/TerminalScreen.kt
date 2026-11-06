@@ -46,10 +46,8 @@ private const val MAX_FONT_PX = 80
 /**
  * Terminal real: emulador VT100/xterm conectado a una shell del sistema.
  *
- * Lo que Android permite sin root: los comandos del sistema (toybox) dentro de la carpeta
- * de la app, con los permisos de la app. No hay `apt` ni `pkg`, porque Android no deja
- * ejecutar binarios descargados a una app moderna; Termux lo resuelve con un sistema
- * completo que no cabe aquí.
+ * Dos tipos de sesión: la shell de Android, con los comandos del sistema, y Kali Linux, un
+ * sistema completo con `apt` que se instala bajo petición (ver LinuxEnvironment).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +63,17 @@ fun TerminalScreen(
     var altOn by remember { mutableStateOf(false) }
     var fontPx by remember { mutableIntStateOf(DEFAULT_FONT_PX) }
     val viewHolder = remember { arrayOfNulls<TerminalView>(1) }
+    val linuxState by viewModel.linuxState.collectAsState()
+    var showLinuxPanel by remember { mutableStateOf(false) }
+    // Termina la instalación con el panel abierto: se abre sola la primera sesión de Kali.
+    var openWhenReady by remember { mutableStateOf(false) }
+    LaunchedEffect(linuxState) {
+        if (openWhenReady && linuxState is com.Azelmods.App.data.terminal.LinuxState.Ready) {
+            openWhenReady = false
+            showLinuxPanel = false
+            viewModel.newLinuxSession()
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (viewModel.sessions.value.isEmpty()) viewModel.newSession()
@@ -84,7 +93,9 @@ fun TerminalScreen(
             }
             override fun onTitleChanged(session: TerminalSession) = Unit
             override fun onSessionFinished(session: TerminalSession) {
-                viewModel.removeFinished(session)
+                // Si Kali falla al arrancar, la sesión se queda abierta para que se lea el error.
+                val failed = viewModel.isLinuxSession(session) && session.exitStatus != 0
+                if (!failed) viewModel.removeFinished(session)
             }
             override fun onCopyTextToClipboard(session: TerminalSession, text: String) {
                 clipboard().setPrimaryClip(ClipData.newPlainText("Terminal", text))
@@ -107,6 +118,22 @@ fun TerminalScreen(
         onDispose { viewModel.onSessionEvent = null }
     }
 
+    if (showLinuxPanel) {
+        LinuxPanel(
+            state = linuxState,
+            onInstall = {
+                openWhenReady = true
+                viewModel.installLinux()
+            },
+            onOpen = {
+                showLinuxPanel = false
+                viewModel.newLinuxSession()
+            },
+            onUninstall = viewModel::uninstallLinux,
+            onDismiss = { showLinuxPanel = false }
+        )
+    }
+
     Scaffold(
         containerColor = TerminalBlack,
         topBar = {
@@ -118,6 +145,7 @@ fun TerminalScreen(
                     }
                 },
                 actions = {
+                    TextButton(onClick = { showLinuxPanel = true }) { Text(tr("Kali Linux")) }
                     IconButton(onClick = { pasteInto(current) }) {
                         Icon(Icons.Outlined.ContentPaste, "Pegar")
                     }
@@ -161,7 +189,7 @@ fun TerminalScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "Sesión ${index + 1}",
+                                if (viewModel.isLinuxSession(session)) tr("Kali %d", index + 1) else tr("Sesión %d", index + 1),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = if (selected) NexusTokens.Color.TextPrimary else NexusTokens.Color.TextMuted
                             )
@@ -324,4 +352,83 @@ private class ComposeViewClient(
     override fun logVerbose(tag: String?, message: String?) = Unit
     override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) = Unit
     override fun logStackTrace(tag: String?, e: Exception?) = Unit
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LinuxPanel(
+    state: com.Azelmods.App.data.terminal.LinuxState,
+    onInstall: () -> Unit,
+    onOpen: () -> Unit,
+    onUninstall: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var confirmDelete by remember { mutableStateOf(false) }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NexusTokens.Color.BgSurface) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 20.dp, bottom = 28.dp)
+        ) {
+            Text(tr("Kali Linux"), style = MaterialTheme.typography.titleLarge, color = NexusTokens.Color.TextPrimary)
+            Spacer(Modifier.height(6.dp))
+            Text(
+                tr("Un sistema Linux completo dentro de la app, sin root. Con apt instalas lo que necesites."),
+                style = MaterialTheme.typography.bodyMedium,
+                color = NexusTokens.Color.TextSecondary
+            )
+            Spacer(Modifier.height(16.dp))
+            when (state) {
+                com.Azelmods.App.data.terminal.LinuxState.Unsupported -> Text(
+                    tr("Tu teléfono no es compatible: hace falta un procesador de 64 bits."),
+                    color = NexusTokens.Color.Warning
+                )
+                com.Azelmods.App.data.terminal.LinuxState.NotInstalled -> {
+                    Text(
+                        tr("Descarga 126 MB y ocupa unos 900 MB. Mejor con Wi-Fi."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NexusTokens.Color.TextMuted
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    com.Azelmods.App.ui.components.NexusButton(text = tr("Instalar Kali Linux"), onClick = onInstall)
+                }
+                is com.Azelmods.App.data.terminal.LinuxState.Downloading -> {
+                    LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Text(tr("Descargando… %d %%", (state.progress * 100).toInt()), color = NexusTokens.Color.TextMuted)
+                }
+                is com.Azelmods.App.data.terminal.LinuxState.Extracting -> {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                    Text(tr("Instalando… %d archivos", state.files), color = NexusTokens.Color.TextMuted)
+                }
+                com.Azelmods.App.data.terminal.LinuxState.Ready -> {
+                    com.Azelmods.App.ui.components.NexusButton(text = tr("Abrir sesión de Kali"), onClick = onOpen)
+                    TextButton(onClick = { confirmDelete = true }) {
+                        Text(tr("Eliminar Kali y liberar espacio"), color = NexusTokens.Color.Error)
+                    }
+                }
+                is com.Azelmods.App.data.terminal.LinuxState.Failed -> {
+                    Text(tr("No se pudo instalar: %s", state.reason), color = NexusTokens.Color.Error)
+                    Spacer(Modifier.height(12.dp))
+                    com.Azelmods.App.ui.components.NexusButton(text = tr("Reintentar"), onClick = onInstall)
+                }
+            }
+        }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(tr("¿Eliminar Kali Linux?")) },
+            text = { Text(tr("Se borrará todo lo que hayas instalado o guardado dentro.")) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onUninstall()
+                }) { Text(tr("Eliminar"), color = NexusTokens.Color.Error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(tr("Cancelar")) } },
+            containerColor = NexusTokens.Color.BgSurface
+        )
+    }
 }

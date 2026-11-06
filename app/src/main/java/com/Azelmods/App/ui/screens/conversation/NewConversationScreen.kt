@@ -344,6 +344,16 @@ fun ContactRow(
     contact: User,
     onClick: () -> Unit
 ) {
+    com.Azelmods.App.ui.components.ListRowFrame(contact.uid, contact.photoUrl) {
+        ContactRowBody(contact, onClick)
+    }
+}
+
+@Composable
+private fun ContactRowBody(
+    contact: User,
+    onClick: () -> Unit
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()

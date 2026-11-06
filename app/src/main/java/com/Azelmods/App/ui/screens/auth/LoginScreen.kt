@@ -82,7 +82,23 @@ fun LoginScreen(
                 modifier = Modifier.focusRequester(passwordFocus)
             )
 
+            TextButton(
+                onClick = viewModel::sendPasswordReset,
+                enabled = !state.isLoading,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(tr("¿Olvidaste tu contraseña?"))
+            }
+
             AuthError(state.error)
+            state.notice?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = NexusTokens.Color.Online,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             NexusButton(
                 text = tr("Entrar"),
