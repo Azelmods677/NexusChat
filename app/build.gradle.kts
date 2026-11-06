@@ -49,8 +49,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 37  // Android 17
-        versionCode = 800
-        versionName = "8.0.0"
+        versionCode = 801
+        versionName = "8.0.1"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
@@ -268,7 +268,7 @@ dependencies {
 
     // ── Serialization 2026 ─────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")
-    implementation("org.json:json:20240303")
+    testImplementation("org.json:json:20240303")  // Android ya trae org.json: incluirlo en el APK rompe la release con R8
 
     // ── Emoji Support ──────────────────────────────────────
     implementation("com.vanniktech:emoji-google:0.18.0")

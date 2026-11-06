@@ -229,3 +229,6 @@
 
 # Formatos opcionales de commons-compress: solo se usa XZ para descomprimir Kali.
 -dontwarn com.github.luben.zstd.ZstdInputStream
+
+# org.json es del sistema: nunca renombrarlo ni copiarlo dentro del APK.
+-keep class org.json.** { *; }

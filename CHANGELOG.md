@@ -32,6 +32,13 @@
 
 ---
 
+<a id="v801"></a>
+## v8.0.1
+
+- Corregido el cierre inesperado al abrir la app en la versión 8.0.0.
+
+---
+
 <a id="v800"></a>
 ## v8.0.0: tu app, a tu manera
 
