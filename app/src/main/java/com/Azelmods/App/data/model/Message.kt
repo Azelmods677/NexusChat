@@ -14,6 +14,8 @@ data class Message(
     val isEdited: Boolean = false,
     val isGroup: Boolean = false, // Added for compatibility
     val replyTo: String? = null,
+    /** Grabada con el micrófono: se muestra distinta de un archivo de audio. */
+    val isVoice: Boolean = false,
     val reactions: Map<String, String> = emptyMap(), // userId to emoji
     val mediaUrl: String? = null, // URL for image/video/audio
     val mediaType: String? = null, // IMAGE, VIDEO, AUDIO, GIF, GIF_VIDEO, DOCUMENT, LOCATION, STICKER, SYSTEM

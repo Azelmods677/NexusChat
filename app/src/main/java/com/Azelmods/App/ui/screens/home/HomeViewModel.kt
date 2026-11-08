@@ -605,8 +605,9 @@ class HomeViewModel @Inject constructor(
                 ?: if (otherUid == com.Azelmods.App.data.demo.DemoAssistant.USER_ID) "Azel Assistant" else tr("Anónimo")
         }
 
-        // Prefer photoUrl, fall back to profilePhotoUrl.
-        val photoUrl = (otherUserData?.get("photoUrl") as? String)
+        // Prefer photoUrl, fall back to profilePhotoUrl. Un grupo usa su propia foto.
+        val photoUrl = (if (chatType == ChatType.GROUP) (data["groupPhoto"] as? String)?.takeIf { it.isNotBlank() } else null)
+            ?: (otherUserData?.get("photoUrl") as? String)
             ?.takeIf { it.isNotBlank() }
             ?: (otherUserData?.get("profilePhotoUrl") as? String)
                 ?.takeIf { it.isNotBlank() }

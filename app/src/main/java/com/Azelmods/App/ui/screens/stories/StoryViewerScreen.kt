@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.StickyNote2
+import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,6 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material.icons.outlined.Keyboard
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +69,7 @@ fun StoryViewerScreen(
     var isPaused by remember { mutableStateOf(false) }
     var showReplySheet by remember { mutableStateOf(false) }
     var replyText by remember { mutableStateOf("") }
+    var bottomBarHeight by remember { mutableIntStateOf(0) }
     var showViewersSheet by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -519,7 +525,7 @@ fun StoryViewerScreen(
                         )
                     )
                     .padding(
-                        bottom = 88.dp,
+                        bottom = with(androidx.compose.ui.platform.LocalDensity.current) { bottomBarHeight.toDp() } + 12.dp,
                         start = 16.dp,
                         end = 16.dp,
                         top = 40.dp
@@ -686,7 +692,13 @@ fun StoryViewerScreen(
         }
 
         // ── 5. BOTTOM BAR (reply / viewers) + snackbar ──────────────────────
-        Column(modifier = Modifier.align(Alignment.BottomCenter)) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))))
+                .onSizeChanged { bottomBarHeight = it.height }
+        ) {
 
             // Snackbar floats just above the bar
             SnackbarHost(hostState = snackbarHostState)
@@ -708,38 +720,57 @@ fun StoryViewerScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.45f))
+                    .navigationBarsPadding()
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (currentStory.userId != currentUserId) {
-                    // ── Reply pill (opens sheet) ──────────────────────────────
-                    Box(
+                    // Cápsula de respuesta: la foto de quien publicó y a quién respondes.
+                    Row(
                         modifier = Modifier
                             .weight(1f)
+                            .height(48.dp)
                             .clip(RoundedCornerShape(24.dp))
-                            .border(
-                                width = 1.dp,
-                                color = Color.White.copy(alpha = 0.45f),
-                                shape = RoundedCornerShape(24.dp)
-                            )
-                            .clickable { showReplySheet = true }
-                            .padding(horizontal = 16.dp, vertical = 11.dp)
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .border(1.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(24.dp))
+                            .clickable {
+                                isPaused = true
+                                showReplySheet = true
+                            }
+                            .padding(start = 6.dp, end = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        com.Azelmods.App.ui.components.UserAvatar(
+                            name = currentStory.userName.ifBlank { "?" },
+                            photoUrl = currentStory.userPhotoUrl,
+                            size = 36.dp
+                        )
+                        Spacer(Modifier.width(10.dp))
                         Text(
-                            text = "Reply to ${currentStory.userName.ifBlank { "story" }}…",
-                            color = Color.White.copy(alpha = 0.65f),
-                            style = MaterialTheme.typography.bodyMedium
+                            text = tr("Responder a %s…", currentStory.userName.ifBlank { tr("la historia") }),
+                            color = Color.White.copy(alpha = 0.78f),
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    IconButton(onClick = { showReplySheet = true }) {
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Box(
+                        Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .clickable {
+                                isPaused = true
+                                showReplySheet = true
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Send,
                             contentDescription = tr("Enviar respuesta"),
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 } else {
@@ -790,82 +821,151 @@ fun StoryViewerScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp)
                     .navigationBarsPadding()
+                    .imePadding()
             ) {
-                // Handle indicator
-                Box(
-                    modifier = Modifier
-                        .width(36.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color.White.copy(alpha = 0.3f))
-                        .align(Alignment.CenterHorizontally)
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Reply to ${currentStory.userName.ifBlank { "story" }}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                OutlinedTextField(
-                    value = replyText,
-                    onValueChange = { replyText = it },
-                    placeholder = {
-                        Text(tr("Escribe un mensaje…"), color = Color.White.copy(alpha = 0.38f))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 4,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Button(
-                    onClick = {
-                        val trimmed = replyText.trim()
-                        if (trimmed.isNotBlank()) {
-                            viewModel.sendReply(
-                                storyOwnerId = currentStory.userId,
-                                storyId = currentStory.storyId,
-                                text = trimmed
-                            )
-                            replyText = ""
-                            showReplySheet = false
-                        }
-                    },
-                    modifier = Modifier
+                // Qué historia respondes: miniatura, autor y su texto.
+                Row(
+                    Modifier
                         .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = replyText.isNotBlank()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White.copy(alpha = 0.06f))
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = tr("Enviar respuesta"),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Box(
+                        Modifier
+                            .size(width = 44.dp, height = 60.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                currentStory.backgroundColor?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+                                    ?: Color.White.copy(alpha = 0.1f)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (currentStory.type == "IMAGE" && !currentStory.mediaUrl.isNullOrBlank()) {
+                            SubcomposeAsyncImage(
+                                model = currentStory.mediaUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (currentStory.type == "VIDEO") {
+                            Icon(Icons.Default.PlayArrow, null, tint = Color.White)
+                        } else {
+                            Text(currentStory.text.orEmpty().take(2), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            currentStory.userName.ifBlank { tr("Historia") },
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            (currentStory.caption ?: currentStory.text).orEmpty().ifBlank { tr("Historia") },
+                            color = Color.White.copy(alpha = 0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
+                Spacer(Modifier.height(12.dp))
+                QuickReactionRow(
+                    selectedEmoji = state.myReactions[currentStory.storyId],
+                    onReact = { emoji ->
+                        viewModel.addReaction(storyOwnerId = currentStory.userId, storyId = currentStory.storyId, emoji = emoji)
+                        showReplySheet = false
+                    }
+                )
+                Spacer(Modifier.height(10.dp))
+
+                var replyPanel by remember { mutableStateOf(0) }
+                val sendReply = {
+                    val trimmed = replyText.trim()
+                    if (trimmed.isNotBlank()) {
+                        viewModel.sendReply(storyOwnerId = currentStory.userId, storyId = currentStory.storyId, text = trimmed)
+                        replyText = ""
+                        showReplySheet = false
+                    }
+                }
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .heightIn(min = 48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Color.White.copy(alpha = 0.08f)),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { replyPanel = if (replyPanel == 1) 0 else 1 }) {
+                            Icon(
+                                if (replyPanel == 1) Icons.Outlined.Keyboard else Icons.Outlined.EmojiEmotions,
+                                contentDescription = tr("Emojis"),
+                                tint = if (replyPanel == 1) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = replyText,
+                            onValueChange = { replyText = it },
+                            textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+                            maxLines = 4,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(vertical = 12.dp),
+                            decorationBox = { inner ->
+                                if (replyText.isEmpty()) {
+                                    Text(tr("Escribe tu respuesta…"), color = Color.White.copy(alpha = 0.4f), style = MaterialTheme.typography.bodyLarge)
+                                }
+                                inner()
+                            }
+                        )
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { replyPanel = if (replyPanel == 2) 0 else 2 }) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.StickyNote2,
+                                contentDescription = tr("Stickers"),
+                                tint = if (replyPanel == 2) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(if (replyText.isNotBlank()) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.1f))
+                            .clickable(enabled = replyText.isNotBlank()) { sendReply() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = tr("Enviar respuesta"),
+                            tint = if (replyText.isNotBlank()) MaterialTheme.colorScheme.onPrimary else Color.White.copy(alpha = 0.4f),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                when (replyPanel) {
+                    1 -> Box(Modifier.padding(top = 8.dp).height(260.dp)) {
+                        com.Azelmods.App.ui.components.CompleteEmojiPicker(onEmojiSelected = { replyText += it })
+                    }
+                    2 -> Box(Modifier.padding(top = 8.dp)) {
+                        com.Azelmods.App.ui.components.StickerPicker(
+                            onStickerSelected = { sticker ->
+                                viewModel.sendStickerReply(currentStory.userId, currentStory.storyId, sticker)
+                                replyText = ""
+                                showReplySheet = false
+                            },
+                            onDismiss = { replyPanel = 0 }
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(12.dp))
             }
         }
@@ -1042,7 +1142,7 @@ private fun QuickReactionRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.45f))
+            .padding(top = 4.dp)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically

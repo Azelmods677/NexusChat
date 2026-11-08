@@ -80,7 +80,7 @@ class AuthRepositoryImpl @Inject constructor(
                 Resource.Error("Registration failed")
             }
         } catch (e: FirebaseAuthException) {
-            Resource.Error(e.message ?: "Registration failed")
+            Resource.Error(authErrorMessage(e))
         } catch (e: Exception) {
             Resource.Error(e.message ?: "An error occurred")
         }
@@ -158,3 +158,20 @@ class AuthRepositoryImpl @Inject constructor(
         return firebaseManager.isUserAuthenticated()
     }
 }
+
+/** Los errores de Firebase en palabras claras, con el aviso de actualizar cuando no se sabe la causa. */
+internal fun authErrorMessage(e: FirebaseAuthException): String {
+    val tr = { text: String -> com.Azelmods.App.i18n.tr(text) }
+    return when (e.errorCode) {
+        "ERROR_EMAIL_ALREADY_IN_USE" -> tr("Ese correo ya tiene una cuenta. Inicia sesión con él.")
+        "ERROR_INVALID_EMAIL" -> tr("El correo no es válido.")
+        "ERROR_WEAK_PASSWORD" -> tr("La contraseña es demasiado débil: usa al menos 6 caracteres.")
+        "ERROR_TOO_MANY_REQUESTS" -> tr("Demasiados intentos. Espera un rato y vuelve a probar.")
+        "ERROR_NETWORK_REQUEST_FAILED" -> tr("Sin conexión con el servidor. Revisa tu internet.")
+        "ERROR_OPERATION_NOT_ALLOWED" -> tr("Este tipo de registro no está disponible ahora mismo.")
+        else -> (e.message ?: tr("No se pudo crear la cuenta")) + "\n" + UPDATE_HINT()
+    }
+}
+
+/** Muchos errores de registro desaparecen con la última versión de la app. */
+internal fun UPDATE_HINT(): String = com.Azelmods.App.i18n.tr("Si el error continúa, actualiza NexusChat a la última versión.")

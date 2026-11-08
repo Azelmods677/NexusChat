@@ -141,7 +141,7 @@ class LoginViewModelTest : StringSpec({
             viewModel.onPasswordChange("wrongpass")
             viewModel.login()
 
-            viewModel.state.value.error shouldBe "Invalid credentials"
+            viewModel.state.value.error!!.startsWith("Invalid credentials") shouldBe true
             viewModel.state.value.isSuccess shouldBe false
         }
     }
@@ -168,7 +168,7 @@ class LoginViewModelTest : StringSpec({
             viewModel.login()
 
             viewModel.state.value.let { state ->
-                state.error shouldBe "Network error"
+                state.error!!.startsWith("Network error") shouldBe true
                 state.isLoading shouldBe false
                 state.isSuccess shouldBe false
             }

@@ -9,6 +9,9 @@ import android.view.WindowManager
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.automirrored.filled.Forward
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -80,6 +83,9 @@ fun MessageBubble(
     message: Message,
     isOwnMessage: Boolean,
     repliedMessage: Message? = null,
+    repliedSenderName: String? = null,
+    onQuoteClick: (() -> Unit)? = null,
+    onMentionClick: ((String) -> Unit)? = null,
     autoplayVideos: Boolean = false,
     serverNow: () -> Long = { System.currentTimeMillis() },
     onReply: () -> Unit = {},
@@ -203,7 +209,27 @@ fun MessageBubble(
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp)
                 )
             }
-            if (repliedMessage != null) ReplyQuote(repliedMessage, isOwnMessage)
+            if (message.forwardedFrom != null) {
+                Row(
+                    Modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        androidx.compose.material.icons.Icons.AutoMirrored.Filled.Forward,
+                        contentDescription = null,
+                        tint = NexusTokens.Color.TextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        tr("Reenviado"),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                        color = NexusTokens.Color.TextMuted
+                    )
+                }
+            }
+            if (repliedMessage != null) ReplyQuote(repliedMessage, isOwnMessage, repliedSenderName, onQuoteClick)
             if (message.replyTo?.startsWith("story:") == true) StoryReplyQuote()
 
             if (message.isViewOnce) {
@@ -260,8 +286,8 @@ fun MessageBubble(
                     var expanded by remember(message.messageId) { mutableStateOf(false) }
                     val isLong = text.length > LONG_MESSAGE_CHARS
                     val mentionColor = MaterialTheme.colorScheme.primary
-                    val styledText = remember(text, mentionColor) {
-                        com.Azelmods.App.ui.screens.chat.highlightMentions(text, mentionColor)
+                    val styledText = remember(text, mentionColor, onMentionClick != null) {
+                        com.Azelmods.App.ui.screens.chat.highlightMentions(text, mentionColor, onMentionClick)
                     }
                     Text(
                         text = styledText,
@@ -705,11 +731,33 @@ private fun MediaContent(
         }
 
         "AUDIO" -> message.mediaUrl?.let { url ->
-            Box(Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp)) {
-                com.Azelmods.App.ui.components.AudioMessagePlayer(
-                    audioUrl = url,
-                    accentColor = MaterialTheme.colorScheme.primary
-                )
+            val voice = message.isVoice
+            val tone = if (voice) MaterialTheme.colorScheme.primary else NexusTokens.Color.Warning
+            Row(
+                Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(38.dp)
+                        .clip(if (voice) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(10.dp))
+                        .background(tone.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        if (voice) androidx.compose.material.icons.Icons.Filled.Mic else androidx.compose.material.icons.Icons.Filled.MusicNote,
+                        contentDescription = if (voice) tr("Nota de voz") else tr("Audio"),
+                        tint = tone,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Column(Modifier.weight(1f, fill = false)) {
+                    if (!voice) {
+                        Text(tr("Audio"), style = MaterialTheme.typography.labelSmall, color = tone, modifier = Modifier.padding(start = 8.dp))
+                    }
+                    com.Azelmods.App.ui.components.AudioMessagePlayer(audioUrl = url, accentColor = tone)
+                }
             }
         }
 
@@ -858,38 +906,41 @@ private fun FullscreenVideo(url: String, onClose: () -> Unit) {
 }
 
 @Composable
-private fun ReplyQuote(replied: Message, isOwnMessage: Boolean) {
-    val preview = when {
-        replied.isViewOnce -> tr("Mensaje de una sola vista")
-        replied.mediaType == "IMAGE" -> tr("Foto")
-        replied.mediaType == "VIDEO" -> tr("Vídeo")
-        replied.mediaType == "GIF" || replied.mediaType == "GIF_VIDEO" -> "GIF"
-        replied.mediaType == "AUDIO" -> tr("Audio")
-        replied.mediaType == "DOCUMENT" -> tr("Documento")
-        replied.mediaType == "LOCATION" -> tr("Ubicación")
-        else -> replied.content
-    }
+private fun ReplyQuote(replied: Message, isOwnMessage: Boolean, senderName: String?, onClick: (() -> Unit)?) {
+    val accent = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier
             .padding(start = 8.dp, end = 8.dp, top = 8.dp)
             .clip(RoundedCornerShape(NexusTokens.Radius.sm))
             .background(if (isOwnMessage) Color.Black.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.05f))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .height(IntrinsicSize.Min)
     ) {
         Box(
             Modifier
                 .width(3.dp)
                 .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.primary)
+                .background(accent)
         )
-        Text(
-            text = preview,
-            style = MaterialTheme.typography.bodySmall,
-            color = NexusTokens.Color.TextSecondary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-        )
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+            if (!senderName.isNullOrBlank()) {
+                Text(
+                    senderName,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    color = accent,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Text(
+                text = com.Azelmods.App.ui.screens.chat.messagePreviewText(replied),
+                style = MaterialTheme.typography.bodySmall,
+                color = NexusTokens.Color.TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

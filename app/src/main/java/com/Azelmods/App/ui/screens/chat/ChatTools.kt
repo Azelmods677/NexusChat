@@ -273,10 +273,10 @@ class ChatTargetsViewModel @Inject constructor(
                 messages.sortedBy { it.timestamp }.forEach { message ->
                     val media = message.mediaUrl?.takeIf { it.isNotBlank() }
                     when {
-                        media != null && message.mediaType == "STICKER" -> repository.sendStickerMessage(target.chatId, media)
+                        media != null && message.mediaType == "STICKER" -> repository.sendStickerMessage(target.chatId, media, forwarded = true)
                         media != null && message.mediaType != null ->
-                            repository.sendMediaMessage(target.chatId, media, message.mediaType!!, message.content)
-                        message.content.isNotBlank() -> repository.sendMessage(target.chatId, message.content)
+                            repository.sendMediaMessage(target.chatId, media, message.mediaType!!, message.content, forwarded = true)
+                        message.content.isNotBlank() -> repository.sendMessage(target.chatId, message.content, forwarded = true)
                     }
                 }
             }.isSuccess
@@ -296,16 +296,19 @@ private fun TargetList(title: String, targets: List<ChatTarget>, onDismiss: () -
             } else {
                 LazyColumn(Modifier.heightIn(max = 380.dp)) {
                     items(targets, key = { it.chatId }) { target ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onPick(target) }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            UserAvatar(target.title, target.photo, size = 40.dp)
-                            Spacer(Modifier.width(12.dp))
-                            Text(target.title, color = NexusTokens.Color.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        // Con el mismo estilo de fila que la lista de chats.
+                        com.Azelmods.App.ui.components.ListRowFrame(seed = target.chatId, photoUrl = target.photo) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onPick(target) }
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                UserAvatar(target.title, target.photo, size = 40.dp)
+                                Spacer(Modifier.width(12.dp))
+                                Text(target.title, color = NexusTokens.Color.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }
@@ -453,7 +456,11 @@ fun ScheduledMessagesDialog(chatId: String, onDismiss: () -> Unit) {
 private val MENTION_PATTERN = Regex("""(?<![\p{L}\p{N}_])@[\p{L}\p{N}_.\-]+( [\p{Lu}][\p{L}\p{N}_.\-]*)?""")
 
 /** Colorea las menciones; el resto del texto queda igual. */
-fun highlightMentions(text: String, color: androidx.compose.ui.graphics.Color): androidx.compose.ui.text.AnnotatedString {
+fun highlightMentions(
+    text: String,
+    color: androidx.compose.ui.graphics.Color,
+    onMentionClick: ((String) -> Unit)? = null
+): androidx.compose.ui.text.AnnotatedString {
     val builder = androidx.compose.ui.text.AnnotatedString.Builder(text)
     MENTION_PATTERN.findAll(text).forEach { match ->
         builder.addStyle(
@@ -464,8 +471,34 @@ fun highlightMentions(text: String, color: androidx.compose.ui.graphics.Color): 
             match.range.first,
             match.range.last + 1
         )
+        if (onMentionClick != null) {
+            val name = match.value.removePrefix("@").trim()
+            builder.addLink(
+                androidx.compose.ui.text.LinkAnnotation.Clickable(name) { onMentionClick(name) },
+                match.range.first,
+                match.range.last + 1
+            )
+        }
     }
     return builder.toAnnotatedString()
+}
+
+/** Texto corto para citar un mensaje: nunca muestra enlaces internos ni marcas. */
+fun messagePreviewText(message: com.Azelmods.App.data.model.Message): String {
+    val caption = withoutLinkPreview(message.content).trim()
+    return when {
+        message.isViewOnce -> tr("Mensaje de una sola vista")
+        message.mediaType == "STICKER" -> tr("Sticker")
+        message.mediaType == "IMAGE" -> caption.ifBlank { tr("Foto") }
+        message.mediaType == "VIDEO" -> caption.ifBlank { tr("Vídeo") }
+        message.mediaType == "GIF" || message.mediaType == "GIF_VIDEO" -> "GIF"
+        message.mediaType == "AUDIO" && message.isVoice -> tr("Nota de voz")
+        message.mediaType == "AUDIO" -> caption.ifBlank { tr("Audio") }
+        message.mediaType == "DOCUMENT" -> caption.ifBlank { tr("Documento") }
+        message.mediaType == "LOCATION" -> tr("Ubicación")
+        caption.startsWith("http") && "firebasestorage" in caption -> tr("Archivo")
+        else -> caption
+    }
 }
 
 /** Lo que va escrito tras la última @, si se está escribiendo una mención; si no, null. */

@@ -53,6 +53,8 @@ data class GroupMember(val uid: String, val name: String, val handle: String, va
 
 data class GroupInfo(
     val name: String = "",
+    val photo: String? = null,
+    val description: String = "",
     val members: List<GroupMember> = emptyList(),
     val inviteCode: String? = null,
     val iAmAdmin: Boolean = false,
@@ -116,6 +118,8 @@ class GroupViewModel @Inject constructor(
                     .sortedWith(compareByDescending<GroupMember> { it.admin }.thenBy { it.name.lowercase() })
                 _info.value = GroupInfo(
                     name = chat.child("groupName").get().await().getValue(String::class.java).orEmpty(),
+                    photo = chat.child("groupPhoto").get().await().getValue(String::class.java)?.ifBlank { null },
+                    description = chat.child("groupDescription").get().await().getValue(String::class.java).orEmpty(),
                     members = members,
                     inviteCode = chat.child("inviteCode").get().await().getValue(String::class.java),
                     iAmAdmin = me in adminSet,
@@ -125,6 +129,29 @@ class GroupViewModel @Inject constructor(
                 _info.value = _info.value.copy(loading = false)
                 _message.value = tr("No se pudo cargar el grupo")
             }
+        }
+    }
+
+    /** Foto del grupo: se sube junto a los archivos del chat, donde ya pueden escribir sus miembros. */
+    fun setPhoto(chatId: String, uri: android.net.Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                val ref = com.google.firebase.storage.FirebaseStorage.getInstance().reference
+                    .child("chats/$chatId/group_photo_${System.currentTimeMillis()}.jpg")
+                ref.putFile(uri, com.google.firebase.storage.StorageMetadata.Builder().setContentType("image/jpeg").build()).await()
+                val url = ref.downloadUrl.await().toString()
+                root.child("chats").child(chatId).child("groupPhoto").setValue(url).await()
+                _info.value = _info.value.copy(photo = url)
+            }.onFailure { _message.value = tr("No se pudo cambiar la foto del grupo") }
+        }
+    }
+
+    fun setDescription(chatId: String, text: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching {
+                root.child("chats").child(chatId).child("groupDescription").setValue(text.trim()).await()
+                _info.value = _info.value.copy(description = text.trim())
+            }.onFailure { _message.value = tr("No se pudo guardar la descripción") }
         }
     }
 
@@ -316,6 +343,13 @@ fun GroupInfoScreen(chatId: String, navController: NavController, viewModel: Gro
             return@Scaffold
         }
         LazyColumn(Modifier.padding(padding).fillMaxSize()) {
+            item {
+                GroupHeader(
+                    info = info,
+                    onPhoto = { uri -> viewModel.setPhoto(chatId, uri) },
+                    onDescription = { text -> viewModel.setDescription(chatId, text) }
+                )
+            }
             item {
                 NexusSectionHeader(tr("Enlace de invitación"))
                 InviteCard(
@@ -618,4 +652,78 @@ fun JoinGroupDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } },
         containerColor = NexusTokens.Color.BgSurface
     )
+}
+
+/** Foto, nombre y descripción del grupo. Solo los administradores pueden cambiarlos. */
+@Composable
+private fun GroupHeader(info: GroupInfo, onPhoto: (android.net.Uri) -> Unit, onDescription: (String) -> Unit) {
+    var editing by remember { mutableStateOf(false) }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(onPhoto) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 20.dp, horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(contentAlignment = Alignment.BottomEnd) {
+            com.Azelmods.App.ui.components.UserAvatar(
+                name = info.name.ifBlank { tr("Grupo") },
+                photoUrl = info.photo,
+                size = 104.dp,
+                modifier = if (info.iAmAdmin) Modifier.clickable {
+                    picker.launch(
+                        androidx.activity.result.PickVisualMediaRequest(
+                            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
+                } else Modifier
+            )
+            if (info.iAmAdmin) {
+                Box(
+                    Modifier
+                        .size(32.dp)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Outlined.Edit, tr("Cambiar foto del grupo"), tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(info.name.ifBlank { tr("Grupo") }, style = MaterialTheme.typography.titleLarge, color = NexusTokens.Color.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(6.dp))
+        val described = info.description.isNotBlank()
+        Text(
+            when {
+                described -> info.description
+                info.iAmAdmin -> tr("Añade una descripción del grupo")
+                else -> tr("Sin descripción")
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (described) NexusTokens.Color.TextSecondary else if (info.iAmAdmin) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = if (info.iAmAdmin) Modifier.clickable { editing = true } else Modifier
+        )
+    }
+    if (editing) {
+        var text by remember { mutableStateOf(info.description) }
+        AlertDialog(
+            onDismissRequest = { editing = false },
+            title = { Text(tr("Descripción del grupo")) },
+            text = {
+                OutlinedTextField(text, { text = it.take(500) }, maxLines = 6, modifier = Modifier.fillMaxWidth())
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDescription(text)
+                    editing = false
+                }) { Text(tr("Guardar")) }
+            },
+            dismissButton = { TextButton(onClick = { editing = false }) { Text(tr("Cancelar")) } },
+            containerColor = NexusTokens.Color.BgSurface
+        )
+    }
 }

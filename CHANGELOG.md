@@ -32,6 +32,32 @@
 
 ---
 
+<a id="v810"></a>
+## v8.1.0
+
+### Chats
+- Las respuestas muestran quién escribió el mensaje y nunca un enlace interno; los stickers aparecen como "Sticker".
+- Tocar una respuesta lleva al mensaje original, y tocar una @mención abre el perfil.
+- Elegir otra vez la misma reacción la quita.
+- Los mensajes reenviados llevan la etiqueta "Reenviado".
+- Fotos y vídeos con texto antes de enviarlos.
+- Notas de voz y archivos de audio se distinguen a simple vista.
+- Entrar a un chat es inmediato, también en los grupos.
+
+### Stickers
+- Ahora viven en el panel de emojis, con favoritos, quitar de recientes y borrar.
+
+### Grupos e historias
+- Foto y descripción de los grupos.
+- Las historias se responden con emojis y stickers, con una barra y una respuesta rediseñadas, y la descripción ya no queda tapada.
+
+### Diseño
+- Cuatro campos de escribir nuevos: foto con aro, foto cuadrada, cápsula central y marco con línea.
+- El estilo de fila se aplica también a Archivados y a la lista de reenviar.
+- El estudio muestra una miniatura de cada opción.
+
+---
+
 <a id="v801"></a>
 ## v8.0.1
 

@@ -103,8 +103,21 @@ enum class ChatEntryStyle(val title: String) {
     BLOCK("Bloque"),
     PHOTO("Con tu foto"),
     SOCIAL("Social"),
-    FLAT("Plana")
+    FLAT("Plana"),
+    RING("Foto con aro"),
+    SQUARE("Foto cuadrada"),
+    CAPSULE("Cápsula central"),
+    FRAMED("Marco con línea")
 }
+
+/** Estilos en los que todos los iconos llevan el color de acento, sin círculo detrás. */
+fun ChatEntryStyle.coloredIcons(): Boolean =
+    this == ChatEntryStyle.SOCIAL || this == ChatEntryStyle.FLAT || this == ChatEntryStyle.RING ||
+        this == ChatEntryStyle.SQUARE || this == ChatEntryStyle.CAPSULE || this == ChatEntryStyle.FRAMED
+
+/** Emoji dentro del campo a la derecha, y cámara fuera junto al micrófono. */
+fun ChatEntryStyle.cameraOutside(): Boolean =
+    this == ChatEntryStyle.RING || this == ChatEntryStyle.SQUARE || this == ChatEntryStyle.CAPSULE || this == ChatEntryStyle.FRAMED
 
 /** Qué hay encima de la lista de chats. */
 enum class HomeStyle(val title: String, val hint: String) {
@@ -707,12 +720,26 @@ private fun Modifier.neonGlow(color: Color): Modifier = drawBehind {
 /** Marco del campo donde se escribe. El contenido (iconos y texto) es siempre el mismo. */
 @Composable
 fun chatEntryModifier(style: ChatEntryStyle, accent: Color): Modifier = when (style) {
-    ChatEntryStyle.PILL, ChatEntryStyle.PHOTO, ChatEntryStyle.SOCIAL -> Modifier
+    ChatEntryStyle.PILL, ChatEntryStyle.PHOTO, ChatEntryStyle.SOCIAL, ChatEntryStyle.CAPSULE -> Modifier
         .clip(RoundedCornerShape(25.dp))
         .background(NexusTokens.Color.BgElevated)
 
     // Sin caja: el campo se funde con la barra y solo destacan sus iconos.
-    ChatEntryStyle.FLAT -> Modifier
+    ChatEntryStyle.FLAT, ChatEntryStyle.RING, ChatEntryStyle.SQUARE -> Modifier
+
+    // Borde de color, esquinas suaves y una línea bajo el texto.
+    ChatEntryStyle.FRAMED -> {
+        val shape = RoundedCornerShape(8.dp)
+        Modifier
+            .clip(shape)
+            .background(NexusTokens.Color.BgElevated)
+            .border(1.5.dp, accent, shape)
+            .drawBehind {
+                val stroke = 2.dp.toPx()
+                val y = size.height - 9.dp.toPx()
+                drawLine(accent, Offset(12.dp.toPx(), y), Offset(size.width - 48.dp.toPx(), y), stroke)
+            }
+    }
 
     ChatEntryStyle.DEPTH -> {
         val shape = RoundedCornerShape(16.dp)

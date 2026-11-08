@@ -73,7 +73,7 @@ class RegisterViewModel @Inject constructor(
                 is Resource.Success -> onSignedIn()
                 is Resource.Error -> _state.value = _state.value.copy(
                     isLoading = false,
-                    error = result.message ?: tr("No se pudo crear la cuenta")
+                    error = (result.message ?: tr("No se pudo crear la cuenta")).let { if ("actualiza" in it) it else it + "\n" + com.Azelmods.App.data.repository.UPDATE_HINT() }
                 )
                 is Resource.Loading -> Unit
             }
@@ -91,7 +91,7 @@ class RegisterViewModel @Inject constructor(
                     is Resource.Success -> onSignedIn()
                     is Resource.Error -> _state.value = _state.value.copy(
                         isLoading = false,
-                        error = "No se pudo iniciar sesión: ${result.message}"
+                        error = tr("No se pudo iniciar sesión") + ": ${result.message}\n" + com.Azelmods.App.data.repository.UPDATE_HINT()
                     )
                     is Resource.Loading -> Unit
                 }

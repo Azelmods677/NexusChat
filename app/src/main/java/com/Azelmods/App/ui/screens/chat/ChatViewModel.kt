@@ -52,6 +52,7 @@ data class ChatState(
     val contact: User? = null,
     /** Solo en grupos: su nombre y sus miembros. */
     val groupName: String? = null,
+    val groupPhoto: String? = null,
     val groupMembers: Map<String, GroupChatMember> = emptyMap(),
     val isTyping: Boolean = false,
     val typingUserName: String? = null,
@@ -280,7 +281,7 @@ class ChatViewModel @Inject constructor(
      * a fotos, vídeos, GIF y audio igual que al texto. Antes estos envíos ignoraban el
      * modo temporal, de modo que justo lo más delicado era lo que no desaparecía.
      */
-    private suspend fun publishMedia(chatId: String, url: String, type: String, caption: String = "") {
+    private suspend fun publishMedia(chatId: String, url: String, type: String, caption: String = "", extra: Map<String, Any> = emptyMap()) {
         val state = _state.value
         if (state.viewOnceNext || state.chatTimerSeconds > 0) {
             databaseRepository.sendEphemeralMediaMessage(
@@ -289,11 +290,12 @@ class ChatViewModel @Inject constructor(
                 mediaType = type,
                 caption = caption,
                 isViewOnce = state.viewOnceNext,
-                selfDestructDuration = state.chatTimerSeconds
+                selfDestructDuration = state.chatTimerSeconds,
+                extra = extra
             )
             if (state.viewOnceNext) _state.value = _state.value.copy(viewOnceNext = false)
         } else {
-            databaseRepository.sendMediaMessage(chatId = chatId, mediaUrl = url, mediaType = type, caption = caption)
+            databaseRepository.sendMediaMessage(chatId = chatId, mediaUrl = url, mediaType = type, caption = caption, extra = extra)
         }
     }
 
@@ -414,6 +416,7 @@ class ChatViewModel @Inject constructor(
         runCatching {
             val chat = FirebaseDatabase.getInstance().reference.child("chats").child(chatId)
             val name = chat.child("groupName").get().await().getValue(String::class.java).orEmpty()
+            val photo = chat.child("groupPhoto").get().await().getValue(String::class.java)?.ifBlank { null }
             val ids = chat.child("members").get().await().children.mapNotNull { it.key }
             val members = ids.associateWith { uid ->
                 val user = runCatching { databaseRepository.getUserById(uid) }.getOrNull()
@@ -425,7 +428,7 @@ class ChatViewModel @Inject constructor(
                     photoUrl = (user?.get("photoUrl") as? String)?.ifBlank { null }
                 )
             }
-            _state.value = _state.value.copy(groupName = name, groupMembers = members)
+            _state.value = _state.value.copy(groupName = name, groupPhoto = photo, groupMembers = members)
         }.onFailure { android.util.Log.w("ChatViewModel", "No se pudo leer el grupo: ${it.message}") }
     }
 
@@ -557,7 +560,8 @@ class ChatViewModel @Inject constructor(
                     contact = contact,
                     isLoading = false
                 )
-                if (chatId.startsWith("group_")) loadGroupInfo(chatId)
+                // En paralelo: los mensajes guardados no esperan a la red de los miembros.
+                if (chatId.startsWith("group_")) viewModelScope.launch(Dispatchers.IO) { loadGroupInfo(chatId) }
 
                 // ── OFFLINE CACHE: show cached messages immediately ──
                 val cachedMessages = cacheManager.getCachedMessages(chatId)
@@ -714,6 +718,7 @@ class ChatViewModel @Inject constructor(
             timestamp = timestamp,
             status = parseMessageStatus(data["status"]),
             replyTo = data["replyTo"] as? String,
+            isVoice = data["isVoice"] as? Boolean ?: false,
             reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
             mediaUrl = data["mediaUrl"] as? String,
             mediaType = data["mediaType"] as? String,
@@ -1004,7 +1009,7 @@ class ChatViewModel @Inject constructor(
     /**
      * Send an image message.
      */
-    fun sendImageMessage(imageUri: Uri, chatId: String) {
+    fun sendImageMessage(imageUri: Uri, chatId: String, caption: String = "") {
         val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
@@ -1017,7 +1022,7 @@ class ChatViewModel @Inject constructor(
                     imageUri
                 }
                 val imageUrl = storageRepository.uploadChatImage(uriToUpload, targetChatId)
-                publishMedia(targetChatId, imageUrl, "IMAGE")
+                publishMedia(targetChatId, imageUrl, "IMAGE", caption)
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1032,13 +1037,13 @@ class ChatViewModel @Inject constructor(
     /**
      * Send an audio message.
      */
-    fun sendAudioMessage(audioUri: Uri, chatId: String) {
+    fun sendAudioMessage(audioUri: Uri, chatId: String, voice: Boolean = false) {
         val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
                 val audioUrl = storageRepository.uploadChatAudio(audioUri, targetChatId)
-                publishMedia(targetChatId, audioUrl, "AUDIO")
+                publishMedia(targetChatId, audioUrl, "AUDIO", extra = if (voice) mapOf("isVoice" to true) else emptyMap())
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1053,13 +1058,13 @@ class ChatViewModel @Inject constructor(
     /**
      * Send a video message.
      */
-    fun sendVideoMessage(videoUri: Uri, chatId: String) {
+    fun sendVideoMessage(videoUri: Uri, chatId: String, caption: String = "") {
         val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
                 val videoUrl = storageRepository.uploadChatVideo(videoUri, targetChatId)
-                publishMedia(targetChatId, videoUrl, "VIDEO")
+                publishMedia(targetChatId, videoUrl, "VIDEO", caption)
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()

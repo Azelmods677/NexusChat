@@ -24,7 +24,7 @@ private val TERMINAL_CALL_STATUSES = setOf("ENDED", "DECLINED", "MISSED", "FAILE
 @Singleton
 /** Lo que la lista de chats necesita de cada conversación, sin su historial. */
 private val CHAT_PREVIEW_FIELDS = listOf(
-    "members", "participants", "type", "isGroup", "groupName",
+    "members", "participants", "type", "isGroup", "groupName", "groupPhoto",
     "lastMessage", "lastMessagePayload", "lastMessageKeyId", "lastMessageId", "lastMessageTime", "lastMessageSenderId",
     "unreadCount", "isTyping", "isE2EE"
 )
@@ -116,10 +116,9 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
     }
 
-    suspend fun sendMessage(chatId: String, content: String, replyTo: String? = null) {
-        android.util.Log.d("RealtimeDB", "📤 sendMessage called: chatId=$chatId, content='${content.take(50)}', replyTo=$replyTo")
-        sendMessageInternal(chatId, content, replyTo)
-        android.util.Log.d("RealtimeDB", "✅ sendMessage completed successfully")
+    suspend fun sendMessage(chatId: String, content: String, replyTo: String? = null, forwarded: Boolean = false) {
+        // Nunca se registra el contenido: los logs del sistema no deben ver los mensajes.
+        sendMessageInternal(chatId, content, replyTo, forwarded = forwarded)
     }
 
     suspend fun sendEphemeralMessage(
@@ -145,7 +144,8 @@ class RealtimeDatabaseRepository @Inject constructor(
         replyTo: String? = null,
         isEphemeral: Boolean = false,
         isViewOnce: Boolean = false,
-        selfDestructDuration: Long = 0
+        selfDestructDuration: Long = 0,
+        forwarded: Boolean = false
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
@@ -270,6 +270,7 @@ class RealtimeDatabaseRepository @Inject constructor(
         if (replyTo != null) {
             messageData["replyTo"] = replyTo
         }
+        if (forwarded) messageData["forwardedFrom"] = "1"
 
         if (isEphemeral) {
             // La cuenta atrás NO empieza aquí, sino cuando el destinatario lo abre
@@ -879,8 +880,11 @@ class RealtimeDatabaseRepository @Inject constructor(
 
     suspend fun addReaction(chatId: String, messageId: String, reaction: String) {
         val userId = auth.currentUser?.uid ?: return
-        database.child("chats").child(chatId).child("messages").child(messageId)
-            .child("reactions").child(userId).setValue(reaction).await()
+        val ref = database.child("chats").child(chatId).child("messages").child(messageId)
+            .child("reactions").child(userId)
+        // Elegir la misma reacción otra vez la quita, como en cualquier mensajero.
+        val current = runCatching { ref.get().await().getValue(String::class.java) }.getOrNull()
+        if (current == reaction) ref.removeValue().await() else ref.setValue(reaction).await()
     }
 
     suspend fun createGroup(groupName: String, members: List<String>): String {
@@ -998,6 +1002,8 @@ class RealtimeDatabaseRepository @Inject constructor(
         caption: String = "",
         isViewOnce: Boolean = false,
         selfDestructDuration: Long = 0
+    ,
+        extra: Map<String, Any> = emptyMap()
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
@@ -1037,6 +1043,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "expireAt" to serverNow() + EPHEMERAL_MAX_UNREAD_MS
         )
 
+        messageData.putAll(extra)
         chatRef.child("messages").child(messageId).setValue(messageData).await()
 
         val lastMessageText = if (isViewOnce) "Mensaje de una sola vista" else "Mensaje temporal"
@@ -1063,6 +1070,10 @@ class RealtimeDatabaseRepository @Inject constructor(
         mediaUrl: String,
         mediaType: String,
         caption: String = ""
+    ,
+        forwarded: Boolean = false
+    ,
+        extra: Map<String, Any> = emptyMap()
     ) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
 
@@ -1098,13 +1109,15 @@ class RealtimeDatabaseRepository @Inject constructor(
             "reactions" to emptyMap<String, String>()
         )
 
+        if (forwarded) messageData["forwardedFrom"] = "1"
+        messageData.putAll(extra)
         chatRef.child("messages").child(messageId).setValue(messageData).await()
 
         val lastMessageText = when (mediaType) {
             "IMAGE" -> "Foto"
             "VIDEO" -> "Vídeo"
             "GIF", "GIF_VIDEO" -> "GIF"
-            "AUDIO" -> "Audio"
+            "AUDIO" -> if (extra["isVoice"] == true) "Nota de voz" else "Audio"
             "DOCUMENT" -> caption.ifEmpty { "Documento" }
             else -> if (caption.isNotEmpty()) caption else "Archivo"
         }
@@ -1123,7 +1136,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             content = caption.ifEmpty { when (mediaType) {
                 "IMAGE" -> "📷 Foto"
                 "VIDEO" -> "🎥 Video"
-                "AUDIO" -> "🎤 Audio"
+                "AUDIO" -> if (extra["isVoice"] == true) "🎤 Nota de voz" else "🎵 Audio"
                 "DOCUMENT" -> "📄 Documento"
                 "LOCATION" -> "📍 Ubicación"
                 "STICKER" -> "Sticker"
@@ -1411,7 +1424,7 @@ class RealtimeDatabaseRepository @Inject constructor(
         sendFcmForMessage(chatId, currentUserId, "📍 Ubicación", "LOCATION")
     }
 
-    suspend fun sendStickerMessage(chatId: String, stickerUrl: String, stickerPack: String = "") {
+    suspend fun sendStickerMessage(chatId: String, stickerUrl: String, stickerPack: String = "", forwarded: Boolean = false, replyTo: String? = null) {
         val currentUserId = auth.currentUser?.uid ?: throw Exception("User not authenticated")
         val chatRef = database.child("chats").child(chatId)
         val chatSnapshot = chatRef.get().await()
@@ -1426,6 +1439,8 @@ class RealtimeDatabaseRepository @Inject constructor(
             "messageId" to messageId, "senderId" to currentUserId, "content" to stickerUrl,
             "mediaType" to "STICKER", "stickerUrl" to stickerUrl, "stickerPack" to stickerPack, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
+        replyTo?.let { messageData["replyTo"] = it }
+        if (forwarded) messageData["forwardedFrom"] = "1"
         chatRef.child("messages").child(messageId).setValue(messageData).await()
         chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "Sticker", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "Sticker", "STICKER")
@@ -1480,6 +1495,15 @@ class RealtimeDatabaseRepository @Inject constructor(
         val chatId = if (currentUserId < storyOwnerId) "${currentUserId}_$storyOwnerId"
                      else "${storyOwnerId}_$currentUserId"
         sendMessage(chatId, content, replyTo = "story:$storyId")
+    }
+
+    /** Respuesta a una historia con un sticker. */
+    suspend fun sendStoryStickerReply(storyOwnerId: String, storyId: String, sticker: String) {
+        val currentUserId = auth.currentUser?.uid ?: throw Exception("No hay sesión activa")
+        if (storyOwnerId.isBlank() || storyOwnerId == currentUserId) return
+        val chatId = if (currentUserId < storyOwnerId) "${currentUserId}_$storyOwnerId"
+                     else "${storyOwnerId}_$currentUserId"
+        sendStickerMessage(chatId, sticker, replyTo = "story:$storyId")
     }
 
     /**

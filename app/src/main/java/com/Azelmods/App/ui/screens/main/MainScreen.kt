@@ -137,134 +137,18 @@ fun MainScreen(
         contentWindowInsets = WindowInsets(0),
         containerColor = NexusTokens.Color.BgBase,
         bottomBar = {
-            // Barra opaca con un filo superior. Sobre un fondo de imagen o vídeo una
-            // barra transparente hace ilegibles las etiquetas.
-            Column(Modifier.fillMaxWidth()) {
-                val navStyle by com.Azelmods.App.ui.components.ChatLook.navBarStyle.collectAsState()
-                val selectTab: (Int) -> Unit = { index ->
+            val navStyle by com.Azelmods.App.ui.components.ChatLook.navBarStyle.collectAsState()
+            AppBottomBar(
+                navStyle = navStyle,
+                tabs = tabs,
+                currentPage = currentPage,
+                missedCallCount = missedCallCount,
+                onSelect = { index ->
                     if (tabs[index].route == Screen.Calls.route) NotificationHelper.resetMissedCallCount()
                     coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                }
-                if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.CENTER) {
-                    CenterNavBar(tabs, currentPage, missedCallCount, selectTab)
-                } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.PHOTO) {
-                    PhotoNavBar(tabs, currentPage, missedCallCount, selectTab) { navController.navigate(Screen.Settings.route) }
-                } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.ACCESS) {
-                    AccessNavBar(tabs, currentPage, missedCallCount, selectTab) { navController.navigate(Screen.Settings.route) }
-                } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.LINE) {
-                    LineNavBar(tabs, currentPage, missedCallCount, selectTab)
-                } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.PANEL) {
-                    PanelNavBar(tabs, currentPage, missedCallCount, selectTab)
-                } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.FLOATING) {
-                    // Barra flotante: una cápsula elevada; la pestaña elegida muestra su nombre.
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .navigationBarsPadding()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .shadow(10.dp, androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
-                            .background(NexusTokens.Color.BgElevated)
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceAround,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        tabs.forEachIndexed { index, tab ->
-                            val selected = currentPage == index
-                            Row(
-                                Modifier
-                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
-                                    .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent)
-                                    .clickable {
-                                        if (tab.route == Screen.Calls.route) NotificationHelper.resetMissedCallCount()
-                                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                                    }
-                                    .animateContentSize()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    if (selected) tab.selectedIcon else tab.unselectedIcon,
-                                    contentDescription = com.Azelmods.App.i18n.tr(tab.label),
-                                    tint = if (selected) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted
-                                )
-                                if (selected) {
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(com.Azelmods.App.i18n.tr(tab.label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        }
-                    }
-                } else {
-                NexusDivider()
-                NavigationBar(
-                    containerColor = NexusTokens.Color.BgBase,
-                    tonalElevation = NexusTokens.Elevation.none,
-                    windowInsets = WindowInsets.navigationBars
-                ) {
-                    tabs.forEachIndexed { index, tab ->
-                        val selected = currentPage == index
-                        val isCallsTab = tab.route == Screen.Calls.route
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                if (isCallsTab) NotificationHelper.resetMissedCallCount()
-                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            icon = {
-                                val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
-                                // La pestaña elegida "salta" un poco al seleccionarse.
-                                val iconScale by animateFloatAsState(
-                                    targetValue = if (selected) 1.12f else 1f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMedium
-                                    ),
-                                    label = "iconoPestana"
-                                )
-                                val iconTurn by animateFloatAsState(
-                                    targetValue = if (selected) 0f else -12f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessLow
-                                    ),
-                                    label = "giroPestana"
-                                )
-                                val iconModifier = Modifier.graphicsLayer {
-                                    scaleX = iconScale
-                                    scaleY = iconScale
-                                    rotationZ = if (selected) iconTurn else 0f
-                                }
-                                if (isCallsTab && missedCallCount > 0) {
-                                    BadgedBox(badge = {
-                                        Badge(containerColor = MaterialTheme.colorScheme.error) {
-                                            Text(if (missedCallCount > 99) "99+" else missedCallCount.toString())
-                                        }
-                                    }) {
-                                        Icon(icon, contentDescription = null, modifier = iconModifier)
-                                    }
-                                } else {
-                                    Icon(icon, contentDescription = null, modifier = iconModifier)
-                                }
-                            },
-                            label = if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.ICONS) {
-                                null
-                            } else {
-                                { Text(com.Azelmods.App.i18n.tr(tab.label), style = MaterialTheme.typography.labelMedium) }
-                            },
-                            alwaysShowLabel = true,
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-                                unselectedIconColor = NexusTokens.Color.TextMuted,
-                                unselectedTextColor = NexusTokens.Color.TextMuted
-                            )
-                        )
-                    }
-                }
-                }
-            }
+                },
+                onSettings = { navController.navigate(Screen.Settings.route) }
+            )
         }
     ) { innerPadding ->
         Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
@@ -304,6 +188,139 @@ fun MainScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/** La barra inferior elegida. La usan la pantalla principal y la vista previa del estudio. */
+@Composable
+internal fun AppBottomBar(
+    navStyle: com.Azelmods.App.ui.components.NavBarStyle,
+    tabs: List<TabItem>,
+    currentPage: Int,
+    missedCallCount: Int,
+    onSelect: (Int) -> Unit,
+    onSettings: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.CENTER) {
+            CenterNavBar(tabs, currentPage, missedCallCount, onSelect)
+        } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.PHOTO) {
+            PhotoNavBar(tabs, currentPage, missedCallCount, onSelect) { onSettings() }
+        } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.ACCESS) {
+            AccessNavBar(tabs, currentPage, missedCallCount, onSelect) { onSettings() }
+        } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.LINE) {
+            LineNavBar(tabs, currentPage, missedCallCount, onSelect)
+        } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.PANEL) {
+            PanelNavBar(tabs, currentPage, missedCallCount, onSelect)
+        } else if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.FLOATING) {
+            // Barra flotante: una cápsula elevada; la pestaña elegida muestra su nombre.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .shadow(10.dp, androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
+                    .background(NexusTokens.Color.BgElevated)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    val selected = currentPage == index
+                    Row(
+                        Modifier
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
+                            .background(if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f) else Color.Transparent)
+                            .clickable {
+                                if (tab.route == Screen.Calls.route) NotificationHelper.resetMissedCallCount()
+                                onSelect(index)
+                            }
+                            .animateContentSize()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (selected) tab.selectedIcon else tab.unselectedIcon,
+                            contentDescription = com.Azelmods.App.i18n.tr(tab.label),
+                            tint = if (selected) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted
+                        )
+                        if (selected) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(com.Azelmods.App.i18n.tr(tab.label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+                }
+            }
+        } else {
+        NexusDivider()
+        NavigationBar(
+            containerColor = NexusTokens.Color.BgBase,
+            tonalElevation = NexusTokens.Elevation.none,
+            windowInsets = WindowInsets.navigationBars
+        ) {
+            tabs.forEachIndexed { index, tab ->
+                val selected = currentPage == index
+                val isCallsTab = tab.route == Screen.Calls.route
+                NavigationBarItem(
+                    selected = selected,
+                    onClick = {
+                        if (isCallsTab) NotificationHelper.resetMissedCallCount()
+                        onSelect(index)
+                    },
+                    icon = {
+                        val icon = if (selected) tab.selectedIcon else tab.unselectedIcon
+                        // La pestaña elegida "salta" un poco al seleccionarse.
+                        val iconScale by animateFloatAsState(
+                            targetValue = if (selected) 1.12f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ),
+                            label = "iconoPestana"
+                        )
+                        val iconTurn by animateFloatAsState(
+                            targetValue = if (selected) 0f else -12f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                stiffness = Spring.StiffnessLow
+                            ),
+                            label = "giroPestana"
+                        )
+                        val iconModifier = Modifier.graphicsLayer {
+                            scaleX = iconScale
+                            scaleY = iconScale
+                            rotationZ = if (selected) iconTurn else 0f
+                        }
+                        if (isCallsTab && missedCallCount > 0) {
+                            BadgedBox(badge = {
+                                Badge(containerColor = MaterialTheme.colorScheme.error) {
+                                    Text(if (missedCallCount > 99) "99+" else missedCallCount.toString())
+                                }
+                            }) {
+                                Icon(icon, contentDescription = null, modifier = iconModifier)
+                            }
+                        } else {
+                            Icon(icon, contentDescription = null, modifier = iconModifier)
+                        }
+                    },
+                    label = if (navStyle == com.Azelmods.App.ui.components.NavBarStyle.ICONS) {
+                        null
+                    } else {
+                        { Text(com.Azelmods.App.i18n.tr(tab.label), style = MaterialTheme.typography.labelMedium) }
+                    },
+                    alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                        unselectedIconColor = NexusTokens.Color.TextMuted,
+                        unselectedTextColor = NexusTokens.Color.TextMuted
+                    )
+                )
+            }
+        }
         }
     }
 }
@@ -482,7 +499,7 @@ private fun AccessNavBar(
 }
 
 /** Las pestañas con el juego de iconos elegido: icono de la pestaña activa e inactiva. */
-private fun tabsFor(set: com.Azelmods.App.ui.components.NavIconSet): List<TabItem> {
+internal fun tabsFor(set: com.Azelmods.App.ui.components.NavIconSet): List<TabItem> {
     val icons: List<Pair<androidx.compose.ui.graphics.vector.ImageVector, androidx.compose.ui.graphics.vector.ImageVector>> = when (set) {
         com.Azelmods.App.ui.components.NavIconSet.OUTLINED -> listOf(
             Icons.AutoMirrored.Filled.Chat to Icons.AutoMirrored.Outlined.Chat, Icons.Filled.AutoStories to Icons.Outlined.AutoStories,

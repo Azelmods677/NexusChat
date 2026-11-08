@@ -62,7 +62,7 @@ class LoginViewModel @Inject constructor(
                     is Resource.Success -> onSignedIn()
                     is Resource.Error -> _state.value = _state.value.copy(
                         isLoading = false,
-                        error = "No se pudo iniciar sesión: ${result.message}"
+                        error = tr("No se pudo iniciar sesión") + ": ${result.message}\n" + com.Azelmods.App.data.repository.UPDATE_HINT()
                     )
                     is Resource.Loading -> Unit
                 }
@@ -89,7 +89,7 @@ class LoginViewModel @Inject constructor(
                 is Resource.Success -> onSignedIn()
                 is Resource.Error -> _state.value = _state.value.copy(
                     isLoading = false,
-                    error = result.message ?: tr("No se pudo iniciar sesión")
+                    error = (result.message ?: tr("No se pudo iniciar sesión")) + "\n" + com.Azelmods.App.data.repository.UPDATE_HINT()
                 )
                 is Resource.Loading -> Unit
             }

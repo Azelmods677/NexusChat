@@ -183,7 +183,7 @@ class PhoneLoginViewModel @Inject constructor(
                             "en la consola de Firebase (Configuración del proyecto, tu app Android)."
                     e is com.google.firebase.FirebaseNetworkException ->
                         tr("Sin conexión con Firebase. Si el modo anónimo está activo, espera a que conecte.")
-                    else -> raw.ifBlank { "No se pudo enviar el SMS" }
+                    else -> raw.ifBlank { tr("No se pudo enviar el SMS") } + "\n" + com.Azelmods.App.data.repository.UPDATE_HINT()
                 }
             )
         }

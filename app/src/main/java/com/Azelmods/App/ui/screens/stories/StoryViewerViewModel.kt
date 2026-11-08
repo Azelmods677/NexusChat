@@ -184,6 +184,16 @@ class StoryViewerViewModel @Inject constructor(
         }
     }
 
+    fun sendStickerReply(storyOwnerId: String, storyId: String, sticker: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { repository.sendStoryStickerReply(storyOwnerId, storyId, sticker) }
+                .onSuccess { _state.value = _state.value.copy(replySent = true) }
+                .onFailure {
+                    _state.value = _state.value.copy(actionError = friendlyMessage(it, "No se pudo enviar la respuesta"))
+                }
+        }
+    }
+
     fun clearReplySent() {
         _state.value = _state.value.copy(replySent = false)
     }

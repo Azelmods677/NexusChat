@@ -83,10 +83,28 @@ class StickerViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
-    private fun readRecent(): List<String> = runCatching {
-        val array = JSONArray(prefs.getString("recent", "[]"))
+    private fun readRecent(): List<String> = readList("recent")
+
+    private fun readList(key: String): List<String> = runCatching {
+        val array = JSONArray(prefs.getString(key, "[]"))
         List(array.length()) { array.getString(it) }
     }.getOrDefault(emptyList())
+
+    private val _favorites = MutableStateFlow(readList("favorites"))
+    val favorites = _favorites.asStateFlow()
+
+    fun toggleFavorite(sticker: String) {
+        val current = _favorites.value
+        val next = if (sticker in current) current - sticker else listOf(sticker) + current
+        _favorites.value = next
+        prefs.edit().putString("favorites", JSONArray(next).toString()).apply()
+    }
+
+    fun forgetRecent(sticker: String) {
+        val next = _recent.value - sticker
+        _recent.value = next
+        prefs.edit().putString("recent", JSONArray(next).toString()).apply()
+    }
 
     fun markUsed(sticker: String) {
         val next = (listOf(sticker) + _recent.value.filter { it != sticker }).take(MAX_RECENT)
@@ -175,6 +193,8 @@ fun StickerPicker(
 ) {
     val context = LocalContext.current
     val recent by viewModel.recent.collectAsState()
+    val favorites by viewModel.favorites.collectAsState()
+    var menuFor by remember { mutableStateOf<String?>(null) }
     val packs by viewModel.packs.collectAsState()
     val saving by viewModel.saving.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -185,13 +205,14 @@ fun StickerPicker(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { source = it }
 
     // Recientes, luego los paquetes propios y al final los animados de la app.
-    val titles = listOf(tr("Recientes")) + packs.map { it.name } + ANIMATED_PACKS.map { tr(it.title) }
+    val titles = listOf(tr("Recientes"), tr("Favoritos")) + packs.map { it.name } + ANIMATED_PACKS.map { tr(it.title) }
     val safeTab = tab.coerceIn(titles.indices)
-    val ownPack = packs.getOrNull(safeTab - 1)
+    val ownPack = packs.getOrNull(safeTab - 2)
     val items: List<String> = when {
         safeTab == 0 -> recent
+        safeTab == 1 -> favorites
         ownPack != null -> ownPack.stickers
-        else -> ANIMATED_PACKS[safeTab - 1 - packs.size].stickers
+        else -> ANIMATED_PACKS[safeTab - 2 - packs.size].stickers
     }
 
     Surface(
@@ -252,8 +273,11 @@ fun StickerPicker(
                 if (items.isEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         Text(
-                            if (safeTab == 0) tr("Aquí aparecerán los últimos que uses.")
-                            else tr("Aún está vacío. Toca el icono de la foto para crear tu primer sticker."),
+                            when (safeTab) {
+                                0 -> tr("Aquí aparecerán los últimos que uses.")
+                                1 -> tr("Mantén pulsado un sticker y elige Añadir a favoritos.")
+                                else -> tr("Aún está vacío. Toca el icono de la foto para crear tu primer sticker.")
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = NexusTokens.Color.TextMuted,
                             modifier = Modifier.padding(16.dp)
@@ -271,12 +295,44 @@ fun StickerPicker(
                                     viewModel.markUsed(sticker)
                                     onStickerSelected(sticker)
                                 },
-                                onLongClick = { ownPack?.let { viewModel.removeSticker(it.id, sticker) } }
+                                onLongClick = { menuFor = sticker }
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         // Se reproducen una vez: decenas moviéndose a la vez gastarían batería.
                         StickerImage(sticker, 60.dp, playOnce = true)
+                        androidx.compose.material3.DropdownMenu(
+                            expanded = menuFor == sticker,
+                            onDismissRequest = { menuFor = null },
+                            containerColor = NexusTokens.Color.BgElevated
+                        ) {
+                            val isFavorite = sticker in favorites
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(if (isFavorite) tr("Quitar de favoritos") else tr("Añadir a favoritos")) },
+                                onClick = {
+                                    viewModel.toggleFavorite(sticker)
+                                    menuFor = null
+                                }
+                            )
+                            if (ownPack != null) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(tr("Eliminar sticker"), color = NexusTokens.Color.Error) },
+                                    onClick = {
+                                        viewModel.removeSticker(ownPack.id, sticker)
+                                        menuFor = null
+                                    }
+                                )
+                            }
+                            if (safeTab == 0) {
+                                androidx.compose.material3.DropdownMenuItem(
+                                    text = { Text(tr("Quitar de recientes")) },
+                                    onClick = {
+                                        viewModel.forgetRecent(sticker)
+                                        menuFor = null
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }

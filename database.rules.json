@@ -26,7 +26,7 @@
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === $uid",
-        ".validate": "newData.hasChildren(['displayName', 'email'])",
+        ".validate": "data.exists() || newData.hasChildren(['displayName'])",
         
         "online": {
           ".read": "auth != null",

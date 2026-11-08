@@ -20,6 +20,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -406,6 +407,12 @@ fun HomeScreenRedesigned(
                         listEntered = true
                     }
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        val archivedCount = state.chats.count { it.isArchived }
+                        if (archivedCount > 0 && folderId == null && state.selectedFilter == ChatFilter.ALL && !hideArchived) {
+                            item(key = "archived_row") {
+                                ArchivedRow(archivedCount) { viewModel.onFilterChange(ChatFilter.ARCHIVED) }
+                            }
+                        }
                         itemsIndexed(items = visibleChats, key = { _, chat -> chat.chatId }) { index, chat ->
                             val contactId = chat.participantIds.find { it != currentUserId }
                             val hasStory = contactId != null && contactId in storyOwners
@@ -1075,6 +1082,33 @@ private fun HomeFilter(
                     .clip(androidx.compose.foundation.shape.CircleShape)
                     .background(accent)
             )
+        }
+    }
+}
+
+/** Fila de Archivados: icono dentro de un aro de 1,5 dp y el estilo de fila elegido. */
+@Composable
+private fun ArchivedRow(count: Int, onClick: () -> Unit) {
+    val accent = MaterialTheme.colorScheme.primary
+    com.Azelmods.App.ui.components.ListRowFrame(seed = "archived", photoUrl = null) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier
+                    .size(40.dp)
+                    .border(1.5.dp, accent, androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Archive, null, tint = accent, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(16.dp))
+            Text(tr("Archivados"), style = MaterialTheme.typography.titleMedium, color = NexusTokens.Color.TextPrimary, modifier = Modifier.weight(1f))
+            Text(count.toString(), style = MaterialTheme.typography.labelLarge, color = accent)
         }
     }
 }

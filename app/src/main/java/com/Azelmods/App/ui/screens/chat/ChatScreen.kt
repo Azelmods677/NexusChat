@@ -135,6 +135,13 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    var flashMessageId by remember { mutableStateOf<String?>(null) }
+    val myUid = remember { FirebaseAuth.getInstance().currentUser?.uid.orEmpty() }
+    fun senderNameOf(uid: String): String = when {
+        uid == myUid -> tr("Tú")
+        state.groupMembers[uid] != null -> state.groupMembers.getValue(uid).name
+        else -> state.contact?.let { peer -> peer.displayName.ifBlank { peer.name } }.orEmpty().ifBlank { tr("Contacto") }
+    }
     if (showQuickFunctions) {
         val quickScope = rememberCoroutineScope()
         QuickFunctionsSheet(
@@ -216,9 +223,17 @@ fun ChatScreen(
     // Auto-scroll to bottom when new message arrives.
     // No mientras se busca: saltar al final cada vez que llega un mensaje
     // arruinaría la navegación entre coincidencias.
+    // La primera vez se coloca al final al instante: animar el recorrido por toda la
+    // conversación era lo que hacía que entrar a un chat pareciera lento.
+    var positioned by remember(contactId) { mutableStateOf(false) }
     LaunchedEffect(state.messages.size, state.isSearchOpen) {
         if (state.messages.isNotEmpty() && !state.isSearchOpen) {
-            listState.animateScrollToItem(state.messages.size - 1)
+            if (positioned) {
+                listState.animateScrollToItem(state.messages.size - 1)
+            } else {
+                listState.scrollToItem(state.messages.size - 1)
+                positioned = true
+            }
         }
     }
 
@@ -291,7 +306,7 @@ fun ChatScreen(
             } else ChatTopBar(
                 // Un grupo no tiene "contacto": se muestra con su nombre y sus miembros.
                 contact = state.contact ?: state.groupName?.let {
-                    com.Azelmods.App.data.model.User(name = it, displayName = it)
+                    com.Azelmods.App.data.model.User(name = it, displayName = it, photoUrl = state.groupPhoto)
                 },
                 groupSubtitle = state.groupName?.let { tr("%s miembros", state.groupMembers.size.toString()) },
                 isTyping = state.isTyping,
@@ -553,7 +568,7 @@ fun ChatScreen(
                             val esResultadoActivo = state.isSearchOpen &&
                                 state.searchResults.getOrNull(state.searchIndex) == message.messageId
                             val resalte by animateColorAsState(
-                                targetValue = if (esResultadoActivo) {
+                                targetValue = if (esResultadoActivo || message.messageId == flashMessageId) {
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
                                 } else {
                                     Color.Transparent
@@ -589,6 +604,29 @@ fun ChatScreen(
                                 repliedMessage = message.replyTo
                                     ?.takeUnless { it.startsWith("story:") }
                                     ?.let { id -> state.messages.firstOrNull { it.messageId == id } },
+                                repliedSenderName = message.replyTo
+                                    ?.takeUnless { it.startsWith("story:") }
+                                    ?.let { id -> state.messages.firstOrNull { it.messageId == id } }
+                                    ?.let { senderNameOf(it.senderId) },
+                                onQuoteClick = {
+                                    coroutineScope.launch {
+                                        val target = message.replyTo ?: return@launch
+                                        val position = state.messages.indexOfFirst { it.messageId == target }
+                                        if (position >= 0) {
+                                            listState.animateScrollToItem(position)
+                                            flashMessageId = target
+                                            kotlinx.coroutines.delay(1_600)
+                                            flashMessageId = null
+                                        }
+                                    }
+                                },
+                                onMentionClick = { name ->
+                                    val uid = state.groupMembers.values.firstOrNull { it.name.equals(name, ignoreCase = true) }?.uid
+                                        ?: state.contact?.takeIf { peer ->
+                                            peer.displayName.equals(name, ignoreCase = true) || peer.name.equals(name, ignoreCase = true)
+                                        }?.uid
+                                    if (!uid.isNullOrBlank()) navController.navigate(com.Azelmods.App.ui.navigation.Screen.ProfileViewer.createRoute(uid))
+                                },
                                 autoplayVideos = state.autoplayVideos,
                                 serverNow = viewModel::serverNow,
                                 onPin = { setPinnedMessage(viewModel.chatIdFor(contactId), message.messageId) },
@@ -680,6 +718,8 @@ fun ChatScreen(
                         state.replyingTo?.let { message ->
                             ReplyPreviewBar(
                                 message = message,
+                                label = if (message.senderId == myUid) tr("Respondiendo a tu mensaje")
+                                else tr("Respondiendo a %s", senderNameOf(message.senderId)),
                                 onCancel = { viewModel.setReplyingTo(null) }
                             )
                         }
