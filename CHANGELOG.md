@@ -32,6 +32,25 @@
 
 ---
 
+<a id="v830"></a>
+## v8.3.0
+
+- El descargador de vídeos vuelve a funcionar: se actualiza solo y reintenta si falla el primer intento.
+- Reportar usuarios desde el menú del chat.
+- Política de privacidad dentro de la app.
+- Campo "Social" con las medidas exactas: iconos de 30 dp y botón de voz de 48 dp.
+
+---
+
+<a id="v820"></a>
+## v8.2.0
+
+- Campo "Foto con aro" con el aro animado: gira, crece y se recoge dejando una estela, y responde al toque.
+- Exportar un chat como archivo de texto desde su menú.
+- La versión publicada ya no escribe registros de depuración en el teléfono.
+
+---
+
 <a id="v810"></a>
 ## v8.1.0
 

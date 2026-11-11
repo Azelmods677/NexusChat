@@ -289,6 +289,14 @@
       }
     },
 
+    "reports": {
+      "$reportId": {
+        ".read": false,
+        ".write": "auth != null && !data.exists() && newData.child('by').val() === auth.uid",
+        ".validate": "newData.hasChildren(['by', 'target', 'reason'])"
+      }
+    },
+
     "codeFiles": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

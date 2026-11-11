@@ -49,8 +49,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 37  // Android 17
-        versionCode = 810
-        versionName = "8.1.0"
+        versionCode = 830
+        versionName = "8.3.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")

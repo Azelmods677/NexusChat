@@ -232,3 +232,18 @@
 
 # org.json es del sistema: nunca renombrarlo ni copiarlo dentro del APK.
 -keep class org.json.** { *; }
+
+# La release no escribe logs de depuración: ni ruido ni datos en el registro del teléfono.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+}
+
+# Descargador de vídeos: yt-dlp se actualiza leyendo JSON con Jackson por reflexión y
+# descomprime Python con commons-compress. Si R8 los recorta, la actualización falla en silencio.
+-keep class com.yausername.** { *; }
+-keep class org.apache.commons.compress.** { *; }
+-keep class com.fasterxml.jackson.** { *; }
+-keepnames class com.fasterxml.jackson.** { *; }
+-dontwarn com.fasterxml.jackson.**
+-dontwarn org.apache.commons.compress.**

@@ -336,6 +336,7 @@ private fun rememberSettingsLinks(
         SettingsLink(tools, Icons.Outlined.Code, TileGreen, "Editor de código", "Pestañas, búsqueda y ejecución", go("code_editor")),
         SettingsLink(tools, Icons.Outlined.Terminal, TileSlate, "Terminal", "Shell del teléfono y Kali Linux", go("terminal")),
         SettingsLink(info, Icons.AutoMirrored.Outlined.Help, TileBlue, "Ayuda", "Guías de cada función", go(Screen.SettingsHelp.route)),
+        SettingsLink(info, Icons.Outlined.Lock, TileGreen, "Política de privacidad", "Qué datos usa la app y para qué", go("privacy_policy")),
         SettingsLink(info, Icons.Outlined.Info, TileSlate, "Acerca de", "Versión, licencias, historia y tu dispositivo", go(Screen.SettingsAbout.route))
     )
 }

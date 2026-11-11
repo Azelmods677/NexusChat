@@ -136,6 +136,7 @@ fun ChatScreen(
     var showMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     var flashMessageId by remember { mutableStateOf<String?>(null) }
+    var showReport by remember { mutableStateOf(false) }
     val myUid = remember { FirebaseAuth.getInstance().currentUser?.uid.orEmpty() }
     fun senderNameOf(uid: String): String = when {
         uid == myUid -> tr("Tú")
@@ -977,6 +978,24 @@ fun ChatScreen(
                         )
                     }
                 )
+                if (state.groupName == null && state.contact != null) {
+                    DropdownMenuItem(
+                        text = { Text(tr("Reportar usuario")) },
+                        onClick = {
+                            showMenu = false
+                            showReport = true
+                        },
+                        leadingIcon = { Icon(Icons.Default.Flag, null, tint = Color.White) }
+                    )
+                }
+                DropdownMenuItem(
+                    text = { Text(tr("Exportar chat")) },
+                    onClick = {
+                        showMenu = false
+                        exportChat(context, state.messages, myUid) { uid -> senderNameOf(uid) }
+                    },
+                    leadingIcon = { Icon(Icons.Default.Share, null, tint = Color.White) }
+                )
                 DropdownMenuItem(
                     text = { Text(tr("Vaciar chat"), color = ErrorRed) },
                     onClick = {
@@ -988,6 +1007,32 @@ fun ChatScreen(
             }
         }
         
+        if (showReport) {
+            ReportUserDialog(
+                onDismiss = { showReport = false },
+                onSend = { reason ->
+                    showReport = false
+                    val target = state.contact?.uid.orEmpty()
+                    val ref = com.google.firebase.database.FirebaseDatabase.getInstance().reference.child("reports").push()
+                    ref.setValue(
+                        mapOf(
+                            "by" to myUid,
+                            "target" to target,
+                            "chatId" to viewModel.chatIdFor(contactId),
+                            "reason" to reason,
+                            "at" to com.google.firebase.database.ServerValue.TIMESTAMP
+                        )
+                    ).addOnCompleteListener { task ->
+                        android.widget.Toast.makeText(
+                            context,
+                            if (task.isSuccessful) tr("Reporte enviado. Gracias por avisar.") else tr("No se pudo enviar el reporte"),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            )
+        }
+
         if (showMuteDialog) {
             val opciones = listOf(
                 "1 hora" to com.Azelmods.App.data.model.ChatSettings.MUTE_1_HOUR,
@@ -1212,3 +1257,78 @@ fun ChatTopBar(
 }
 
 private const val FRESH_MESSAGE_MS = 4_000L
+
+/** Guarda la conversación como texto y abre el menú de compartir. El archivo sale del teléfono solo si tú lo envías. */
+private fun exportChat(
+    context: android.content.Context,
+    messages: List<com.Azelmods.App.data.model.Message>,
+    myUid: String,
+    nameOf: (String) -> String
+) {
+    if (messages.isEmpty()) {
+        android.widget.Toast.makeText(context, tr("No hay mensajes que exportar"), android.widget.Toast.LENGTH_SHORT).show()
+        return
+    }
+    runCatching {
+        val format = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+        val text = buildString {
+            messages.sortedBy { it.timestamp }.forEach { message ->
+                val body = messagePreviewText(message).ifBlank { message.mediaType.orEmpty() }
+                append('[').append(format.format(java.util.Date(message.timestamp))).append("] ")
+                append(if (message.senderId == myUid) tr("Tú") else nameOf(message.senderId)).append(": ")
+                append(body).append('\n')
+            }
+        }
+        val folder = java.io.File(context.cacheDir, "exports").apply { mkdirs() }
+        val file = java.io.File(folder, "NexusChat-${System.currentTimeMillis()}.txt")
+        file.writeText(text)
+        val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        context.startActivity(
+            android.content.Intent.createChooser(
+                android.content.Intent(android.content.Intent.ACTION_SEND)
+                    .setType("text/plain")
+                    .putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                    .addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION),
+                null
+            )
+        )
+    }.onFailure {
+        android.widget.Toast.makeText(context, tr("No se pudo exportar el chat"), android.widget.Toast.LENGTH_SHORT).show()
+    }
+}
+
+/** Motivo del reporte. No envía mensajes del chat: solo quién, a quién y por qué. */
+@Composable
+private fun ReportUserDialog(onDismiss: () -> Unit, onSend: (String) -> Unit) {
+    val reasons = listOf("Spam o publicidad", "Acoso o amenazas", "Contenido inapropiado", "Suplantación de identidad", "Otro motivo")
+    var selected by remember { mutableStateOf(reasons.first()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Reportar usuario")) },
+        text = {
+            Column {
+                reasons.forEach { reason ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { selected = reason }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.RadioButton(selected = selected == reason, onClick = { selected = reason })
+                        Text(tr(reason), color = com.Azelmods.App.ui.theme.NexusTokens.Color.TextPrimary)
+                    }
+                }
+                Text(
+                    tr("También puedes bloquear a esta persona desde su perfil."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = com.Azelmods.App.ui.theme.NexusTokens.Color.TextMuted,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSend(selected) }) { Text(tr("Reportar")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } },
+        containerColor = com.Azelmods.App.ui.theme.NexusTokens.Color.BgSurface
+    )
+}

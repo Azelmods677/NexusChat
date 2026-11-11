@@ -514,11 +514,11 @@ fun ChatInputArea(
 
                     // Adjuntar y cámara fuera, a mano del pulgar.
                     isSocialEntry -> {
-                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openAttachments, modifier = Modifier.size(34.dp)) {
-                            Icon(Icons.Default.Add, "Adjuntar", tint = iconTint, modifier = Modifier.size(26.dp))
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openAttachments, modifier = Modifier.size(38.dp)) {
+                            Icon(Icons.Default.Add, "Adjuntar", tint = iconTint, modifier = Modifier.size(30.dp))
                         }
-                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openCamera, modifier = Modifier.size(34.dp)) {
-                            Icon(Icons.Outlined.PhotoCamera, tr("Cámara"), tint = iconTint, modifier = Modifier.size(24.dp))
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = openCamera, modifier = Modifier.size(38.dp)) {
+                            Icon(Icons.Outlined.PhotoCamera, tr("Cámara"), tint = iconTint, modifier = Modifier.size(30.dp))
                         }
                         Spacer(Modifier.width(2.dp))
                     }
@@ -533,15 +533,13 @@ fun ChatInputArea(
                     cameraOutside -> {
                         val me = com.Azelmods.App.data.profile.rememberMyProfile()
                         if (entryStyle == com.Azelmods.App.ui.components.ChatEntryStyle.RING) {
-                            Box(
-                                Modifier
-                                    .padding(start = 4.dp, end = 2.dp, bottom = 3.dp)
-                                    .size(38.dp)
-                                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                com.Azelmods.App.ui.components.UserAvatar(name = me.name, photoUrl = me.photoUrl, size = 32.dp)
-                            }
+                            com.Azelmods.App.ui.components.AnimatedRingAvatar(
+                                name = me.name,
+                                photoUrl = me.photoUrl,
+                                size = 40.dp,
+                                modifier = Modifier.padding(start = 4.dp, end = 2.dp, bottom = 2.dp),
+                                onClick = {}
+                            )
                         } else if (entryStyle == com.Azelmods.App.ui.components.ChatEntryStyle.SQUARE) {
                             Box(
                                 Modifier
@@ -667,7 +665,7 @@ fun ChatInputArea(
                 val hasText = messageText.isNotBlank()
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(if (isSocialEntry) 48.dp else 44.dp)
                         .clip(CircleShape)
                         .background(
                             when {

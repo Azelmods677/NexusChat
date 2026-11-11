@@ -331,6 +331,10 @@ fun NavGraph(
             HelpSupportScreen(navController = navController)
         }
         
+        composable("privacy_policy") {
+            com.Azelmods.App.ui.screens.settings.PrivacyPolicyScreen(navController = navController)
+        }
+
         composable(Screen.SettingsAbout.route) {
             AboutScreen(navController = navController)
         }

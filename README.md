@@ -25,6 +25,8 @@
   &nbsp;·&nbsp;
   <a href="#novedades-de-la-8">Novedades</a>
   &nbsp;·&nbsp;
+  <a href="#por-qué-nexuschat">Por qué NexusChat</a>
+  &nbsp;·&nbsp;
   <a href="#el-estudio-de-diseño">Estudio de diseño</a>
   &nbsp;·&nbsp;
   <a href="#todo-lo-que-trae">Todo lo que trae</a>
@@ -39,7 +41,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/img/readme/stats.svg" alt="10 diseños de fila, 8 campos de escribir, 7 pantallas de inicio, 7 de ajustes, 8 burbujas, 21 tipos de letra y más de 36 colores" width="100%">
+  <img src="docs/img/readme/stats.svg" alt="10 diseños de fila, 12 campos de escribir, 7 pantallas de inicio, 7 de ajustes, 8 burbujas, 21 tipos de letra y más de 36 colores" width="100%">
 </p>
 
 ---
@@ -61,9 +63,29 @@ La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a 
 - 🔐 **Grupos cifrados y chats secretos:** grupos de extremo a extremo con administradores y enlace de invitación, y chats secretos con una clave nueva en cada mensaje.
 - 🎬 **Perfiles en vídeo:** foto y portada en movimiento de hasta 1 minuto y 30 segundos.
 - ⚡ **Funciones rápidas:** un panel dentro del chat con los atajos a mano.
-- 🗂️ **Chats a tu orden:** carpetas, chats ocultos tras tu huella, mensajes programados y marcar como no leído.
+- 🗂️ **Chats a tu orden:** carpetas, chats ocultos tras tu huella, mensajes programados, marcar como no leído y exportar un chat a texto.
+- 💬 **Conversaciones más claras:** respuestas con el nombre de quien escribió, etiqueta de reenviado, texto en fotos y vídeos, y notas de voz distintas de los audios.
+- 😀 **Stickers junto a los emojis:** con favoritos, y también para responder historias.
+- 👥 **Grupos con foto y descripción.**
+- ⭕ **Aro animado en el campo de escribir:** tu foto dentro de un aro que gira y responde al toque.
+- 🛡️ **Comunidad segura:** reporta usuarios desde su chat y consulta la política de privacidad dentro de la app.
+- 📥 **Descargador de vídeos renovado:** se actualiza solo y reintenta si una web cambia.
 - 🐉 **Kali Linux de verdad** dentro de la terminal.
 - 🔠 **21 tipos de letra** para toda la app y **36 colores de acento**, o escribe el tuyo en hexadecimal.
+
+---
+
+## Por qué NexusChat
+
+| | NexusChat | WhatsApp | Telegram | Signal |
+|---|:---:|:---:|:---:|:---:|
+| Cifrado de extremo a extremo en chats y grupos | ✅ | ✅ | Solo chats secretos | ✅ |
+| Diseñar filas, campo, inicio, ajustes y barras | ✅ | ❌ | Solo temas | ❌ |
+| Tor integrado | ✅ | Solo proxy | Solo proxy | Solo proxy |
+| Agentes de IA con tu propia clave | ✅ | Meta AI, sin elegir proveedor | Bots de terceros | ❌ |
+| Terminal y Kali Linux | ✅ | ❌ | ❌ | ❌ |
+
+<sub>Comparativa de funciones a noviembre de 2026. NexusChat está disponible por ahora solo para Android.</sub>
 
 ---
 
@@ -91,9 +113,13 @@ Otros mensajeros te dejan cambiar el fondo. Aquí eliges **cómo se construye ca
 
 <p align="center"><img src="docs/img/v8/rows.png" alt="Los 10 diseños de fila de NexusChat" width="100%"></p>
 
-### 8 campos de escribir
+### 12 campos de escribir
 
-<p align="center"><img src="docs/img/v8/entries.png" alt="Los 8 campos de escribir de NexusChat" width="100%"></p>
+<p align="center"><img src="docs/img/readme/entry-ring.svg" alt="Campo de escribir con tu foto dentro de un aro animado" width="100%"></p>
+
+<p align="center"><img src="docs/img/v8/entries.png" alt="Campos de escribir de NexusChat" width="100%"></p>
+
+<p align="center"><sub>Además de estos ocho: foto con aro animado, foto cuadrada, cápsula central y marco con línea.</sub></p>
 
 ### 7 pantallas de inicio
 
@@ -263,13 +289,15 @@ cd NexusChat
 
 Más detalles en [docs/SETUP.md](docs/SETUP.md) y el historial completo en [CHANGELOG.md](CHANGELOG.md).
 
+**Documentación:** [guía técnica](docs/NexusChat-Guia-Tecnica.pdf) de la arquitectura y [referencia del código](docs/NexusChat-Referencia-Codigo.pdf) con cada archivo y función.
+
 </details>
 
 ---
 
 ## English
 
-**NexusChat 8** is an Android messenger that combines end-to-end encrypted chats and groups, secret chats, voice and video calls, stories, AI agents that research, write and run code for you, built-in Tor and a real terminal with Kali Linux. On top of that sits a **design studio**: 10 chat rows, 8 message fields, 7 home screens, 7 settings screens, 8 bubble styles, 21 fonts and 36 accent colours, or your own. No ads. The app is available in Spanish and English.
+**NexusChat 8** is an Android messenger that combines end-to-end encrypted chats and groups, secret chats, voice and video calls, stories, AI agents that research, write and run code for you, built-in Tor and a real terminal with Kali Linux. On top of that sits a **design studio**: 10 chat rows, 12 message fields, 7 home screens, 7 settings screens, 8 bubble styles, 21 fonts and 36 accent colours, or your own. No ads. The app is available in Spanish and English.
 
 [Download the latest version](https://github.com/Azelmods677/NexusChat/releases/latest) · Requires Android 12 or later.
 

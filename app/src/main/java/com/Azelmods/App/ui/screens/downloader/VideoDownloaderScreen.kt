@@ -73,8 +73,19 @@ class VideoDownloaderViewModel @Inject constructor(
                         addOption("--merge-output-format", "mp4")
                     }
                 }
-                YoutubeDL.getInstance().execute(request, null) { progress, _, line ->
+                val onProgress: (Float, Long, String) -> Unit = { progress, _, line ->
                     _state.value = DownloadState.Running((progress / 100f).coerceIn(0f, 1f), line.take(70))
+                }
+                try {
+                    YoutubeDL.getInstance().execute(request, null, onProgress)
+                } catch (first: Exception) {
+                    // Las webs cambian a menudo: se trae la versión más nueva de yt-dlp y se reintenta una vez.
+                    Log.w(TAG, "Primer intento fallido; se actualiza yt-dlp", first)
+                    _state.value = DownloadState.Running(0f, tr("Actualizando el descargador…"))
+                    runCatching { YoutubeDL.getInstance().updateYoutubeDL(context, YoutubeDL.UpdateChannel.NIGHTLY) }
+                        .onFailure { Log.w(TAG, "No se pudo actualizar yt-dlp", it) }
+                    folder.listFiles()?.forEach { it.delete() }
+                    YoutubeDL.getInstance().execute(request, null, onProgress)
                 }
                 val file = folder.listFiles()?.filter { it.isFile }?.maxByOrNull { it.length() } ?: error("No se generó ningún archivo")
                 publish(file, audioOnly)
@@ -95,6 +106,7 @@ class VideoDownloaderViewModel @Inject constructor(
         initialized = true
         // Las webs cambian a menudo: se intenta traer la versión más reciente, sin depender de ello.
         runCatching { YoutubeDL.getInstance().updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE) }
+            .onFailure { Log.w(TAG, "No se pudo actualizar yt-dlp", it) }
     }
 
     /** Lo mueve a Descargas/NexusChat, donde el usuario puede encontrarlo con cualquier app. */

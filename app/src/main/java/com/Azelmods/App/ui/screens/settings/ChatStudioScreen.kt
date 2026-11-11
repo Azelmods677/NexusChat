@@ -193,17 +193,18 @@ private fun LivePreview() {
                     ChatEntryStyle.RING, ChatEntryStyle.SQUARE, ChatEntryStyle.CAPSULE, ChatEntryStyle.FRAMED -> {
                         if (entryStyle == ChatEntryStyle.RING || entryStyle == ChatEntryStyle.SQUARE) {
                             val me = com.Azelmods.App.data.profile.rememberMyProfile()
-                            Box(
-                                Modifier
-                                    .padding(end = 4.dp)
-                                    .size(36.dp)
-                                    .then(
-                                        if (entryStyle == ChatEntryStyle.RING) Modifier.border(2.dp, accent, CircleShape)
-                                        else Modifier.clip(RoundedCornerShape(8.dp))
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                com.Azelmods.App.ui.components.UserAvatar(me.name, me.photoUrl, size = if (entryStyle == ChatEntryStyle.RING) 30.dp else 36.dp)
+                            if (entryStyle == ChatEntryStyle.RING) {
+                                com.Azelmods.App.ui.components.AnimatedRingAvatar(me.name, me.photoUrl, size = 38.dp, modifier = Modifier.padding(end = 4.dp))
+                            } else {
+                                Box(
+                                    Modifier
+                                        .padding(end = 4.dp)
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    com.Azelmods.App.ui.components.UserAvatar(me.name, me.photoUrl, size = 36.dp)
+                                }
                             }
                         }
                         Icon(Icons.Outlined.AttachFile, null, tint = tone, modifier = Modifier.size(22.dp))

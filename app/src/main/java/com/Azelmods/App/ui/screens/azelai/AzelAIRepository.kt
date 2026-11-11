@@ -107,7 +107,7 @@ class AzelAIRepository @Inject constructor(
             messages = messages
         )
         
-        Log.d(TAG, "✅ Response received: ${response.content.take(100)}...")
+        Log.d(TAG, "Respuesta recibida (${response.content.length} caracteres)")
         Pair(response.content, response.tokens)
     }
     
