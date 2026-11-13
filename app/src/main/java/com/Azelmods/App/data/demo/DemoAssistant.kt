@@ -38,8 +38,8 @@ object DemoAssistant {
      */
     val welcome: List<String> = listOf(
         "¡Hola! 👋 Soy Azel Assistant. Esto es un chat de verdad: lo que escribas viaja por la misma base de datos que cualquier otra conversación de la app.",
-        "*¿Qué es NexusChat?* Un mensajero completo —chats, grupos, llamadas e historias— que además trae dentro herramientas que normalmente viven en otras apps: Tor, editor de código, terminal con Kali Linux y agentes de IA con tu propia clave.",
-        "*¿Por qué existe?* Porque casi todos los mensajeros te piden confiar en su palabra. Aquí el cifrado ocurre en tu dispositivo, la clave privada no sale de él, y el código está publicado para que lo compruebes en vez de creértelo.",
+        "*¿Qué es NexusChat?* Un mensajero hecho para que puedas hablar sin dejar rastro. Chats, grupos, llamadas e historias, pero pensados desde el primer día para el anonimato.",
+        "*¿Por qué existe?* Porque cifrar el mensaje no basta: los demás mensajeros siguen sabiendo con quién hablas, cuándo y desde dónde. Aquí el texto se cifra en tu teléfono, la vista previa también, Tor viene dentro y un solo interruptor te vuelve invisible.",
         "*¿Qué puedo hacer?* Pregúntame por *novedades*, *personalizar*, *cifrado*, *chats secretos*, *grupos*, *canales*, *stickers*, *carpetas*, *agentes*, *Kali* o *Tor*. Escribe *funciones* y te doy el índice completo. ✨"
     )
 
@@ -174,16 +174,16 @@ object DemoAssistant {
             // ── Identidad del proyecto ──
             (starts("que") && (starts("nexus", "aplicacion") || word("es", "esto", "app"))) ||
                 (starts("para") && starts("sirve", "vale")) -> listOf(
-                "NexusChat es un mensajero con cifrado de extremo a extremo que además trae Tor, editor de código, terminal con Kali Linux y agentes de IA.",
-                "Es una app completa hecha por Azelmodsx677, con un estudio de diseño para que la tuya no se parezca a la de nadie.",
-                "Todo lo que ves —incluida esta conversación— funciona de verdad contra Firebase. Nada es una maqueta."
+                "NexusChat es un mensajero anónimo. No es una app de chat con un ajuste de privacidad escondido: el anonimato es la razón por la que existe.",
+                "Lo que escribes sale cifrado de tu teléfono, la vista previa del chat también, tu conexión puede ir por Tor y el modo anónimo deja de publicar cuándo estás en línea.",
+                "Encima de eso está todo lo que esperas de un mensajero, y un estudio de diseño para que tu app no se parezca a la de nadie. La hizo Azelmodsx677."
             )
 
             (starts("porque", "porqu") || word("motivo", "razon")) &&
                 !starts("cifr", "llam", "histor", "traduc") -> listOf(
-                "Porque un mensajero que te pide confiar en su palabra no es privacidad, es marketing. 🙂",
-                "Aquí la clave privada se genera en tu dispositivo y no sale de él: el servidor guarda texto cifrado que no puede leer.",
-                "Y porque el código está publicado, así que cualquiera puede comprobar que hace lo que dice."
+                "Porque hablar en privado se ha vuelto un privilegio técnico, y no debería serlo. 🕶️",
+                "Los grandes mensajeros cifran el texto, pero guardan quién habla con quién, cuándo y desde qué red. Eso dice tanto de ti como el propio mensaje.",
+                "NexusChat existe para que eso no quede registrado: cifrado en tu teléfono, Tor integrado, modo anónimo de un toque, sin anuncios y sin vender datos."
             )
 
             // ── Seguridad y privacidad ──
@@ -194,9 +194,10 @@ object DemoAssistant {
             )
 
             starts("privac", "segur", "anonim") -> listOf(
-                "🛡️ La privacidad aquí son cuatro cosas concretas, no un eslogan:",
-                "1) Cifrado de extremo a extremo en chats y grupos.  2) Tor integrado, sin instalar nada.",
-                "3) Bloqueo de la app con huella o PIN.  4) Bloqueo de contactos que aplican las reglas del servidor, no solo la interfaz.",
+                "🕶️ El anonimato aquí son cosas concretas, no un eslogan:",
+                "1) Mensajes y vista previa cifrados en tu teléfono: el servidor no puede leerlos.  2) Tor integrado: el servidor ve una salida de Tor, no tu red.",
+                "3) Modo anónimo: dejas de publicar tu *en línea* y tu *última vez*, y no se generan vistas previas de enlaces que revelen tu dirección.",
+                "4) Chats secretos con clave nueva en cada mensaje, chats ocultos tras tu huella y archivos que solo ven los participantes.",
                 "Pregúntame por *cifrado* o *Tor* para el detalle de cada uno."
             )
 

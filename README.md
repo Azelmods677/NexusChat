@@ -50,7 +50,7 @@
 
 ## Novedades de la 8
 
-> **Versión actual: 8.4.0.** Ves quién reaccionó a cada mensaje, puedes ocultar texto con `||así||`, los archivos de chat solo los ven sus participantes, los enlaces del servidor ya no aparecen, la búsqueda es más rápida, los errores se explican en español, el asistente cuenta las novedades de cada versión y el texto del campo de escribir es el que tú quieras. Historial completo en [CHANGELOG.md](CHANGELOG.md).
+> **Versión actual: 8.4.1.** Ves quién reaccionó a cada mensaje, puedes ocultar texto con `||así||`, los archivos de chat solo los ven sus participantes, los enlaces del servidor ya no aparecen, la búsqueda es más rápida, los errores se explican en español, el asistente cuenta las novedades de cada versión y el texto del campo de escribir es el que tú quieras. Historial completo en [CHANGELOG.md](CHANGELOG.md).
 
 La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a tener **el tuyo**. Cada cambio se aplica al momento, sin reiniciar y sin perder nada.
 

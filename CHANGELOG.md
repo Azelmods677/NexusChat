@@ -32,6 +32,14 @@
 
 ---
 
+<a id="v841"></a>
+## v8.4.1
+
+- Azel Assistant explica qué es NexusChat de verdad: un mensajero hecho para el anonimato, con cifrado en tu teléfono, Tor integrado y modo anónimo.
+- Los chats que perdieron su lista de miembros vuelven a funcionar.
+
+---
+
 <a id="v840"></a>
 ## v8.4.0
 
