@@ -311,7 +311,7 @@ cd NexusChat
 
 Más detalles en [docs/SETUP.md](docs/SETUP.md) y el historial completo en [CHANGELOG.md](CHANGELOG.md).
 
-**Documentación:** [guía técnica](docs/NexusChat-Guia-Tecnica.pdf) de la arquitectura y [referencia del código](docs/NexusChat-Referencia-Codigo.pdf) con cada archivo y función.
+**Documentación:** [documentación completa](docs/NexusChat-Documentacion-Completa.pdf), con el producto, sus decisiones técnicas y todo el código en 156 páginas. También por separado: [guía técnica](docs/NexusChat-Guia-Tecnica.pdf) y [referencia del código](docs/NexusChat-Referencia-Codigo.pdf).
 
 </details>
 
