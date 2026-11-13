@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Azelmods677/NexusChat/releases/latest"><img src="https://img.shields.io/badge/Descargar-NexusChat%208-FF5C73?style=for-the-badge&logo=android&logoColor=white&labelColor=14171B" alt="Descargar NexusChat 8"></a>
+  <a href="https://github.com/Azelmods677/NexusChat/releases/latest"><img src="https://img.shields.io/github/v/release/Azelmods677/NexusChat?style=for-the-badge&logo=android&logoColor=white&label=Descargar&labelColor=14171B&color=FF5C73" alt="Descargar la última versión"></a>
   <img src="https://img.shields.io/badge/Android-12%20o%20superior-53A6E6?style=for-the-badge&logo=android&logoColor=white&labelColor=14171B" alt="Android 12 o superior">
   <img src="https://img.shields.io/badge/Idiomas-Español%20·%20English-A78BFA?style=for-the-badge&labelColor=14171B" alt="Español e inglés">
   <img src="https://img.shields.io/badge/Desarrollada%20por-Azelmodsx677-2FB38E?style=for-the-badge&labelColor=14171B" alt="Desarrollada por Azelmodsx677">
@@ -27,6 +27,8 @@
   &nbsp;·&nbsp;
   <a href="#por-qué-nexuschat">Por qué NexusChat</a>
   &nbsp;·&nbsp;
+  <a href="#seguridad">Seguridad</a>
+  &nbsp;·&nbsp;
   <a href="#el-estudio-de-diseño">Estudio de diseño</a>
   &nbsp;·&nbsp;
   <a href="#todo-lo-que-trae">Todo lo que trae</a>
@@ -47,6 +49,8 @@
 ---
 
 ## Novedades de la 8
+
+> **Versión actual: 8.4.0.** Ves quién reaccionó a cada mensaje, puedes ocultar texto con `||así||`, los archivos de chat solo los ven sus participantes, los enlaces del servidor ya no aparecen, la búsqueda es más rápida, los errores se explican en español, el asistente cuenta las novedades de cada versión y el texto del campo de escribir es el que tú quieras. Historial completo en [CHANGELOG.md](CHANGELOG.md).
 
 La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a tener **el tuyo**. Cada cambio se aplica al momento, sin reiniciar y sin perder nada.
 
@@ -70,6 +74,10 @@ La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a 
 - ⭕ **Aro animado en el campo de escribir:** tu foto dentro de un aro que gira y responde al toque.
 - 🛡️ **Comunidad segura:** reporta usuarios desde su chat y consulta la política de privacidad dentro de la app.
 - 📥 **Descargador de vídeos renovado:** se actualiza solo y reintenta si una web cambia.
+- 🔎 **Búsqueda más rápida** y errores que dicen qué hacer, en tu idioma.
+- 👀 **Quién reaccionó:** toca una reacción y ves cada persona con su emoji.
+- 🙈 **Texto oculto:** escribe `||así||` y queda tapado hasta que lo toquen.
+- 🤖 **Asistente al día:** te cuenta las novedades de la versión que tienes instalada.
 - 🐉 **Kali Linux de verdad** dentro de la terminal.
 - 🔠 **21 tipos de letra** para toda la app y **36 colores de acento**, o escribe el tuyo en hexadecimal.
 
@@ -86,6 +94,20 @@ La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a 
 | Terminal y Kali Linux | ✅ | ❌ | ❌ | ❌ |
 
 <sub>Comparativa de funciones a noviembre de 2026. NexusChat está disponible por ahora solo para Android.</sub>
+
+---
+
+## Seguridad
+
+| | Cómo lo protege NexusChat |
+|---|---|
+| Mensajes | Cifrado de extremo a extremo en chats de dos y grupos. El servidor guarda texto cifrado y una etiqueta, nunca el mensaje. |
+| Vista previa del chat | También va cifrada; solo los participantes la leen. |
+| Archivos | En un chat de dos, solo sus dos participantes pueden leer, subir o borrar sus archivos. |
+| Enlaces internos | La app nunca muestra rutas del servidor en mensajes, stickers ni vistas previas. |
+| Base de datos | Cada chat solo lo leen sus miembros, y los reportes no los puede leer nadie desde la app. |
+| Registros | La versión publicada no escribe el contenido de los mensajes en el registro del sistema. |
+| Cuenta | Bloquear, reportar y eliminar tu cuenta desde la app. |
 
 ---
 

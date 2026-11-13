@@ -90,14 +90,14 @@
     
     "chats": {
       "$chatId": {
-        ".read": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        ".read": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists() || (!data.child('members').exists() && $chatId.contains(auth.uid)))",
         /*
           El bloqueo se comprueba AQUI y no en messages/$messageId: en Firebase un
           permiso concedido por el padre no se puede retirar en un hijo, asi que con
           la comprobacion solo en el mensaje un usuario bloqueado seguia pudiendo
           escribir.
         */
-        ".write": "auth != null && (!data.exists() || (data.child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()))",
+        ".write": "auth != null && (!data.exists() || (!data.child('members').exists() && $chatId.contains(auth.uid)) || (data.child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()))",
 
         /*
           Entrar con un enlace: un no miembro solo puede añadirse a si mismo y solo si manda,
@@ -300,7 +300,8 @@
     "codeFiles": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        ".indexOn": ["timestamp"]
       }
     },
 
@@ -413,7 +414,15 @@
     "aiChats": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && auth.uid === $uid"
+        ".write": "auth != null && auth.uid === $uid",
+        "agentRuns": {
+          ".indexOn": ["startedAt"]
+        },
+        "$chatId": {
+          "messages": {
+            ".indexOn": ["timestamp"]
+          }
+        }
       }
     }
   }

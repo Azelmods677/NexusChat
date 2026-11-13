@@ -562,10 +562,12 @@ class RealtimeDatabaseRepository @Inject constructor(
         // Firebase entrega todas estas respuestas en el hilo principal: no hace falta bloquear.
         val fields = mutableMapOf<String, MutableMap<String, Any>>()
         val watchers = mutableMapOf<String, List<Pair<DatabaseReference, ValueEventListener>>>()
-        var pendingFirstLoads = 0
+        // Campos que aún no respondieron, por chat. Si un chat se va antes de cargar, sus
+        // pendientes se descartan con él: con un contador global la lista no se publicaba nunca.
+        val pending = mutableMapOf<String, MutableSet<String>>()
 
         fun publish() {
-            if (pendingFirstLoads > 0) return
+            if (pending.values.any { it.isNotEmpty() }) return
             trySend(
                 fields.mapNotNull { (chatId, chat) ->
                     if ("members" in chat || "participants" in chat) chat + ("chatId" to chatId) else null
@@ -573,10 +575,12 @@ class RealtimeDatabaseRepository @Inject constructor(
             )
         }
 
+        var unwatchLater: (String) -> Unit = {}
+
         fun watch(chatId: String) {
             val chat = mutableMapOf<String, Any>()
             fields[chatId] = chat
-            pendingFirstLoads += CHAT_PREVIEW_FIELDS.size
+            pending[chatId] = CHAT_PREVIEW_FIELDS.toMutableSet()
             watchers[chatId] = CHAT_PREVIEW_FIELDS.map { field ->
                 val ref = database.child("chats").child(chatId).child(field)
                 val listener = object : ValueEventListener {
@@ -585,7 +589,7 @@ class RealtimeDatabaseRepository @Inject constructor(
                     private fun settled() {
                         if (!loaded) {
                             loaded = true
-                            pendingFirstLoads--
+                            pending[chatId]?.remove(field)
                         }
                         publish()
                     }
@@ -597,6 +601,15 @@ class RealtimeDatabaseRepository @Inject constructor(
                     }
 
                     override fun onCancelled(error: DatabaseError) {
+                        if (error.code == DatabaseError.PERMISSION_DENIED) {
+                            // Ya no es miembro (lo expulsaron o se borró el grupo): se quita de su
+                            // índice para no reabrir 15 escuchas rechazadas en cada arranque.
+                            if (watchers.containsKey(chatId)) {
+                                Log.w("RealtimeDB", "Chat $chatId sin acceso; se retira del índice")
+                                unwatchLater(chatId)
+                            }
+                            return
+                        }
                         Log.e("RealtimeDB", "Chat $chatId, campo $field: ${error.message}")
                         settled()
                     }
@@ -609,9 +622,15 @@ class RealtimeDatabaseRepository @Inject constructor(
         fun unwatch(chatId: String) {
             watchers.remove(chatId)?.forEach { (ref, listener) -> ref.removeEventListener(listener) }
             fields.remove(chatId)
+            pending.remove(chatId)
         }
 
         val indexRef = database.child("userChats").child(userId)
+        unwatchLater = { chatId ->
+            unwatch(chatId)
+            publish()
+            indexRef.child(chatId).removeValue()
+        }
         val indexListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val chatIds = snapshot.children.mapNotNull { it.key }.toSet()
@@ -1436,8 +1455,8 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
         val messageId = chatRef.child("messages").push().key ?: throw Exception("ID error")
         val messageData = hashMapOf(
-            "messageId" to messageId, "senderId" to currentUserId, "content" to stickerUrl,
-            "mediaType" to "STICKER", "stickerUrl" to stickerUrl, "stickerPack" to stickerPack, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
+            "messageId" to messageId, "senderId" to currentUserId, "content" to "",
+            "mediaType" to "STICKER", "mediaUrl" to stickerUrl, "stickerUrl" to stickerUrl, "stickerPack" to stickerPack, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         replyTo?.let { messageData["replyTo"] = it }
         if (forwarded) messageData["forwardedFrom"] = "1"

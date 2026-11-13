@@ -1492,5 +1492,14 @@
 "Los mensajes temporales y las historias se borran del servidor al caducar. Puedes vaciar un chat o borrar mensajes cuando quieras.": "Disappearing messages and stories are deleted from the server when they expire. You can clear a chat or delete messages whenever you want.",
 "Desde Ajustes, Cuenta, puedes eliminar tu cuenta. Se borran tu perfil y tus datos del servidor.": "From Settings, Account, you can delete your account. Your profile and your data are removed from the server.",
 "Puedes bloquear y reportar a cualquier usuario desde el menú de su chat. Los reportes se revisan para mantener la comunidad segura.": "You can block and report any user from their chat menu. Reports are reviewed to keep the community safe.",
-"Para cualquier duda sobre tus datos, escribe al desarrollador por el canal de Telegram de Azel Mods, enlazado en Acerca de.": "For any question about your data, write to the developer through the Azel Mods Telegram channel, linked in About."
+"Para cualquier duda sobre tus datos, escribe al desarrollador por el canal de Telegram de Azel Mods, enlazado en Acerca de.": "For any question about your data, write to the developer through the Azel Mods Telegram channel, linked in About.",
+"El servidor no permitió esta acción. Cierra y abre la app; si sigue, actualízala.": "The server didn't allow this. Close and reopen the app; if it continues, update it.",
+"Sin conexión. Revisa tu internet y vuelve a intentarlo.": "No connection. Check your internet and try again.",
+"Tu sesión caducó. Vuelve a iniciar sesión.": "Your session expired. Sign in again.",
+"Algo salió mal. Vuelve a intentarlo.": "Something went wrong. Try again.",
+"🔒 Cifrado con una clave anterior: no se puede leer en este dispositivo": "🔒 Encrypted with a previous key: it can't be read on this device",
+"Lo que se lee en el campo vacío. Por ejemplo: Azelmods, tu nombre o una frase.": "What the empty field shows. For example: Azelmods, your name or a phrase.",
+"Reacciones": "Reactions",
+"Toca para quitar": "Tap to remove",
+"Texto oculto: escribe ||así|| y se verá tapado hasta que lo toquen.": "Hidden text: write ||like this|| and it stays covered until tapped."
 }

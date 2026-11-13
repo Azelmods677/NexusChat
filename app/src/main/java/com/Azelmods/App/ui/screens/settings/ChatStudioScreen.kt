@@ -432,6 +432,7 @@ private fun EntryOptions() {
         value = hint,
         onValueChange = { ChatLook.setEntryHint(it.take(40)) },
         placeholder = { Text(tr("Mensaje")) },
+        supportingText = { Text(tr("Lo que se lee en el campo vacío. Por ejemplo: Azelmods, tu nombre o una frase.")) },
         singleLine = true,
         modifier = Modifier
             .fillMaxWidth()

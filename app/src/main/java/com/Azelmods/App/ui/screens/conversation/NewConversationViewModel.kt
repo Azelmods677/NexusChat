@@ -64,7 +64,7 @@ class NewConversationViewModel @Inject constructor(
             android.util.Log.e("NewConversation", "Cannot load contacts: user not authenticated")
             _state.value = _state.value.copy(
                 isLoading = false,
-                error = "Authentication required"
+                error = tr("Inicia sesión para ver tus contactos")
             )
             return
         }
@@ -116,7 +116,7 @@ class NewConversationViewModel @Inject constructor(
                 }.onFailure { exception ->
                     android.util.Log.e("NewConversation", "Failed to load contacts: ${exception.message}", exception)
                     _state.value = _state.value.copy(
-                        error = "Failed to load contacts: ${exception.message}",
+                        error = com.Azelmods.App.utils.friendlyFirebaseError(exception),
                         isLoading = false
                     )
                 }
@@ -209,7 +209,7 @@ class NewConversationViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("NewConversation", "Could not start conversation: ${e.message}", e)
-                _state.value = _state.value.copy(error = "No se pudo abrir el chat. Intenta de nuevo.")
+                _state.value = _state.value.copy(error = com.Azelmods.App.utils.friendlyFirebaseError(e))
             }
         }
     }
@@ -236,7 +236,7 @@ class NewConversationViewModel @Inject constructor(
             e.printStackTrace()
             _state.value = _state.value.copy(
                 isCreatingGroup = false,
-                error = "Failed to create group: ${e.message}"
+                error = com.Azelmods.App.utils.friendlyFirebaseError(e)
             )
             null
         }
@@ -257,7 +257,7 @@ class NewConversationViewModel @Inject constructor(
             e.printStackTrace()
             _state.value = _state.value.copy(
                 isSearching = false,
-                error = "Failed to search user: ${e.message}"
+                error = com.Azelmods.App.utils.friendlyFirebaseError(e)
             )
             null
         }

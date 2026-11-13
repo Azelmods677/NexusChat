@@ -496,7 +496,7 @@ fun messagePreviewText(message: com.Azelmods.App.data.model.Message): String {
         message.mediaType == "AUDIO" -> caption.ifBlank { tr("Audio") }
         message.mediaType == "DOCUMENT" -> caption.ifBlank { tr("Documento") }
         message.mediaType == "LOCATION" -> tr("Ubicación")
-        caption.startsWith("http") && "firebasestorage" in caption -> tr("Archivo")
+        INTERNAL_LINK.containsMatchIn(caption) -> hideInternalLinks(caption, null)
         else -> caption
     }
 }
@@ -511,3 +511,65 @@ fun currentMentionQuery(text: String): String? {
 
 /** Cambia la mención a medias por el nombre elegido. */
 fun applyMention(text: String, name: String): String = text.substring(0, text.lastIndexOf('@')) + "@" + name + " "
+
+private val INTERNAL_LINK = Regex("""https?://(firebasestorage\.googleapis\.com|storage\.googleapis\.com|[\w.-]+\.firebasestorage\.app|[\w.-]+\.firebaseio\.com|[\w.-]+\.firebasedatabase\.app)\S*""")
+
+/**
+ * Quita del texto visible los enlaces internos de Storage y de la base de datos.
+ *
+ * Los stickers y algunos mensajes antiguos guardaban la URL del archivo como texto, y la
+ * conversación la mostraba tal cual: dejaba a la vista la ruta del servidor y su token.
+ * El archivo se sigue abriendo desde `mediaUrl`; solo se oculta el texto.
+ */
+fun hideInternalLinks(content: String, mediaType: String?): String {
+    if (!INTERNAL_LINK.containsMatchIn(content)) return content
+    val cleaned = INTERNAL_LINK.replace(content, "").trim()
+    return when {
+        cleaned.isNotEmpty() -> cleaned
+        mediaType != null -> ""
+        else -> tr("Archivo")
+    }
+}
+
+private val SPOILER = Regex("""\|\|(.+?)\|\|""", RegexOption.DOT_MATCHES_ALL)
+
+/** Si el texto tiene algún `||spoiler||`. */
+fun hasSpoiler(text: String): Boolean = SPOILER.containsMatchIn(text)
+
+/**
+ * Texto con menciones y spoilers. `||así||` queda tapado por una barra hasta que se
+ * toca; al tocarlo se llama a [onReveal]. Las marcas `||` nunca se muestran.
+ */
+fun styledMessageText(
+    raw: String,
+    mentionColor: androidx.compose.ui.graphics.Color,
+    spoilerColor: androidx.compose.ui.graphics.Color,
+    revealed: Boolean,
+    onReveal: () -> Unit,
+    onMentionClick: ((String) -> Unit)? = null
+): androidx.compose.ui.text.AnnotatedString {
+    val ranges = mutableListOf<IntRange>()
+    val clean = StringBuilder()
+    var last = 0
+    SPOILER.findAll(raw).forEach { m ->
+        clean.append(raw, last, m.range.first)
+        val start = clean.length
+        clean.append(m.groupValues[1])
+        ranges += start until clean.length
+        last = m.range.last + 1
+    }
+    clean.append(raw, last, raw.length)
+    val base = highlightMentions(clean.toString(), mentionColor, onMentionClick)
+    if (ranges.isEmpty()) return base
+    val builder = androidx.compose.ui.text.AnnotatedString.Builder(base)
+    ranges.forEach { r ->
+        if (!revealed) {
+            builder.addStyle(
+                androidx.compose.ui.text.SpanStyle(color = spoilerColor, background = spoilerColor),
+                r.first, r.last + 1
+            )
+            builder.addLink(androidx.compose.ui.text.LinkAnnotation.Clickable("spoiler") { onReveal() }, r.first, r.last + 1)
+        }
+    }
+    return builder.toAnnotatedString()
+}

@@ -690,7 +690,7 @@ class ChatViewModel @Inject constructor(
         val payload = data["encryptedPayload"] as? String
         val groupKeyId = data["groupKeyId"] as? String
         val content = if (isEncrypted && groupKeyId != null && payload != null) {
-            databaseRepository.decryptGroupMessage(chatId, groupKeyId, payload) ?: tr("🔒 No se pudo descifrar")
+            databaseRepository.decryptGroupMessage(chatId, groupKeyId, payload) ?: tr("🔒 Cifrado con una clave anterior: no se puede leer en este dispositivo")
         } else {
             decryptedContent(
                 rawContent = data["content"] as? String ?: "",
@@ -714,13 +714,16 @@ class ChatViewModel @Inject constructor(
             chatId = chatId,
             senderId = data["senderId"] as? String ?: "",
             senderName = data["senderName"] as? String ?: "",
-            content = content,
+            content = hideInternalLinks(content, data["mediaType"] as? String),
             timestamp = timestamp,
             status = parseMessageStatus(data["status"]),
             replyTo = data["replyTo"] as? String,
             isVoice = data["isVoice"] as? Boolean ?: false,
             reactions = (data["reactions"] as? Map<String, String>) ?: emptyMap(),
-            mediaUrl = data["mediaUrl"] as? String,
+            // Los stickers antiguos guardaban su URL solo en `stickerUrl` o en el texto.
+            mediaUrl = (data["mediaUrl"] as? String)
+                ?: (data["stickerUrl"] as? String)
+                ?: (data["content"] as? String)?.takeIf { data["mediaType"] == "STICKER" },
             mediaType = data["mediaType"] as? String,
             deletedFor = (data["deletedFor"] as? Map<String, Boolean>) ?: emptyMap(),
             deletedForEveryone = data["deletedForEveryone"] as? Boolean ?: false,
@@ -779,11 +782,11 @@ class ChatViewModel @Inject constructor(
             val bytes = Base64.decode(payload, Base64.NO_WRAP)
             when (val dec = decryptMessageUseCase(peerId, bytes, MessageType.WHISPER)) {
                 is com.Azelmods.App.data.security.encryption.DecryptionResult.Success -> dec.plaintext
-                else -> tr("🔒 No se pudo descifrar")
+                else -> tr("🔒 Cifrado con una clave anterior: no se puede leer en este dispositivo")
             }
         } catch (e: Exception) {
             android.util.Log.e("ChatViewModel", "Descifrado fallido", e)
-            "🔒 Error de descifrado"
+            tr("🔒 Cifrado con una clave anterior: no se puede leer en este dispositivo")
         }
     }
 

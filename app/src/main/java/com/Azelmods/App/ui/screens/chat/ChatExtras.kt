@@ -384,7 +384,7 @@ class SavedMessagesViewModel @Inject constructor(
                         val opened = e2ee.decryptFrom(me, Base64.decode(sealed, Base64.NO_WRAP))
                         SavedMessage(
                             id,
-                            (opened as? DecryptionResult.Success)?.plaintext ?: tr("🔒 No se pudo descifrar"),
+                            (opened as? DecryptionResult.Success)?.plaintext ?: tr("🔒 Cifrado con una clave anterior: no se puede leer en este dispositivo"),
                             node.child("at").getValue(Long::class.java) ?: 0L
                         )
                     })

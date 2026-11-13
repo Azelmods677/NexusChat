@@ -101,7 +101,9 @@ fun MessageBubble(
     onViewOnceClosed: (() -> Unit)? = null,
     translatedText: String? = null,
     isTranslating: Boolean = false,
-    onTranslate: (() -> Unit)? = null
+    onTranslate: (() -> Unit)? = null,
+    myUid: String = "",
+    reactorName: (String) -> String = { it }
 ) {
     if (message.mediaType == "SYSTEM") {
         SystemNotice(message.content)
@@ -113,6 +115,7 @@ fun MessageBubble(
     var showActions by remember { mutableStateOf(false) }
     var confirmDeleteForAll by remember { mutableStateOf(false) }
     var viewOnceOpen by remember { mutableStateOf(false) }
+    var showReactors by remember { mutableStateOf(false) }
     val readableContent = remember(message.content) { com.Azelmods.App.ui.screens.chat.withoutLinkPreview(message.content) }
 
     val now = System.currentTimeMillis()
@@ -286,8 +289,17 @@ fun MessageBubble(
                     var expanded by remember(message.messageId) { mutableStateOf(false) }
                     val isLong = text.length > LONG_MESSAGE_CHARS
                     val mentionColor = MaterialTheme.colorScheme.primary
-                    val styledText = remember(text, mentionColor, onMentionClick != null) {
-                        com.Azelmods.App.ui.screens.chat.highlightMentions(text, mentionColor, onMentionClick)
+                    val spoilerColor = NexusTokens.Color.TextMuted
+                    var spoilerRevealed by remember(message.messageId) { mutableStateOf(false) }
+                    val styledText = remember(text, mentionColor, onMentionClick != null, spoilerRevealed) {
+                        com.Azelmods.App.ui.screens.chat.styledMessageText(
+                            raw = text,
+                            mentionColor = mentionColor,
+                            spoilerColor = spoilerColor,
+                            revealed = spoilerRevealed,
+                            onReveal = { spoilerRevealed = true },
+                            onMentionClick = onMentionClick
+                        )
                     }
                     Text(
                         text = styledText,
@@ -377,7 +389,7 @@ fun MessageBubble(
                         modifier = Modifier
                             .clip(RoundedCornerShape(NexusTokens.Radius.pill))
                             .background(NexusTokens.Color.BgHigh)
-                            .clickable { onReactionClick(emoji) }
+                            .clickable { showReactors = true }
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -394,6 +406,19 @@ fun MessageBubble(
                 }
             }
         }
+    }
+
+    if (showReactors) {
+        ReactorsSheet(
+            reactions = message.reactions,
+            myUid = myUid,
+            nameOf = reactorName,
+            onRemoveMine = { emoji ->
+                showReactors = false
+                onReactionClick(emoji)
+            },
+            onDismiss = { showReactors = false }
+        )
     }
 
     if (showActions) {
@@ -1026,3 +1051,77 @@ private fun formatCountdown(seconds: Long): String = when {
 
 private const val LONG_MESSAGE_CHARS = 1_200
 private const val COLLAPSED_LINES = 24
+
+/**
+ * Quién reaccionó y con qué. Arriba, una pestaña por emoji con su cuenta; tocar tu
+ * propia fila quita tu reacción, como en los demás mensajeros.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReactorsSheet(
+    reactions: Map<String, String>,
+    myUid: String,
+    nameOf: (String) -> String,
+    onRemoveMine: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val counts = remember(reactions) { reactions.values.groupingBy { it }.eachCount().toList().sortedByDescending { it.second } }
+    var filter by remember { mutableStateOf<String?>(null) }
+    val rows = remember(reactions, filter) {
+        reactions.entries
+            .filter { filter == null || it.value == filter }
+            .sortedWith(compareBy({ it.key != myUid }, { nameOf(it.key).lowercase() }))
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = NexusTokens.Color.BgSurface) {
+        Text(
+            tr("Reacciones"),
+            style = MaterialTheme.typography.titleMedium,
+            color = NexusTokens.Color.TextPrimary,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+        )
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            ReactorTab(label = tr("Todas") + " " + reactions.size, selected = filter == null) { filter = null }
+            counts.forEach { (emoji, count) ->
+                ReactorTab(label = "$emoji $count", selected = filter == emoji) { filter = emoji }
+            }
+        }
+        rows.forEach { (uid, emoji) ->
+            val mine = uid == myUid
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = mine) { onRemoveMine(emoji) }
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(if (mine) tr("Tú") else nameOf(uid), color = NexusTokens.Color.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                    if (mine) {
+                        Text(tr("Toca para quitar"), color = NexusTokens.Color.TextMuted, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                com.Azelmods.App.ui.components.AnimatedEmoji(emoji, 26.dp, iterations = 1)
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun ReactorTab(label: String, selected: Boolean, onClick: () -> Unit) {
+    Text(
+        label,
+        color = if (selected) NexusTokens.Color.TextPrimary else NexusTokens.Color.TextSecondary,
+        style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier
+            .clip(RoundedCornerShape(NexusTokens.Radius.pill))
+            .background(if (selected) NexusTokens.Color.BgHigh else androidx.compose.ui.graphics.Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    )
+}

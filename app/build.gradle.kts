@@ -49,8 +49,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 37  // Android 17
-        versionCode = 830
-        versionName = "8.3.0"
+        versionCode = 840
+        versionName = "8.4.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
@@ -362,3 +362,13 @@ dependencies {
     // ── Splash Screen ──────────────────────────────────────
     implementation("androidx.core:core-splashscreen:1.0.1")
 }
+
+// El CHANGELOG se empaqueta como asset para que el asistente cuente las novedades de la
+// versión instalada sin reescribirlas a mano en el código.
+val changelogAssets = layout.buildDirectory.dir("generated/changelogAssets")
+val copyChangelog by tasks.registering(Copy::class) {
+    from(rootProject.file("CHANGELOG.md"))
+    into(changelogAssets)
+}
+android.sourceSets["main"].assets.srcDir(changelogAssets.get().asFile)
+tasks.named("preBuild") { dependsOn(copyChangelog) }

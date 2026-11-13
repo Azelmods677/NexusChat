@@ -45,12 +45,17 @@ service firebase.storage {
       allow delete: if isOwner(userId);
     }
 
-    // Archivos de chats. Quién es miembro lo decide la base de datos; aquí se exige
-    // sesión iniciada y un tamaño máximo.
+    // Archivos de chats. En un chat de dos el id es "uidA_uidB": solo ellos dos leen,
+    // suben o borran. Los grupos ("group_...") guardan los miembros en la base de datos,
+    // que Storage no puede consultar; ahí se exige sesión y nadie puede borrar.
+    function inDirectChat(chatId) {
+      return signedIn() && !chatId.matches('group_.*') && request.auth.uid in chatId.split('_');
+    }
+
     match /chats/{chatId}/{allPaths=**} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && underMb(100);
-      allow delete: if signedIn();
+      allow read: if inDirectChat(chatId) || (signedIn() && chatId.matches('group_.*'));
+      allow create, update: if (inDirectChat(chatId) || (signedIn() && chatId.matches('group_.*'))) && underMb(100);
+      allow delete: if inDirectChat(chatId);
     }
 
     // Fondo de pantalla personal.

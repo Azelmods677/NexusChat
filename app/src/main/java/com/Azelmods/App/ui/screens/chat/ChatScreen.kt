@@ -639,6 +639,8 @@ fun ChatScreen(
                                     viewModel.setReplyingTo(message)
                                 },
                                 onReactionClick = { emoji -> viewModel.addReaction(message.messageId, emoji) },
+                                myUid = myUid,
+                                reactorName = { uid -> senderNameOf(uid) },
                                 onImageClick = { url, sender, timestamp ->
                                     selectedImageUrl = url
                                     selectedImageSender = sender

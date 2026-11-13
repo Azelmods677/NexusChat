@@ -43,9 +43,45 @@ object DemoAssistant {
         "*¿Qué puedo hacer?* Pregúntame por *novedades*, *personalizar*, *cifrado*, *chats secretos*, *grupos*, *canales*, *stickers*, *carpetas*, *agentes*, *Kali* o *Tor*. Escribe *funciones* y te doy el índice completo. ✨"
     )
 
+    /**
+     * Novedades de la versión instalada, leídas del CHANGELOG empaquetado en la app.
+     * Se cargan al arrancar ([loadReleaseNotes]); si no hay, se usa el resumen de la 8.
+     */
+    @Volatile
+    private var releaseNotes: Pair<String, List<String>>? = null
+
+    /** Lee la primera sección `## vX.Y.Z` de `CHANGELOG.md` (la más reciente). */
+    fun loadReleaseNotes(context: android.content.Context) {
+        releaseNotes = runCatching {
+            context.assets.open("CHANGELOG.md").bufferedReader().useLines { lines ->
+                var version: String? = null
+                val bullets = mutableListOf<String>()
+                for (line in lines) {
+                    val t = line.trim()
+                    if (t.startsWith("## v")) {
+                        if (version != null) break
+                        version = t.removePrefix("## v").trim()
+                    } else if (version != null && t.startsWith("- ")) {
+                        bullets += t.removePrefix("- ").trim()
+                    } else if (version != null && t == "---") {
+                        break
+                    }
+                }
+                version?.let { it to bullets.take(8) }
+            }
+        }.getOrNull()
+    }
+
+    private fun latestNotes(): List<String>? = releaseNotes?.let { (version, bullets) ->
+        if (bullets.isEmpty()) null
+        else listOf("🆕 Novedades de NexusChat $version:") + bullets.map { "• $it" }
+    }
+
     /** Lo que se le cuenta una sola vez a quien ya tenía la app al llegar esta versión. */
-    val whatsNew: List<String> = listOf(
-        "🆕 ¡NexusChat 8.0 ya está aquí! Te cuento lo que trae:",
+    val whatsNew: List<String> get() = latestNotes()?.plus("Escríbeme *novedades* cuando quieras volver a verlas.") ?: whatsNew8
+
+    private val whatsNew8: List<String> = listOf(
+        "🆕 ¡NexusChat 8 ya está aquí! Te cuento lo que trae:",
         "🎨 *Personaliza todo* en Ajustes → Personalización → Estudio de diseño: filas, burbujas, campo de escribir, inicio y ajustes.",
         "🔐 *Grupos cifrados*, *chats secretos* con una clave nueva en cada mensaje, y *canales*.",
         "💬 Reenviar, seleccionar varios mensajes, encuestas, mensajes programados, carpetas, chats ocultos y stickers propios.",
@@ -83,8 +119,8 @@ object DemoAssistant {
             )
 
             // ── Novedades de la versión ──
-            starts("novedad", "actualiz", "version") || word("nuevo", "nueva", "nuevas", "nuevos") -> listOf(
-                "🆕 NexusChat 8.0 es la actualización más grande hasta ahora:",
+            starts("novedad", "actualiz", "version") || word("nuevo", "nueva", "nuevas", "nuevos") -> (latestNotes() ?: emptyList()) + listOf(
+                "📦 Y lo que trajo la 8, la actualización más grande hasta ahora:",
                 "🎨 *Estudio de diseño*: filas, burbujas, campo de escribir, inicio y ajustes a tu gusto.",
                 "🔐 *Grupos cifrados*, *chats secretos* y *canales*.",
                 "💬 *Reenviar*, seleccionar, *encuestas*, *programar*, *carpetas*, *chats ocultos* y *stickers* propios.",

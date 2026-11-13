@@ -76,6 +76,7 @@ fun SearchScreen(
     val focusRequester = remember { FocusRequester() }
     val isSearching by viewModel.isSearching.collectAsState()
     val searchResults by viewModel.results.collectAsState()
+    val searchError by viewModel.error.collectAsState()
     
     LaunchedEffect(searchQuery) {
         viewModel.search(searchQuery)
@@ -172,6 +173,11 @@ fun SearchScreen(
             
             // Content
             when {
+                searchQuery.isNotEmpty() && searchError != null && !isSearching -> {
+                    Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text(text = searchError.orEmpty(), color = Color.Gray, fontSize = 15.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                }
                 searchQuery.isEmpty() -> {
                     // Recent searches or suggestions
                     Box(
@@ -448,6 +454,23 @@ class SearchViewModel @Inject constructor(
 
     private var searchJob: Job? = null
 
+    /** Perfiles por uid. Se descargan una vez por pantalla: antes se pedían con cada letra. */
+    private var usersCache: Map<String, Map<String, Any>>? = null
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private suspend fun users(): Map<String, Map<String, Any>> {
+        usersCache?.let { return it }
+        val result = repository.getAllUsers().first()
+        result.exceptionOrNull()?.let { throw it }
+        val map = result.getOrNull().orEmpty()
+            .mapNotNull { u -> (u["uid"] as? String)?.let { it to u } }
+            .toMap()
+        usersCache = map
+        return map
+    }
+
     fun search(query: String) {
         searchJob?.cancel()
         if (query.length < 2) {
@@ -459,11 +482,11 @@ class SearchViewModel @Inject constructor(
             _isSearching.value = true
             delay(300)
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            val q = query.trim().lowercase()
+            val q = query.trim().lowercase().removePrefix("@")
             val found = mutableListOf<SearchResult>()
             try {
-                val chats = repository.getUserChats(userId).first()
-                chats.forEach { data ->
+                val people = users()
+                repository.getUserChats(userId).first().forEach { data ->
                     val chatId = data["chatId"] as? String ?: return@forEach
                     val members = when (val m = data["members"]) {
                         is List<*> -> m.filterIsInstance<String>()
@@ -471,7 +494,7 @@ class SearchViewModel @Inject constructor(
                         else -> emptyList()
                     }
                     val otherId = members.firstOrNull { it != userId } ?: return@forEach
-                    val other = repository.getUserById(otherId)
+                    val other = people[otherId]
                     val name = (other?.get("displayName") as? String)
                         ?: (other?.get("username") as? String) ?: ""
                     val lastMessage = data["lastMessage"] as? String ?: ""
@@ -487,26 +510,28 @@ class SearchViewModel @Inject constructor(
                         )
                     }
                 }
-                repository.getAllUsers().first().getOrNull()?.forEach { user ->
-                    val uid = user["uid"] as? String ?: return@forEach
+                people.forEach { (uid, user) ->
                     if (uid == userId) return@forEach
                     val name = (user["displayName"] as? String) ?: (user["name"] as? String) ?: ""
                     val username = user["username"] as? String ?: ""
-                    if (name.lowercase().contains(q) || username.lowercase().contains(q)) {
-                        if (found.none { it is SearchResult.ContactResult && it.userId == uid }) {
-                            found.add(
-                                SearchResult.ContactResult(
-                                    userId = uid,
-                                    name = name.ifBlank { username },
-                                    username = username,
-                                    photoUrl = user["photoUrl"] as? String
-                                )
+                    if (name.lowercase().contains(q) || username.lowercase().removePrefix("@").contains(q)) {
+                        found.add(
+                            SearchResult.ContactResult(
+                                userId = uid,
+                                name = name.ifBlank { username },
+                                username = username,
+                                photoUrl = user["photoUrl"] as? String
                             )
-                        }
+                        )
                     }
                 }
+                _error.value = null
                 _results.value = found
-            } catch (_: Exception) {
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("SearchViewModel", "La búsqueda falló", e)
+                _error.value = com.Azelmods.App.utils.friendlyFirebaseError(e)
                 _results.value = emptyList()
             } finally {
                 _isSearching.value = false

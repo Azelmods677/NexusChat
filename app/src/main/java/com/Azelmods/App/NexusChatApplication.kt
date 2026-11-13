@@ -71,6 +71,7 @@ class NexusChatApplication : Application(), SingletonImageLoader.Factory {
 
     override fun onCreate() {
         super.onCreate()
+        com.Azelmods.App.data.demo.DemoAssistant.loadReleaseNotes(this)
 
         if (torPreferences.isAnonymousModeEnabled()) {
             runCatching { torService.get().restoreIfEnabled(torPreferences) }

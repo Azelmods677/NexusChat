@@ -32,6 +32,31 @@
 
 ---
 
+<a id="v840"></a>
+## v8.4.0
+
+- Seguridad: los archivos de un chat de dos solo los leen, suben y borran sus dos participantes.
+- Los enlaces internos del servidor ya no aparecen en mensajes, stickers ni vistas previas.
+- Los grupos de los que te expulsaron dejan de dar "Permission denied" y salen de tu lista.
+- La lista de chats ya no se queda esperando si un chat desaparece mientras carga.
+- El aviso de cifrado explica que el mensaje se cifró con una clave anterior, en vez de parecer un fallo.
+- El texto del campo de escribir se puede cambiar por tu nombre o cualquier frase, con un ejemplo en el Estudio.
+- Toca una reacción para ver quién reaccionó y con qué; tocando tu fila quitas la tuya.
+- Texto oculto: escribe ||así|| y queda tapado hasta que lo toquen.
+- Tres índices nuevos en la base de datos para el editor de código y la IA.
+- El asistente cuenta las novedades de la versión instalada, leídas del historial de cambios: se actualiza solo con cada versión.
+
+---
+
+<a id="v831"></a>
+## v8.3.1
+
+- Búsqueda más rápida: los perfiles se descargan una vez y no con cada letra.
+- Los errores del servidor se explican en español y dicen qué hacer, en lugar de mostrar "Permission denied".
+- La búsqueda avisa cuando falla en vez de quedarse en blanco.
+
+---
+
 <a id="v830"></a>
 ## v8.3.0
 
