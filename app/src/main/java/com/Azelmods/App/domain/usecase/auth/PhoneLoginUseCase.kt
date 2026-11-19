@@ -53,14 +53,14 @@ class PhoneLoginUseCase @Inject constructor(
                     "uid" to firebaseUser.uid,
                     "displayName" to derivedName,
                     "username" to derivedUsername,
-                    "email" to "",
+                    // El número no va al perfil público: solo al índice privado.
                     "photoUrl" to (firebaseUser.photoUrl?.toString() ?: ""),
-                    "phoneNumber" to phone,
                     "bio" to "¡Hola! Estoy usando NexusChat",
                     "createdAt" to ServerValue.TIMESTAMP,
                     "isOnline" to true
                 )
                 userRef.setValue(userData).await()
+                com.Azelmods.App.data.profile.ContactIndex.register(phone, null)
 
                 Resource.Success(
                     User(
@@ -85,9 +85,7 @@ class PhoneLoginUseCase @Inject constructor(
                 userRef.child("isOnline").setValue(true).await()
                 // Un usuario que existía por correo y ahora enlaza su teléfono
                 // debe quedar con el número guardado.
-                if (phone.isNotBlank() && userData["phoneNumber"] != phone) {
-                    runCatching { userRef.child("phoneNumber").setValue(phone).await() }
-                }
+                if (phone.isNotBlank()) com.Azelmods.App.data.profile.ContactIndex.register(phone, null)
 
                 val name = userData["displayName"] as? String
                     ?: userData["name"] as? String

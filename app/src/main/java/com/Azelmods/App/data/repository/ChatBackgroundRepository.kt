@@ -24,6 +24,15 @@ class ChatBackgroundRepository @Inject constructor(
     private val database: FirebaseDatabase
 ) {
     private val backgroundCache = mutableMapOf<String, MutableStateFlow<BackgroundConfig>>()
+
+    /**
+     * El fondo de cada chat es personal, como el de la app: se guarda en
+     * chat_settings/{tu uid}/{chat}/background, que solo lees y escribes tú.
+     * Antes iba en chats/{chat}/settings/background y lo veían los dos participantes.
+     */
+    private fun backgroundRef(chatId: String) =
+        com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            ?.let { uid -> database.getReference("chat_settings/$uid/$chatId/background") }
     
     /**
      * Get background configuration for a chat
@@ -40,7 +49,7 @@ class ChatBackgroundRepository @Inject constructor(
     suspend fun saveBackground(chatId: String, config: BackgroundConfig) = withContext(Dispatchers.IO) {
         try {
             // Save to Firebase
-            val ref = database.getReference("chats/$chatId/settings/background")
+            val ref = backgroundRef(chatId) ?: return@withContext
             val data = mapOf(
                 "type" to config.type.name,
                 "colorHex" to config.colorHex,
@@ -68,7 +77,7 @@ class ChatBackgroundRepository @Inject constructor(
      */
     suspend fun loadBackground(chatId: String) = withContext(Dispatchers.IO) {
         try {
-            val ref = database.getReference("chats/$chatId/settings/background")
+            val ref = backgroundRef(chatId) ?: return@withContext
             val snapshot = ref.get().await()
             
             if (snapshot.exists()) {
@@ -102,7 +111,7 @@ class ChatBackgroundRepository @Inject constructor(
      */
     suspend fun deleteBackground(chatId: String) = withContext(Dispatchers.IO) {
         try {
-            val ref = database.getReference("chats/$chatId/settings/background")
+            val ref = backgroundRef(chatId) ?: return@withContext
             ref.removeValue().await()
             
             // Update cache to DEFAULT

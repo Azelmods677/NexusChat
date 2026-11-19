@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/Android-12%20o%20superior-53A6E6?style=for-the-badge&logo=android&logoColor=white&labelColor=14171B" alt="Android 12 o superior">
   <img src="https://img.shields.io/badge/Idiomas-Español%20·%20English-A78BFA?style=for-the-badge&labelColor=14171B" alt="Español e inglés">
   <img src="https://img.shields.io/badge/Desarrollada%20por-Azelmodsx677-2FB38E?style=for-the-badge&labelColor=14171B" alt="Desarrollada por Azelmodsx677">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/©%202026-Todos%20los%20derechos%20reservados-8B8D98?style=for-the-badge&labelColor=14171B" alt="Todos los derechos reservados"></a>
 </p>
 
 <p align="center">
@@ -16,14 +17,14 @@
 <h3 align="center">Una sola app. Todo lo que esperas de un mensajero, y todo lo que nunca te dejaron cambiar.</h3>
 
 <p align="center">
-  <strong>NexusChat 8</strong> reúne chats cifrados, llamadas, historias, agentes de inteligencia artificial, Tor y una terminal con Kali Linux.<br>
+  <strong>NexusChat 8.5</strong> reúne chats cifrados, llamadas, historias, agentes de inteligencia artificial, Tor y una terminal con Kali Linux.<br>
   Y la envuelve en un estudio de diseño para que la tuya no se parezca a la de nadie.
 </p>
 
 <p align="center">
   <a href="https://github.com/Azelmods677/NexusChat/releases/latest"><strong>⬇️ Descargar</strong></a>
   &nbsp;·&nbsp;
-  <a href="#novedades-de-la-8">Novedades</a>
+  <a href="#novedades-de-la-85">Novedades</a>
   &nbsp;·&nbsp;
   <a href="#por-qué-nexuschat">Por qué NexusChat</a>
   &nbsp;·&nbsp;
@@ -48,9 +49,32 @@
 
 ---
 
-## Novedades de la 8
+## Novedades de la 8.5
 
-> **Versión actual: 8.4.1.** Ves quién reaccionó a cada mensaje, puedes ocultar texto con `||así||`, los archivos de chat solo los ven sus participantes, los enlaces del servidor ya no aparecen, la búsqueda es más rápida, los errores se explican en español, el asistente cuenta las novedades de cada versión y el texto del campo de escribir es el que tú quieras. Historial completo en [CHANGELOG.md](CHANGELOG.md).
+> **Versión actual: 8.5.1.** Historial completo en [CHANGELOG.md](CHANGELOG.md).
+
+**Archivos sin límites absurdos**
+- 📎 Envía **hasta 30 fotos, vídeos o documentos a la vez**, cada uno con su descripción y menciones con @.
+- 📄 Los documentos muestran su tipo y tamaño, **se renombran antes de enviarlos** y se abren dentro de la app.
+- 🎞️ **GIF sin claves:** desde el teclado (Gboard, Xiaomi…), desde tu galería o convirtiendo un vídeo corto con "Enviar como GIF".
+
+**Chats más rápidos**
+- 🔗 Enlaces, correos y teléfonos en azul; escribe `*negrita*`, `_cursiva_`, `~tachado~` y `` `código` ``.
+- ↩️ Desliza para responder, mantén pulsado para seleccionar y toca una respuesta para ir al mensaje original, aunque sea antiguo.
+- 🗑️ Elimina para todos o solo para ti.
+
+**Grupos y canales con control**
+- 🛡️ Grupos donde **solo escriben los administradores** y tú decides quién edita la foto, el nombre y la descripción.
+- 📣 Canales con foto, reacciones, contador de vistas, enlace para compartir y avisos silenciables; explora los más seguidos.
+- 📨 **Difusiones:** un mensaje a muchos contactos, cada uno en su chat privado.
+
+**Más privada que nunca**
+- 🙈 Tu **correo y tu teléfono ya no son visibles** para otros usuarios. Quien ya los conoce puede encontrarte, pero nadie puede ver la lista.
+- 🔐 Permisos de grupos y canales protegidos en el servidor: nadie se nombra administrador ni escribe en nombre de otro.
+
+---
+
+## Lo que trajo la 8
 
 La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a tener **el tuyo**. Cada cambio se aplica al momento, sin reiniciar y sin perder nada.
 
@@ -90,6 +114,8 @@ La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a 
 | Cifrado de extremo a extremo en chats y grupos | ✅ | ✅ | Solo chats secretos | ✅ |
 | Diseñar filas, campo, inicio, ajustes y barras | ✅ | ❌ | Solo temas | ❌ |
 | Tor integrado | ✅ | Solo proxy | Solo proxy | Solo proxy |
+| Registrarte sin número de teléfono | ✅ | ❌ | ❌ | ❌ |
+| Tu correo y tu teléfono ocultos a los demás | ✅ | ❌ | Configurable | Configurable |
 | Agentes de IA con tu propia clave | ✅ | Meta AI, sin elegir proveedor | Bots de terceros | ❌ |
 | Terminal y Kali Linux | ✅ | ❌ | ❌ | ❌ |
 
@@ -107,6 +133,8 @@ La 8 es la actualización en la que NexusChat deja de tener un aspecto y pasa a 
 | Enlaces internos | La app nunca muestra rutas del servidor en mensajes, stickers ni vistas previas. |
 | Base de datos | Cada chat solo lo leen sus miembros, y los reportes no los puede leer nadie desde la app. |
 | Registros | La versión publicada no escribe el contenido de los mensajes en el registro del sistema. |
+| Datos personales | Tu correo y tu teléfono no se guardan en tu perfil público: solo un resumen cifrado para que quien ya los conoce pueda encontrarte. |
+| Grupos y canales | Solo los administradores cambian miembros, permisos y datos del grupo; nadie puede enviar mensajes en nombre de otro. Lo comprueba el servidor, no la app. |
 | Cuenta | Bloquear, reportar y eliminar tu cuenta desde la app. |
 
 ---
@@ -245,17 +273,19 @@ Le das un objetivo y **lo llevan hasta el final**: buscan, leen, programan, ejec
 </tr>
 </table>
 
-**Y además:** reacciones, respuestas, reenviar y seleccionar varios mensajes, encuestas, canales, mensajes fijados y guardados, notas de voz, GIF, stickers propios y animados, vista previa de enlaces, menciones, compartir contactos, traducción y descarga de vídeos.
+**Y además:** reacciones, respuestas, reenviar y seleccionar varios mensajes, encuestas, canales y difusiones, mensajes fijados y guardados, notas de voz, GIF, stickers propios y animados, vista previa de enlaces, menciones, compartir contactos, traducción y descarga de vídeos.
 
 ---
 
 ## Instálala en un minuto
 
-1. Descarga el APK desde [la última versión](https://github.com/Azelmods677/NexusChat/releases/latest). Es uno solo y funciona en todos los teléfonos.
+1. Descarga el APK desde [la última versión](https://github.com/Azelmods677/NexusChat/releases/latest). Si no sabes cuál elegir, el **universal** funciona en todos los teléfonos; el **arm64-v8a** es más ligero y sirve para casi todos los actuales.
 2. Ábrelo y permite la instalación desde esa fuente cuando Android lo pida.
 3. Entra con tu correo, Google o tu número de teléfono.
 
 Funciona en Android 12 o superior. Cuando sale una versión nueva, la propia app te avisa.
+
+> **¿Vienes de la 8.4.1 o anterior?** Desde la 8.5 la app tiene una firma nueva: desinstala la versión anterior antes de instalar esta. Tus chats, grupos y canales siguen en tu cuenta.
 
 > **Consejo para Xiaomi, Redmi, POCO, Huawei u Oppo:** para recibir tus avisos al instante, activa **Inicio automático** para NexusChat y pon su batería **Sin restricciones** en los ajustes del teléfono.
 
@@ -267,6 +297,12 @@ Funciona en Android 12 o superior. Cuando sale una versión nueva, la propia app
 <summary><strong>¿Es gratis?</strong></summary>
 <br>
 Sí, y sin anuncios. Las funciones de IA usan la clave del proveedor que tú elijas, o ninguna si usas un modelo local.
+</details>
+
+<details>
+<summary><strong>¿Puedo usar el código de NexusChat?</strong></summary>
+<br>
+No. El código se publica para que se pueda consultar, pero está protegido: copiarlo, modificarlo o publicar versiones propias requiere permiso de Azel Mods. Puedes instalar y usar libremente las versiones oficiales. Detalles en <a href="LICENSE">LICENSE</a>.
 </details>
 
 <details>
@@ -302,14 +338,7 @@ No. Tor viene dentro de la app y se activa desde Ajustes → Seguridad y Tor.
 
 Android nativo con **Kotlin** y **Jetpack Compose**, arquitectura MVVM, **Firebase** (Auth, Realtime Database, Storage, Cloud Messaging y Cloud Functions), **WebRTC** para las llamadas y Tor integrado. El cifrado de los chats usa ECDH P-256 y AES-256-GCM.
 
-```bash
-git clone https://github.com/Azelmods677/NexusChat.git
-cd NexusChat
-# Coloca tu google-services.json en app/
-./gradlew assembleDebug
-```
-
-Más detalles en [docs/SETUP.md](docs/SETUP.md) y el historial completo en [CHANGELOG.md](CHANGELOG.md).
+El código se publica **solo para consulta**. Compilarlo, modificarlo o redistribuirlo requiere permiso de Azel Mods ([LICENSE](LICENSE)). Historial completo en [CHANGELOG.md](CHANGELOG.md).
 
 **Documentación:** [documentación completa](docs/NexusChat-Documentacion-Completa.pdf), con el producto, sus decisiones técnicas y todo el código en 156 páginas. También por separado: [guía técnica](docs/NexusChat-Guia-Tecnica.pdf) y [referencia del código](docs/NexusChat-Referencia-Codigo.pdf).
 
@@ -319,7 +348,9 @@ Más detalles en [docs/SETUP.md](docs/SETUP.md) y el historial completo en [CHAN
 
 ## English
 
-**NexusChat 8** is an Android messenger that combines end-to-end encrypted chats and groups, secret chats, voice and video calls, stories, AI agents that research, write and run code for you, built-in Tor and a real terminal with Kali Linux. On top of that sits a **design studio**: 10 chat rows, 12 message fields, 7 home screens, 7 settings screens, 8 bubble styles, 21 fonts and 36 accent colours, or your own. No ads. The app is available in Spanish and English.
+**NexusChat 8.5** is an Android messenger built for anonymity. You can sign up without a phone number, your email and phone are never visible to other users, and it combines end-to-end encrypted chats and groups, secret chats, voice and video calls, stories, AI agents that research, write and run code for you, built-in Tor and a real terminal with Kali Linux. On top of that sits a **design studio**: 10 chat rows, 12 message fields, 7 home screens, 7 settings screens, 8 bubble styles, 21 fonts and 36 accent colours, or your own. Version 8.5 adds sending up to 30 files at once, documents that open inside the app, admin-only groups, channels with reactions and views, broadcasts and keyless GIFs. No ads. The app is available in Spanish and English.
+
+© 2026 Azel Mods. All rights reserved. The source code is published for viewing only; see [LICENSE](LICENSE).
 
 [Download the latest version](https://github.com/Azelmods677/NexusChat/releases/latest) · Requires Android 12 or later.
 
@@ -331,5 +362,5 @@ Más detalles en [docs/SETUP.md](docs/SETUP.md) y el historial completo en [CHAN
   <a href="https://youtube.com/@AzelModsx677"><img src="https://img.shields.io/badge/YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube"></a>
   <a href="https://tiktok.com/@azelmods677"><img src="https://img.shields.io/badge/TikTok-000000?style=for-the-badge&logo=tiktok&logoColor=white" alt="TikTok"></a>
   <br><br>
-  <sub>Las capturas usan contactos de ejemplo. Consulta las condiciones de uso en <a href="LICENSE">LICENSE</a>.</sub>
+  <sub>© 2026 Azel Mods. Todos los derechos reservados. Las capturas usan contactos de ejemplo. Condiciones de uso en <a href="LICENSE">LICENSE</a>.</sub>
 </p>

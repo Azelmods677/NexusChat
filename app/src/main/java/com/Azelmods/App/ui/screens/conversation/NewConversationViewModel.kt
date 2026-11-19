@@ -77,8 +77,12 @@ class NewConversationViewModel @Inject constructor(
                         try {
                             User(
                                 uid = userData["uid"] as? String ?: "",
-                                name = userData["name"] as? String ?: userData["displayName"] as? String ?: "",
-                                displayName = userData["name"] as? String ?: userData["displayName"] as? String ?: "",
+                                // Algunos perfiles tienen "name" vacío: se salta al siguiente en vez de
+                                // quedarse con el vacío (salían contactos sin nombre y con "?").
+                                name = listOf(userData["displayName"], userData["name"], userData["username"])
+                                    .firstNotNullOfOrNull { (it as? String)?.trim()?.removePrefix("@")?.takeIf(String::isNotBlank) }.orEmpty(),
+                                displayName = listOf(userData["displayName"], userData["name"], userData["username"])
+                                    .firstNotNullOfOrNull { (it as? String)?.trim()?.removePrefix("@")?.takeIf(String::isNotBlank) }.orEmpty(),
                                 username = userData["username"] as? String ?: "",
                                 email = userData["email"] as? String ?: "",
                                 phone = userData["phoneNumber"] as? String ?: userData["phone"] as? String ?: "",
@@ -105,7 +109,12 @@ class NewConversationViewModel @Inject constructor(
                     // usuario actual repetido), Compose lanza IllegalArgumentException
                     // ("Key was already used"). Se desduplica AQUÍ, en la fuente de datos,
                     // para que ninguna UI que consuma esta lista pueda repetir keys.
-                    val uniqueUsers = users.distinctBy { it.uid }
+                    // Tú no apareces en tu propia lista: antes salías como un contacto más
+                    // y parecía un duplicado. Tampoco el asistente, que tiene su propio chat.
+                    val uniqueUsers = users
+                        .filter { it.uid.isNotBlank() && it.uid != currentUser.uid && it.uid != "demo_azel_assistant" }
+                        .distinctBy { it.uid }
+                        .sortedBy { it.displayName.ifBlank { it.name }.lowercase() }
 
                     android.util.Log.d("NewConversation", "Loaded ${uniqueUsers.size} users (${users.size - uniqueUsers.size} duplicados descartados)")
                     _state.value = _state.value.copy(
@@ -145,6 +154,16 @@ class NewConversationViewModel @Inject constructor(
         }
 
         _state.value = _state.value.copy(filteredContacts = filtered)
+
+        // Teléfono o correo: ya no están en los perfiles, se buscan en el índice privado.
+        if (filtered.isEmpty() && (queryDigits.length >= MIN_PHONE_DIGITS || query.contains("@") && query.contains("."))) {
+            viewModelScope.launch {
+                val uid = com.Azelmods.App.data.profile.ContactIndex.lookup(query) ?: return@launch
+                if (_state.value.searchQuery != query) return@launch
+                val match = _state.value.contacts.firstOrNull { it.uid == uid } ?: return@launch
+                _state.value = _state.value.copy(filteredContacts = listOf(match))
+            }
+        }
     }
 
     /**

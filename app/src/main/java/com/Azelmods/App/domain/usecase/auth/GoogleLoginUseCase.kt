@@ -36,16 +36,17 @@ class GoogleLoginUseCase @Inject constructor(
                 val userData = mapOf(
                     "uid" to firebaseUser.uid,
                     "displayName" to derivedName,
-                    "username" to "@${firebaseUser.email?.substringBefore("@") ?: firebaseUser.uid.take(8)}",
-                    "email" to (firebaseUser.email ?: ""),
+                    // Ni el correo ni el teléfono van al perfil público, y el @usuario no se
+                    // saca del correo: cualquiera podía leerlos. Van al índice privado.
+                    "username" to "@user${firebaseUser.uid.take(8).lowercase()}",
                     "photoUrl" to (firebaseUser.photoUrl?.toString() ?: ""),
-                    "phoneNumber" to (firebaseUser.phoneNumber ?: ""),
                     "bio" to "¡Hola! Estoy usando NexusChat",
                     "createdAt" to ServerValue.TIMESTAMP,
                     "isOnline" to true
                 )
                 
                 userRef.setValue(userData).await()
+                com.Azelmods.App.data.profile.ContactIndex.register(firebaseUser.phoneNumber, firebaseUser.email)
                 
                 val newUser = User(
                     uid = firebaseUser.uid,

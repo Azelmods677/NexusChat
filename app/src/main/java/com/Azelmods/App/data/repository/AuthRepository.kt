@@ -62,11 +62,14 @@ class AuthRepositoryImpl @Inject constructor(
             
             if (firebaseUser != null) {
                 // Create user document in Realtime Database
+                // El correo no va al perfil público, y el @usuario no sale del correo: los dos
+                // dejaban ver la dirección a cualquier usuario. Solo se apunta en el índice
+                // privado (ContactIndex) para que quien ya lo conoce pueda encontrarte.
                 val user = User(
                     uid = firebaseUser.uid,
                     displayName = displayName,
-                    email = email,
-                    username = email.substringBefore("@"),
+                    email = "",
+                    username = "@user${firebaseUser.uid.take(8).lowercase()}",
                     createdAt = System.currentTimeMillis()
                 )
                 
@@ -74,8 +77,9 @@ class AuthRepositoryImpl @Inject constructor(
                     .getReference("users/${firebaseUser.uid}")
                     .setValue(user)
                     .await()
+                com.Azelmods.App.data.profile.ContactIndex.register(phone = null, email = email)
                 
-                Resource.Success(user)
+                Resource.Success(user.copy(email = email))
             } else {
                 Resource.Error("Registration failed")
             }
@@ -106,8 +110,8 @@ class AuthRepositoryImpl @Inject constructor(
                     val newUser = User(
                         uid = firebaseUser.uid,
                         displayName = firebaseUser.displayName ?: "",
-                        email = firebaseUser.email ?: "",
-                        username = firebaseUser.email?.substringBefore("@") ?: "",
+                        email = "",
+                        username = "@user${firebaseUser.uid.take(8).lowercase()}",
                         photoUrl = firebaseUser.photoUrl?.toString(),
                         createdAt = System.currentTimeMillis()
                     )
@@ -116,6 +120,7 @@ class AuthRepositoryImpl @Inject constructor(
                         .getReference("users/${firebaseUser.uid}")
                         .setValue(newUser)
                         .await()
+                    com.Azelmods.App.data.profile.ContactIndex.register(phone = null, email = firebaseUser.email)
                     
                     newUser
                 }

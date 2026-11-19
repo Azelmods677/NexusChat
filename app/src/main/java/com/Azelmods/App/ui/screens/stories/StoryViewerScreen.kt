@@ -1182,8 +1182,8 @@ fun getTimeAgo(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     return when {
         diff < 60_000L -> tr("Ahora mismo")
-        diff < 3_600_000L -> "${diff / 60_000}m ago"
-        diff < 86_400_000L -> "${diff / 3_600_000}h ago"
-        else -> "${diff / 86_400_000}d ago"
+        diff < 3_600_000L -> tr("Hace %s min", (diff / 60_000).toString())
+        diff < 86_400_000L -> tr("Hace %s h", (diff / 3_600_000).toString())
+        else -> tr("Hace %s días", (diff / 86_400_000).toString())
     }
 }

@@ -154,28 +154,15 @@ fun NewConversationScreen(
                     
                     Column(Modifier.weight(1f)) {
                         Text(
-                            tr("Chat de prueba"),
+                            "Azel Assistant",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
                         Text(
-                            tr("Prueba el chat sin contactos"),
+                            tr("Tu asistente: te enseña la app y responde tus dudas"),
                             color = Color.White.copy(0.5f),
                             fontSize = 13.sp
-                        )
-                    }
-                    
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = NeonGreen.copy(0.15f)
-                    ) {
-                        Text(
-                            "DEMO",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = NeonGreen,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -212,7 +199,7 @@ fun NewConversationScreen(
                             text = if (state.searchQuery.isBlank())
                                 tr("No se encontraron usuarios")
                             else
-                                "No results for \"${state.searchQuery}\"",
+                                tr("Nadie coincide con \"%s\"", state.searchQuery),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color.Gray,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center

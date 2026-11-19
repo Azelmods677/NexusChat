@@ -50,7 +50,7 @@ class EditProfileViewModel @Inject constructor(
                 if (userId.isNullOrBlank()) {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = "User not authenticated"
+                        error = tr("Inicia sesión para editar tu perfil")
                     )
                     return@launch
                 }
@@ -61,8 +61,12 @@ class EditProfileViewModel @Inject constructor(
                             displayName = user["displayName"] as? String ?: "",
                             username = user["username"] as? String ?: "",
                             bio = user["bio"] as? String ?: "",
-                            phoneNumber = user["phoneNumber"] as? String ?: "",
-                            email = user["email"] as? String ?: "",
+                            // Tu correo y tu teléfono salen de tu sesión, no del perfil público,
+                            // que ya no los guarda para que nadie más pueda leerlos.
+                            phoneNumber = (user["phoneNumber"] as? String)?.takeIf { it.isNotBlank() }
+                                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.phoneNumber.orEmpty(),
+                            email = (user["email"] as? String)?.takeIf { it.isNotBlank() }
+                                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email.orEmpty(),
                             photoUrl = user["photoUrl"] as? String,
                             isLoading = false
                         )
@@ -181,12 +185,16 @@ class EditProfileViewModel @Inject constructor(
                     "displayName" to _state.value.displayName,
                     "username" to _state.value.username,
                     "bio" to _state.value.bio,
-                    "phoneNumber" to _state.value.phoneNumber,
-                    "email" to _state.value.email,
+                    // Se vacían en el perfil público (los perfiles antiguos los tenían) y se
+                    // apuntan solo en el índice privado para que puedan encontrarte.
+                    "phoneNumber" to "",
+                    "email" to "",
+                    "phone" to "",
                     "photoUrl" to (_state.value.photoUrl ?: ""),
                     "updatedAt" to System.currentTimeMillis()
                 )
 
+                com.Azelmods.App.data.profile.ContactIndex.register(_state.value.phoneNumber, _state.value.email)
                 databaseRepository.updateUserProfile(userId, profileData).collect { result ->
                     result.onSuccess {
                         _state.value = _state.value.copy(

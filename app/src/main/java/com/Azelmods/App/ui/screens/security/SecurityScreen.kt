@@ -26,7 +26,6 @@ import android.net.Uri
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.security.tor.TorState
 import com.Azelmods.App.data.tutorials.AppFeature
-import com.Azelmods.App.ui.components.AutoTutorial
 import com.Azelmods.App.ui.components.NexusListRow
 import com.Azelmods.App.ui.components.NexusSectionHeader
 import com.Azelmods.App.ui.components.NexusTopBar
@@ -46,7 +45,6 @@ fun SecurityScreen(
     var showAppLockDialog by remember { mutableStateOf(false) }
     var showBackupDialog by remember { mutableStateOf(false) }
 
-    AutoTutorial(feature = AppFeature.SECURITY, tutorialPreferences = tutorialPreferences)
 
     Scaffold(
         topBar = { NexusTopBar(title = tr("Seguridad"), onBack = { navController.popBackStack() }) },

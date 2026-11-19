@@ -39,7 +39,8 @@ data class ChannelPost(
     val at: Long,
     val reactions: Map<String, Int> = emptyMap(),
     val myReaction: String? = null,
-    val views: Int = 0
+    val views: Int = 0,
+    val audioUrl: String? = null
 )
 
 /**
@@ -110,6 +111,7 @@ class ChannelRepository @Inject constructor(
                             id = post.key ?: return@mapNotNull null,
                             text = post.child("text").getValue(String::class.java).orEmpty(),
                             imageUrl = post.child("imageUrl").getValue(String::class.java),
+                            audioUrl = post.child("audioUrl").getValue(String::class.java),
                             at = post.child("at").getValue(Long::class.java) ?: 0L,
                             reactions = reactions.groupingBy { it }.eachCount(),
                             myReaction = uid?.let { post.child("reactions").child(it).getValue(String::class.java) },
@@ -140,14 +142,13 @@ class ChannelRepository @Inject constructor(
                 "handle" to clean,
                 "description" to description.trim(),
                 "ownerId" to uid,
-                "subscribers" to 1,
+                "subscribers" to 0, // el servidor suma al dueño al apuntarse
                 "createdAt" to ServerValue.TIMESTAMP,
                 "lastPostTime" to ServerValue.TIMESTAMP
             )
         ).await()
         handleRef.setValue(id).await()
-        // El dueño ya cuenta como 1 al crear: se apunta sin sumar otra vez.
-        subscribe(id, count = false)
+        subscribe(id)
         return id
     }
 
@@ -171,17 +172,15 @@ class ChannelRepository @Inject constructor(
             .sortedByDescending { it.subscribers }
 
     /**
-     * El contador de seguidores sube y baja en la misma escritura que la suscripción.
-     * Antes se quedaba en 1 para siempre: las reglas no dejaban cambiarlo.
+     * El contador de seguidores lo lleva el servidor (onChannelSubscriber) al ver la
+     * suscripción. La 8.5.0 además sumaba desde la app y cada seguidor contaba doble.
      */
-    suspend fun subscribe(id: String, count: Boolean = true) {
+    suspend fun subscribe(id: String) {
         val uid = me ?: return
         if (isSubscribed(id)) return
-        db.reference.updateChildren(buildMap<String, Any> {
-            put("userChannels/$uid/$id", true)
-            put("channelSubscribers/$id/$uid", true)
-            if (count) put("channels/$id/subscribers", ServerValue.increment(1))
-        }).await()
+        db.reference.updateChildren(
+            mapOf("userChannels/$uid/$id" to true, "channelSubscribers/$id/$uid" to true)
+        ).await()
         FirebaseMessaging.getInstance().subscribeToTopic(topic(id))
     }
 
@@ -191,24 +190,28 @@ class ChannelRepository @Inject constructor(
         db.reference.updateChildren(
             mapOf(
                 "userChannels/$uid/$id" to null,
-                "channelSubscribers/$id/$uid" to null,
-                "channels/$id/subscribers" to ServerValue.increment(-1)
+                "channelSubscribers/$id/$uid" to null
             )
         ).await()
         FirebaseMessaging.getInstance().unsubscribeFromTopic(topic(id))
     }
 
-    suspend fun publish(id: String, text: String, image: Uri?) {
+    suspend fun publish(id: String, text: String, image: Uri?, audio: Uri? = null) {
         val uid = me ?: return
-        val imageUrl = image?.let { storage.uploadUserBackground(it, uid, false) }
+        val imageUrl = image?.let { storage.uploadChannelMedia(it, uid, "jpg", "image/jpeg") }
+        val audioUrl = audio?.let { storage.uploadChannelMedia(it, uid, "m4a", "audio/mp4") }
         val post = buildMap<String, Any> {
             put("text", text.trim())
             put("at", ServerValue.TIMESTAMP)
             if (imageUrl != null) put("imageUrl", imageUrl)
+            if (audioUrl != null) put("audioUrl", audioUrl)
         }
         db.getReference("channelPosts/$id").push().setValue(post).await()
         db.getReference("channels/$id").updateChildren(
-            mapOf("lastPost" to text.trim().ifBlank { "Foto" }, "lastPostTime" to ServerValue.TIMESTAMP)
+            mapOf(
+                "lastPost" to text.trim().ifBlank { if (audioUrl != null) "🎵 Audio" else "📷 Foto" },
+                "lastPostTime" to ServerValue.TIMESTAMP
+            )
         ).await()
     }
 

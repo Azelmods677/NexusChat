@@ -33,7 +33,6 @@ import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
 import com.Azelmods.App.i18n.AppLanguage
 import com.Azelmods.App.i18n.I18n
-import com.Azelmods.App.ui.components.AutoTutorial
 import com.Azelmods.App.ui.components.NexusDivider
 import com.Azelmods.App.ui.components.NexusSectionHeader
 import com.Azelmods.App.ui.components.NexusTopBar
@@ -66,7 +65,6 @@ fun SettingsScreen(
     val style by com.Azelmods.App.ui.components.ChatLook.settingsStyle.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
 
-    AutoTutorial(feature = AppFeature.SETTINGS, tutorialPreferences = tutorialPreferences)
 
     Scaffold(
         topBar = {
@@ -313,7 +311,18 @@ private fun rememberSettingsLinks(
     navController: NavController,
     context: android.content.Context,
     onLanguage: () -> Unit
-): List<SettingsLink> = remember(navController) {
+): List<SettingsLink> {
+    val premiumEnabled = com.Azelmods.App.data.repository.PremiumAvailability.isEnabled()
+    return rememberSettingsLinksFor(navController, context, onLanguage, premiumEnabled)
+}
+
+@Composable
+private fun rememberSettingsLinksFor(
+    navController: NavController,
+    context: android.content.Context,
+    onLanguage: () -> Unit,
+    premiumEnabled: Boolean
+): List<SettingsLink> = remember(navController, premiumEnabled) {
     fun go(route: String): () -> Unit = { navController.navigate(route) }
     val look = "Personalización"
     val account = "Cuenta y privacidad"
@@ -324,7 +333,8 @@ private fun rememberSettingsLinks(
         SettingsLink(look, Icons.Outlined.Style, TilePink, "Estudio de diseño", "Filas, burbujas, campo de escribir, inicio y ajustes", go("chat_studio")),
         SettingsLink(look, Icons.Outlined.Palette, TileViolet, "Color y fondo", "Color de acento, fondo, letra y animación de entrada", go(Screen.SettingsAppearance.route)),
         SettingsLink(look, Icons.Outlined.Brush, TileAmber, "Mi perfil", "Color, foto y portada", go(Screen.ProfileCustomize.route)),
-        SettingsLink(account, Icons.Outlined.WorkspacePremium, TileAmber, "Premium", "Insignia, colores exclusivos y galería sin límite", go(Screen.Premium.route)),
+        // Premium solo aparece cuando el cobro está activado (config/premium/enabled).
+        SettingsLink(account, Icons.Outlined.WorkspacePremium, TileAmber, "Premium", "Insignia, colores exclusivos y galería sin límite", go(Screen.Premium.route)).takeIf { premiumEnabled },
         SettingsLink(account, Icons.Outlined.Person, TileBlue, "Cuenta", "Nombre, usuario, teléfono y correo", go(Screen.SettingsAccount.route)),
         SettingsLink(account, Icons.Outlined.Lock, TileGreen, "Privacidad", "Última conexión, confirmaciones, bloqueados", go(Screen.SettingsPrivacy.route)),
         SettingsLink(account, Icons.Outlined.Security, TileViolet, "Seguridad y Tor", "Modo anónimo, fantasma, bloqueo y copias", go(Screen.Security.route)),
@@ -338,7 +348,7 @@ private fun rememberSettingsLinks(
         SettingsLink(info, Icons.AutoMirrored.Outlined.Help, TileBlue, "Ayuda", "Guías de cada función", go(Screen.SettingsHelp.route)),
         SettingsLink(info, Icons.Outlined.Lock, TileGreen, "Política de privacidad", "Qué datos usa la app y para qué", go("privacy_policy")),
         SettingsLink(info, Icons.Outlined.Info, TileSlate, "Acerca de", "Versión, licencias, historia y tu dispositivo", go(Screen.SettingsAbout.route))
-    )
+    ).filterNotNull()
 }
 
 @Composable

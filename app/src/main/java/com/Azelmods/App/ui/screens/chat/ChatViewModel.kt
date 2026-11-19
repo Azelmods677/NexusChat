@@ -1168,7 +1168,12 @@ class ChatViewModel @Inject constructor(
                             publishMedia(targetChatId, storageRepository.uploadChatImage(uri, targetChatId), "IMAGE", item.caption)
                         }
                         AttachmentKind.VIDEO ->
-                            publishMedia(targetChatId, storageRepository.uploadChatVideo(item.uri, targetChatId), "VIDEO", item.caption)
+                            publishMedia(
+                                targetChatId,
+                                storageRepository.uploadChatVideo(item.uri, targetChatId),
+                                if (item.asGif) "GIF_VIDEO" else "VIDEO",
+                                item.caption
+                            )
                         AttachmentKind.GIF ->
                             publishMedia(targetChatId, storageRepository.uploadChatGif(item.uri, targetChatId), "GIF", item.caption)
                         AttachmentKind.DOCUMENT ->
@@ -1654,7 +1659,13 @@ class ChatViewModel @Inject constructor(
                         "deletedForEveryone" to true,
                         "content" to "",
                         "mediaUrl" to null,
-                        "mediaType" to null
+                        "mediaType" to null,
+                        // El texto cifrado y el nombre del archivo también se van: antes se
+                        // quedaban guardados en el servidor aunque el mensaje se viera borrado.
+                        "encryptedPayload" to null,
+                        "fileName" to null,
+                        "fileSize" to null,
+                        "mimeType" to null
                     )
                     FirebaseDatabase.getInstance().reference
                         .child("chats")

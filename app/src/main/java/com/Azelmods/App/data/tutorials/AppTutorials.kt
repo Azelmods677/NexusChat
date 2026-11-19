@@ -479,7 +479,7 @@ Chats ←→ Stories ←→ Llamadas ←→ Perfil
 
 ⚠️ Activa el bloqueo biométrico en Ajustes → Privacidad para proteger tu app.
 
-ℹ️ Para ayuda, ve a Ajustes → Ayuda o consulta los tutoriales individuales.
+ℹ️ Para ayuda, ve a Ajustes → Ayuda o consulta las guías.
     """.trimIndent()
 
     // Helper function to get tutorial by feature

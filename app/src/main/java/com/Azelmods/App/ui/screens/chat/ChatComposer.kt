@@ -1,5 +1,11 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.Azelmods.App.ui.screens.chat
 
+import androidx.compose.foundation.content.consume
+import androidx.compose.foundation.content.contentReceiver
+import androidx.compose.foundation.content.hasMediaType
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.foundation.border
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.ui.graphics.Color
@@ -603,16 +609,53 @@ fun ChatInputArea(
                     } else if (hideEmoji) {
                         Spacer(Modifier.width(10.dp))
                     }
+                    // Campo con estado propio para poder recibir lo que manda el teclado: GIF y
+                    // stickers de Gboard o del teclado de Xiaomi llegan aquí y se envían sin
+                    // necesitar ninguna clave de un buscador de GIF.
+                    val fieldState = androidx.compose.foundation.text.input.rememberTextFieldState(messageText)
+                    val latestChange by rememberUpdatedState(onMessageChange)
+                    // Lo que el campo ya ha avisado y el chat aún no ha devuelto. Si el texto que
+                    // llega desde fuera es uno de esos, es el eco de lo escrito y se ignora: si no,
+                    // al escribir rápido el eco atrasado pisaba el campo y se comía letras.
+                    val pendingEchoes = remember { ArrayDeque<String>() }
+                    LaunchedEffect(messageText) {
+                        val echo = pendingEchoes.indexOf(messageText)
+                        if (echo >= 0) {
+                            repeat(echo + 1) { pendingEchoes.removeFirst() }
+                        } else if (fieldState.text.toString() != messageText) {
+                            // Cambio de verdad desde fuera: enviar, editar, mencionar, traducir…
+                            pendingEchoes.clear()
+                            fieldState.edit { replace(0, length, messageText) }
+                        }
+                    }
+                    LaunchedEffect(fieldState) {
+                        snapshotFlow { fieldState.text.toString() }.collect { typed ->
+                            pendingEchoes.addLast(typed)
+                            if (pendingEchoes.size > 64) pendingEchoes.removeFirst()
+                            latestChange(typed)
+                        }
+                    }
                     BasicTextField(
-                        value = messageText,
-                        onValueChange = onMessageChange,
+                        state = fieldState,
                         modifier = Modifier
                             .weight(1f)
-                            .padding(vertical = 10.dp),
+                            .padding(vertical = 10.dp)
+                            .contentReceiver { content ->
+                                if (!content.hasMediaType(androidx.compose.foundation.content.MediaType.Image)) {
+                                    return@contentReceiver content
+                                }
+                                content.consume { item ->
+                                    val uri = item.uri ?: return@consume false
+                                    val type = context.contentResolver.getType(uri).orEmpty()
+                                    if (type == "image/gif" || type.contains("webp")) viewModel.sendGifMessage(uri, contactId)
+                                    else viewModel.sendImageMessage(uri, contactId)
+                                    true
+                                }
+                            },
                         textStyle = MaterialTheme.typography.bodyLarge.copy(color = NexusTokens.Color.TextPrimary),
                         cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                        maxLines = 6,
-                        decorationBox = { inner ->
+                        lineLimits = androidx.compose.foundation.text.input.TextFieldLineLimits.MultiLine(maxHeightInLines = 6),
+                        decorator = { inner ->
                             if (messageText.isEmpty()) {
                                 Text(
                                     entryHint.ifBlank { tr("Mensaje") },
@@ -1069,16 +1112,14 @@ private fun GifPickerDialog(
                     NexusNotice(text = tr("Consíguela en developers.giphy.com. Lo que busques lo verá GIPHY, aunque no tu IP si el modo anónimo está activo."))
                 }
             } else {
+                // Si el buscador no responde, se ofrecen las vías que no dependen de él.
                 error?.let {
                     NexusNotice(
-                        text = it,
-                        tone = NexusTokens.Color.Error,
+                        text = tr("%s. Puedes elegir un GIF o un vídeo corto de tu teléfono, o usar el botón GIF de tu teclado.", it.trimEnd('.')),
+                        tone = NexusTokens.Color.Warning,
                         modifier = Modifier.padding(horizontal = 12.dp),
-                        actionLabel = tr("Cambiar clave"),
-                        onAction = {
-                            service.saveApiKey("")
-                            hasKey = service.hasApiKey()
-                        }
+                        actionLabel = tr("Del teléfono"),
+                        onAction = onPickFromDevice
                     )
                 }
                 if (loading && results.isEmpty()) {

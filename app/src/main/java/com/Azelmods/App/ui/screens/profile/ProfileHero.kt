@@ -231,7 +231,7 @@ fun ProfileContent(
             ProfileActionTiles(isOwn, actions)
             ProfileInfoCard(user)
 
-            if (isOwn && !state.premium.isActiveNow()) {
+            if (isOwn && !state.premium.isActiveNow() && com.Azelmods.App.data.repository.PremiumAvailability.isEnabled()) {
                 PremiumBanner(onClick = actions.onPremium)
             }
 

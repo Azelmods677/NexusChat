@@ -373,6 +373,16 @@ class StorageRepository @Inject constructor(
      * Upload document to Firebase Storage
      * Pattern: chats/{chatId}/documents/{timestamp}_{fileName}
      */
+    /**
+     * Foto o audio de una publicación de canal: channel_media/{uid}/{hora}.{ext}.
+     * Carpeta propia para que no la limpie el borrado de historias de 24 h.
+     */
+    suspend fun uploadChannelMedia(uri: Uri, userId: String, extension: String, contentType: String): String {
+        val ref = storage.reference.child("channel_media/$userId/${System.currentTimeMillis()}.$extension")
+        ref.putFile(uri, mediaMetadata(contentType)).await()
+        return ref.downloadUrl.await().toString()
+    }
+
     suspend fun uploadChatDocument(
         documentUri: Uri,
         chatId: String,

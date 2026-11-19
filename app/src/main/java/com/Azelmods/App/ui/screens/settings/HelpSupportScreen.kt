@@ -95,7 +95,7 @@ fun HelpSupportScreen(
             // a "tutorial/gestures" mientras el tutorial se llamaba "touch_gestures":
             // el enlace abría una pantalla vacía.
             SettingsItem(
-                title = tr("🆕 Novedades de la 8.0"),
+                title = tr("🆕 Novedades de la 8.5"),
                 subtitle = tr("Todo lo que trae esta versión"),
                 icon = Icons.Default.NewReleases,
                 onClick = { navController.navigate("tutorial/whats_new") }
@@ -238,7 +238,7 @@ fun HelpSupportScreen(
             )
             SettingsItem(
                 title = tr("Licencia"),
-                subtitle = tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
+                subtitle = tr("NexusChat · © 2026 Azel Mods · Todos los derechos reservados"),
                 icon = Icons.Default.Description,
                 onClick = { navController.navigate(Screen.SettingsAbout.route) }
             )
@@ -288,7 +288,7 @@ fun HelpSupportScreen(
                     )
                     Spacer(Modifier.height(10.dp))
                     Text(
-                        tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
+                        tr("NexusChat · © 2026 Azel Mods · Todos los derechos reservados"),
                         color = Color.Gray.copy(alpha = 0.6f),
                         fontSize = 11.sp
                     )

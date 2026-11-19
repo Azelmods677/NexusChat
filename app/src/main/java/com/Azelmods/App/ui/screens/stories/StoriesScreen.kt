@@ -28,7 +28,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
-import com.Azelmods.App.ui.components.AutoTutorial
 import com.Azelmods.App.ui.components.NexusDivider
 import com.Azelmods.App.ui.components.NexusEmptyState
 import com.Azelmods.App.ui.components.NexusSectionHeader
@@ -53,7 +52,6 @@ fun StoriesScreen(
     val tutorialPreferences = remember { TutorialPreferences(context) }
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    AutoTutorial(feature = AppFeature.STORIES, tutorialPreferences = tutorialPreferences)
 
     LaunchedEffect(state.error) {
         state.error?.let { error ->

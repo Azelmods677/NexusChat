@@ -39,6 +39,15 @@
         },
 
         /*
+          Correo y teléfono NO van en el perfil: /users lo puede leer cualquier usuario con
+          sesión y antes se veían los de todos. Solo se admite vacío; para encontrar a alguien
+          por su número o su correo está contactIndex, que guarda un resumen y no se puede listar.
+        */
+        "email": { ".validate": "newData.val() === ''" },
+        "phoneNumber": { ".validate": "newData.val() === ''" },
+        "phone": { ".validate": "newData.val() === ''" },
+
+        /*
           Claves publicas del cifrado de extremo a extremo.
 
           Tienen que ser legibles por cualquier usuario autenticado: para
@@ -70,6 +79,19 @@
       que lee y escribe los suyos. Las Cloud Functions usan el Admin SDK, que no
       pasa por estas reglas.
     */
+    /*
+      Índice privado para buscar por teléfono o correo: contactIndex/{sha256} = uid.
+      Se puede leer una entrada concreta (quien ya conoce el dato), pero no el nodo entero,
+      así que nadie puede sacar la lista. Cada uno solo escribe o borra entradas suyas.
+    */
+    "contactIndex": {
+      "$hash": {
+        ".read": "auth != null",
+        ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && (!newData.exists() || newData.val() === auth.uid)",
+        ".validate": "$hash.length === 64"
+      }
+    },
+
     "fcmTokens": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
@@ -355,16 +377,18 @@
     },
 
     "groups": {
+      /* Nodo antiguo que la app ya no usa: cerrado para que nadie cree datos en él. */
       "$groupId": {
-        ".read": "auth != null && root.child('groups').child($groupId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && (!data.exists() || root.child('groups').child($groupId).child('members').child(auth.uid).exists())"
+        ".read": false,
+        ".write": false
       }
     },
 
     "group_settings": {
+      /* Nodo antiguo que la app ya no usa: cerrado para que nadie cree datos en él. */
       "$groupId": {
-        ".read": "auth != null && root.child('groups').child($groupId).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && (!data.exists() || root.child('groups').child($groupId).child('members').child(auth.uid).exists())"
+        ".read": false,
+        ".write": false
       }
     },
 
@@ -442,7 +466,7 @@
         */
         "subscribers": {
           ".write": "auth != null && data.exists()",
-          ".validate": "newData.isNumber() && newData.val() >= 0 && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() || (newData.val() === data.val() + 1 && !root.child('channelSubscribers').child($channelId).child(auth.uid).exists() && newData.parent().parent().parent().child('channelSubscribers').child($channelId).child(auth.uid).val() === true) || (newData.val() === data.val() - 1 && root.child('channelSubscribers').child($channelId).child(auth.uid).exists() && !newData.parent().parent().parent().child('channelSubscribers').child($channelId).child(auth.uid).exists()))"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && ((!data.exists() && newData.val() <= 1) || newData.val() === data.val() || (newData.val() === data.val() + 1 && !root.child('channelSubscribers').child($channelId).child(auth.uid).exists() && newData.parent().parent().parent().child('channelSubscribers').child($channelId).child(auth.uid).val() === true) || (newData.val() === data.val() - 1 && root.child('channelSubscribers').child($channelId).child(auth.uid).exists() && !newData.parent().parent().parent().child('channelSubscribers').child($channelId).child(auth.uid).exists()))"
         }
       }
     },

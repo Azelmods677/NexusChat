@@ -135,7 +135,7 @@ fun AboutScreen(navController: NavController) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    AboutTile(Icons.Outlined.Gavel, tr("Licencia"), "Azel Mods 2027", 0, Modifier.weight(1f)) {
+                    AboutTile(Icons.Outlined.Gavel, tr("Licencia"), "© Azel Mods", 0, Modifier.weight(1f)) {
                         showLicenses = true
                     }
                     AboutTile(Icons.Outlined.NewReleases, tr("Versión"), "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})", 1, Modifier.weight(1f))
@@ -237,7 +237,7 @@ fun AboutScreen(navController: NavController) {
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
+                    tr("NexusChat · © 2026 Azel Mods · Todos los derechos reservados"),
                     style = MaterialTheme.typography.bodySmall,
                     color = NexusTokens.Color.TextMuted
                 )
@@ -388,7 +388,7 @@ private fun LicensesDialog(onDismiss: () -> Unit) {
         title = { Text(tr("Licencia")) },
         text = {
             Text(
-                tr("NexusChat · Azel Mods 2027 · Todos los derechos reservados"),
+                tr("NexusChat · © 2026 Azel Mods · Todos los derechos reservados"),
                 style = MaterialTheme.typography.bodyLarge,
                 color = NexusTokens.Color.TextPrimary
             )
@@ -498,16 +498,16 @@ private fun HighlightsGrid() {
 }
 
 private val CHANGELOG = listOf(
-    "Estudio de diseño: filas, burbujas, campo de escribir, inicio y ajustes a tu gusto",
-    "Filas en 3D, neón y cristal, también en llamadas, historias y contactos",
-    "Stickers propios y animados, con paquetes para crear y compartir",
-    "Kali Linux de verdad dentro de la terminal",
-    "Chats secretos con una clave nueva en cada mensaje",
-    "Grupos cifrados de extremo a extremo y canales",
-    "Encuestas, mensajes guardados, fijados y programados",
-    "Descarga vídeos de YouTube, Facebook, X e Instagram",
-    "Aviso de actualización al momento y recuperación de contraseña",
-    "Nueva animación de entrada y preparada para Android 17"
+    "Envía hasta 30 fotos, vídeos o documentos a la vez, con descripción y @menciones",
+    "Documentos que se abren dentro de la app, con tipo, tamaño y nombre editable",
+    "Enlaces en azul y formato: *negrita*, _cursiva_, ~tachado~ y `código`",
+    "Desliza para responder y mantén pulsado para seleccionar varios mensajes",
+    "Tocar una respuesta lleva al mensaje original, aunque sea antiguo",
+    "Grupos: solo administradores escriben y quién edita la información",
+    "Canales con foto, reacciones, vistas y explorar; difusiones a varios contactos",
+    "Tu correo y tu teléfono ya no son visibles para otros usuarios",
+    "Descargador de vídeos más fiable, con reintentos y salida por Tor",
+    "Eliminar mensajes para todos o solo para ti"
 )
 
 private const val CHANGELOG_PREVIEW = 4

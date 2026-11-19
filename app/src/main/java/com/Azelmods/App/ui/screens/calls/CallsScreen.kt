@@ -28,7 +28,6 @@ import coil3.request.ImageRequest
 import com.Azelmods.App.data.preferences.TutorialPreferences
 import com.Azelmods.App.data.tutorials.AppFeature
 import com.Azelmods.App.service.NotificationHelper
-import com.Azelmods.App.ui.components.AutoTutorial
 import com.Azelmods.App.ui.navigation.Screen
 import com.Azelmods.App.ui.theme.*
 
@@ -51,11 +50,6 @@ fun CallsScreen(
         NotificationHelper.resetMissedCallCount()
     }
 
-    // Show tutorial on first visit
-    AutoTutorial(
-        feature = AppFeature.CALLS,
-        tutorialPreferences = tutorialPreferences
-    )
     
     // Show error toast
     LaunchedEffect(state.error) {
@@ -390,10 +384,13 @@ private fun formatCallTime(timestamp: Long): String {
     val diff = now - timestamp
     
     return when {
-        diff < 3600_000 -> "${diff / 60_000}m ago"
-        diff < 86400_000 -> "${diff / 3600_000}h ago"
+        diff < 60_000 -> tr("Ahora")
+        diff < 3600_000 -> tr("Hace %s min", (diff / 60_000).toString())
+        diff < 86400_000 -> tr("Hace %s h", (diff / 3600_000).toString())
         diff < 172800_000 -> tr("Ayer")
-        else -> "${diff / 86400_000}d ago"
+        diff < 7 * 86400_000L -> tr("Hace %s días", (diff / 86400_000).toString())
+        // Más de una semana: la fecha, que se entiende mejor que "hace 23 días".
+        else -> java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(timestamp))
     }
 }
 

@@ -58,6 +58,13 @@ service firebase.storage {
       allow delete: if inDirectChat(chatId);
     }
 
+    // Fotos y audios de las publicaciones de canales: los sube su autor y los ve cualquiera con sesión.
+    match /channel_media/{userId}/{fileName} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(userId) && underMb(50) && typeIs('(image|audio)/.*');
+      allow delete: if isOwner(userId);
+    }
+
     // Fondo de pantalla personal.
     match /user_backgrounds/{userId}/{fileName} {
       allow read: if signedIn();

@@ -289,7 +289,18 @@ fun MessageBubble(
                     )
                 }
             }
-            if (repliedMessage != null) ReplyQuote(repliedMessage, isOwnMessage, repliedSenderName, onQuoteClick)
+            if (repliedMessage != null) {
+                ReplyQuote(repliedMessage, isOwnMessage, repliedSenderName, onQuoteClick)
+            } else if (message.replyTo != null && message.replyTo.startsWith("story:").not()) {
+                // El original es antiguo y aún no está cargado: antes la cita desaparecía y no
+                // había forma de llegar a él. Al tocarla se cargan mensajes hasta encontrarlo.
+                ReplyQuote(
+                    replied = Message(content = tr("Mensaje anterior · toca para verlo")),
+                    isOwnMessage = isOwnMessage,
+                    senderName = null,
+                    onClick = onQuoteClick
+                )
+            }
             if (message.replyTo?.startsWith("story:") == true) StoryReplyQuote()
 
             if (message.isViewOnce) {

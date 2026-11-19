@@ -1,4 +1,5 @@
 package com.Azelmods.App.ui.screens.chat
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 import com.Azelmods.App.i18n.tr
@@ -99,6 +100,8 @@ fun ChatScreen(
     // Mensaje cuyo menú se abre desde "Más" en la barra de selección, y un contador para reabrirlo.
     var menuRequest by remember { mutableStateOf("" to 0) }
     var forwardMessages by remember { mutableStateOf<List<com.Azelmods.App.data.model.Message>>(emptyList()) }
+    // Mensajes seleccionados que esperan confirmación de borrado (para todos o para mí).
+    var pendingDelete by remember { mutableStateOf<List<com.Azelmods.App.data.model.Message>>(emptyList()) }
     var showScheduled by remember { mutableStateOf(false) }
     var showQuickFunctions by remember { mutableStateOf(false) }
     // Atrás primero suelta la selección, no se sale del chat con mensajes marcados.
@@ -137,6 +140,29 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
     var showMenu by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    /**
+     * Lleva la lista a un mensaje. Encima de los mensajes puede haber filas extra ("Cargando…",
+     * "No hay más mensajes"): antes no se contaban y el salto caía en el mensaje de al lado.
+     * Si el mensaje aún no está cargado, se piden páginas anteriores hasta encontrarlo.
+     */
+    suspend fun jumpToMessage(messageId: String): Boolean {
+        repeat(8) {
+            val current = viewModel.state.value
+            val index = current.messages.indexOfFirst { it.messageId == messageId }
+            if (index >= 0) {
+                listState.animateScrollToItem(index + chatHeaderItems(current))
+                return true
+            }
+            if (!current.hasMoreMessages) return false
+            val before = current.messages.size
+            viewModel.loadMoreMessages()
+            kotlinx.coroutines.withTimeoutOrNull(6_000) {
+                viewModel.state.first { it.messages.size > before || !it.hasMoreMessages }
+            } ?: return false
+        }
+        return false
+    }
+
     var flashMessageId by remember { mutableStateOf<String?>(null) }
     var showReport by remember { mutableStateOf(false) }
     val myUid = remember { FirebaseAuth.getInstance().currentUser?.uid.orEmpty() }
@@ -231,10 +257,11 @@ fun ChatScreen(
     var positioned by remember(contactId) { mutableStateOf(false) }
     LaunchedEffect(state.messages.size, state.isSearchOpen) {
         if (state.messages.isNotEmpty() && !state.isSearchOpen) {
+            val last = state.messages.size - 1 + chatHeaderItems(state)
             if (positioned) {
-                listState.animateScrollToItem(state.messages.size - 1)
+                listState.animateScrollToItem(last)
             } else {
-                listState.scrollToItem(state.messages.size - 1)
+                listState.scrollToItem(last)
                 positioned = true
             }
         }
@@ -243,10 +270,7 @@ fun ChatScreen(
     // Desplazamiento al resultado de búsqueda activo.
     LaunchedEffect(state.searchIndex, state.searchResults) {
         val objetivo = state.searchResults.getOrNull(state.searchIndex) ?: return@LaunchedEffect
-        val posicion = state.messages.indexOfFirst { it.messageId == objetivo }
-        if (posicion >= 0) {
-            listState.animateScrollToItem(posicion)
-        }
+        jumpToMessage(objetivo)
     }
     
     // Si el chat tiene temporizador o hay mensajes temporales en pantalla, se bloquean las
@@ -282,6 +306,42 @@ fun ChatScreen(
         }
     }
 
+    if (pendingDelete.isNotEmpty()) {
+        val now = System.currentTimeMillis()
+        // Para todos solo si todos son tuyos y de las últimas 48 horas, igual que desde el menú.
+        val forEveryone = pendingDelete.all {
+            it.senderId == myUid && !it.deletedForEveryone && now - it.timestamp < 48 * 60 * 60 * 1000L
+        }
+        AlertDialog(
+            onDismissRequest = { pendingDelete = emptyList() },
+            title = {
+                Text(if (pendingDelete.size == 1) tr("¿Eliminar el mensaje?") else tr("¿Eliminar %s mensajes?", pendingDelete.size.toString()))
+            },
+            text = {
+                if (!forEveryone) {
+                    Text(tr("Solo puedes eliminar para todos tus propios mensajes de las últimas 48 horas."))
+                }
+            },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    if (forEveryone) {
+                        TextButton(onClick = {
+                            pendingDelete.forEach { viewModel.deleteMessage(it, true) }
+                            pendingDelete = emptyList()
+                            selectedIds = emptySet()
+                        }) { Text(tr("Eliminar para todos"), color = MaterialTheme.colorScheme.error) }
+                    }
+                    TextButton(onClick = {
+                        pendingDelete.forEach { viewModel.deleteMessage(it, false) }
+                        pendingDelete = emptyList()
+                        selectedIds = emptySet()
+                    }) { Text(tr("Eliminar para mí")) }
+                    TextButton(onClick = { pendingDelete = emptyList() }) { Text(tr("Cancelar")) }
+                }
+            }
+        )
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(sendErrorSnackbar) },
@@ -302,8 +362,8 @@ fun ChatScreen(
                         selectedIds = emptySet()
                     },
                     onDelete = {
-                        state.messages.filter { it.messageId in selectedIds }.forEach { viewModel.deleteMessage(it, false) }
-                        selectedIds = emptySet()
+                        // Antes borraba solo para ti sin preguntar: ahora se elige, como en WhatsApp.
+                        pendingDelete = state.messages.filter { it.messageId in selectedIds }
                     },
                     onReply = {
                         state.messages.firstOrNull { it.messageId in selectedIds }?.let { viewModel.setReplyingTo(it) }
@@ -503,8 +563,7 @@ fun ChatScreen(
                         preview = pollPreview(pinnedMessage.content) ?: pinnedMessage.content.ifBlank { tr("Foto o archivo") },
                         onOpen = {
                             coroutineScope.launch {
-                                val position = state.messages.indexOfFirst { it.messageId == pinnedMessage.messageId }
-                                if (position >= 0) listState.animateScrollToItem(position)
+                                jumpToMessage(pinnedMessage.messageId)
                             }
                         },
                         onUnpin = { setPinnedMessage(viewModel.chatIdFor(contactId), null) }
@@ -624,12 +683,12 @@ fun ChatScreen(
                                 onQuoteClick = {
                                     coroutineScope.launch {
                                         val target = message.replyTo ?: return@launch
-                                        val position = state.messages.indexOfFirst { it.messageId == target }
-                                        if (position >= 0) {
-                                            listState.animateScrollToItem(position)
+                                        if (jumpToMessage(target)) {
                                             flashMessageId = target
                                             kotlinx.coroutines.delay(1_600)
                                             flashMessageId = null
+                                        } else {
+                                            android.widget.Toast.makeText(context, tr("El mensaje original ya no existe"), android.widget.Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 },
@@ -1362,3 +1421,7 @@ private fun ReportUserDialog(onDismiss: () -> Unit, onSend: (String) -> Unit) {
         containerColor = com.Azelmods.App.ui.theme.NexusTokens.Color.BgSurface
     )
 }
+
+/** Filas que la lista pone encima de los mensajes; hay que sumarlas al saltar a uno. */
+private fun chatHeaderItems(state: ChatState): Int =
+    (if (state.isLoadingMore) 1 else 0) + (if (!state.hasMoreMessages && state.messages.isNotEmpty()) 1 else 0)

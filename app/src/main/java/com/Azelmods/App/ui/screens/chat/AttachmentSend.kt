@@ -48,8 +48,15 @@ data class PendingAttachment(
     val name: String,
     val size: Long,
     val mime: String,
-    val caption: String = ""
+    val caption: String = "",
+    /** Duración de los vídeos, para ofrecer "Enviar como GIF" si son cortos. */
+    val durationMs: Long = 0,
+    /** Vídeo que se envía en bucle y sin sonido, como los GIF de WhatsApp. */
+    val asGif: Boolean = false
 )
+
+/** Hasta este largo un vídeo se puede enviar como GIF. */
+const val MAX_GIF_VIDEO_MS = 15_000L
 
 /** Lee nombre, tamaño y tipo de un archivo elegido con el selector del sistema. */
 fun describeAttachment(context: Context, uri: Uri, asDocument: Boolean = false): PendingAttachment {
@@ -74,7 +81,15 @@ fun describeAttachment(context: Context, uri: Uri, asDocument: Boolean = false):
         mime.startsWith("image/") -> AttachmentKind.IMAGE
         else -> AttachmentKind.DOCUMENT
     }
-    return PendingAttachment(uri, kind, name ?: uri.lastPathSegment ?: tr("Documento"), size, mime)
+    val duration = if (kind == AttachmentKind.VIDEO) {
+        runCatching {
+            android.media.MediaMetadataRetriever().use { retriever ->
+                retriever.setDataSource(context, uri)
+                retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            }
+        }.getOrDefault(0L)
+    } else 0L
+    return PendingAttachment(uri, kind, name ?: uri.lastPathSegment ?: tr("Documento"), size, mime, durationMs = duration)
 }
 
 /** 1,4 MB, 820 KB… Vacío si no se sabe. */
@@ -187,6 +202,25 @@ fun AttachmentSendScreen(
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
+                    }
+                }
+
+                // Vídeo corto: se puede mandar como GIF (en bucle y sin sonido).
+                if (current.kind == AttachmentKind.VIDEO && current.durationMs in 1..MAX_GIF_VIDEO_MS) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { items[selected] = current.copy(asGif = !current.asGif) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(tr("Enviar como GIF"), color = NexusTokens.Color.TextPrimary, style = MaterialTheme.typography.bodyLarge)
+                            Text(tr("Se repite sin sonido, como un GIF"), color = NexusTokens.Color.TextMuted, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Switch(checked = current.asGif, onCheckedChange = { items[selected] = current.copy(asGif = it) })
                     }
                 }
 

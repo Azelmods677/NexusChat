@@ -66,9 +66,9 @@ export const SCENES: Scene[] = [
     chips: ["🔗 Enlaces", "✨ Azel", "🔒 Cifrado"], seconds: 13,
   },
   {
-    clip: "a.mp4", from: 36, kicker: "Llega a más gente", title: "Canales y difusiones",
+    clip: "a.mp4", from: 38, kicker: "Llega a más gente", title: "Canales y difusiones",
     lines: ["Crea tu canal con @nombre", "Síguelos y explora los populares", "Un mensaje a muchos, cada uno en privado"],
-    chips: ["📣 Canales", "📨 Difusión", "🧭 Explorar"], seconds: 11,
+    chips: ["📣 Canales", "📨 Difusión", "🧭 Explorar"], seconds: 9,
   },
   {
     clip: "a.mp4", from: 6, kicker: "Hazla tuya", title: "Fondos animados",
@@ -78,7 +78,12 @@ export const SCENES: Scene[] = [
   {
     clip: "f.mp4", from: 30, kicker: "Estudio de diseño", title: "Diseña cada detalle",
     lines: ["Burbujas, campo y barra inferior", "Vista previa en directo", "Decenas de estilos"],
-    chips: ["🫧 Burbujas", "⌨️ Campo", "🧭 Barra"], seconds: 16,
+    chips: ["🫧 Burbujas", "⌨️ Campo", "🧭 Barra"], seconds: 24,
+  },
+  {
+    clip: "f.mp4", from: 70, kicker: "Estudio de diseño", title: "Tu barra, tu inicio",
+    lines: ["Barra flotante, con icono o con texto", "Iconos de llamada animados", "Oscurece el fondo a tu medida"],
+    chips: ["🧭 Barra", "📞 Iconos", "🌗 Fondo"], seconds: 18,
   },
   {
     clip: "d.mp4", from: 0, kicker: "A tu estilo", title: "Tu color, tu letra",
@@ -89,6 +94,8 @@ export const SCENES: Scene[] = [
     clip: "b.mp4", from: 34, kicker: "Comparte el momento", title: "Historias, canales y más",
     lines: ["Historias de 24 horas", "Canales y difusiones a un toque", "Con tu fondo animado detrás"],
     chips: ["⏳ 24 h", "📣 Canales", "🎶 Música"], seconds: 7,
+    // La grabación pasa por la lista de chats: se tapan los nombres de los contactos.
+    blur: [{ x: 0, y: 520, w: 1080, h: 1600 }],
   },
   {
     clip: "d.mp4", from: 27, kicker: "Inteligencia artificial", title: "Azel IA y sus agentes",
@@ -103,7 +110,7 @@ export const SCENES: Scene[] = [
   {
     clip: "d.mp4", from: 39, kicker: "Todo bajo control", title: "Ajustes completos",
     lines: ["Almacenamiento y datos", "Idioma de traducción", "Notificaciones a tu medida"],
-    chips: ["💾 Datos", "🌍 Idiomas", "🔔 Avisos"], seconds: 11,
+    chips: ["💾 Datos", "🌍 Idiomas", "🔔 Avisos"], seconds: 5,
   },
   {
     clip: "a.mp4", from: 72, kicker: "Ya disponible", title: "NexusChat 8.5",
@@ -114,7 +121,7 @@ export const SCENES: Scene[] = [
 
 const COLD = sec(7);
 const LOGO = sec(5);
-const WALL = sec(9);
+const WALL = sec(14);
 const OUTRO = sec(9);
 const sceneFrames = (s: Scene) => sec(s.seconds);
 const SCENES_TOTAL = SCENES.reduce((n, s) => n + sceneFrames(s), 0);

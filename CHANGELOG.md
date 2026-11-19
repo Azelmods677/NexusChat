@@ -33,10 +33,43 @@
 ---
 
 <a id="v841"></a>
+## v8.5.1
+
+**Privacidad**
+- Tu correo y tu teléfono ya no son visibles para otros usuarios. Quien ya los conoce puede seguir encontrándote por ellos, pero nadie puede ver la lista.
+- Las cuentas nuevas ya no usan parte del correo como `@usuario`.
+
+**Chats**
+- Al borrar mensajes seleccionados vuelve a preguntar: "Eliminar para todos" o "Eliminar para mí". En la 8.5.0 solo se borraban para ti.
+- Borrar para todos también quita del servidor el texto cifrado y el nombre del archivo.
+- Tocar una respuesta lleva al mensaje original exacto (antes caía en el de al lado) y, si es antiguo, carga la conversación hasta encontrarlo.
+- "Bajar al último mensaje" llega de verdad al final.
+- El fondo de cada chat es solo tuyo, como el fondo de la app: la otra persona ya no lo ve cambiar.
+
+**App lista para producción**
+- Fuera las ventanas de tutorial que salían en Llamadas, Historias, Ajustes y Seguridad.
+- En Nueva conversación ya no apareces tú como contacto, y el "Chat de prueba" pasa a ser Azel Assistant.
+- Derechos de autor y año correctos en Acerca de y Ayuda; novedades de la 8.5 actualizadas.
+
+**Canales y GIF**
+- El contador de seguidores ya no cuenta doble (la 8.5.0 sumaba desde la app y desde el servidor) y los canales nuevos empiezan bien.
+- GIF sin claves: envía los GIF y stickers del buscador de tu teclado (Gboard, Xiaomi…) directamente al chat.
+- "Enviar como GIF": un vídeo de hasta 15 segundos se manda en bucle y sin sonido, como en WhatsApp.
+- El buscador de GIF de la app ya no pide a cada usuario una clave: pasa por el servidor. Si no está disponible, ofrece la galería y el teclado.
+
+**Premium**
+- Premium solo aparece cuando el cobro está activado; ya no se muestra una pantalla de pagos sin activar.
+
+**Servidor**
+- Los miembros de un grupo vuelven a poder enviar mensajes.
+- Se cierran dos nodos antiguos de la base de datos que ya no se usaban.
+---
+
+<a id="v850"></a>
 ## v8.5.0
 
 **Archivos y fotos**
-- Envía varias fotos, vídeos o documentos de una vez (hasta 30), cada uno con su descripción y @menciones.
+- Envía varias fotos, vídeos o documentos de una vez (hasta 30), cada uno con su descripción y menciones con @.
 - Los documentos se abren dentro de la app con su programa correcto, muestran tipo y tamaño, y se pueden guardar en Descargas o compartir.
 - Cambia el nombre de un documento antes de enviarlo.
 - La foto de la cámara también lleva descripción antes de salir.
@@ -55,7 +88,7 @@
 
 **Canales y difusiones**
 - Canales y difusiones a la vista en la pestaña Historias.
-- Explora los canales más seguidos sin saber su @nombre.
+- Explora los canales más seguidos sin saber su `@nombre`.
 - El contador de seguidores ya cuenta de verdad.
 - Nuevo: difusiones, el mismo mensaje a varios contactos, cada uno en su privado.
 
@@ -129,7 +162,7 @@
 
 ### Chats
 - Las respuestas muestran quién escribió el mensaje y nunca un enlace interno; los stickers aparecen como "Sticker".
-- Tocar una respuesta lleva al mensaje original, y tocar una @mención abre el perfil.
+- Tocar una respuesta lleva al mensaje original, y tocar una mención con @ abre el perfil.
 - Elegir otra vez la misma reacción la quita.
 - Los mensajes reenviados llevan la etiqueta "Reenviado".
 - Fotos y vídeos con texto antes de enviarlos.

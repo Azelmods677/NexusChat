@@ -36,7 +36,7 @@ fun TutorialScreen(
                             Text(tutorial.icon, fontSize = 24.sp)
                             Spacer(modifier = Modifier.width(8.dp))
                         }
-                        Text(tutorial?.title ?: tr("Tutorial"))
+                        Text(tutorial?.title ?: tr("Guía"))
                     }
                 },
                 navigationIcon = {
@@ -61,7 +61,7 @@ fun TutorialScreen(
         ) {
             if (tutorial == null) {
                 Text(
-                    tr("Tutorial no encontrado"),
+                    tr("Guía no encontrada"),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyLarge
                 )

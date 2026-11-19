@@ -1,21 +1,39 @@
-MIT License
+NexusChat
+Copyright (c) 2026 Azel Mods. Todos los derechos reservados.
 
-Copyright (c) 2026 Azel Mods
+El código fuente de este repositorio se publica únicamente para que pueda consultarse.
+Publicarlo no concede ninguna licencia sobre él.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Sin el permiso previo y por escrito de Azel Mods NO se permite:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+  1. Copiar, modificar, adaptar, traducir ni crear obras derivadas de este software,
+     en todo o en parte.
+  2. Distribuir, publicar, sublicenciar, vender o alquilar este software o versiones
+     modificadas, incluidas aplicaciones compiladas a partir de este código.
+  3. Usar el nombre "NexusChat", el logotipo o la marca Azel Mods en otros proyectos.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Sí se permite:
+
+  - Ver el código en GitHub.
+  - Descargar e instalar las versiones oficiales publicadas en
+    https://github.com/Azelmods677/NexusChat/releases para uso personal.
+
+Los componentes de terceros incluidos en la aplicación conservan sus propias licencias
+y no quedan cubiertos por este aviso.
+
+EL SOFTWARE SE PROPORCIONA "TAL CUAL", SIN GARANTÍA DE NINGÚN TIPO, EXPRESA O IMPLÍCITA.
+EN NINGÚN CASO EL AUTOR SERÁ RESPONSABLE DE NINGÚN DAÑO DERIVADO DE SU USO.
+
+Para solicitar permisos: https://t.me/AzelModsx7779
+
+--------------------------------------------------------------------------------
+
+NexusChat
+Copyright (c) 2026 Azel Mods. All rights reserved.
+
+The source code in this repository is published for viewing purposes only. Its
+publication does not grant any license. Without prior written permission from
+Azel Mods you may not copy, modify, distribute, sublicense or sell this software or
+any derivative work, nor use the "NexusChat" name or logo. You may view the code and
+install the official releases for personal use. Third-party components keep their
+own licenses. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.

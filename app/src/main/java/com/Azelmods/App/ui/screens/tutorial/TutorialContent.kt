@@ -40,32 +40,28 @@ object TutorialContent {
     val tutorials = listOf(
         Tutorial(
             id = "whats_new",
-            title = tr("Novedades de la 8.0"),
+            title = tr("Novedades de la 8.5"),
             icon = "🆕",
             sections = listOf(
                 TutorialSection(
-                    title = tr("Personalización completa"),
-                    content = "En Ajustes → Personalización → Estudio de diseño cambias las filas de los chats, las burbujas, las marcas de lectura, el campo de escribir, el inicio y los ajustes. Lo que elijas en filas se aplica también a llamadas, historias, contactos y búsqueda."
+                    title = tr("Fotos, vídeos y documentos"),
+                    content = "Envía hasta 30 a la vez, cada uno con su descripción y @menciones. Los documentos muestran su tipo y tamaño, se pueden renombrar antes de enviarlos y se abren dentro de la app."
                 ),
                 TutorialSection(
-                    title = tr("Más formas de hablar"),
-                    content = "Grupos cifrados con administradores y enlace de invitación, chats secretos con una clave nueva en cada mensaje y canales para publicar a tus seguidores."
+                    title = tr("Chats más rápidos"),
+                    content = "Los enlaces, correos y teléfonos salen en azul. Escribe *negrita*, _cursiva_, ~tachado~ o `código`. Desliza un mensaje para responder y mantén pulsado para seleccionar varios."
                 ),
                 TutorialSection(
-                    title = tr("En cada chat"),
-                    content = "Reenviar y seleccionar varios mensajes, encuestas, mensajes fijados, guardados y programados, compartir contactos, vista previa de enlaces y stickers propios."
+                    title = tr("Grupos con control"),
+                    content = "Elige si solo escriben los administradores y quién puede cambiar la foto, el nombre y la descripción. Tocar el aviso de un grupo abre el grupo."
                 ),
                 TutorialSection(
-                    title = tr("Tu lista de chats"),
-                    content = "Carpetas, chats ocultos con tu huella y marcar como no leído. Mantén pulsado un chat para verlo."
+                    title = tr("Canales y difusiones"),
+                    content = "Explora los canales más seguidos, reacciona a sus publicaciones, compártelos y silencia sus avisos. Con una difusión envías un mensaje a varios contactos, cada uno en su chat privado."
                 ),
                 TutorialSection(
-                    title = tr("Herramientas"),
-                    content = "Kali Linux de verdad en la terminal, descarga de vídeos y agentes de IA que guardan sus archivos en la carpeta que elijas."
-                ),
-                TutorialSection(
-                    title = tr("Y además"),
-                    content = "Avisos con el mensaje real, aviso de actualización al momento, recuperación de contraseña, vídeos de perfil de hasta 1 minuto y 30 segundos y nueva animación de entrada."
+                    title = tr("Descargador de vídeos"),
+                    content = "Más fiable: se repara solo, reintenta con otros ajustes, se puede cancelar y sale por Tor si lo tienes activo."
                 )
             )
         ),

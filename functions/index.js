@@ -1027,3 +1027,62 @@ exports.onChannelSubscriber = functions.database
         await db.ref(`/channels/${context.params.channelId}/subscribers`).transaction((n) => Math.max(0, (n || 0) + delta));
         return null;
     });
+
+/**
+ * Búsqueda de GIF para todos los usuarios sin meter la clave de GIPHY en el APK.
+ *
+ * Antes cada usuario tenía que conseguir su propia clave de GIPHY: casi nadie lo hacía y la
+ * búsqueda de GIF no funcionaba. Ahora la clave vive solo aquí, como secreto:
+ *
+ *   npx firebase-tools functions:secrets:set GIPHY_API_KEY
+ *
+ * Solo responde a usuarios con sesión (token de Firebase) y solo reenvía búsquedas, nada más.
+ *
+ * GET /trending          → GIF populares
+ * GET /search?q=texto    → resultados de la búsqueda
+ */
+exports.gifApi = functions
+    .runWith({ secrets: ["GIPHY_API_KEY"], memory: "256MB", timeoutSeconds: 20 })
+    .https.onRequest(async (req, res) => {
+        try {
+            const header = req.get("Authorization") || "";
+            const idToken = header.startsWith("Bearer ") ? header.slice(7) : "";
+            if (!idToken) {
+                res.status(401).json({ error: "Sin sesión" });
+                return;
+            }
+            await admin.auth().verifyIdToken(idToken);
+
+            const key = process.env.GIPHY_API_KEY;
+            if (!key) {
+                res.status(503).json({ error: "GIF sin configurar" });
+                return;
+            }
+            const endpoint = req.path === "/search" ? "search" : "trending";
+            const params = new URLSearchParams({
+                api_key: key,
+                limit: "30",
+                rating: "pg-13",
+                bundle: "messaging_non_clips",
+            });
+            if (endpoint === "search") {
+                const q = String(req.query.q || "").trim().slice(0, 50);
+                if (!q) {
+                    res.status(400).json({ error: "Búsqueda vacía" });
+                    return;
+                }
+                params.set("q", q);
+            }
+            const response = await fetch(`https://api.giphy.com/v1/gifs/${endpoint}?${params}`);
+            if (!response.ok) {
+                res.status(502).json({ error: `GIPHY respondió ${response.status}` });
+                return;
+            }
+            // Se devuelve tal cual: la app ya sabe leer el formato de GIPHY.
+            res.set("Cache-Control", "private, max-age=300");
+            res.status(200).send(await response.text());
+        } catch (error) {
+            console.warn("gifApi:", error.message);
+            res.status(401).json({ error: "Sesión no válida" });
+        }
+    });

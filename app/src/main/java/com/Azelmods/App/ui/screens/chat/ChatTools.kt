@@ -382,7 +382,7 @@ fun SelectionTopBar(
                 Icon(Icons.AutoMirrored.Outlined.Forward, tr("Reenviar"), tint = NexusTokens.Color.TextPrimary)
             }
             AnimatedIconButton(onClick = onDelete) {
-                Icon(Icons.Outlined.DeleteOutline, tr("Eliminar para mí"), tint = NexusTokens.Color.TextPrimary)
+                Icon(Icons.Outlined.DeleteOutline, tr("Eliminar"), tint = NexusTokens.Color.TextPrimary)
             }
             if (count == 1 && onMore != null) {
                 AnimatedIconButton(onClick = onMore) {
@@ -510,7 +510,7 @@ fun highlightMentions(
 val LinkBlue = androidx.compose.ui.graphics.Color(0xFF4FA3F7)
 
 private val TEXT_LINK_PATTERN = Regex(
-    """(?i)\b((?:https?://|www\.)[^\s<>"']+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|es|mx|ar|cl|pe|uy|ve|ec|bo|py|app|dev|me|tv|gg|ly|info|xyz|link|site|online|store|edu|gov)(?:/[^\s<>"']*)?)"""
+    """(?i)\b((?:https?://|www\.|nexuschat://)[^\s<>"']+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|es|mx|ar|cl|pe|uy|ve|ec|bo|py|app|dev|me|tv|gg|ly|info|xyz|link|site|online|store|edu|gov)(?:/[^\s<>"']*)?)"""
 )
 private val EMAIL_PATTERN = Regex("""\b[\w.+-]+@[\w-]+(\.[\w-]+)+\b""")
 private val PHONE_PATTERN = Regex("""(?<![\w+])\+\d[\d ()-]{7,16}\d""")
@@ -538,7 +538,7 @@ private fun addLinks(builder: androidx.compose.ui.text.AnnotatedString.Builder, 
         val value = match.value.trimEnd('.', ',', ';', ':', '!', '?', ')', ']', '»')
         if (value.isEmpty()) return@forEach
         val range = match.range.first until match.range.first + value.length
-        add(range, if (value.startsWith("http", ignoreCase = true)) value else "https://$value")
+        add(range, if (value.startsWith("http", ignoreCase = true) || value.startsWith("nexuschat://", ignoreCase = true)) value else "https://$value")
     }
     PHONE_PATTERN.findAll(text).forEach { add(it.range, "tel:${it.value.filter { c -> c.isDigit() || c == '+' }}") }
 }

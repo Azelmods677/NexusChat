@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.AddReaction
+import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.Campaign
@@ -319,10 +320,10 @@ class ChannelViewModel @Inject constructor(
         channels.setMuted(context, id, next)
     }
 
-    fun publish(text: String, image: Uri?) {
+    fun publish(text: String, image: Uri?, audio: Uri? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             _publishing.value = true
-            runCatching { channels.publish(id, text, image) }
+            runCatching { channels.publish(id, text, image, audio) }
             _publishing.value = false
         }
     }
@@ -368,6 +369,9 @@ fun ChannelScreen(navController: NavController, channelId: String, viewModel: Ch
     var editing by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { image = it }
+    var audio by remember { mutableStateOf<Uri?>(null) }
+    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { if (it != null) audio = it }
+    var viewing by remember { mutableStateOf<String?>(null) }
     val list = rememberLazyListState()
     LaunchedEffect(posts.size) { if (posts.isNotEmpty()) list.animateScrollToItem(posts.lastIndex) }
 
@@ -476,6 +480,7 @@ fun ChannelScreen(navController: NavController, channelId: String, viewModel: Ch
                         canDelete = isOwner,
                         onDelete = { viewModel.deletePost(post.id) },
                         onReact = { emoji -> viewModel.react(post.id, emoji) },
+                        onOpenImage = { viewing = it },
                         onShare = {
                             val c = channel
                             share(
@@ -511,6 +516,13 @@ fun ChannelScreen(navController: NavController, channelId: String, viewModel: Ch
                     com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
                         Icon(Icons.Outlined.AddPhotoAlternate, tr("Añadir foto"), tint = NexusTokens.Color.TextSecondary)
                     }
+                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { audioPicker.launch("audio/*") }) {
+                        Icon(
+                            androidx.compose.material.icons.Icons.Outlined.AudioFile,
+                            tr("Añadir audio"),
+                            tint = if (audio != null) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextSecondary
+                        )
+                    }
                     BasicTextField(
                         value = draft,
                         onValueChange = { draft = it.take(4_000) },
@@ -528,11 +540,12 @@ fun ChannelScreen(navController: NavController, channelId: String, viewModel: Ch
                         }
                     )
                     com.Azelmods.App.ui.components.AnimatedIconButton(
-                        enabled = (draft.isNotBlank() || image != null) && !publishing,
+                        enabled = (draft.isNotBlank() || image != null || audio != null) && !publishing,
                         onClick = {
-                            viewModel.publish(draft, image)
+                            viewModel.publish(draft, image, audio)
                             draft = ""
                             image = null
+                            audio = null
                         }
                     ) {
                         if (publishing) CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
@@ -541,6 +554,15 @@ fun ChannelScreen(navController: NavController, channelId: String, viewModel: Ch
                 }
             }
         }
+    }
+
+    viewing?.let { url ->
+        // Foto a pantalla completa, con zoom y botón para guardarla en la galería.
+        com.Azelmods.App.ui.components.FullScreenImageViewer(
+            imageUrl = url,
+            senderName = channel?.name.orEmpty(),
+            onDismiss = { viewing = null }
+        )
     }
 
     if (editing) {
@@ -661,10 +683,23 @@ private fun PostCard(
     canDelete: Boolean,
     onDelete: () -> Unit,
     onReact: (String) -> Unit,
-    onShare: () -> Unit
+    onShare: () -> Unit,
+    onOpenImage: (String) -> Unit = {}
 ) {
     val time = remember(post.at) { SimpleDateFormat("d MMM, HH:mm", Locale.getDefault()).format(Date(post.at)) }
     var picking by remember { mutableStateOf(false) }
+    var allEmojis by remember { mutableStateOf(false) }
+    if (allEmojis) {
+        // Cualquier emoji, no solo los seis rápidos.
+        androidx.compose.ui.window.Dialog(onDismissRequest = { allEmojis = false }) {
+            com.Azelmods.App.ui.components.CompleteEmojiPicker(
+                onEmojiSelected = { emoji ->
+                    allEmojis = false
+                    onReact(emoji)
+                }
+            )
+        }
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -679,6 +714,13 @@ private fun PostCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 360.dp)
+                    .clickable { onOpenImage(it) }
+            )
+        }
+        post.audioUrl?.let { url ->
+            com.Azelmods.App.ui.components.AudioMessagePlayer(
+                audioUrl = url,
+                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp)
             )
         }
         if (post.text.isNotBlank()) {
@@ -743,6 +785,15 @@ private fun PostCard(
                 }
                 DropdownMenu(expanded = picking, onDismissRequest = { picking = false }, containerColor = NexusTokens.Color.BgSurface) {
                     Row(Modifier.padding(horizontal = 8.dp)) {
+                        Text(
+                            "+",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = NexusTokens.Color.TextSecondary,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { picking = false; allEmojis = true }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
                         QUICK_REACTIONS.forEach { emoji ->
                             Text(
                                 emoji,

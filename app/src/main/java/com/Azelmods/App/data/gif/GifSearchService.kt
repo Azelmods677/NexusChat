@@ -1,5 +1,6 @@
 package com.Azelmods.App.data.gif
 
+import kotlinx.coroutines.tasks.await
 import android.content.Context
 import com.Azelmods.App.BuildConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -42,7 +43,11 @@ class GifSearchService @Inject constructor(
     fun apiKey(): String =
         prefs.getString(KEY_API_KEY, null)?.takeIf { it.isNotBlank() } ?: BuildConfig.GIPHY_API_KEY
 
-    fun hasApiKey(): Boolean = apiKey().isNotBlank()
+    /**
+     * Siempre hay forma de buscar: con la clave propia del usuario si la puso, y si no, a
+     * través del servidor de la app (función gifApi), que guarda la clave como secreto.
+     */
+    fun hasApiKey(): Boolean = true
 
     fun saveApiKey(key: String) {
         prefs.edit().putString(KEY_API_KEY, key.trim()).apply()
@@ -54,6 +59,29 @@ class GifSearchService @Inject constructor(
         if (query.isBlank()) trending() else request("search", mapOf("q" to query.trim()))
 
     private suspend fun request(endpoint: String, params: Map<String, String>): List<GifResult> =
+        if (apiKey().isBlank()) viaServer(endpoint, params) else direct(endpoint, params)
+
+    /** Por la función gifApi: la clave nunca sale del servidor. */
+    private suspend fun viaServer(endpoint: String, params: Map<String, String>): List<GifResult> {
+        val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            ?: throw IllegalStateException("Inicia sesión para buscar GIF")
+        val token = user.getIdToken(false).await().token ?: throw IllegalStateException("Sesión no válida")
+        val project = com.google.firebase.FirebaseApp.getInstance().options.projectId
+        return withContext(Dispatchers.IO) {
+            val url = "https://us-central1-$project.cloudfunctions.net/gifApi/$endpoint".toHttpUrl().newBuilder()
+                .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
+                .build()
+            client.newCall(Request.Builder().url(url).header("Authorization", "Bearer $token").build()).execute().use { response ->
+                if (response.code == 404 || response.code == 503) {
+                    throw IllegalStateException("El buscador de GIF aún no está disponible")
+                }
+                if (!response.isSuccessful) throw IllegalStateException("No se pudieron cargar los GIF")
+                parse(response.body?.string().orEmpty())
+            }
+        }
+    }
+
+    private suspend fun direct(endpoint: String, params: Map<String, String>): List<GifResult> =
         withContext(Dispatchers.IO) {
             val url = "https://api.giphy.com/v1/gifs/$endpoint".toHttpUrl().newBuilder()
                 .addQueryParameter("api_key", apiKey())
