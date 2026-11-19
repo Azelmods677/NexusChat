@@ -70,3 +70,8 @@ ANALISIS_PROFUNDO_SOFTWARE.md
 .vscode/
 *.swp
 Thumbs.db
+
+# Vídeo de presentación: grabaciones y render pesan mucho
+video/clips/
+video/out/
+video/public/clips/

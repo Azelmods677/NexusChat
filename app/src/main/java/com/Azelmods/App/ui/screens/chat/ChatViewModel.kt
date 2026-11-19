@@ -60,6 +60,11 @@ data class ChatState(
     val isLoadingMore: Boolean = false,         // Loading older messages (pagination)
     val hasMoreMessages: Boolean = true,        // Whether there are more messages to load
     val isUploading: Boolean = false,
+    /** En grupos: falso si solo escriben los administradores y no lo eres, o si ya no eres miembro. */
+    val canSend: Boolean = true,
+    val sendBlockedReason: String? = null,
+    /** "Enviando 2 de 5…" mientras sale una tanda de archivos. */
+    val uploadLabel: String? = null,
     val error: String? = null,
     val replyingTo: Message? = null,
     val editingMessage: Message? = null,
@@ -428,7 +433,22 @@ class ChatViewModel @Inject constructor(
                     photoUrl = (user?.get("photoUrl") as? String)?.ifBlank { null }
                 )
             }
-            _state.value = _state.value.copy(groupName = name, groupPhoto = photo, groupMembers = members)
+            val me = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            val admins = chat.child("admins").get().await().children.mapNotNull { it.key }.toSet()
+                .ifEmpty { setOfNotNull(chat.child("createdBy").get().await().getValue(String::class.java)) }
+            val onlyAdmins = chat.child("settings").child("onlyAdmins").get().await().getValue(Boolean::class.java) ?: false
+            _state.value = _state.value.copy(
+                groupName = name,
+                groupPhoto = photo,
+                groupMembers = members,
+                // Si ya no eres miembro (te echaron o saliste) tampoco puedes escribir.
+                canSend = me in members && (!onlyAdmins || me in admins),
+                sendBlockedReason = when {
+                    me !in members -> tr("Ya no participas en este grupo.")
+                    onlyAdmins && me !in admins -> tr("Solo los administradores pueden enviar mensajes.")
+                    else -> null
+                }
+            )
         }.onFailure { android.util.Log.w("ChatViewModel", "No se pudo leer el grupo: ${it.message}") }
     }
 
@@ -725,6 +745,9 @@ class ChatViewModel @Inject constructor(
                 ?: (data["stickerUrl"] as? String)
                 ?: (data["content"] as? String)?.takeIf { data["mediaType"] == "STICKER" },
             mediaType = data["mediaType"] as? String,
+            fileName = data["fileName"] as? String,
+            fileSize = (data["fileSize"] as? Number)?.toLong() ?: 0L,
+            mimeType = data["mimeType"] as? String,
             deletedFor = (data["deletedFor"] as? Map<String, Boolean>) ?: emptyMap(),
             deletedForEveryone = data["deletedForEveryone"] as? Boolean ?: false,
             edited = data["edited"] as? Boolean ?: false,
@@ -1082,13 +1105,19 @@ class ChatViewModel @Inject constructor(
     /**
      * Send a document message uploaded to Firebase Storage.
      */
-    fun sendDocumentMessage(documentUri: Uri, chatId: String, fileName: String) {
+    fun sendDocumentMessage(
+        documentUri: Uri,
+        chatId: String,
+        fileName: String,
+        caption: String = "",
+        mimeType: String = "application/octet-stream",
+        fileSize: Long = -1L
+    ) {
         val targetChatId = effectiveChatId(chatId)
         viewModelScope.launch(Dispatchers.IO) {
             _state.value = _state.value.copy(isUploading = true, error = null)
             try {
-                val documentUrl = storageRepository.uploadChatDocument(documentUri, targetChatId, fileName)
-                publishMedia(targetChatId, documentUrl, "DOCUMENT", fileName)
+                uploadDocument(targetChatId, documentUri, fileName, caption, mimeType, fileSize)
                 _state.value = _state.value.copy(isUploading = false)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -1097,6 +1126,68 @@ class ChatViewModel @Inject constructor(
                     error = "Error al enviar documento: ${e.message}"
                 )
             }
+        }
+    }
+
+    private suspend fun uploadDocument(
+        chatId: String,
+        uri: Uri,
+        fileName: String,
+        caption: String,
+        mimeType: String,
+        fileSize: Long
+    ) {
+        val url = storageRepository.uploadChatDocument(uri, chatId, fileName, mimeType)
+        val extra = buildMap<String, Any> {
+            put("fileName", fileName)
+            put("mimeType", mimeType)
+            if (fileSize >= 0) put("fileSize", fileSize)
+        }
+        publishMedia(chatId, url, "DOCUMENT", caption, extra)
+    }
+
+    /**
+     * Envía varios archivos seguidos, cada uno con su descripción. Uno que falle no
+     * frena a los demás: al final se avisa de cuántos no salieron.
+     */
+    fun sendAttachments(items: List<PendingAttachment>, chatId: String) {
+        if (items.isEmpty()) return
+        val targetChatId = effectiveChatId(chatId)
+        viewModelScope.launch(Dispatchers.IO) {
+            var failed = 0
+            items.forEachIndexed { index, item ->
+                _state.value = _state.value.copy(
+                    isUploading = true,
+                    error = null,
+                    uploadLabel = if (items.size > 1) tr("Enviando %s de %s…", index + 1, items.size) else null
+                )
+                try {
+                    when (item.kind) {
+                        AttachmentKind.IMAGE -> {
+                            val uri = if (aiFeaturePreferences.isPhotoEnhanceEnabled()) photoEnhancer.enhance(appContext, item.uri) else item.uri
+                            publishMedia(targetChatId, storageRepository.uploadChatImage(uri, targetChatId), "IMAGE", item.caption)
+                        }
+                        AttachmentKind.VIDEO ->
+                            publishMedia(targetChatId, storageRepository.uploadChatVideo(item.uri, targetChatId), "VIDEO", item.caption)
+                        AttachmentKind.GIF ->
+                            publishMedia(targetChatId, storageRepository.uploadChatGif(item.uri, targetChatId), "GIF", item.caption)
+                        AttachmentKind.DOCUMENT ->
+                            uploadDocument(targetChatId, item.uri, item.name, item.caption, item.mime, item.size)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.w("ChatViewModel", "No se pudo enviar ${item.name}", e)
+                    failed++
+                }
+            }
+            _state.value = _state.value.copy(
+                isUploading = false,
+                uploadLabel = null,
+                error = when {
+                    failed == 0 -> null
+                    items.size == 1 -> tr("No se pudo enviar el archivo. Revisa la conexión e inténtalo otra vez.")
+                    else -> tr("No se pudieron enviar %s de %s archivos.", failed, items.size)
+                }
+            )
         }
     }
 

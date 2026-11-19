@@ -1,5 +1,6 @@
 package com.Azelmods.App
 
+import kotlinx.coroutines.tasks.await
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -205,6 +206,18 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                                             "profile" -> {
                                                 navController.navigate("profile/${req.id}")
                                             }
+                                            // Enlace de canal compartido: se busca su id por el @nombre.
+                                            "channel" -> {
+                                                val handle = req.id.lowercase().replace(Regex("[^a-z0-9_]"), "")
+                                                val channelId = runCatching {
+                                                    com.google.firebase.database.FirebaseDatabase.getInstance()
+                                                        .getReference("channelHandles/$handle").get()
+                                                        .await()
+                                                        .getValue(String::class.java)
+                                                }.getOrNull()
+                                                if (channelId != null) navController.navigate("channel/$channelId")
+                                                else navController.navigate("channels")
+                                            }
                                         }
                                     } catch (e: Exception) {
                                         Log.e(TAG, "Failed to navigate deep link: ${e.message}", e)
@@ -278,8 +291,14 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     "active_call/$callId/$callType?isCaller=false"
                 }
                 "chat" -> {
-                    val peer = intent.getStringExtra("senderId")?.takeIf { it.isNotBlank() } ?: return
-                    "chat/$peer"
+                    // Un aviso de grupo abre el grupo, no el privado con quien escribió.
+                    val chatId = intent.getStringExtra("chatId").orEmpty()
+                    if (chatId.startsWith("group_")) {
+                        "chat/$chatId"
+                    } else {
+                        val peer = intent.getStringExtra("senderId")?.takeIf { it.isNotBlank() } ?: return
+                        "chat/$peer"
+                    }
                 }
                 "call_back" -> {
                     val contactId = intent.getStringExtra("contactId")?.takeIf { it.isNotBlank() } ?: return
@@ -310,6 +329,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                     deepLinkNavRequest.value = DeepLinkNavRequest("profile", path)
                 }
                 "join" -> com.Azelmods.App.ui.screens.group.GroupLinks.pending.value = path
+                "channel" -> deepLinkNavRequest.value = DeepLinkNavRequest("channel", path.removePrefix("@"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse deep link: ${e.message}", e)

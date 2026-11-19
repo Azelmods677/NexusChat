@@ -355,6 +355,9 @@ fun NavGraph(
         composable("chat_studio") {
             com.Azelmods.App.ui.screens.settings.ChatStudioScreen(navController)
         }
+        composable("broadcast") {
+            com.Azelmods.App.ui.screens.channels.BroadcastScreen(navController)
+        }
         composable("channels") {
             com.Azelmods.App.ui.screens.channels.ChannelsScreen(navController)
         }

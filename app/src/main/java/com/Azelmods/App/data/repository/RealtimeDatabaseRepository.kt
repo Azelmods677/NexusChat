@@ -164,7 +164,9 @@ class RealtimeDatabaseRepository @Inject constructor(
         // ══════════════════════════════════════════════════════════════════
         // 🔧 FIX BUG #5 y #6: CREAR CHAT SI NO EXISTE Y ACTUALIZAR ÍNDICE
         // ══════════════════════════════════════════════════════════════════
-        if (chatSnapshot == null || !chatSnapshot.exists()) {
+        // Un grupo ya existe siempre (lo crea createGroup). Si la lectura fallaba, este bloque
+        // escribía "members" solo contigo y dejaba al grupo sin el resto de miembros.
+        if (!chatId.startsWith("group_") && (chatSnapshot == null || !chatSnapshot.exists())) {
             android.util.Log.d("RealtimeDB", "🆕 Chat $chatId no existe, creando...")
             
             // Extraer miembros del chatId (formato: "uid1_uid2" o "group_timestamp")
@@ -753,6 +755,12 @@ class RealtimeDatabaseRepository @Inject constructor(
      * y por último el nodo del chat.
      */
     suspend fun deleteChat(chatId: String) {
+        // En un grupo, "eliminar" para un miembro es salir y quitarlo de su lista: antes
+        // borraba el grupo entero para todos.
+        if (chatId.startsWith("group_")) {
+            leaveGroup(chatId)
+            return
+        }
         val members = runCatching {
             database.child("chats").child(chatId).child("members").get().await()
                 .children.mapNotNull { it.key }
@@ -774,6 +782,28 @@ class RealtimeDatabaseRepository @Inject constructor(
         }
 
         database.child("chats").child(chatId).removeValue().await()
+    }
+
+    /**
+     * Sale de un grupo. Si eras el único administrador, pasa a serlo otro miembro para
+     * que el grupo no quede sin nadie que lo gestione.
+     */
+    suspend fun leaveGroup(chatId: String) {
+        val me = auth.currentUser?.uid ?: return
+        val chat = database.child("chats").child(chatId)
+        runCatching {
+            val snapshot = chat.get().await()
+            val admins = snapshot.child("admins").children.mapNotNull { it.key }.toSet()
+                .ifEmpty { setOfNotNull(snapshot.child("createdBy").getValue(String::class.java)) }
+            val others = snapshot.child("members").children.mapNotNull { it.key }.filter { it != me }
+            if (me in admins && others.isNotEmpty() && others.none { it in admins }) {
+                if (!snapshot.child("admins").exists()) chat.child("admins").child(me).setValue(true).await()
+                chat.child("admins").child(others.first()).setValue(true).await()
+            }
+            if (me in admins) chat.child("admins").child(me).removeValue().await()
+        }.onFailure { Log.w("RealtimeDB", "No se pudo ceder la administración de $chatId: ${it.message}") }
+        runCatching { database.child("userChats").child(me).child(chatId).removeValue().await() }
+        chat.child("members").child(me).removeValue().await()
     }
 
     /**
@@ -1137,7 +1167,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "VIDEO" -> "Vídeo"
             "GIF", "GIF_VIDEO" -> "GIF"
             "AUDIO" -> if (extra["isVoice"] == true) "Nota de voz" else "Audio"
-            "DOCUMENT" -> caption.ifEmpty { "Documento" }
+            "DOCUMENT" -> "📄 " + ((extra["fileName"] as? String) ?: caption.ifEmpty { "Documento" })
             else -> if (caption.isNotEmpty()) caption else "Archivo"
         }
 

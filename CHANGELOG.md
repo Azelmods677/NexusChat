@@ -33,6 +33,46 @@
 ---
 
 <a id="v841"></a>
+## v8.5.0
+
+**Archivos y fotos**
+- Envía varias fotos, vídeos o documentos de una vez (hasta 30), cada uno con su descripción y @menciones.
+- Los documentos se abren dentro de la app con su programa correcto, muestran tipo y tamaño, y se pueden guardar en Descargas o compartir.
+- Cambia el nombre de un documento antes de enviarlo.
+- La foto de la cámara también lleva descripción antes de salir.
+
+**Chats**
+- Los enlaces, correos y teléfonos salen en azul y se pueden tocar.
+- Mantén pulsado un mensaje para seleccionarlo; el menú se abre con un toque o con "Más".
+- Desliza un mensaje a la derecha para responderlo.
+
+**Grupos**
+- Tocar el aviso de un grupo abre el grupo, no el chat privado con quien escribió.
+- La foto de un grupo en la lista abre la información del grupo.
+- Botón claro para añadir o editar la descripción.
+- Nuevo: solo los administradores envían mensajes, y quién puede editar la info del grupo.
+- Eliminar un grupo siendo miembro ahora es salir de él; antes lo borraba para todos.
+
+**Canales y difusiones**
+- Canales y difusiones a la vista en la pestaña Historias.
+- Explora los canales más seguidos sin saber su @nombre.
+- El contador de seguidores ya cuenta de verdad.
+- Nuevo: difusiones, el mismo mensaje a varios contactos, cada uno en su privado.
+
+**Descargar vídeos**
+- Arranque más fiable: si la instalación quedó a medias, se repara sola.
+- Tres intentos con ajustes distintos antes de rendirse, y botón para cancelar.
+- Con Tor activo, la descarga también sale por Tor.
+- Si falla, puedes ver y copiar el error exacto.
+
+**Seguridad**
+- En los grupos, nadie que no sea administrador puede nombrarse administrador, echar a otros, cambiar el nombre o borrar el grupo.
+- Nadie puede escribir en un grupo en nombre de otro.
+- Nadie puede crear el chat privado de otras dos personas.
+
+---
+
+<a id="v841"></a>
 ## v8.4.1
 
 - Azel Assistant explica qué es NexusChat de verdad: un mensajero hecho para el anonimato, con cifrado en tu teléfono, Tor integrado y modo anónimo.

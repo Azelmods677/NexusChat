@@ -24,10 +24,23 @@ data class Channel(
     val ownerId: String,
     val subscribers: Int,
     val lastPost: String,
-    val lastPostTime: Long
+    val lastPostTime: Long,
+    val photoUrl: String? = null
 )
 
-data class ChannelPost(val id: String, val text: String, val imageUrl: String?, val at: Long)
+/**
+ * Publicación de un canal. [reactions] cuenta cuántas personas eligieron cada emoji y
+ * [myReaction] es el tuyo; [views] son las personas distintas que la han visto.
+ */
+data class ChannelPost(
+    val id: String,
+    val text: String,
+    val imageUrl: String?,
+    val at: Long,
+    val reactions: Map<String, Int> = emptyMap(),
+    val myReaction: String? = null,
+    val views: Int = 0
+)
 
 /**
  * Canales: una persona publica y cualquiera se suscribe. Son públicos a propósito, así que a
@@ -89,13 +102,18 @@ class ChannelRepository @Inject constructor(
         val query = db.getReference("channelPosts/$id").orderByChild("at").limitToLast(MAX_POSTS)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                val uid = me
                 trySend(
                     snapshot.children.mapNotNull { post ->
+                        val reactions = post.child("reactions").children.mapNotNull { it.getValue(String::class.java) }
                         ChannelPost(
                             id = post.key ?: return@mapNotNull null,
                             text = post.child("text").getValue(String::class.java).orEmpty(),
                             imageUrl = post.child("imageUrl").getValue(String::class.java),
-                            at = post.child("at").getValue(Long::class.java) ?: 0L
+                            at = post.child("at").getValue(Long::class.java) ?: 0L,
+                            reactions = reactions.groupingBy { it }.eachCount(),
+                            myReaction = uid?.let { post.child("reactions").child(it).getValue(String::class.java) },
+                            views = post.child("views").childrenCount.toInt()
                         )
                     }
                 )
@@ -128,7 +146,8 @@ class ChannelRepository @Inject constructor(
             )
         ).await()
         handleRef.setValue(id).await()
-        subscribe(id)
+        // El dueño ya cuenta como 1 al crear: se apunta sin sumar otra vez.
+        subscribe(id, count = false)
         return id
     }
 
@@ -142,15 +161,40 @@ class ChannelRepository @Inject constructor(
         return db.getReference("userChannels/$uid/$id").get().await().exists()
     }
 
-    suspend fun subscribe(id: String) {
+    /**
+     * Canales con más seguidores, para descubrir sin saber el @nombre exacto.
+     * Antes solo se podía entrar a un canal escribiendo su nombre tal cual.
+     */
+    suspend fun popular(limit: Int = 30): List<Channel> =
+        db.getReference("channels").orderByChild("subscribers").limitToLast(limit).get().await()
+            .children.mapNotNull(::parseChannel)
+            .sortedByDescending { it.subscribers }
+
+    /**
+     * El contador de seguidores sube y baja en la misma escritura que la suscripción.
+     * Antes se quedaba en 1 para siempre: las reglas no dejaban cambiarlo.
+     */
+    suspend fun subscribe(id: String, count: Boolean = true) {
         val uid = me ?: return
-        db.reference.updateChildren(mapOf("userChannels/$uid/$id" to true, "channelSubscribers/$id/$uid" to true)).await()
+        if (isSubscribed(id)) return
+        db.reference.updateChildren(buildMap<String, Any> {
+            put("userChannels/$uid/$id", true)
+            put("channelSubscribers/$id/$uid", true)
+            if (count) put("channels/$id/subscribers", ServerValue.increment(1))
+        }).await()
         FirebaseMessaging.getInstance().subscribeToTopic(topic(id))
     }
 
     suspend fun unsubscribe(id: String) {
         val uid = me ?: return
-        db.reference.updateChildren(mapOf("userChannels/$uid/$id" to null, "channelSubscribers/$id/$uid" to null)).await()
+        if (!isSubscribed(id)) return
+        db.reference.updateChildren(
+            mapOf(
+                "userChannels/$uid/$id" to null,
+                "channelSubscribers/$id/$uid" to null,
+                "channels/$id/subscribers" to ServerValue.increment(-1)
+            )
+        ).await()
         FirebaseMessaging.getInstance().unsubscribeFromTopic(topic(id))
     }
 
@@ -172,6 +216,60 @@ class ChannelRepository @Inject constructor(
         db.getReference("channelPosts/$id/$postId").removeValue().await()
     }
 
+    /** Tu reacción a una publicación; la misma otra vez la quita, como en WhatsApp. */
+    suspend fun react(id: String, postId: String, emoji: String) {
+        val uid = me ?: return
+        val ref = db.getReference("channelPosts/$id/$postId/reactions/$uid")
+        val current = ref.get().await().getValue(String::class.java)
+        if (current == emoji) ref.removeValue().await() else ref.setValue(emoji).await()
+    }
+
+    /** Cuenta una vista por persona: volver a abrirla no suma. */
+    fun markViewed(id: String, postIds: List<String>) {
+        val uid = me ?: return
+        if (postIds.isEmpty()) return
+        db.reference.updateChildren(postIds.associate { "channelPosts/$id/$it/views/$uid" to true })
+    }
+
+    /** Nombre, descripción y foto. Solo el dueño, lo aseguran las reglas. */
+    suspend fun edit(id: String, name: String, description: String, photo: Uri?) {
+        val uid = me ?: return
+        val photoUrl = photo?.let { storage.uploadUserBackground(it, uid, false) }
+        db.getReference("channels/$id").updateChildren(buildMap<String, Any> {
+            put("name", name.trim())
+            put("description", description.trim())
+            if (photoUrl != null) put("photoUrl", photoUrl)
+        }).await()
+    }
+
+    /** Borra el canal, sus publicaciones y su @nombre. Los seguidores lo pierden de su lista. */
+    suspend fun delete(channel: Channel) {
+        val uid = me ?: return
+        db.reference.updateChildren(
+            mapOf<String, Any?>(
+                "channelPosts/${channel.id}" to null,
+                "channelHandles/${channel.handle}" to null,
+                "userChannels/$uid/${channel.id}" to null,
+                "channelSubscribers/${channel.id}/$uid" to null
+            )
+        ).await()
+        db.getReference("channels/${channel.id}").removeValue().await()
+        FirebaseMessaging.getInstance().unsubscribeFromTopic(topic(channel.id))
+    }
+
+    /**
+     * Silenciar: se sigue el canal pero no llegan avisos. Se guarda en el dispositivo y se
+     * deja de escuchar el tema de notificaciones.
+     */
+    fun setMuted(context: android.content.Context, id: String, muted: Boolean) {
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putBoolean("muted_$id", muted).apply()
+        if (muted) FirebaseMessaging.getInstance().unsubscribeFromTopic(topic(id))
+        else FirebaseMessaging.getInstance().subscribeToTopic(topic(id))
+    }
+
+    fun isMuted(context: android.content.Context, id: String): Boolean =
+        context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getBoolean("muted_$id", false)
+
     private fun parseChannel(snapshot: DataSnapshot): Channel? {
         val id = snapshot.key ?: return null
         val name = snapshot.child("name").getValue(String::class.java) ?: return null
@@ -183,12 +281,17 @@ class ChannelRepository @Inject constructor(
             ownerId = snapshot.child("ownerId").getValue(String::class.java).orEmpty(),
             subscribers = snapshot.child("subscribers").getValue(Int::class.java) ?: 0,
             lastPost = snapshot.child("lastPost").getValue(String::class.java).orEmpty(),
-            lastPostTime = snapshot.child("lastPostTime").getValue(Long::class.java) ?: 0L
+            lastPostTime = snapshot.child("lastPostTime").getValue(Long::class.java) ?: 0L,
+            photoUrl = snapshot.child("photoUrl").getValue(String::class.java)?.ifBlank { null }
         )
     }
 
     companion object {
         private const val MAX_POSTS = 100
+        private const val PREFS = "channels"
+
+        /** Enlace para compartir un canal. Lo abre la app (nexuschat://channel/@nombre). */
+        fun linkFor(handle: String) = "nexuschat://channel/$handle"
         fun topic(id: String) = "channel_${id.replace(Regex("[^a-zA-Z0-9_-]"), "_")}"
     }
 }

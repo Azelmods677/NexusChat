@@ -125,6 +125,7 @@
                 <data android:scheme="nexuschat" android:host="chat" />
                 <data android:scheme="nexuschat" android:host="profile" />
                 <data android:scheme="nexuschat" android:host="join" />
+                <data android:scheme="nexuschat" android:host="channel" />
             </intent-filter>
         </activity>
 

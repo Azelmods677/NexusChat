@@ -373,7 +373,12 @@ class StorageRepository @Inject constructor(
      * Upload document to Firebase Storage
      * Pattern: chats/{chatId}/documents/{timestamp}_{fileName}
      */
-    suspend fun uploadChatDocument(documentUri: Uri, chatId: String, fileName: String): String = suspendCoroutine { continuation ->
+    suspend fun uploadChatDocument(
+        documentUri: Uri,
+        chatId: String,
+        fileName: String,
+        mimeType: String = "application/octet-stream"
+    ): String = suspendCoroutine { continuation ->
         try {
             // Verify user is authenticated
             val currentUser = FirebaseAuth.getInstance().currentUser
@@ -385,11 +390,13 @@ class StorageRepository @Inject constructor(
             }
             
             val timestamp = System.currentTimeMillis()
-            val safeFileName = fileName.replace("[", "_").replace("]", "_").replace(" ", "_")
+            // Solo letras, números, punto, guion y guion bajo: con #, ?, % o emojis la ruta
+            // de Storage se rompía en algunos dispositivos y la subida fallaba sin explicación.
+            val safeFileName = fileName.replace(Regex("""[^\p{L}\p{N}._-]"""), "_").take(100).ifBlank { "documento" }
             val storageRef = storage.reference
             val fileRef = storageRef.child("chats/$chatId/documents/${timestamp}_$safeFileName")
-            
-            fileRef.putFile(documentUri)
+
+            fileRef.putFile(documentUri, mediaMetadata(mimeType))
                 .addOnSuccessListener {
                     fileRef.downloadUrl.addOnSuccessListener { uri ->
                         continuation.resume(uri.toString())

@@ -249,6 +249,8 @@ fun ChatInputArea(
     var showEmojiPicker by remember { mutableStateOf(false) }
     var showStickerPicker by remember { mutableStateOf(false) }
     var captionFor by remember { mutableStateOf<Pair<Uri, Boolean>?>(null) }
+    // Archivos elegidos que esperan descripción antes de salir (fotos, vídeos o documentos).
+    var pendingAttachments by remember { mutableStateOf<List<PendingAttachment>>(emptyList()) }
     var showPollCreator by remember { mutableStateOf(false) }
     var showContactPicker by remember { mutableStateOf(false) }
     var pendingSticker by remember { mutableStateOf<String?>(null) }
@@ -272,7 +274,8 @@ fun ChatInputArea(
 
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
-        if (ok) cameraUri?.let { viewModel.sendImageMessage(it, contactId) }
+        // La foto pasa por la misma pantalla que la galería: así también lleva descripción.
+        if (ok) cameraUri?.let { pendingAttachments = listOf(describeAttachment(context, it)) }
     }
     fun launchCamera() {
         val file = java.io.File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
@@ -284,19 +287,12 @@ fun ChatInputArea(
         if (granted) launchCamera()
     }
 
-    // El selector del sistema no pide permisos y deja elegir foto, vídeo o GIF.
-    val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            val type = context.contentResolver.getType(uri).orEmpty()
-            when {
-                type == "image/gif" -> viewModel.sendGifMessage(uri, contactId)
-                type.startsWith("video/") -> captionFor = uri to true
-                else -> captionFor = uri to false
-            }
-        }
+    // El selector del sistema no pide permisos y deja elegir varias fotos, vídeos o GIF a la vez.
+    val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK)) { uris ->
+        if (uris.isNotEmpty()) pendingAttachments = uris.map { describeAttachment(context, it) }
     }
-    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let { viewModel.sendVideoMessage(it, contactId) }
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_PICK)) { uris ->
+        if (uris.isNotEmpty()) pendingAttachments = uris.map { describeAttachment(context, it) }
     }
     val gifFilePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -308,15 +304,16 @@ fun ChatInputArea(
     val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { viewModel.sendAudioMessage(it, contactId) }
     }
-    val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) {
-            val name = runCatching {
-                context.contentResolver.query(uri, null, null, null, null)?.use { c ->
-                    val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
-                    if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+    // OpenMultipleDocuments en vez de GetContent: deja elegir varios y da un permiso de
+    // lectura que dura toda la subida, también desde Drive u otras apps de archivos.
+    val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            uris.forEach { uri ->
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 }
-            }.getOrNull() ?: tr("Documento")
-            viewModel.sendDocumentMessage(uri, contactId, name)
+            }
+            pendingAttachments = uris.take(MAX_PICK).map { describeAttachment(context, it, asDocument = true) }
         }
     }
 
@@ -360,6 +357,15 @@ fun ChatInputArea(
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = NexusTokens.Color.BgHigh
             )
+            val uploadLabel = viewModel.state.collectAsState().value.uploadLabel
+            if (uploadLabel != null) {
+                Text(
+                    uploadLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = NexusTokens.Color.TextMuted,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
         }
 
         // Aviso permanente mientras el chat tiene temporizador.
@@ -751,6 +757,25 @@ fun ChatInputArea(
         }
     }
 
+    if (pendingAttachments.isNotEmpty()) {
+        val chatState by viewModel.state.collectAsState()
+        val candidates = remember(chatState.groupMembers, chatState.contact) {
+            (chatState.groupMembers.values.map { it.name } +
+                listOfNotNull(chatState.contact?.let { it.displayName.ifBlank { it.name } }))
+                .filter { it.isNotBlank() }
+                .distinct()
+        }
+        AttachmentSendScreen(
+            initial = pendingAttachments,
+            mentionCandidates = candidates,
+            onDismiss = { pendingAttachments = emptyList() },
+            onSend = { items ->
+                viewModel.sendAttachments(items, contactId)
+                pendingAttachments = emptyList()
+            }
+        )
+    }
+
     captionFor?.let { (uri, isVideo) ->
         MediaCaptionDialog(
             uri = uri,
@@ -840,7 +865,7 @@ fun ChatInputArea(
                 Triple(Icons.Outlined.Videocam, "Vídeo") {
                     videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                 },
-                Triple(Icons.Outlined.Description, "Documento") { documentPicker.launch("*/*") },
+                Triple(Icons.Outlined.Description, "Documento") { documentPicker.launch(arrayOf("*/*")) },
                 Triple(Icons.Outlined.AudioFile, "Audio") { audioPicker.launch("audio/*") },
                 Triple(Icons.Outlined.LocationOn, "Ubicación") {
                     val granted = context.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -1190,3 +1215,6 @@ private fun MediaCaptionDialog(uri: Uri, isVideo: Boolean, onDismiss: () -> Unit
         containerColor = NexusTokens.Color.BgSurface
     )
 }
+
+/** Máximo de archivos por tanda, como en WhatsApp. */
+private const val MAX_PICK = 30

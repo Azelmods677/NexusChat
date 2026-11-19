@@ -202,6 +202,10 @@ fun HomeScreenRedesigned(
                                 showMenu = false
                                 navController.navigate("channels")
                             }
+                            HomeMenuItem(tr("Nueva difusión"), Icons.Outlined.Campaign) {
+                                showMenu = false
+                                navController.navigate("broadcast")
+                            }
                             HomeMenuItem(tr("Descargar vídeos"), Icons.Outlined.Download) {
                                 showMenu = false
                                 navController.navigate("video_download")
@@ -415,7 +419,7 @@ fun HomeScreenRedesigned(
                         }
                         itemsIndexed(items = visibleChats, key = { _, chat -> chat.chatId }) { index, chat ->
                             val contactId = chat.participantIds.find { it != currentUserId }
-                            val hasStory = contactId != null && contactId in storyOwners
+                            val hasStory = !chat.chatId.startsWith("group_") && contactId != null && contactId in storyOwners
                             Column(
                                 Modifier
                                     .animateItem()
@@ -431,7 +435,11 @@ fun HomeScreenRedesigned(
                                         showBottomSheet = true
                                     },
                                     onAvatarClick = {
-                                        if (contactId != null) {
+                                        // La foto de un grupo abre el grupo; antes llevaba al perfil
+                                        // del primer miembro que no eras tú.
+                                        if (chat.chatId.startsWith("group_")) {
+                                            navController.navigate("group_info/${chat.chatId}")
+                                        } else if (contactId != null) {
                                             navController.navigate(
                                                 if (hasStory) "story_viewer/$contactId" else "profile_viewer/$contactId"
                                             )

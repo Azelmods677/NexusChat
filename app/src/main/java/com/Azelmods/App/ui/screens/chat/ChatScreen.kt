@@ -96,6 +96,8 @@ fun ChatScreen(
     val context = LocalContext.current
     
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // Mensaje cuyo menú se abre desde "Más" en la barra de selección, y un contador para reabrirlo.
+    var menuRequest by remember { mutableStateOf("" to 0) }
     var forwardMessages by remember { mutableStateOf<List<com.Azelmods.App.data.model.Message>>(emptyList()) }
     var showScheduled by remember { mutableStateOf(false) }
     var showQuickFunctions by remember { mutableStateOf(false) }
@@ -302,7 +304,17 @@ fun ChatScreen(
                     onDelete = {
                         state.messages.filter { it.messageId in selectedIds }.forEach { viewModel.deleteMessage(it, false) }
                         selectedIds = emptySet()
-                    }
+                    },
+                    onReply = {
+                        state.messages.firstOrNull { it.messageId in selectedIds }?.let { viewModel.setReplyingTo(it) }
+                        selectedIds = emptySet()
+                    },
+                    onMore = {
+                        val id = selectedIds.first()
+                        selectedIds = emptySet()
+                        menuRequest = id to (menuRequest.second + 1)
+                    },
+                    onSelectAll = { selectedIds = state.messages.map { it.messageId }.toSet() }
                 )
             } else ChatTopBar(
                 // Un grupo no tiene "contacto": se muestra con su nombre y sus miembros.
@@ -634,6 +646,7 @@ fun ChatScreen(
                                 onSave = { savedMessages.save(com.Azelmods.App.ui.screens.chat.withoutLinkPreview(message.content)) },
                                 onForward = { forwardMessages = listOf(message) },
                                 onSelect = { selectedIds = selectedIds + message.messageId },
+                                openActionsSignal = if (menuRequest.first == message.messageId) menuRequest.second else 0,
                                 onReply = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.setReplyingTo(message)
@@ -836,6 +849,7 @@ fun ChatScreen(
                     }
 
                     // Input Area - ALWAYS AT BOTTOM
+                    if (state.canSend) {
                     ChatInputArea(
                         messageText = messageText,
                         onMessageChange = { messageText = it },
@@ -864,6 +878,20 @@ fun ChatScreen(
                         showEphemeralPicker = state.showEphemeralPicker,
                         isUploading = state.isUploading
                     )
+                    } else {
+                        // Grupo de solo administradores, o ya no eres miembro: se dice por qué.
+                        Text(
+                            state.sendBlockedReason ?: tr("No puedes enviar mensajes aquí."),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = com.Azelmods.App.ui.theme.NexusTokens.Color.TextMuted,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(com.Azelmods.App.ui.theme.NexusTokens.Color.BgSurface)
+                                .navigationBarsPadding()
+                                .padding(16.dp)
+                        )
+                    }
                 }
             }
             

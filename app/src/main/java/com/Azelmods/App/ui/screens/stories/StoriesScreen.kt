@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.outlined.AutoStories
+import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -98,6 +99,31 @@ fun StoriesScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Canales a la vista, como en "Novedades": antes solo se llegaba por el menú.
+            item(key = "channels_entry") {
+                androidx.compose.foundation.layout.Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate("channels") }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Outlined.Campaign,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(16.dp))
+                    androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+                        Text(com.Azelmods.App.i18n.tr("Canales y difusiones"), style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            com.Azelmods.App.i18n.tr("Sigue canales, crea el tuyo o envía a varios a la vez"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = com.Azelmods.App.ui.theme.NexusTokens.Color.TextMuted
+                        )
+                    }
+                }
+            }
             item(key = "my_story") {
                 MyStoryRow(
                     photoUrl = state.currentUserPhotoUrl,

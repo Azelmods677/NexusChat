@@ -15,6 +15,9 @@ import androidx.compose.material.icons.automirrored.outlined.Forward
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.automirrored.outlined.Reply
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -354,7 +357,10 @@ fun SelectionTopBar(
     onClose: () -> Unit,
     onCopy: () -> Unit,
     onForward: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onReply: (() -> Unit)? = null,
+    onMore: (() -> Unit)? = null,
+    onSelectAll: (() -> Unit)? = null
 ) {
     TopAppBar(
         title = { Text(count.toString(), color = NexusTokens.Color.TextPrimary) },
@@ -364,6 +370,11 @@ fun SelectionTopBar(
             }
         },
         actions = {
+            if (count == 1 && onReply != null) {
+                AnimatedIconButton(onClick = onReply) {
+                    Icon(Icons.AutoMirrored.Outlined.Reply, tr("Responder"), tint = NexusTokens.Color.TextPrimary)
+                }
+            }
             AnimatedIconButton(onClick = onCopy) {
                 Icon(Icons.Outlined.ContentCopy, tr("Copiar"), tint = NexusTokens.Color.TextPrimary)
             }
@@ -372,6 +383,15 @@ fun SelectionTopBar(
             }
             AnimatedIconButton(onClick = onDelete) {
                 Icon(Icons.Outlined.DeleteOutline, tr("Eliminar para mí"), tint = NexusTokens.Color.TextPrimary)
+            }
+            if (count == 1 && onMore != null) {
+                AnimatedIconButton(onClick = onMore) {
+                    Icon(Icons.Outlined.MoreVert, tr("Más"), tint = NexusTokens.Color.TextPrimary)
+                }
+            } else if (onSelectAll != null) {
+                AnimatedIconButton(onClick = onSelectAll) {
+                    Icon(Icons.Outlined.SelectAll, tr("Seleccionar todo"), tint = NexusTokens.Color.TextPrimary)
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = NexusTokens.Color.BgSurface)
@@ -480,7 +500,47 @@ fun highlightMentions(
             )
         }
     }
+    addLinks(builder, text)
     return builder.toAnnotatedString()
+}
+
+// ── Enlaces ──────────────────────────────────────────────────────────────────
+
+/** Azul de enlace, el mismo en tema claro y oscuro para que se reconozca al instante. */
+val LinkBlue = androidx.compose.ui.graphics.Color(0xFF4FA3F7)
+
+private val TEXT_LINK_PATTERN = Regex(
+    """(?i)\b((?:https?://|www\.)[^\s<>"']+|[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:com|net|org|io|co|es|mx|ar|cl|pe|uy|ve|ec|bo|py|app|dev|me|tv|gg|ly|info|xyz|link|site|online|store|edu|gov)(?:/[^\s<>"']*)?)"""
+)
+private val EMAIL_PATTERN = Regex("""\b[\w.+-]+@[\w-]+(\.[\w-]+)+\b""")
+private val PHONE_PATTERN = Regex("""(?<![\w+])\+\d[\d ()-]{7,16}\d""")
+
+/**
+ * Enlaces, correos y teléfonos en azul y tocables. Antes salían como texto normal:
+ * no se distinguían ni se podían abrir.
+ */
+private fun addLinks(builder: androidx.compose.ui.text.AnnotatedString.Builder, text: String) {
+    val style = androidx.compose.ui.text.TextLinkStyles(
+        style = androidx.compose.ui.text.SpanStyle(
+            color = LinkBlue,
+            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
+        )
+    )
+    val taken = mutableListOf<IntRange>()
+    fun add(range: IntRange, target: String) {
+        if (taken.any { it.first <= range.last && range.first <= it.last }) return
+        taken += range
+        builder.addLink(androidx.compose.ui.text.LinkAnnotation.Url(target, style), range.first, range.last + 1)
+    }
+    EMAIL_PATTERN.findAll(text).forEach { add(it.range, "mailto:${it.value}") }
+    TEXT_LINK_PATTERN.findAll(text).forEach { match ->
+        // Sin el punto o el paréntesis final de la frase.
+        val value = match.value.trimEnd('.', ',', ';', ':', '!', '?', ')', ']', '»')
+        if (value.isEmpty()) return@forEach
+        val range = match.range.first until match.range.first + value.length
+        add(range, if (value.startsWith("http", ignoreCase = true)) value else "https://$value")
+    }
+    PHONE_PATTERN.findAll(text).forEach { add(it.range, "tel:${it.value.filter { c -> c.isDigit() || c == '+' }}") }
 }
 
 /** Texto corto para citar un mensaje: nunca muestra enlaces internos ni marcas. */
@@ -533,6 +593,16 @@ fun hideInternalLinks(content: String, mediaType: String?): String {
 
 private val SPOILER = Regex("""\|\|(.+?)\|\|""", RegexOption.DOT_MATCHES_ALL)
 
+/**
+ * Marcas de formato como en WhatsApp: ||spoiler||, *negrita*, _cursiva_, ~tachado~ y
+ * `código`. Las de una letra exigen que no haya letra pegada por fuera, para no romper
+ * nombres_con_guiones ni operaciones como 2*3*4.
+ */
+private val MARKUP = Regex(
+    """\|\|(.+?)\|\||(?<![\p{L}\p{N}*])\*(?=\S)([^*\n]+?)(?<=\S)\*(?![\p{L}\p{N}*])|(?<![\p{L}\p{N}_])_(?=\S)([^_\n]+?)(?<=\S)_(?![\p{L}\p{N}_])|(?<![\p{L}\p{N}~])~(?=\S)([^~\n]+?)(?<=\S)~(?![\p{L}\p{N}~])|`([^`\n]+)`""",
+    RegexOption.DOT_MATCHES_ALL
+)
+
 /** Si el texto tiene algún `||spoiler||`. */
 fun hasSpoiler(text: String): Boolean = SPOILER.containsMatchIn(text)
 
@@ -549,19 +619,31 @@ fun styledMessageText(
     onMentionClick: ((String) -> Unit)? = null
 ): androidx.compose.ui.text.AnnotatedString {
     val ranges = mutableListOf<IntRange>()
+    val formats = mutableListOf<Pair<IntRange, androidx.compose.ui.text.SpanStyle>>()
     val clean = StringBuilder()
     var last = 0
-    SPOILER.findAll(raw).forEach { m ->
+    // Un solo recorrido para spoilers y formato: así las posiciones no se descuadran
+    // al quitar las marcas. Antes *negrita* se veía con los asteriscos.
+    MARKUP.findAll(raw).forEach { m ->
         clean.append(raw, last, m.range.first)
         val start = clean.length
-        clean.append(m.groupValues[1])
-        ranges += start until clean.length
+        val (inner, style) = when {
+            m.groups[1] != null -> m.groupValues[1] to null
+            m.groups[2] != null -> m.groupValues[2] to androidx.compose.ui.text.SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            m.groups[3] != null -> m.groupValues[3] to androidx.compose.ui.text.SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            m.groups[4] != null -> m.groupValues[4] to androidx.compose.ui.text.SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+            else -> m.groupValues[5] to androidx.compose.ui.text.SpanStyle(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        }
+        clean.append(inner)
+        val range = start until clean.length
+        if (style == null) ranges += range else formats += range to style
         last = m.range.last + 1
     }
     clean.append(raw, last, raw.length)
     val base = highlightMentions(clean.toString(), mentionColor, onMentionClick)
-    if (ranges.isEmpty()) return base
+    if (ranges.isEmpty() && formats.isEmpty()) return base
     val builder = androidx.compose.ui.text.AnnotatedString.Builder(base)
+    formats.forEach { (r, style) -> if (!r.isEmpty()) builder.addStyle(style, r.first, r.last + 1) }
     ranges.forEach { r ->
         if (!revealed) {
             builder.addStyle(

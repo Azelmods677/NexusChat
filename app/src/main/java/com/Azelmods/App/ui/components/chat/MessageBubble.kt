@@ -63,6 +63,8 @@ import com.Azelmods.App.ui.components.ReadReceiptIndicator
 import com.Azelmods.App.ui.theme.NexusTokens
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.draggable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -93,6 +95,8 @@ fun MessageBubble(
     onSave: (() -> Unit)? = null,
     onForward: (() -> Unit)? = null,
     onSelect: (() -> Unit)? = null,
+    /** Cada vez que cambia (y es mayor que 0) se abre el menú de este mensaje desde fuera. */
+    openActionsSignal: Int = 0,
     onReactionClick: (String) -> Unit = {},
     onImageClick: ((String, String, String) -> Unit)? = null,
     onDeleteClick: ((Boolean) -> Unit)? = null,
@@ -113,6 +117,17 @@ fun MessageBubble(
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var showActions by remember { mutableStateOf(false) }
+    LaunchedEffect(openActionsSignal) { if (openActionsSignal > 0) showActions = true }
+    val selectHaptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    // Mantener pulsado selecciona, como en WhatsApp; el menú queda en un toque o en "Más".
+    val onHoldMessage: () -> Unit = {
+        if (onSelect != null) {
+            selectHaptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onSelect()
+        } else {
+            showActions = true
+        }
+    }
     var confirmDeleteForAll by remember { mutableStateOf(false) }
     var viewOnceOpen by remember { mutableStateOf(false) }
     var showReactors by remember { mutableStateOf(false) }
@@ -134,8 +149,48 @@ fun MessageBubble(
         }
     }
 
+    // Deslizar a la derecha para responder. Al pasar el umbral vibra; al soltar, responde.
+    val swipe = remember { androidx.compose.animation.core.Animatable(0f) }
+    val swipeScope = rememberCoroutineScope()
+    val swipeThreshold = with(androidx.compose.ui.platform.LocalDensity.current) { 64.dp.toPx() }
+    var swipeArmed by remember { mutableStateOf(false) }
+    val dragState = androidx.compose.foundation.gestures.rememberDraggableState { delta ->
+        val next = (swipe.value + delta).coerceIn(0f, swipeThreshold * 1.3f)
+        swipeScope.launch { swipe.snapTo(next) }
+        if (!swipeArmed && next >= swipeThreshold) {
+            swipeArmed = true
+            selectHaptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+        } else if (swipeArmed && next < swipeThreshold) {
+            swipeArmed = false
+        }
+    }
+
+    Box(Modifier.fillMaxWidth()) {
+    if (swipe.value > 8f) {
+        Icon(
+            Icons.AutoMirrored.Outlined.Reply,
+            null,
+            tint = MaterialTheme.colorScheme.primary.copy(alpha = (swipe.value / swipeThreshold).coerceIn(0f, 1f)),
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 8.dp)
+                .size(22.dp)
+        )
+    }
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset { androidx.compose.ui.unit.IntOffset(swipe.value.toInt(), 0) }
+            .draggable(
+                state = dragState,
+                orientation = androidx.compose.foundation.gestures.Orientation.Horizontal,
+                enabled = !message.deletedForEveryone && message.mediaType != "SYSTEM",
+                onDragStopped = {
+                    if (swipeArmed) onReply()
+                    swipeArmed = false
+                    swipe.animateTo(0f)
+                }
+            ),
         horizontalAlignment = if (isOwnMessage) Alignment.End else Alignment.Start
     ) {
         if (message.deletedForEveryone) {
@@ -190,9 +245,11 @@ fun MessageBubble(
                         if (message.isViewOnce && !isOwnMessage) {
                             viewOnceOpen = true
                             onMessageViewed?.invoke()
+                        } else {
+                            showActions = true
                         }
                     },
-                    onLongClick = { showActions = true }
+                    onLongClick = onHoldMessage
                 )
                 .padding(if (edgeToEdgeMedia) 3.dp else 0.dp)
         ) {
@@ -248,12 +305,17 @@ fun MessageBubble(
                             formatTime(message.timestamp)
                         )
                     },
-                    onLongPress = { showActions = true }
+                    onLongPress = onHoldMessage
                 )
 
                 val poll = remember(message.content) { com.Azelmods.App.ui.screens.chat.decodePoll(message.content) }
                 val sharedContact = remember(message.content) { com.Azelmods.App.ui.screens.chat.decodeContact(message.content) }
-                val text = if (message.mediaType in setOf("DOCUMENT", "LOCATION", "STICKER")) "" else readableContent
+                // En los documentos nuevos el texto es la descripción; en los antiguos era el nombre.
+                val text = when {
+                    message.mediaType == "DOCUMENT" && message.fileName == null -> ""
+                    message.mediaType in setOf("LOCATION", "STICKER") -> ""
+                    else -> readableContent
+                }
                 val linkPreview = remember(message.content) { com.Azelmods.App.ui.screens.chat.decodeLinkPreview(message.content) }
                 if (linkPreview != null) com.Azelmods.App.ui.screens.chat.LinkPreviewCard(linkPreview)
                 if (sharedContact != null) {
@@ -406,6 +468,7 @@ fun MessageBubble(
                 }
             }
         }
+    }
     }
 
     if (showReactors) {
@@ -787,15 +850,7 @@ private fun MediaContent(
         }
 
         // Antes se subían pero no había manera de abrirlos: solo se veía el nombre.
-        "DOCUMENT" -> AttachmentRow(
-            icon = Icons.AutoMirrored.Outlined.InsertDriveFile,
-            title = message.content.ifBlank { "Documento" },
-            subtitle = tr("Toca para abrir"),
-            onTap = {
-                message.mediaUrl?.let { url -> openExternal(context, Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-            },
-            onHold = onLongPress
-        )
+        "DOCUMENT" -> DocumentAttachment(message = message, onHold = onLongPress)
 
         "LOCATION" -> AttachmentRow(
             icon = Icons.Outlined.LocationOn,

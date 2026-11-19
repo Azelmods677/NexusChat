@@ -58,8 +58,14 @@ data class GroupInfo(
     val members: List<GroupMember> = emptyList(),
     val inviteCode: String? = null,
     val iAmAdmin: Boolean = false,
+    /** Solo los administradores pueden enviar mensajes. */
+    val onlyAdmins: Boolean = false,
+    /** Cualquier miembro puede cambiar foto, nombre y descripción. */
+    val editInfoAll: Boolean = false,
     val loading: Boolean = true
-)
+) {
+    val canEditInfo: Boolean get() = iAmAdmin || editInfoAll
+}
 
 /** Lo que muestra el enlace antes de unirse. */
 data class GroupInvite(val code: String, val chatId: String, val name: String)
@@ -123,6 +129,8 @@ class GroupViewModel @Inject constructor(
                     members = members,
                     inviteCode = chat.child("inviteCode").get().await().getValue(String::class.java),
                     iAmAdmin = me in adminSet,
+                    onlyAdmins = chat.child("settings").child("onlyAdmins").get().await().getValue(Boolean::class.java) ?: false,
+                    editInfoAll = chat.child("settings").child("editInfo").get().await().getValue(String::class.java) == "all",
                     loading = false
                 )
             }.onFailure {
@@ -188,6 +196,16 @@ class GroupViewModel @Inject constructor(
                     _message.value = failure
                 }
         }
+    }
+
+    fun setOnlyAdmins(chatId: String, value: Boolean) = act(chatId, tr("No se pudo cambiar el ajuste")) {
+        ensureAdminsWritten(chatId)
+        root.child("chats").child(chatId).child("settings").child("onlyAdmins").setValue(value).await()
+    }
+
+    fun setEditInfoAll(chatId: String, value: Boolean) = act(chatId, tr("No se pudo cambiar el ajuste")) {
+        ensureAdminsWritten(chatId)
+        root.child("chats").child(chatId).child("settings").child("editInfo").setValue(if (value) "all" else "admins").await()
     }
 
     fun rename(chatId: String, name: String) = act(chatId, tr("No se pudo cambiar el nombre")) {
@@ -324,7 +342,7 @@ fun GroupInfoScreen(chatId: String, navController: NavController, viewModel: Gro
                     }
                 },
                 actions = {
-                    if (info.iAmAdmin) {
+                    if (info.canEditInfo) {
                         AnimatedIconButton(onClick = { showRename = true }) {
                             Icon(Icons.Outlined.Edit, tr("Cambiar nombre"))
                         }
@@ -364,6 +382,21 @@ fun GroupInfoScreen(chatId: String, navController: NavController, viewModel: Gro
                         )
                     }
                 )
+                if (info.iAmAdmin) {
+                    NexusSectionHeader(tr("Ajustes del grupo"))
+                    GroupSettingRow(
+                        title = tr("Solo administradores envían mensajes"),
+                        subtitle = tr("El resto puede leer, reaccionar y votar, pero no escribir."),
+                        checked = info.onlyAdmins,
+                        onChange = { viewModel.setOnlyAdmins(chatId, it) }
+                    )
+                    GroupSettingRow(
+                        title = tr("Todos pueden editar la info"),
+                        subtitle = tr("Foto, nombre y descripción del grupo."),
+                        checked = info.editInfoAll,
+                        onChange = { viewModel.setEditInfoAll(chatId, it) }
+                    )
+                }
                 NexusSectionHeader(tr("%s miembros", info.members.size.toString()))
                 if (info.iAmAdmin) {
                     Row(
@@ -654,7 +687,24 @@ fun JoinGroupDialog(
     )
 }
 
-/** Foto, nombre y descripción del grupo. Solo los administradores pueden cambiarlos. */
+@Composable
+private fun GroupSettingRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onChange(!checked) }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = NexusTokens.Color.TextPrimary)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = NexusTokens.Color.TextMuted)
+        }
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+/** Foto, nombre y descripción del grupo. Los administradores, o todos si el grupo lo permite. */
 @Composable
 private fun GroupHeader(info: GroupInfo, onPhoto: (android.net.Uri) -> Unit, onDescription: (String) -> Unit) {
     var editing by remember { mutableStateOf(false) }
@@ -672,7 +722,7 @@ private fun GroupHeader(info: GroupInfo, onPhoto: (android.net.Uri) -> Unit, onD
                 name = info.name.ifBlank { tr("Grupo") },
                 photoUrl = info.photo,
                 size = 104.dp,
-                modifier = if (info.iAmAdmin) Modifier.clickable {
+                modifier = if (info.canEditInfo) Modifier.clickable {
                     picker.launch(
                         androidx.activity.result.PickVisualMediaRequest(
                             androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
@@ -680,7 +730,7 @@ private fun GroupHeader(info: GroupInfo, onPhoto: (android.net.Uri) -> Unit, onD
                     )
                 } else Modifier
             )
-            if (info.iAmAdmin) {
+            if (info.canEditInfo) {
                 Box(
                     Modifier
                         .size(32.dp)
@@ -699,14 +749,30 @@ private fun GroupHeader(info: GroupInfo, onPhoto: (android.net.Uri) -> Unit, onD
         Text(
             when {
                 described -> info.description
-                info.iAmAdmin -> tr("Añade una descripción del grupo")
+                info.canEditInfo -> tr("Añade una descripción del grupo")
                 else -> tr("Sin descripción")
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = if (described) NexusTokens.Color.TextSecondary else if (info.iAmAdmin) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted,
+            color = if (described) NexusTokens.Color.TextSecondary else if (info.canEditInfo) MaterialTheme.colorScheme.primary else NexusTokens.Color.TextMuted,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            modifier = if (info.iAmAdmin) Modifier.clickable { editing = true } else Modifier
+            modifier = if (info.canEditInfo) Modifier.clickable { editing = true } else Modifier
         )
+        Spacer(Modifier.height(10.dp))
+        // Antes solo se podía tocar el texto pequeño y nadie lo encontraba.
+        if (info.canEditInfo) {
+            OutlinedButton(onClick = { editing = true }) {
+                Icon(androidx.compose.material.icons.Icons.Outlined.Edit, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(if (described) tr("Editar descripción") else tr("Añadir descripción"))
+            }
+        } else {
+            Text(
+                tr("Solo los administradores pueden cambiar la foto, el nombre y la descripción."),
+                style = MaterialTheme.typography.labelSmall,
+                color = NexusTokens.Color.TextMuted,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
     }
     if (editing) {
         var text by remember { mutableStateOf(info.description) }

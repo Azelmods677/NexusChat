@@ -19,6 +19,14 @@ data class Message(
     val reactions: Map<String, String> = emptyMap(), // userId to emoji
     val mediaUrl: String? = null, // URL for image/video/audio
     val mediaType: String? = null, // IMAGE, VIDEO, AUDIO, GIF, GIF_VIDEO, DOCUMENT, LOCATION, STICKER, SYSTEM
+    /**
+     * Solo documentos: nombre, tamaño y tipo del archivo. Antes el nombre iba en
+     * [content] y no quedaba sitio para una descripción; los mensajes antiguos sin
+     * [fileName] siguen usando [content] como nombre.
+     */
+    val fileName: String? = null,
+    val fileSize: Long = 0,
+    val mimeType: String? = null,
     val deletedFor: Map<String, Boolean> = emptyMap(), // userId to deleted status
     val deletedForEveryone: Boolean = false, // NEW: true if deleted for everyone
     val edited: Boolean = false,

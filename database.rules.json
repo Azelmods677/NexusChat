@@ -92,43 +92,112 @@
       "$chatId": {
         ".read": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists() || (!data.child('members').exists() && $chatId.contains(auth.uid)))",
         /*
-          El bloqueo se comprueba AQUI y no en messages/$messageId: en Firebase un
-          permiso concedido por el padre no se puede retirar en un hijo, asi que con
-          la comprobacion solo en el mensaje un usuario bloqueado seguia pudiendo
-          escribir.
-        */
-        ".write": "auth != null && (!data.exists() || (!data.child('members').exists() && $chatId.contains(auth.uid)) || (data.child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()))",
+          Chats de dos: cualquiera de los dos escribe en todo el nodo (salvo si esta
+          bloqueado). Crearlo solo se puede si tu uid esta en el id: antes cualquiera podia
+          crear el chat "uidA_uidB" de otros dos, meterse como miembro y leer lo que
+          escribieran despues.
 
-        /*
-          Entrar con un enlace: un no miembro solo puede añadirse a si mismo y solo si manda,
-          en la misma escritura, el codigo vigente del grupo. Quien fue expulsado no vuelve
-          por el enlace; tiene que anadirlo un administrador.
+          Grupos ("group_..."): el nodo entero solo se escribe al crearlo (siendo miembro y
+          administrador) o para borrarlo (siendo administrador). Lo demas va campo a campo:
+          antes cualquier miembro podia hacerse administrador, echar a otros, cambiar el
+          nombre o borrar el grupo para todos.
+
+          El bloqueo se comprueba en el padre: un permiso concedido arriba no se puede
+          retirar en un hijo.
         */
+        ".write": "auth != null && (($chatId.beginsWith('group_') && ((!data.exists() && newData.child('members').child(auth.uid).val() === true && newData.child('admins').child(auth.uid).val() === true) || (data.exists() && !newData.exists() && (data.child('admins').child(auth.uid).val() === true || (!data.child('admins').exists() && data.child('createdBy').val() === auth.uid))))) || (!$chatId.beginsWith('group_') && ((!data.exists() && $chatId.contains(auth.uid)) || (!data.child('members').exists() && $chatId.contains(auth.uid)) || (data.child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()))))",
+
+        /* Entrar con enlace (uno mismo, con el codigo vigente), lo hace un administrador, o salirse. */
         "members": {
           "$memberId": {
-            ".write": "auth != null && auth.uid === $memberId && !data.exists() && root.child('chats').child($chatId).child('inviteCode').exists() && newData.parent().parent().child('joinCodes').child($memberId).val() === root.child('chats').child($chatId).child('inviteCode').val() && !root.child('chats').child($chatId).child('removed').child($memberId).exists()",
+            ".write": "auth != null && $chatId.beginsWith('group_') && ((auth.uid === $memberId && !data.exists() && root.child('chats').child($chatId).child('inviteCode').exists() && newData.parent().parent().child('joinCodes').child($memberId).val() === root.child('chats').child($chatId).child('inviteCode').val() && !root.child('chats').child($chatId).child('removed').child($memberId).exists()) || (auth.uid === $memberId && !newData.exists()) || (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid)))",
             ".validate": "newData.val() === true"
           }
         },
         "joinCodes": {
           "$memberId": {
-            ".write": "auth != null && auth.uid === $memberId && newData.val() === root.child('chats').child($chatId).child('inviteCode').val()"
+            ".write": "auth != null && ((auth.uid === $memberId && newData.val() === root.child('chats').child($chatId).child('inviteCode').val()) || (!newData.exists() && (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid))))"
           }
+        },
+        /* Administradores: los nombra un administrador; cada uno puede dejar de serlo. */
+        "admins": {
+          "$adminId": {
+            ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && ((root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid)) || (auth.uid === $adminId && !newData.exists()))",
+            ".validate": "newData.val() === true"
+          }
+        },
+        "removed": {
+          "$memberId": { ".write": "auth != null && $chatId.beginsWith('group_') && (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid))" }
+        },
+        /* Foto, nombre y descripcion: administradores, o todos si el grupo lo permite. */
+        "groupName": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && ((root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid)) || root.child('chats').child($chatId).child('settings').child('editInfo').val() === 'all')",
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100"
+        },
+        "groupPhoto": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && ((root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid)) || root.child('chats').child($chatId).child('settings').child('editInfo').val() === 'all')",
+          ".validate": "newData.isString() && newData.val().length <= 2048"
+        },
+        "groupDescription": {
+          ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && ((root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid)) || root.child('chats').child($chatId).child('settings').child('editInfo').val() === 'all')",
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "inviteCode": { ".write": "auth != null && $chatId.beginsWith('group_') && (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid))" },
+
+        /*
+          Ajustes del grupo. "onlyAdmins" (solo los administradores escriben) y "editInfo"
+          (quien cambia foto, nombre y descripcion) los decide un administrador; el fondo
+          del chat lo puede cambiar cualquier miembro.
+        */
+        "settings": {
+          ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid))",
+          "onlyAdmins": { ".validate": "newData.isBoolean()" },
+          "editInfo": { ".validate": "newData.val() === 'all' || newData.val() === 'admins'" },
+          "background": { ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()" }
         },
 
         /*
           Temporizador de mensajes temporales de la conversacion, en segundos.
-          0 = desactivado. Es compartido: lo que elige un participante vale para
-          los dos, y queda aviso en el chat de quien lo cambio.
+          0 = desactivado. Es compartido: lo que elige un participante vale para todos.
         */
         "disappearingSeconds": {
+          ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()",
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 604800"
+        },
+
+        /* Lo que cualquier miembro del grupo actualiza al escribir, leer o votar. */
+        "lastMessage": { ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()" },
+        "lastMessageTime": { ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()" },
+        "lastMessagePayload": { ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()" },
+        "pinnedMessageId": { ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()" },
+        "lastMessageSenderId": {
+          ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()",
+          ".validate": "!$chatId.beginsWith('group_') || newData.val() === auth.uid || newData.val() === ''"
+        },
+        "typing": {
+          "$uid": { ".write": "auth != null && auth.uid === $uid && root.child('chats').child($chatId).child('members').child(auth.uid).exists()" }
+        },
+        "unreadCount": {
+          "$uid": { ".write": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()" }
+        },
+        "pollVotes": {
+          "$messageId": {
+            "$uid": { ".write": "auth != null && auth.uid === $uid && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists()" }
+          }
         },
 
         "messages": {
           ".indexOn": ["timestamp"],
+          /* Vaciar el chat de un grupo: solo un administrador. */
+          ".write": "auth != null && $chatId.beginsWith('group_') && !newData.exists() && (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid))",
           "$messageId": {
-            ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()"
+            ".read": "auth != null && root.child('chats').child($chatId).child('members').child(auth.uid).exists()",
+            /*
+              Grupos: un mensaje nuevo lleva tu uid como remitente (antes se podia escribir
+              en nombre de otro) y, si el grupo es "solo administradores", tienes que serlo.
+              Reacciones, leidos y borrados sobre mensajes existentes: cualquier miembro.
+            */
+            ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists() && (data.exists() || (newData.child('senderId').val() === auth.uid && (root.child('chats').child($chatId).child('settings').child('onlyAdmins').val() !== true || (root.child('chats').child($chatId).child('admins').child(auth.uid).val() === true || (!root.child('chats').child($chatId).child('admins').exists() && root.child('chats').child($chatId).child('createdBy').val() === auth.uid)))))"
           }
         }
       }
@@ -353,10 +422,17 @@
     */
     "channels": {
       ".read": "auth != null",
+      ".indexOn": ["subscribers"],
       "$channelId": {
         ".write": "auth != null && ((!data.exists() && newData.child('ownerId').val() === auth.uid) || data.child('ownerId').val() === auth.uid)",
+        /*
+          El contador sube o baja de uno en uno y solo en la misma escritura en la que el
+          usuario se apunta o se borra de channelSubscribers. Antes no se podia cambiar y
+          todos los canales se quedaban en 1 seguidor.
+        */
         "subscribers": {
-          ".validate": "!data.exists() ? newData.val() === 1 : newData.val() === data.val()"
+          ".write": "auth != null && data.exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() || (newData.val() === data.val() + 1 && !root.child('channelSubscribers').child($channelId).child(auth.uid).exists() && newData.parent().parent().parent().child('channelSubscribers').child($channelId).child(auth.uid).val() === true) || (newData.val() === data.val() - 1 && root.child('channelSubscribers').child($channelId).child(auth.uid).exists() && !newData.parent().parent().parent().child('channelSubscribers').child($channelId).child(auth.uid).exists()))"
         }
       }
     },
@@ -364,13 +440,28 @@
       "$channelId": {
         ".read": "auth != null",
         ".indexOn": ["at"],
-        ".write": "auth != null && root.child('channels').child($channelId).child('ownerId').val() === auth.uid"
+        ".write": "auth != null && root.child('channels').child($channelId).child('ownerId').val() === auth.uid",
+        /* Reacciones y vistas: cada persona solo escribe la suya, y solo en publicaciones que existen. */
+        "$postId": {
+          "reactions": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('channelPosts').child($channelId).child($postId).child('at').exists()",
+              ".validate": "newData.isString() && newData.val().length <= 16"
+            }
+          },
+          "views": {
+            "$uid": {
+              ".write": "auth != null && auth.uid === $uid && root.child('channelPosts').child($channelId).child($postId).child('at').exists()",
+              ".validate": "newData.val() === true"
+            }
+          }
+        }
       }
     },
     "channelHandles": {
       ".read": "auth != null",
       "$handle": {
-        ".write": "auth != null && !data.exists() && newData.isString() && $handle.length >= 3"
+        ".write": "auth != null && ((!data.exists() && newData.isString() && $handle.length >= 3) || (data.exists() && !newData.exists() && root.child('channels').child(data.val()).child('ownerId').val() === auth.uid))"
       }
     },
     "channelSubscribers": {
