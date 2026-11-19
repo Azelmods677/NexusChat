@@ -186,6 +186,16 @@
           }
         },
 
+        /*
+          Cualquier otro campo del grupo (vista previa del último mensaje, clave de cifrado
+          vigente, isE2EE…) lo escribe cualquier miembro. Sin esto, al enviar en un grupo
+          fallaban groupKeyId, lastMessageId y lastMessageKeyId. Los campos de arriba
+          siguen protegidos, y estos de origen no se pueden reescribir.
+        */
+        "$other": {
+          ".write": "auth != null && $chatId.beginsWith('group_') && root.child('chats').child($chatId).child('members').child(auth.uid).exists() && !root.child('chatBlocks').child($chatId).child(auth.uid).exists() && $other !== 'createdBy' && $other !== 'createdAt' && $other !== 'isGroup' && $other !== 'type' && $other !== 'chatId'"
+        },
+
         "messages": {
           ".indexOn": ["timestamp"],
           /* Vaciar el chat de un grupo: solo un administrador. */
