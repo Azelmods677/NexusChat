@@ -174,7 +174,14 @@ enum class BubbleStyle(val title: String) {
 
 /** Cómo se dibujan las marcas de enviado y leído. */
 enum class TickStyle(val title: String) {
-    CLASSIC("Clásicas"), GLOW("Con brillo"), DOTS("Puntos"), BARS("Barras")
+    CLASSIC("Clásicas"), GLOW("Con brillo"), DOTS("Puntos"), BARS("Barras"),
+    BOLD("Gruesas"), NEON("Neón"), CIRCLE("Círculos"), HEART("Corazones"), STAR("Estrellas"),
+    EYE("Ojo al leer"), SHIELD("Escudo"), PLANE("Avión de papel"), KAWAII("Kawaii"),
+    PIXEL_AKARI("Pixel Akari"), PIXEL_YUME("Pixel Yume"), PIXEL_RIN("Pixel Rin"),
+    PIXEL_SORA("Pixel Sora"), PIXEL_MIKA("Pixel Mika"),
+    PIXEL_KAI("Pixel Kai"), PIXEL_REN("Pixel Ren"), PIXEL_HARU("Pixel Haru"),
+    /** Tres imágenes o GIF elegidos por el usuario: enviado, entregado y leído. */
+    CUSTOM("Mis marcas")
 }
 
 /** Barra inferior de la pantalla principal. */
@@ -324,6 +331,7 @@ object ChatLook {
         _entryStyle.value = ChatEntryStyle.entries.firstOrNull { it.name == stored.getString(KEY_ENTRY, null) } ?: ChatEntryStyle.PILL
         _bubbleStyle.value = BubbleStyle.entries.firstOrNull { it.name == stored.getString("bubble", null) } ?: BubbleStyle.SOFT
         _tickStyle.value = TickStyle.entries.firstOrNull { it.name == stored.getString("tick", null) } ?: TickStyle.CLASSIC
+        _customTicks.value = (0..2).map { stored.getString("tick_custom_$it", null) }
         _navBarStyle.value = NavBarStyle.entries.firstOrNull { it.name == stored.getString("nav", null) } ?: NavBarStyle.BAR
         _navIconSet.value = NavIconSet.entries.firstOrNull { it.name == stored.getString("nav_icons", null) } ?: NavIconSet.OUTLINED
         _ownBubbleColor.value = if (stored.contains("own")) stored.getInt("own", 0) else null
@@ -367,6 +375,15 @@ object ChatLook {
     fun setTickStyle(style: TickStyle) {
         _tickStyle.value = style
         prefs?.edit()?.putString("tick", style.name)?.apply()
+    }
+
+    /** Imágenes de "Mis marcas": 0 enviado, 1 entregado, 2 leído (content:// con permiso guardado). */
+    private val _customTicks = MutableStateFlow(listOf<String?>(null, null, null))
+    val customTicks: kotlinx.coroutines.flow.StateFlow<List<String?>> = _customTicks
+
+    fun setCustomTick(index: Int, uri: String?) {
+        _customTicks.value = _customTicks.value.toMutableList().also { it[index] = uri }
+        prefs?.edit()?.putString("tick_custom_$index", uri)?.apply()
     }
 
     fun setNavIconSet(set: NavIconSet) {
@@ -829,7 +846,11 @@ fun chatBubbleSurface(style: BubbleStyle, shape: Shape, color: Color, accent: Co
 
 /** Marca de enviado o leído en el estilo elegido. */
 @Composable
-fun ReceiptMark(style: TickStyle, color: Color, double: Boolean, read: Boolean, modifier: Modifier = Modifier) {
+fun ReceiptMark(style: TickStyle, color: Color, double: Boolean, read: Boolean, modifier: Modifier = Modifier, frame: Int = 0) {
+    pixelCharacterFor(style)?.let {
+        PixelWaifu(it, double, read, frame, modifier)
+        return
+    }
     Canvas(modifier) {
         val h = size.height
         val w = size.width
@@ -862,11 +883,182 @@ fun ReceiptMark(style: TickStyle, color: Color, double: Boolean, read: Boolean, 
                 drawLine(color, Offset(0f, y), Offset(0f + barWidth, h * 0.3f), stroke, StrokeCap.Round)
                 if (double) drawLine(color, Offset(w * 0.5f, y), Offset(w * 0.5f + barWidth, h * 0.3f), stroke, StrokeCap.Round)
             }
+            else -> drawExtraReceipt(style, color, double, read, stroke)
         }
-        if (read && style != TickStyle.CLASSIC && style != TickStyle.GLOW) {
+        if (read && (style == TickStyle.DOTS || style == TickStyle.BARS)) {
             drawLine(color, Offset(0f, h * 0.96f), Offset(w, h * 0.96f), stroke * 0.6f, StrokeCap.Round)
         }
     }
+}
+
+/**
+ * Estilos de marca propios. Cada uno distingue enviado (una), entregado (dos) y leído
+ * (relleno o resaltado), para que se lea el estado sin depender solo del color.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawExtraReceipt(
+    style: TickStyle, color: Color, double: Boolean, read: Boolean, stroke: Float
+) {
+    val h = size.height
+    val w = size.width
+    val line = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round)
+    fun tickPath(x: Float, width: Float) = Path().apply {
+        moveTo(x, h * 0.52f); lineTo(x + width * 0.34f, h * 0.82f); lineTo(x + width * 0.96f, h * 0.18f)
+    }
+    // Dos figuras solapadas si es doble; una centrada si no.
+    fun slots(unit: Float): List<Float> = if (double) listOf(0f, w - unit) else listOf((w - unit) / 2f)
+    when (style) {
+        TickStyle.BOLD -> {
+            val width = if (double) w * 0.62f else w
+            val thick = Stroke(stroke * 1.9f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            slots(width).forEach { drawPath(tickPath(it, width), color, style = thick) }
+        }
+        TickStyle.NEON -> {
+            val width = if (double) w * 0.62f else w
+            slots(width).forEach { x ->
+                val p = tickPath(x, width)
+                drawPath(p, color.copy(alpha = 0.18f), style = Stroke(stroke * 4.2f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(p, color.copy(alpha = 0.35f), style = Stroke(stroke * 2.4f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(p, if (read) Color.White else color, style = Stroke(stroke * 0.8f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+        TickStyle.CIRCLE -> {
+            val r = h * 0.42f
+            slots(r * 2).forEach { x ->
+                val c = Offset(x + r, h / 2f)
+                if (read) drawCircle(color, r, c) else drawCircle(color, r, c, style = Stroke(stroke * 0.8f))
+                val check = Path().apply {
+                    moveTo(c.x - r * 0.45f, c.y); lineTo(c.x - r * 0.1f, c.y + r * 0.35f); lineTo(c.x + r * 0.5f, c.y - r * 0.35f)
+                }
+                drawPath(check, if (read) Color.White else color, style = Stroke(stroke * 0.8f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+        TickStyle.HEART -> {
+            val s = h * 0.95f
+            slots(s).forEach { x ->
+                val heart = Path().apply {
+                    moveTo(x + s / 2f, h * 0.92f)
+                    cubicTo(x - s * 0.1f, h * 0.55f, x + s * 0.05f, h * 0.02f, x + s / 2f, h * 0.3f)
+                    cubicTo(x + s * 0.95f, h * 0.02f, x + s * 1.1f, h * 0.55f, x + s / 2f, h * 0.92f)
+                    close()
+                }
+                if (read) drawPath(heart, color) else drawPath(heart, color, style = Stroke(stroke * 0.8f, join = StrokeJoin.Round))
+            }
+        }
+        TickStyle.STAR -> {
+            val s = h
+            slots(s).forEach { x ->
+                val cx = x + s / 2f
+                val cy = h / 2f
+                val star = Path()
+                for (i in 0 until 10) {
+                    val radius = if (i % 2 == 0) s * 0.5f else s * 0.22f
+                    val a = Math.toRadians((i * 36 - 90).toDouble())
+                    val px = cx + (radius * Math.cos(a)).toFloat()
+                    val py = cy + (radius * Math.sin(a)).toFloat()
+                    if (i == 0) star.moveTo(px, py) else star.lineTo(px, py)
+                }
+                star.close()
+                if (read) drawPath(star, color) else drawPath(star, color, style = Stroke(stroke * 0.7f, join = StrokeJoin.Round))
+            }
+        }
+        TickStyle.EYE -> {
+            if (!read) {
+                val width = if (double) w * 0.62f else w
+                slots(width).forEach { drawPath(tickPath(it, width), color, style = line) }
+            } else {
+                // Leído: un ojo abierto en lugar de las marcas.
+                val eye = Path().apply {
+                    moveTo(0f, h / 2f)
+                    quadraticTo(w / 2f, -h * 0.25f, w, h / 2f)
+                    quadraticTo(w / 2f, h * 1.25f, 0f, h / 2f)
+                    close()
+                }
+                drawPath(eye, color, style = Stroke(stroke * 0.8f, join = StrokeJoin.Round))
+                drawCircle(color, h * 0.24f, Offset(w / 2f, h / 2f))
+                drawCircle(Color.White, h * 0.08f, Offset(w / 2f + h * 0.07f, h / 2f - h * 0.07f))
+            }
+        }
+        TickStyle.SHIELD -> {
+            val s = h * 0.9f
+            slots(s).forEach { x ->
+                val shield = Path().apply {
+                    moveTo(x + s / 2f, h * 0.02f)
+                    lineTo(x + s, h * 0.2f)
+                    quadraticTo(x + s, h * 0.75f, x + s / 2f, h * 0.98f)
+                    quadraticTo(x, h * 0.75f, x, h * 0.2f)
+                    close()
+                }
+                if (read) drawPath(shield, color) else drawPath(shield, color, style = Stroke(stroke * 0.7f, join = StrokeJoin.Round))
+                val check = Path().apply {
+                    moveTo(x + s * 0.28f, h * 0.5f); lineTo(x + s * 0.45f, h * 0.68f); lineTo(x + s * 0.74f, h * 0.34f)
+                }
+                drawPath(check, if (read) Color.White else color, style = Stroke(stroke * 0.7f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+        TickStyle.PLANE -> {
+            // Avión de papel: contorno al enviar, relleno al entregar y con estela al leer.
+            val s = h * 1.1f
+            val x = w - s
+            val plane = Path().apply {
+                moveTo(x, h * 0.45f); lineTo(x + s, h * 0.05f); lineTo(x + s * 0.62f, h * 0.95f); lineTo(x + s * 0.45f, h * 0.6f); close()
+            }
+            if (double) drawPath(plane, color) else drawPath(plane, color, style = Stroke(stroke * 0.7f, join = StrokeJoin.Round))
+            if (read) {
+                for (i in 0..2) {
+                    val y = h * (0.55f + i * 0.14f)
+                    drawLine(color.copy(alpha = 0.5f), Offset(x - w * 0.42f + i * 2f, y), Offset(x - w * 0.08f, y), stroke * 0.5f, StrokeCap.Round)
+                }
+            }
+        }
+        TickStyle.KAWAII -> drawKawaii(color, double, read, stroke)
+        // Los personajes en pixel se dibujan con PixelWaifu (ver ReceiptMark).
+        else -> Unit
+    }
+}
+
+/**
+ * Chibi original (no es de ninguna serie): duerme al enviar, abre los ojos al entregar y
+ * pone ojos de corazón con rubor al leer.
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawKawaii(color: Color, double: Boolean, read: Boolean, stroke: Float) {
+    val h = size.height
+    val r = h * 0.48f
+    val c = Offset(size.width / 2f, h / 2f)
+    // Pelo y cara.
+    drawCircle(color, r, c)
+    drawCircle(Color(0xFFFFE4D6), r * 0.82f, Offset(c.x, c.y + r * 0.12f))
+    drawArc(color, 200f, 140f, true, topLeft = Offset(c.x - r * 0.85f, c.y - r * 0.9f), size = androidx.compose.ui.geometry.Size(r * 1.7f, r * 1.1f))
+    val eyeY = c.y + r * 0.12f
+    val dx = r * 0.36f
+    val ink = Color(0xFF2B1B2E)
+    when {
+        read -> {
+            listOf(-dx, dx).forEach { ox ->
+                val e = r * 0.2f
+                val hx = c.x + ox
+                val heart = Path().apply {
+                    moveTo(hx, eyeY + e)
+                    cubicTo(hx - e * 1.3f, eyeY, hx - e * 0.6f, eyeY - e * 1.1f, hx, eyeY - e * 0.3f)
+                    cubicTo(hx + e * 0.6f, eyeY - e * 1.1f, hx + e * 1.3f, eyeY, hx, eyeY + e)
+                    close()
+                }
+                drawPath(heart, Color(0xFFFF4F8B))
+            }
+            drawCircle(Color(0xFFFF8FB1).copy(alpha = 0.7f), r * 0.13f, Offset(c.x - dx * 1.5f, eyeY + r * 0.28f))
+            drawCircle(Color(0xFFFF8FB1).copy(alpha = 0.7f), r * 0.13f, Offset(c.x + dx * 1.5f, eyeY + r * 0.28f))
+        }
+        double -> listOf(-dx, dx).forEach { ox ->
+            drawCircle(ink, r * 0.14f, Offset(c.x + ox, eyeY))
+            drawCircle(Color.White, r * 0.05f, Offset(c.x + ox + r * 0.04f, eyeY - r * 0.05f))
+        }
+        else -> listOf(-dx, dx).forEach { ox ->
+            drawArc(ink, 20f, 140f, false, topLeft = Offset(c.x + ox - r * 0.14f, eyeY - r * 0.1f),
+                size = androidx.compose.ui.geometry.Size(r * 0.28f, r * 0.2f), style = Stroke(stroke * 0.5f, cap = StrokeCap.Round))
+        }
+    }
+    // Boca.
+    drawArc(ink, 20f, 140f, false, topLeft = Offset(c.x - r * 0.12f, eyeY + r * 0.22f),
+        size = androidx.compose.ui.geometry.Size(r * 0.24f, r * 0.16f), style = Stroke(stroke * 0.45f, cap = StrokeCap.Round))
 }
 
 /** Separador de listas: entre tarjetas sobra, ellas ya se separan solas. */
@@ -874,4 +1066,17 @@ fun ReceiptMark(style: TickStyle, color: Color, double: Boolean, read: Boolean, 
 fun RowDivider(modifier: Modifier = Modifier, startInset: androidx.compose.ui.unit.Dp = 0.dp) {
     val style by ChatLook.rowStyle.collectAsState()
     if (style == ChatRowStyle.CLASSIC) NexusDivider(modifier = modifier, startInset = startInset)
+}
+
+/** El personaje en pixel de cada estilo, o null si el estilo no es de personaje. */
+fun pixelCharacterFor(style: TickStyle): PixelCharacter? = when (style) {
+    TickStyle.PIXEL_AKARI -> PixelCharacter.AKARI
+    TickStyle.PIXEL_YUME -> PixelCharacter.YUME
+    TickStyle.PIXEL_RIN -> PixelCharacter.RIN
+    TickStyle.PIXEL_SORA -> PixelCharacter.SORA
+    TickStyle.PIXEL_MIKA -> PixelCharacter.MIKA
+    TickStyle.PIXEL_KAI -> PixelCharacter.KAI
+    TickStyle.PIXEL_REN -> PixelCharacter.REN
+    TickStyle.PIXEL_HARU -> PixelCharacter.HARU
+    else -> null
 }

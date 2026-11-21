@@ -1,5 +1,6 @@
 ﻿package com.Azelmods.App.ui.screens.azelai
 
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import com.Azelmods.App.i18n.tr
 
 import androidx.compose.animation.*
@@ -578,7 +579,7 @@ fun AzelAIInputBar(
         ) {
             // Modern text input with subtle border
             Surface(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).nexaTarget("azel_input"),
                 shape = RoundedCornerShape(24.dp),
                 color = SurfaceDark,
                 border = BorderStroke(1.dp, BorderColor.copy(alpha = 0.5f))

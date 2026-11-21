@@ -1,5 +1,6 @@
 ﻿package com.Azelmods.App.ui.screens.home
 
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import com.Azelmods.App.i18n.tr
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -153,13 +154,17 @@ fun HomeScreenRedesigned(
                             )
                         }
                     }
-                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate(Screen.Search.route) }) {
-                        Icon(Icons.Default.Search, "Buscar", tint = NexusTokens.Color.TextSecondary)
+                    Box(Modifier.nexaTarget("home_search")) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate(Screen.Search.route) }) {
+                            Icon(Icons.Default.Search, "Buscar", tint = NexusTokens.Color.TextSecondary)
+                        }
                     }
-                    com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate(Screen.AzelAI.route) }) {
-                        Icon(Icons.Outlined.SmartToy, "Azel IA", tint = NexusTokens.Color.TextSecondary)
+                    Box(Modifier.nexaTarget("home_azel")) {
+                        com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { navController.navigate(Screen.AzelAI.route) }) {
+                            Icon(Icons.Outlined.SmartToy, "Azel IA", tint = NexusTokens.Color.TextSecondary)
+                        }
                     }
-                    Box {
+                    Box(Modifier.nexaTarget("home_menu")) {
                         com.Azelmods.App.ui.components.AnimatedIconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, "Más opciones", tint = NexusTokens.Color.TextSecondary)
                         }
@@ -238,6 +243,7 @@ fun HomeScreenRedesigned(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate(Screen.NewConversation.route) },
+                modifier = Modifier.nexaTarget("home_new_chat"),
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 elevation = FloatingActionButtonDefaults.elevation(2.dp, 2.dp, 2.dp, 2.dp)
@@ -333,6 +339,7 @@ fun HomeScreenRedesigned(
             val textFilters by com.Azelmods.App.ui.components.ChatLook.textFilters.collectAsState()
             if (!hideFilters) Row(
                 modifier = Modifier
+                    .nexaTarget("home_filters")
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -718,6 +725,26 @@ private fun ChatRowBody(
     val isPeerTyping = chat.isTyping.any { (userId, typing) -> typing && userId != currentUserId }
     val unreadCount = chat.unreadCount[currentUserId] ?: 0
     val hasUnread = unreadCount > 0
+    // Acuse de entrega: el mensaje entrante llegó a este teléfono (dos marcas grises para quien lo
+    // envió). Solo pasa de "sent" a "delivered"; nunca rebaja un "read". En modo anónimo no avisa.
+    LaunchedEffect(chat.chatId, chat.lastMessageId) {
+        if (chat.lastMessageId.isBlank() || chat.lastMessageSenderId.isBlank() ||
+            chat.lastMessageSenderId == currentUserId ||
+            com.Azelmods.App.data.security.tor.AnonymityPolicy.hidesActivity
+        ) return@LaunchedEffect
+        val ref = com.google.firebase.database.FirebaseDatabase.getInstance().reference
+            .child("chats").child(chat.chatId).child("messages").child(chat.lastMessageId).child("status")
+        ref.runTransaction(object : com.google.firebase.database.Transaction.Handler {
+            override fun doTransaction(d: com.google.firebase.database.MutableData): com.google.firebase.database.Transaction.Result {
+                val cur = d.value as? String
+                // Con null (caché vacía o mensaje borrado) no se escribe nada: el servidor repite
+                // la transacción con el valor real si existe.
+                if (cur == "sent" || cur == "sending") d.value = "delivered"
+                return com.google.firebase.database.Transaction.success(d)
+            }
+            override fun onComplete(e: com.google.firebase.database.DatabaseError?, c: Boolean, s: com.google.firebase.database.DataSnapshot?) {}
+        })
+    }
     val interaction = remember { MutableInteractionSource() }
     val ringColors = remember(otherUserId, contactName, chat.contactColor) {
         ProfileColors.forUser(otherUserId ?: contactName, chat.contactColor)
@@ -829,9 +856,28 @@ private fun ChatRowBody(
                     Spacer(Modifier.weight(1f))
                 } else {
                     if (chat.lastMessageSenderId == currentUserId) {
-                        val peerUnread = otherUserId?.let { chat.unreadCount[it] } ?: 0
+                        // Estado real del último mensaje, leído del propio mensaje. Antes se
+                        // deducía de un contador que nadie sumaba y todo salía como leído.
+                        val lastStatus by produceState(MessageStatus.SENT, chat.chatId, chat.lastMessageId) {
+                            if (chat.lastMessageId.isBlank()) return@produceState
+                            val ref = com.google.firebase.database.FirebaseDatabase.getInstance().reference
+                                .child("chats").child(chat.chatId).child("messages")
+                                .child(chat.lastMessageId).child("status")
+                            val listener = object : com.google.firebase.database.ValueEventListener {
+                                override fun onDataChange(s: com.google.firebase.database.DataSnapshot) {
+                                    value = when ((s.value as? String)?.lowercase()) {
+                                        "read" -> MessageStatus.READ
+                                        "delivered" -> MessageStatus.DELIVERED
+                                        else -> MessageStatus.SENT
+                                    }
+                                }
+                                override fun onCancelled(e: com.google.firebase.database.DatabaseError) {}
+                            }
+                            ref.addValueEventListener(listener)
+                            awaitDispose { ref.removeEventListener(listener) }
+                        }
                         ReadReceiptIndicator(
-                            status = if (peerUnread > 0) MessageStatus.DELIVERED else MessageStatus.READ,
+                            status = lastStatus,
                             modifier = Modifier.padding(end = 4.dp)
                         )
                     }

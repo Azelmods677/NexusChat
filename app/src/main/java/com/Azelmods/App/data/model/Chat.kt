@@ -9,6 +9,8 @@ data class Chat(
     val lastMessage: String = "",
     val lastMessageTime: Long = System.currentTimeMillis(),
     val lastMessageSenderId: String = "",
+    /** Id del último mensaje: la lista lee su estado real (enviado o leído). */
+    val lastMessageId: String = "",
     val unreadCount: Map<String, Int> = emptyMap(),
     val isTyping: Map<String, Boolean> = emptyMap(), // New field
     val createdAt: Long = System.currentTimeMillis(),

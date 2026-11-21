@@ -634,6 +634,7 @@ class HomeViewModel @Inject constructor(
             lastMessage = lastMessagePreview(data, otherUid),
             lastMessageTime = lastMessageTime,
             lastMessageSenderId = data["lastMessageSenderId"] as? String ?: "",
+            lastMessageId = data["lastMessageId"] as? String ?: "",
             unreadCount = unreadMap,
             isTyping = typingMap,
             chatType = chatType,

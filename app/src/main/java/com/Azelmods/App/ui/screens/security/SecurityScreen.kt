@@ -1,5 +1,6 @@
 package com.Azelmods.App.ui.screens.security
 
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import com.Azelmods.App.i18n.tr
 
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -57,7 +58,7 @@ fun SecurityScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             NexusSectionHeader(tr("Red"))
-            NexusListRow(
+            Box(Modifier.nexaTarget("security_tor")) { NexusListRow(
                 title = tr("Modo anónimo"),
                 subtitle = when (val state = torState) {
                     is TorState.Disconnected -> tr("Desactivado")
@@ -69,7 +70,7 @@ fun SecurityScreen(
                 icon = Icons.Outlined.Security,
                 iconTint = if (torState is TorState.Connected) NexusTokens.Color.Online else NexusTokens.Color.TextSecondary,
                 onClick = { navController.navigate(Screen.TorControl.route) }
-            )
+            ) }
             NexusListRow(
                 title = tr("Navegador privado"),
                 subtitle = tr("Sitios .onion y navegación sin rastro"),

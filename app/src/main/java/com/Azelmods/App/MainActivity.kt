@@ -193,6 +193,8 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                             // Contenido normal de la app
                             val navController = rememberNavController()
                             NavGraph(navController = navController)
+                            // Nexa presenta la app una sola vez, a quien acaba de crear su cuenta.
+                            com.Azelmods.App.ui.screens.welcome.WelcomeTourOverlay(navController)
 
                             // ── Handle deep links (nexuschat://chat/{id} or nexuschat://profile/{id}) ──
                             val pendingDeepLink by deepLinkNavRequest

@@ -22,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -80,7 +81,51 @@ fun ReadReceiptIndicator(
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         when (status) {
             MessageStatus.SENT, MessageStatus.DELIVERED, MessageStatus.READ ->
-                if (tickStyle != com.Azelmods.App.ui.components.TickStyle.CLASSIC) {
+                if (tickStyle == com.Azelmods.App.ui.components.TickStyle.CUSTOM) {
+                    val custom by com.Azelmods.App.ui.components.ChatLook.customTicks.collectAsState()
+                    val index = when (status) { MessageStatus.SENT -> 0; MessageStatus.DELIVERED -> 1; else -> 2 }
+                    val image = custom.getOrNull(index)
+                    if (image != null) {
+                        coil3.compose.AsyncImage(
+                            model = image,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp).scale(pop)
+                        )
+                    } else {
+                        CheckMarks(animatedColor, status != MessageStatus.SENT, status == MessageStatus.READ, Modifier.size(18.dp, 12.dp))
+                    }
+                } else if (com.Azelmods.App.ui.components.pixelCharacterFor(tickStyle) != null) {
+                    // Personajes en pixel: 8 fotogramas que se repiten (z, parpadeo, corazones).
+                    val clock = rememberInfiniteTransition(label = "pixel")
+                    val tick by clock.animateFloat(
+                        initialValue = 0f, targetValue = 8f,
+                        animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart),
+                        label = "pixel_frame"
+                    )
+                    com.Azelmods.App.ui.components.ReceiptMark(
+                        style = tickStyle,
+                        color = animatedColor,
+                        double = status != MessageStatus.SENT,
+                        read = status == MessageStatus.READ,
+                        frame = tick.toInt() % 8,
+                        modifier = Modifier.size(22.dp)
+                    )
+                } else if (tickStyle == com.Azelmods.App.ui.components.TickStyle.KAWAII) {
+                    // La chibi da un saltito cuando el mensaje se lee.
+                    val bounce = rememberInfiniteTransition(label = "kawaii")
+                    val jump by bounce.animateFloat(
+                        initialValue = 0f, targetValue = if (status == MessageStatus.READ) -2.5f else 0f,
+                        animationSpec = infiniteRepeatable(tween(650, easing = EaseInOutQuart), RepeatMode.Reverse),
+                        label = "kawaii_jump"
+                    )
+                    com.Azelmods.App.ui.components.ReceiptMark(
+                        style = tickStyle,
+                        color = animatedColor,
+                        double = status != MessageStatus.SENT,
+                        read = status == MessageStatus.READ,
+                        modifier = Modifier.size(18.dp).graphicsLayer { translationY = jump * density }
+                    )
+                } else if (tickStyle != com.Azelmods.App.ui.components.TickStyle.CLASSIC) {
                     com.Azelmods.App.ui.components.ReceiptMark(
                         style = tickStyle,
                         color = animatedColor,

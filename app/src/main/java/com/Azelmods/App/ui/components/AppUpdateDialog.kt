@@ -108,6 +108,16 @@ fun AppUpdateDialog(manager: AppUpdateManager) {
                     text = tr("Instalar"),
                     onClick = { manager.install(state.file) }
                 )
+                is UpdateDownload.NeedsUninstall -> {
+                    Text(
+                        tr("Esta versión tiene una firma distinta y Android no deja instalarla encima. Desinstala NexusChat (y su copia en Aplicaciones duales o Segundo espacio si la tienes) y luego instala la nueva desde la página de descarga. Tus chats siguen en tu cuenta."),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = NexusTokens.Color.TextSecondary
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    NexusButton(text = tr("Desinstalar esta versión"), onClick = { manager.uninstallCurrent() })
+                    TextButton(onClick = { uriHandler.openUri(current.pageUrl) }) { Text(tr("Abrir en el navegador")) }
+                }
                 is UpdateDownload.Failed -> {
                     Text(
                         tr("No se pudo descargar. Revisa tu conexión."),

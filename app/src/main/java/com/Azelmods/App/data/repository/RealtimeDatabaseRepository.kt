@@ -1507,6 +1507,28 @@ class RealtimeDatabaseRepository @Inject constructor(
      * el receptor puede actualizar el status. Solo escribe los que cambian, para
      * evitar writes y re-emisiones innecesarias.
      */
+    /**
+     * Sube el estado de los mensajes PROPIOS de un chat hasta [status] ("delivered" o "read"),
+     * nunca lo baja. Lo usa el asistente de bienvenida, que no tiene teléfono propio que
+     * confirme la entrega y la lectura.
+     */
+    suspend fun markOwnMessagesAs(chatId: String, status: String) {
+        val userId = auth.currentUser?.uid ?: return
+        if (chatId.isBlank()) return
+        val rank = mapOf("sending" to 0, "sent" to 1, "delivered" to 2, "read" to 3)
+        val target = rank[status] ?: return
+        val messagesRef = database.child("chats").child(chatId).child("messages")
+        val snapshot = messagesRef.get().await()
+        val updates = mutableMapOf<String, Any>()
+        for (child in snapshot.children) {
+            val map = child.value as? Map<*, *> ?: continue
+            if (map["senderId"] != userId) continue
+            val current = rank[(map["status"] as? String)?.lowercase()] ?: 1
+            if (current < target) updates["${child.key}/status"] = status
+        }
+        if (updates.isNotEmpty()) messagesRef.updateChildren(updates).await()
+    }
+
     suspend fun markMessagesAsRead(chatId: String) {
         val userId = auth.currentUser?.uid ?: return
         if (chatId.isBlank()) return

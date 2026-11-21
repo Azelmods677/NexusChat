@@ -994,8 +994,14 @@ class ChatViewModel @Inject constructor(
         demoReplyJob?.cancel()
         demoReplyJob = viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Pequeña espera inicial para que no llegue "instantáneo".
-                delay(700)
+                // Como una persona: le llega (dos marcas grises), lo lee (marcas de leído)
+                // y luego contesta. Antes los mensajes al asistente se quedaban en "enviado"
+                // para siempre y las marcas animadas no pasaban del primer estado.
+                delay(450)
+                runCatching { databaseRepository.markOwnMessagesAs(chatId, "delivered") }
+                delay(650)
+                runCatching { databaseRepository.markOwnMessagesAs(chatId, "read") }
+                delay(500)
                 replies.forEachIndexed { index, reply ->
                     databaseRepository.sendMessageAs(
                         chatId = chatId,

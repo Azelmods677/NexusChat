@@ -45,6 +45,8 @@ sealed interface UpdateDownload {
     data class Running(val progress: Float) : UpdateDownload
     data class Ready(val file: File) : UpdateDownload
     data object Failed : UpdateDownload
+    /** La descarga está firmada con otra llave: Android daría "conflicto con un paquete". */
+    data class NeedsUninstall(val file: File) : UpdateDownload
 }
 
 /**
@@ -184,6 +186,12 @@ class AppUpdateManager @Inject constructor(
 
     /** Android pide confirmar y comprueba que el APK esté firmado con la misma llave. */
     fun install(file: File) {
+        // Si la firma no coincide, Android solo dice "conflicto con un paquete existente" y el
+        // usuario no sabe qué hacer. Se detecta antes y se le ofrece desinstalar.
+        if (!sameSigner(file)) {
+            _download.value = UpdateDownload.NeedsUninstall(file)
+            return
+        }
         if (!context.packageManager.canRequestPackageInstalls()) {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}"))
@@ -198,6 +206,24 @@ class AppUpdateManager @Inject constructor(
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }
+
+    /** Abre la desinstalación de NexusChat; después se instala la versión descargada. */
+    fun uninstallCurrent() {
+        context.startActivity(
+            Intent(Intent.ACTION_DELETE, Uri.parse("package:${context.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+
+    private fun sameSigner(file: File): Boolean = runCatching {
+        val pm = context.packageManager
+        val flags = android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES
+        val downloaded = pm.getPackageArchiveInfo(file.absolutePath, flags)?.signingInfo?.apkContentsSigners
+            ?.map { it.toCharsString() }?.toSet() ?: return@runCatching true
+        val installed = pm.getPackageInfo(context.packageName, flags).signingInfo?.apkContentsSigners
+            ?.map { it.toCharsString() }?.toSet() ?: return@runCatching true
+        downloaded == installed
+    }.getOrDefault(true)
 
     companion object {
         private const val TAG = "AppUpdate"

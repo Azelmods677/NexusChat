@@ -1,5 +1,6 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import com.Azelmods.App.i18n.tr
 
 import android.app.Activity
@@ -345,6 +346,15 @@ private fun rememberSettingsLinksFor(
         SettingsLink(tools, Icons.Outlined.SmartToy, TileViolet, "Inteligencia artificial", "Proveedor, modelo y funciones en los chats", go(Screen.AiFeatures.route)),
         SettingsLink(tools, Icons.Outlined.Code, TileGreen, "Editor de código", "Pestañas, búsqueda y ejecución", go("code_editor")),
         SettingsLink(tools, Icons.Outlined.Terminal, TileSlate, "Terminal", "Shell del teléfono y Kali Linux", go("terminal")),
+        // Nexa sale en cuanto se vuelve a Inicio.
+        SettingsLink(info, Icons.Outlined.AutoAwesome, TilePink, "Novedades con Nexa", "Lo nuevo de esta versión, contado por Nexa", {
+            com.Azelmods.App.ui.screens.welcome.NexaHost.request.value = com.Azelmods.App.ui.screens.welcome.NexaShow.NEWS
+            navController.popBackStack(Screen.Home.route, inclusive = false)
+        }),
+        SettingsLink(info, Icons.Outlined.Tour, TileViolet, "Presentación de la app", "Nexa te enseña la app paso a paso", {
+            com.Azelmods.App.ui.screens.welcome.NexaHost.request.value = com.Azelmods.App.ui.screens.welcome.NexaShow.TOUR
+            navController.popBackStack(Screen.Home.route, inclusive = false)
+        }),
         SettingsLink(info, Icons.AutoMirrored.Outlined.Help, TileBlue, "Ayuda", "Guías de cada función", go(Screen.SettingsHelp.route)),
         SettingsLink(info, Icons.Outlined.Lock, TileGreen, "Política de privacidad", "Qué datos usa la app y para qué", go("privacy_policy")),
         SettingsLink(info, Icons.Outlined.Info, TileSlate, "Acerca de", "Versión, licencias, historia y tu dispositivo", go(Screen.SettingsAbout.route))
@@ -588,6 +598,7 @@ private fun SettingsGrid(items: List<SettingsLink>) {
                             .clip(RoundedCornerShape(NexusTokens.Radius.xl))
                             .background(NexusTokens.Color.BgSurface)
                             .clickable(interactionSource = interaction, indication = null, onClick = link.onClick)
+                            .nexaTarget("settings_" + link.title)
                             .padding(14.dp)
                     ) {
                         SettingsIconTile(link.icon, link.color)
@@ -636,6 +647,7 @@ private fun SettingsCompactCell(link: SettingsLink, modifier: Modifier) {
     Row(
         modifier
             .clickable(onClick = link.onClick)
+            .nexaTarget("settings_" + link.title)
             .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -658,6 +670,7 @@ private fun SettingsCompactRow(link: SettingsLink) {
         Modifier
             .fillMaxWidth()
             .clickable(onClick = link.onClick)
+            .nexaTarget("settings_" + link.title)
             .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -682,7 +695,9 @@ private fun SettingsCompactRow(link: SettingsLink) {
 
 @Composable
 private fun SettingsEntry(link: SettingsLink) {
-    SettingsEntry(link.icon, link.color, tr(link.title), link.subtitle?.let { tr(it) }, onClick = link.onClick)
+    Box(Modifier.nexaTarget("settings_" + link.title)) {
+        SettingsEntry(link.icon, link.color, tr(link.title), link.subtitle?.let { tr(it) }, onClick = link.onClick)
+    }
 }
 
 /** Entrada de ajustes con descripción: dice qué hay dentro sin tener que abrirla. */

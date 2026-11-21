@@ -33,6 +33,35 @@
 ---
 
 <a id="v841"></a>
+## v8.6.0
+
+**Conoce a Nexa**
+- Nexa, la anfitriona de NexusChat, es una chibi en pixel art con su diseño oficial: melena negra con puntas violeta, cascos con la N, top con la N, chaqueta negra de mangas blancas y botas con suela violeta.
+- Al crear tu cuenta te enseña la app de verdad: camina hasta cada botón, lo ilumina, lo señala con un destello que sale de su mano y te explica para qué sirve. Recorre en 27 paradas toda la app: Inicio, llamadas, historias, cómo funciona un chat, canales, difusiones, mensajes guardados, privacidad, notificaciones, almacenamiento, tu perfil, color y fondo, el Estudio de diseño, los chats secretos, Tor y su navegador privado, el descargador de vídeos, la terminal con Kali Linux, el editor de código y Azel IA.
+- Habla con la voz del teléfono moviendo la boca, parpadea, respira y cambia de expresión: feliz, guiño, sorpresa, pícara, pensativa, enamorada y emocionada, con sus "?", "!", corazones y brillos.
+- Si la tocas te cuenta más de 150 historias, curiosidades y consejos: el cifrado de Julio César, Enigma y Turing, el primer SMS, la @ del correo, el origen de Tor o los primeros emojis, y frases de Sócrates, Séneca, Marco Aurelio, Nietzsche, Camus o Sun Tzu. También te presenta a su creador, Azelmodsx677.
+- Escribe lo que dice mientras habla, reacciona si la tocas y Atrás vuelve al paso anterior. Se calla si sales de la app, se puede saltar o silenciar, y la presentación automática solo sale una vez por cuenta.
+- Nexa es también el centro de novedades: tras cada actualización te cuenta, con voz, lo nuevo de esa versión. En Ajustes → Información puedes volver a ver la presentación o las novedades.
+
+**Marcas de enviado y leído**
+- 13 estilos nuevos: gruesas, neón, círculos, corazones, estrellas, ojo al leer, escudo, avión de papel y la chibi Kawaii.
+- Ocho personajes originales en pixel art: cinco chicas (Akari, Yume, Rin, Sora y Mika) y tres chicos (Kai, Ren y Haru). Duermen al enviar, despiertan y guiñan al entregar, y ponen ojos de corazón al leer.
+- "Mis marcas": elige tus propias imágenes o GIF animados para enviado, entregado y leído.
+- La vista previa del Estudio de diseño enseña los tres estados de cada estilo.
+
+**Correcciones**
+- La lista de chats ya no marca como leído un mensaje que la otra persona no ha abierto: muestra el estado real del último mensaje.
+- Nueva marca de entregado: cuando el mensaje llega al teléfono de la otra persona, salen dos marcas grises.
+- Borrar un canal ya no deja un canal vacío con el contador de seguidores.
+- Azel Assistant marca tus mensajes como entregados y leídos antes de responder: las marcas animadas ya cambian de estado en su chat.
+
+**Actualizaciones**
+- Si una actualización está firmada con otra llave, la app lo detecta y ofrece desinstalar en vez de mostrar "conflicto con un paquete".
+- Librería de red actualizada a OkHttp 5.5.1.
+
+---
+
+<a id="v851"></a>
 ## v8.5.1
 
 **Privacidad**

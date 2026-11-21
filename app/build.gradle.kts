@@ -49,8 +49,8 @@ android {
         applicationId = "com.Azelmods.App"
         minSdk = 31  // Android 12 - Compatibilidad con dispositivos más antiguos
         targetSdk = 37  // Android 17
-        versionCode = 851
-        versionName = "8.5.1"
+        versionCode = 860
+        versionName = "8.6.0"
         
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
         buildConfigField("String", "GIPHY_API_KEY", "\"$giphyApiKey\"")
@@ -262,9 +262,9 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     // ── Networking 2026 ────────────────────────────────────
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("com.squareup.okhttp3:okhttp-sse:4.12.0") // SSE para streaming
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
+    implementation("com.squareup.okhttp3:logging-interceptor:5.5.1")
+    implementation("com.squareup.okhttp3:okhttp-sse:5.5.1") // SSE para streaming
 
     // ── Serialization 2026 ─────────────────────────────────
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.12.0")

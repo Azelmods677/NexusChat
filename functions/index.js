@@ -1024,6 +1024,10 @@ exports.onChannelSubscriber = functions.database
     .onWrite(async (change, context) => {
         const delta = (change.after.exists() ? 1 : 0) - (change.before.exists() ? 1 : 0);
         if (delta === 0) return null;
+        // Si el canal ya no existe (se borró con sus seguidores), no se crea un canal fantasma
+        // que solo tenga el contador.
+        const channel = await db.ref(`/channels/${context.params.channelId}/name`).once("value");
+        if (!channel.exists()) return null;
         await db.ref(`/channels/${context.params.channelId}/subscribers`).transaction((n) => Math.max(0, (n || 0) + delta));
         return null;
     });

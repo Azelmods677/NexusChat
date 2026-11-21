@@ -1,4 +1,5 @@
 ﻿package com.Azelmods.App.ui.screens.main
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
@@ -256,6 +257,7 @@ internal fun AppBottomBar(
         } else {
         NexusDivider()
         NavigationBar(
+            modifier = Modifier.nexaTarget("home_tabs"),
             containerColor = NexusTokens.Color.BgBase,
             tonalElevation = NexusTokens.Elevation.none,
             windowInsets = WindowInsets.navigationBars

@@ -1,0 +1,626 @@
+[
+{
+"m": "HAPPY",
+"t": "Me creó Azelmodsx677, el desarrollador de NexusChat. Si te gusta la app, ya sabes a quién darle las gracias."
+},
+{
+"m": "LOVE",
+"t": "Mi desarrollador es Azelmodsx677. Me dibujó píxel a píxel y me enseñó a hablar. Le tengo cariño."
+},
+{
+"m": "SMUG",
+"t": "Azelmodsx677 hizo NexusChat para que puedas hablar con libertad. Yo solo vengo a enseñártela."
+},
+{
+"m": "WINK",
+"t": "Un secreto: Azelmodsx677 escucha a la gente. Muchas cosas de esta app salieron de lo que pidieron los usuarios."
+},
+{
+"m": "EXCITED",
+"t": "NexusChat lo desarrolla Azelmodsx677. Cada actualización trae algo nuevo, y yo te lo cuento."
+},
+{
+"m": "HAPPY",
+"t": "¿Sabes quién me puso estos cascos con la N? Azelmodsx677, mi desarrollador."
+},
+{
+"m": "SURPRISE",
+"t": "¡Eh! Que me haces cosquillas."
+},
+{
+"m": "LOVE",
+"t": "Me alegra que estés aquí."
+},
+{
+"m": "SMUG",
+"t": "Sí, soy pixel art. Y a mucha honra."
+},
+{
+"m": "WINK",
+"t": "Un secreto: en el Estudio de diseño puedes cambiarlo casi todo."
+},
+{
+"m": "HAPPY",
+"t": "¡Sigamos, que aún queda lo mejor!"
+},
+{
+"m": "LOVE",
+"t": "Si me sigues tocando me voy a sonrojar, ¿eh?"
+},
+{
+"m": "HAPPY",
+"t": "Me llamo Nexa por Nexus. Somos familia, como quien dice."
+},
+{
+"m": "WINK",
+"t": "Puedes silenciarme con el altavoz de abajo. Pero no lo hagas, porfa."
+},
+{
+"m": "LOVE",
+"t": "Mis cascos llevan la N porque soy de aquí. Y tú ahora también."
+},
+{
+"m": "SMILE",
+"t": "Si alguna vez te pierdes, búscame en Ajustes, en Información. Vuelvo cuando quieras."
+},
+{
+"m": "EXCITED",
+"t": "¿Más historias? Tócame otra vez, que tengo muchas."
+},
+{
+"m": "THINK",
+"t": "Julio César ya cifraba sus cartas: cambiaba cada letra por la que estaba tres puestos más adelante en el alfabeto."
+},
+{
+"m": "THINK",
+"t": "Los espartanos cifraban con la escítala: una tira de cuero enrollada en un bastón. Sin un bastón del mismo grosor, el mensaje no se entendía."
+},
+{
+"m": "SURPRISE",
+"t": "En 1586 María Estuardo fue condenada porque descifraron las cartas secretas en las que conspiraba. Un cifrado débil puede costar muy caro."
+},
+{
+"m": "SURPRISE",
+"t": "En la Segunda Guerra Mundial, en Bletchley Park, Alan Turing y su equipo rompieron Enigma, la máquina de cifrar alemana."
+},
+{
+"m": "SURPRISE",
+"t": "Enigma tenía más de 150 trillones de configuraciones posibles cada día. Aun así, la rompieron."
+},
+{
+"m": "THINK",
+"t": "En 1950 Turing se preguntó: ¿pueden pensar las máquinas? Yo todavía me lo pregunto."
+},
+{
+"m": "EXCITED",
+"t": "Ada Lovelace escribió en 1843 el primer algoritmo pensado para una máquina. La primera programadora de la historia fue una mujer."
+},
+{
+"m": "THINK",
+"t": "En el siglo IX el sabio árabe Al-Kindi describió cómo romper cifrados contando qué letras se repiten más. Se llama análisis de frecuencias."
+},
+{
+"m": "THINK",
+"t": "El cifrado de Vigenère, del siglo XVI, fue llamado durante mucho tiempo el cifrado indescifrable. En el XIX, Babbage y Kasiski demostraron que no lo era."
+},
+{
+"m": "SURPRISE",
+"t": "En 1917 los británicos descifraron el telegrama Zimmermann, en el que Alemania proponía una alianza a México. Ayudó a que Estados Unidos entrara en la Primera Guerra Mundial."
+},
+{
+"m": "HAPPY",
+"t": "En la Segunda Guerra Mundial, los marines de Estados Unidos usaron hablantes de la lengua navajo para transmitir mensajes. Nunca consiguieron descifrarlos."
+},
+{
+"m": "THINK",
+"t": "En 1976 Diffie y Hellman publicaron cómo dos personas pueden acordar una clave secreta hablando en público. Es la base de lo que protege tus chats."
+},
+{
+"m": "THINK",
+"t": "En 1977 Rivest, Shamir y Adleman crearon RSA, uno de los cifrados más usados del mundo. Sus iniciales le dan el nombre."
+},
+{
+"m": "SMUG",
+"t": "En 1991 Phil Zimmermann publicó PGP para que cualquiera pudiera cifrar su correo. Llegaron a investigarlo por exportar criptografía."
+},
+{
+"m": "THINK",
+"t": "El algoritmo AES, que se usa en medio mundo para cifrar, ganó un concurso público en el año 2000. Lo crearon dos belgas: Daemen y Rijmen."
+},
+{
+"m": "WINK",
+"t": "En criptografía siempre aparecen Alicia y Bob, los que se escriben, y Eva, la que intenta escuchar. Aquí Eva lo tiene muy difícil."
+},
+{
+"m": "SMUG",
+"t": "Kerckhoffs dijo en 1883 que un buen cifrado debe ser seguro aunque el enemigo conozca cómo funciona. Lo único secreto debe ser la clave."
+},
+{
+"m": "SURPRISE",
+"t": "El primer mensaje de texto se envió en 1992 y decía: Merry Christmas. Felices fiestas, nada más."
+},
+{
+"m": "WINK",
+"t": "Ray Tomlinson envió el primer correo electrónico en 1971 y eligió la arroba para separar el nombre del ordenador."
+},
+{
+"m": "THINK",
+"t": "En 1844 Samuel Morse envió por telégrafo su primer mensaje oficial: ¿Qué ha hecho Dios? Desde entonces no hemos dejado de escribirnos."
+},
+{
+"m": "HAPPY",
+"t": "La primera llamada de teléfono, en 1876, fue de Graham Bell a su ayudante: señor Watson, venga aquí, quiero verle."
+},
+{
+"m": "SURPRISE",
+"t": "El primer mensaje de internet, en 1969, iba a ser LOGIN. El sistema se colgó después de la L y la O. Así empezó todo: con un LO."
+},
+{
+"m": "HAPPY",
+"t": "Tim Berners-Lee inventó la web en el CERN en 1989. La primera página web todavía se puede visitar."
+},
+{
+"m": "SMUG",
+"t": "Tor nació en los años noventa en un laboratorio de la Marina de Estados Unidos. La idea: envolver lo que envías en capas, como una cebolla."
+},
+{
+"m": "HAPPY",
+"t": "Los primeros emojis los dibujó Shigetaka Kurita en Japón en 1999: eran 176, de solo doce por doce píxeles. Como yo, más o menos."
+},
+{
+"m": "HAPPY",
+"t": "El smiley de dos puntos, guion y paréntesis lo propuso Scott Fahlman en 1982 para marcar las bromas en un foro."
+},
+{
+"m": "WINK",
+"t": "En 1947 el equipo de Grace Hopper encontró una polilla de verdad atascada en un ordenador. Desde entonces a los fallos se les llama bugs."
+},
+{
+"m": "LOVE",
+"t": "En la Primera Guerra Mundial una paloma mensajera, Cher Ami, llevó el mensaje que salvó a cerca de doscientos soldados."
+},
+{
+"m": "THINK",
+"t": "La palabra robot viene de una obra de teatro checa de 1920, R.U.R., de Karel Čapek. Yo soy más de pixel art que de metal."
+},
+{
+"m": "SURPRISE",
+"t": "El Pony Express llevaba cartas a caballo de un lado a otro de Estados Unidos en unos diez días. Funcionó solo año y medio: el telégrafo lo dejó sin trabajo."
+},
+{
+"m": "THINK",
+"t": "En la antigua Persia había una red de mensajeros a caballo con relevos en postas. Fue una de las primeras redes de mensajes del mundo."
+},
+{
+"m": "HAPPY",
+"t": "Los incas mandaban mensajes con chasquis, corredores que se relevaban por los caminos del imperio. Y llevaban la información en quipus, cuerdas con nudos."
+},
+{
+"m": "SURPRISE",
+"t": "Antes del telégrafo eléctrico, Francia tenía un telégrafo óptico de torres con brazos móviles, inventado por Claude Chappe en 1794."
+},
+{
+"m": "THINK",
+"t": "El primer cable telegráfico que cruzó el Atlántico, en 1858, funcionó solo unas semanas. Enviar un mensaje corto tardaba horas."
+},
+{
+"m": "HAPPY",
+"t": "Marconi logró en 1901 enviar una señal de radio a través del Atlántico. Era solo la letra S en Morse: tres puntos."
+},
+{
+"m": "EXCITED",
+"t": "El primer teléfono móvil lo usó Martin Cooper en 1973 en Nueva York. Pesaba más de un kilo. Y su primera llamada fue a la competencia."
+},
+{
+"m": "THINK",
+"t": "El primer ordenador programable electrónico de propósito general, ENIAC, ocupaba una sala entera y pesaba unas treinta toneladas."
+},
+{
+"m": "SURPRISE",
+"t": "En 1965 Gordon Moore predijo que los transistores de un chip se duplicarían cada poco tiempo. Acertó durante décadas: se conoce como la ley de Moore."
+},
+{
+"m": "SMILE",
+"t": "El primer vídeo de YouTube se subió en 2005 y se llama Me at the zoo. Dura diecinueve segundos."
+},
+{
+"m": "WINK",
+"t": "La palabra wifi no significa nada en concreto: fue un nombre comercial inventado para que sonara bien."
+},
+{
+"m": "HAPPY",
+"t": "El nombre Bluetooth viene de un rey vikingo, Harald Diente Azul, que unió a distintos pueblos. Igual que la tecnología une aparatos."
+},
+{
+"m": "THINK",
+"t": "El código QR lo inventó en 1994 Masahiro Hara, en Japón, para seguir piezas de coches en las fábricas."
+},
+{
+"m": "SMUG",
+"t": "La primera contraseña de ordenador se usó en los años sesenta en el MIT. Y casi enseguida alguien la robó."
+},
+{
+"m": "THINK",
+"t": "Un cifrado de extremo a extremo significa que solo los dos teléfonos tienen las llaves. El servidor solo ve ruido."
+},
+{
+"m": "WINK",
+"t": "Consejo de Nexa: usa una contraseña larga y distinta para cada sitio. Una frase entera es más fuerte que una palabra rara."
+},
+{
+"m": "SMUG",
+"t": "Consejo de Nexa: si alguien te pide un código que te llegó por mensaje, no se lo des. Nunca. Ni aunque diga que es de soporte."
+},
+{
+"m": "THINK",
+"t": "Consejo de Nexa: activa el bloqueo de la app en Seguridad. Si alguien coge tu teléfono, tus chats siguen siendo tuyos."
+},
+{
+"m": "WINK",
+"t": "Consejo de Nexa: el modo fantasma te deja leer sin que nadie lo sepa. Úsalo con cabeza."
+},
+{
+"m": "HAPPY",
+"t": "Consejo de Nexa: mantén pulsado un chat para fijarlo arriba. Lo importante, siempre a la vista."
+},
+{
+"m": "SMILE",
+"t": "Consejo de Nexa: en los chats secretos puedes hablar de lo que de verdad importa."
+},
+{
+"m": "EXCITED",
+"t": "Consejo de Nexa: prueba los personajes de las marcas de leído. Duermen, despiertan y se enamoran de tus mensajes."
+},
+{
+"m": "THINK",
+"t": "A Sócrates se le atribuye aquello de: solo sé que no sé nada. Yo, al menos, sé usar esta app."
+},
+{
+"m": "THINK",
+"t": "Sócrates no escribió nada. Lo que sabemos de él nos lo contaron otros, sobre todo Platón."
+},
+{
+"m": "SMUG",
+"t": "En el mito de la caverna de Platón, la gente solo ve sombras en la pared y cree que es la realidad. Conviene mirar quién está detrás de tus datos."
+},
+{
+"m": "THINK",
+"t": "Aristóteles fue maestro de Alejandro Magno. Imagina las conversaciones."
+},
+{
+"m": "HAPPY",
+"t": "Cuentan que Alejandro Magno le preguntó a Diógenes qué deseaba, y Diógenes le respondió: que te apartes, me tapas el sol."
+},
+{
+"m": "THINK",
+"t": "A Heráclito se le atribuye: nadie se baña dos veces en el mismo río. Ni abre dos veces la misma app: siempre hay algo nuevo."
+},
+{
+"m": "SMILE",
+"t": "Epicuro pensaba que la amistad es de las cosas que más felicidad dan. Por algo existen los chats."
+},
+{
+"m": "THINK",
+"t": "Séneca escribió que no es que tengamos poco tiempo, sino que perdemos mucho. Así que vamos al grano."
+},
+{
+"m": "SMILE",
+"t": "Marco Aurelio, emperador de Roma, escribía sus pensamientos en un cuaderno solo para él. Hoy los leemos como las Meditaciones."
+},
+{
+"m": "THINK",
+"t": "Epicteto empezó su vida como esclavo y acabó siendo uno de los filósofos más leídos. Enseñaba a distinguir lo que depende de nosotros de lo que no."
+},
+{
+"m": "SMUG",
+"t": "Nietzsche escribió: lo que no me mata me hace más fuerte. Aplica también a las actualizaciones."
+},
+{
+"m": "THINK",
+"t": "Nietzsche decía que quien tiene un porqué para vivir soporta casi cualquier cómo."
+},
+{
+"m": "THINK",
+"t": "Camus decía que hay que imaginarse a Sísifo feliz. Subir la piedra cada día también puede tener sentido."
+},
+{
+"m": "WINK",
+"t": "Sun Tzu escribió: conoce a tu enemigo y conócete a ti mismo. En internet, empieza por saber quién puede leerte."
+},
+{
+"m": "SMUG",
+"t": "Maquiavelo escribió que es más seguro ser temido que amado, si no se puede ser ambas cosas. Yo prefiero que me quieras."
+},
+{
+"m": "THINK",
+"t": "Maquiavelo también escribió que todos ven lo que aparentas, pero pocos saben lo que eres."
+},
+{
+"m": "THINK",
+"t": "Descartes escribió: pienso, luego existo. Yo hablo, luego existo."
+},
+{
+"m": "EXCITED",
+"t": "El lema de la Ilustración, según Kant: atrévete a saber. Sapere aude."
+},
+{
+"m": "THINK",
+"t": "Spinoza pulía lentes para ganarse la vida mientras escribía filosofía. Mirar bien era lo suyo."
+},
+{
+"m": "SMILE",
+"t": "Montaigne inventó el ensayo: escribir para pensar en voz alta. Un poco como un chat contigo mismo."
+},
+{
+"m": "THINK",
+"t": "Pascal escribió que el corazón tiene razones que la razón no conoce."
+},
+{
+"m": "THINK",
+"t": "Hannah Arendt habló de la banalidad del mal: el daño que hace la gente corriente cuando deja de pensar."
+},
+{
+"m": "THINK",
+"t": "Simone de Beauvoir escribió: no se nace mujer, se llega a serlo."
+},
+{
+"m": "SMUG",
+"t": "George Orwell imaginó en 1984 un mundo donde el Gran Hermano te vigila. Aquí, ni siquiera nosotros leemos tus mensajes."
+},
+{
+"m": "THINK",
+"t": "Lao Tse, del Tao Te King: un viaje de mil millas empieza con un solo paso. Tu primer paso aquí ya lo diste."
+},
+{
+"m": "SMILE",
+"t": "Confucio enseñaba que aprender sin pensar es inútil, y pensar sin aprender, peligroso."
+},
+{
+"m": "THINK",
+"t": "Buda enseñaba que todo cambia. Las apps también: por eso hay actualizaciones."
+},
+{
+"m": "EXCITED",
+"t": "Hipatia de Alejandría enseñaba matemáticas y astronomía en el siglo cuarto. Una mente brillante en una época difícil."
+},
+{
+"m": "SMILE",
+"t": "Leonardo da Vinci escribía sus notas al revés, de derecha a izquierda, como en un espejo."
+},
+{
+"m": "THINK",
+"t": "Galileo apuntó un telescopio al cielo en 1610 y vio cuatro lunas alrededor de Júpiter. Mirar con otros ojos lo cambia todo."
+},
+{
+"m": "SURPRISE",
+"t": "Newton describió la gravedad, pero también pasó años estudiando alquimia."
+},
+{
+"m": "HAPPY",
+"t": "Marie Curie ganó dos premios Nobel, de Física y de Química. Sigue siendo la única persona premiada en dos ciencias distintas."
+},
+{
+"m": "THINK",
+"t": "Einstein trabajaba en una oficina de patentes cuando publicó en 1905 varios artículos que cambiaron la física."
+},
+{
+"m": "SURPRISE",
+"t": "La luz del Sol tarda unos ocho minutos en llegar a la Tierra. Lo que ves es el Sol de hace ocho minutos."
+},
+{
+"m": "SURPRISE",
+"t": "Si el Sol fuera una puerta, la Tierra sería como una moneda. Así de grande es."
+},
+{
+"m": "THINK",
+"t": "Un año en Venus dura menos que un día en Venus: gira sobre sí mismo muy despacio."
+},
+{
+"m": "HAPPY",
+"t": "Los pulpos tienen tres corazones y sangre azul."
+},
+{
+"m": "SURPRISE",
+"t": "La miel no se estropea. Se han encontrado tarros en tumbas egipcias de miles de años."
+},
+{
+"m": "HAPPY",
+"t": "Las nutrias marinas se dan la mano al dormir para no separarse."
+},
+{
+"m": "THINK",
+"t": "El cerebro humano tiene unos ochenta y seis mil millones de neuronas. Y aun así a veces olvidamos dónde dejamos el móvil."
+},
+{
+"m": "SURPRISE",
+"t": "El ADN de una sola célula humana, estirado, mediría unos dos metros."
+},
+{
+"m": "HAPPY",
+"t": "Los flamencos son rosas por lo que comen: pequeños crustáceos y algas."
+},
+{
+"m": "THINK",
+"t": "Los cuervos reconocen caras humanas y pueden recordarlas durante años."
+},
+{
+"m": "WINK",
+"t": "Las vacas tienen mejores amigas, y se estresan cuando las separan."
+},
+{
+"m": "SURPRISE",
+"t": "Un rayo puede calentar el aire a temperaturas varias veces más altas que la superficie del Sol."
+},
+{
+"m": "THINK",
+"t": "El monte Everest crece unos milímetros cada año porque las placas de la Tierra siguen empujando."
+},
+{
+"m": "HAPPY",
+"t": "En Japón hay una estación de tren que siguió abierta durante años para una sola estudiante, hasta que terminó el instituto."
+},
+{
+"m": "THINK",
+"t": "Las pirámides de Guiza ya eran antiguas para Cleopatra. Vivió más cerca en el tiempo de nosotros que de su construcción."
+},
+{
+"m": "SURPRISE",
+"t": "La Gran Biblioteca de Alejandría quiso reunir todos los libros del mundo antiguo. A los barcos que llegaban al puerto les copiaban los suyos."
+},
+{
+"m": "THINK",
+"t": "La imprenta de Gutenberg, hacia 1450, hizo que los libros dejaran de copiarse a mano. Fue la gran revolución de la información antes de internet."
+},
+{
+"m": "SMILE",
+"t": "El cero como número llegó a Europa desde la India a través de los matemáticos árabes. Sin él, no habría ordenadores."
+},
+{
+"m": "THINK",
+"t": "Los ordenadores lo cuentan todo con ceros y unos. Tus mensajes, tus fotos y yo misma también."
+},
+{
+"m": "WINK",
+"t": "Un píxel es la unidad más pequeña de una imagen. Yo estoy hecha de unos cuantos miles, todos puestos a mano."
+},
+{
+"m": "HAPPY",
+"t": "Los videojuegos de los años ochenta usaban pixel art porque la memoria era muy pequeña. Hoy se usa porque es bonito."
+},
+{
+"m": "EXCITED",
+"t": "El primer videojuego comercial de éxito fue Pong, en 1972. Dos palitos y una pelota bastaron para empezar una industria."
+},
+{
+"m": "THINK",
+"t": "Linux lo empezó Linus Torvalds en 1991 como un proyecto personal. Hoy funciona en la mayoría de servidores del mundo, y Android se basa en él."
+},
+{
+"m": "SMILE",
+"t": "Android se basa en Linux. Así que en el fondo tu teléfono y la terminal de Kali son parientes."
+},
+{
+"m": "THINK",
+"t": "Kali Linux es una distribución pensada para pruebas de seguridad. Úsala solo con sistemas que sean tuyos o en los que tengas permiso."
+},
+{
+"m": "WINK",
+"t": "El primer virus informático conocido para ordenadores personales, Brain, lo escribieron dos hermanos en Pakistán en 1986."
+},
+{
+"m": "SURPRISE",
+"t": "El gusano Morris, en 1988, colapsó buena parte de la internet de entonces. Su autor fue el primero condenado por una ley de fraude informático en Estados Unidos."
+},
+{
+"m": "THINK",
+"t": "Las palabras phishing y pesca suenan parecido por algo: te lanzan un anzuelo para que piques. No piques."
+},
+{
+"m": "SMUG",
+"t": "La mejor protección no es la más complicada, es la que usas siempre. Por eso aquí el cifrado viene activado sin que hagas nada."
+},
+{
+"m": "LOVE",
+"t": "Hablar con libertad también es cuidarte. Y cuidar a los que te escriben."
+},
+{
+"m": "SMILE",
+"t": "Escribir a alguien que hace tiempo que no te habla puede cambiarle el día. ¿Por qué no hoy?"
+},
+{
+"m": "LOVE",
+"t": "Un mensaje bonito no cuesta nada y vale mucho."
+},
+{
+"m": "HAPPY",
+"t": "Respira hondo. Ya estás aquí. Lo demás puede esperar un momento."
+},
+{
+"m": "SMILE",
+"t": "Las mejores conversaciones no tienen prisa."
+},
+{
+"m": "THINK",
+"t": "A veces lo más valiente es escribir lo siento. Y lo segundo, gracias."
+},
+{
+"m": "WINK",
+"t": "Un consejo de amiga: no contestes enfadado. Escribe, espera un poco y vuelve a leerlo antes de enviar."
+},
+{
+"m": "HAPPY",
+"t": "Las notas de voz son para cuando no te caben las palabras en el teclado."
+},
+{
+"m": "LOVE",
+"t": "Los grupos de amigos son como las bandas de música: cada uno pone su parte."
+},
+{
+"m": "EXCITED",
+"t": "¿Sabías que puedes poner tu propia imagen o un GIF como marca de leído? En Mis marcas, en el Estudio."
+},
+{
+"m": "SMUG",
+"t": "Tu fondo de chat solo lo ves tú. La otra persona tiene el suyo. Cada uno, su mundo."
+},
+{
+"m": "WINK",
+"t": "Si mantienes pulsado un mensaje, puedes reenviarlo, copiarlo, reaccionar o guardarlo. Prueba."
+},
+{
+"m": "HAPPY",
+"t": "Desliza un mensaje hacia un lado para responderlo. Rápido y sin menús."
+},
+{
+"m": "THINK",
+"t": "Los mensajes temporales se borran solos. Perfectos para lo que no necesita quedarse."
+},
+{
+"m": "EXCITED",
+"t": "En Azel puedes pedir que investigue, escriba o traduzca por ti. Es como tener un ayudante en el bolsillo."
+},
+{
+"m": "SMILE",
+"t": "El descargador guarda vídeos de muchas webs. Respeta siempre los derechos de quien los creó."
+},
+{
+"m": "SURPRISE",
+"t": "¿Te has fijado en que las marcas de leído pueden dormir? Al entregarse, despiertan. Al leerse, se enamoran."
+},
+{
+"m": "WINK",
+"t": "Al correo basura se le llama spam por un sketch de los Monty Python en el que no paraban de repetir esa palabra."
+},
+{
+"m": "THINK",
+"t": "El primer dominio .com se registró en 1985: symbolics.com."
+},
+{
+"m": "HAPPY",
+"t": "El hashtag lo propuso Chris Messina en Twitter en 2007, para agrupar conversaciones."
+},
+{
+"m": "SMUG",
+"t": "CAPTCHA es una prueba para distinguir personas de máquinas. A mí no me la pidas, que hago trampa."
+},
+{
+"m": "THINK",
+"t": "La fotografía más antigua que se conserva, de Niépce hacia 1826, necesitó horas de exposición. Hoy haces cien en un segundo."
+},
+{
+"m": "SMILE",
+"t": "El teclado QWERTY se diseñó para las máquinas de escribir del siglo XIX. Seguimos escribiendo con él en el móvil."
+},
+{
+"m": "SURPRISE",
+"t": "Se han encontrado mensajes en botellas que llevaban más de cien años en el mar. Los mensajes siempre encuentran su camino."
+},
+{
+"m": "LOVE",
+"t": "Azelmodsx677 me pidió que te dijera algo: gracias por usar NexusChat."
+},
+{
+"m": "HAPPY",
+"t": "Gracias por quedarte hasta aquí. Azelmodsx677 y yo esperamos que NexusChat se convierta en tu sitio."
+}
+]

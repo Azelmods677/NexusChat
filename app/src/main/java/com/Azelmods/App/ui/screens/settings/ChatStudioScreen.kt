@@ -1,5 +1,6 @@
 package com.Azelmods.App.ui.screens.settings
 
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -102,6 +104,7 @@ fun ChatStudioScreen(navController: NavController) {
                 }
             }
             ScrollableTabRow(
+                modifier = Modifier.nexaTarget("studio_tabs"),
                 selectedTabIndex = tab.ordinal,
                 containerColor = NexusTokens.Color.BgBase,
                 edgePadding = 8.dp,
@@ -375,9 +378,19 @@ private fun BubbleOptions() {
     NexusSectionHeader(tr("Forma de las burbujas"))
     VisualChoices(BubbleStyle.entries, style, { it.title }, ChatLook::setBubbleStyle) { BubbleMiniature(it, own) }
     NexusSectionHeader(tr("Marcas de enviado y leído"))
-    VisualChoices(TickStyle.entries, ticks, { it.title }, ChatLook::setTickStyle) {
-        ReceiptMark(it, MaterialTheme.colorScheme.primary, double = true, read = true, modifier = Modifier.size(width = 30.dp, height = 20.dp))
+    VisualChoices(TickStyle.entries, ticks, { it.title }, ChatLook::setTickStyle) { style ->
+        // Los tres estados juntos: enviado, entregado y leído.
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (style == TickStyle.CUSTOM) {
+                Icon(androidx.compose.material.icons.Icons.Outlined.Image, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+            } else {
+                ReceiptMark(style, NexusTokens.Color.TextMuted, double = false, read = false, modifier = Modifier.size(width = 16.dp, height = 14.dp))
+                ReceiptMark(style, NexusTokens.Color.TextSecondary, double = true, read = false, modifier = Modifier.size(width = 22.dp, height = 14.dp))
+                ReceiptMark(style, MaterialTheme.colorScheme.primary, double = true, read = true, modifier = Modifier.size(width = 22.dp, height = 14.dp))
+            }
+        }
     }
+    if (ticks == TickStyle.CUSTOM) CustomTicksEditor()
     ColorChoice("Color de mis burbujas", own, ChatLook::setOwnBubbleColor)
     ColorChoice("Color de las otras burbujas", peer, ChatLook::setPeerBubbleColor)
     NexusSectionHeader(tr("Tamaño del texto"))
@@ -1025,4 +1038,58 @@ private fun SettingsLivePreview() {
     ) {
         SettingsMiniature(style, large = true)
     }
+}
+
+/** "Mis marcas": una imagen o GIF para enviado, entregado y leído, elegidos de la galería. */
+@Composable
+private fun CustomTicksEditor() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val custom by ChatLook.customTicks.collectAsState()
+    var editing by remember { mutableStateOf(0) }
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            ChatLook.setCustomTick(editing, uri.toString())
+        }
+    }
+    val labels = listOf(tr("Enviado"), tr("Entregado"), tr("Leído"))
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        labels.forEachIndexed { index, label ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    Modifier
+                        .size(64.dp)
+                        .clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))
+                        .background(NexusTokens.Color.BgElevated)
+                        .clickable {
+                            editing = index
+                            picker.launch(arrayOf("image/*"))
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    val image = custom.getOrNull(index)
+                    if (image != null) {
+                        coil3.compose.AsyncImage(image, null, modifier = Modifier.size(52.dp))
+                    } else {
+                        Icon(androidx.compose.material.icons.Icons.Outlined.Image, null, tint = NexusTokens.Color.TextMuted)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(label, style = MaterialTheme.typography.labelSmall, color = NexusTokens.Color.TextSecondary)
+            }
+        }
+    }
+    Text(
+        tr("Toca cada casilla y elige una imagen o un GIF de tu galería: se moverá junto a tus mensajes."),
+        style = MaterialTheme.typography.bodySmall,
+        color = NexusTokens.Color.TextMuted,
+        modifier = Modifier.padding(horizontal = 16.dp)
+    )
 }

@@ -17,14 +17,14 @@
 <h3 align="center">Una sola app. Todo lo que esperas de un mensajero, y todo lo que nunca te dejaron cambiar.</h3>
 
 <p align="center">
-  <strong>NexusChat 8.5</strong> reúne chats cifrados, llamadas, historias, agentes de inteligencia artificial, Tor y una terminal con Kali Linux.<br>
+  <strong>NexusChat 8.6</strong> reúne chats cifrados, llamadas, historias, agentes de inteligencia artificial, Tor y una terminal con Kali Linux.<br>
   Y la envuelve en un estudio de diseño para que la tuya no se parezca a la de nadie.
 </p>
 
 <p align="center">
   <a href="https://github.com/Azelmods677/NexusChat/releases/latest"><strong>⬇️ Descargar</strong></a>
   &nbsp;·&nbsp;
-  <a href="#novedades-de-la-85">Novedades</a>
+  <a href="#novedades-de-la-86">Novedades</a>
   &nbsp;·&nbsp;
   <a href="#por-qué-nexuschat">Por qué NexusChat</a>
   &nbsp;·&nbsp;
@@ -49,9 +49,37 @@
 
 ---
 
-## Novedades de la 8.5
+## Novedades de la 8.6
 
-> **Versión actual: 8.5.1.** Historial completo en [CHANGELOG.md](CHANGELOG.md).
+> **Versión actual: 8.6.0.** Historial completo en [CHANGELOG.md](CHANGELOG.md).
+
+<p align="center">
+  <img src="docs/img/readme/nexa.png" alt="Nexa, la anfitriona de NexusChat, en pixel art: saluda, sonríe, señala, guiña, se sorprende, piensa, se enamora y camina" width="100%">
+</p>
+
+**Conoce a Nexa**
+- 👋 Nexa es la anfitriona de NexusChat: una chibi en pixel art con melena violeta, cascos con la N y la chaqueta de la app.
+- 🧭 Al crear tu cuenta **camina hasta cada botón de verdad**, lo ilumina, lo señala con un destello y te explica para qué sirve, en 27 paradas que recorren toda la app: chats, llamadas, historias, canales, difusiones, privacidad, notificaciones, tu perfil, Estudio de diseño, chats secretos, Tor, descargador de vídeos, terminal, editor de código y Azel.
+- 🗣️ Habla con la voz del teléfono moviendo la boca, parpadea y cambia de expresión, con sus corazones, brillos, "?" y "!".
+- 📚 Si la tocas te cuenta **más de 150 historias, curiosidades y consejos**: de Julio César y Enigma al primer SMS, de Sócrates a Camus. Y te presenta a su creador, Azelmodsx677.
+- 📰 Es también el **centro de novedades**: después de cada actualización te cuenta lo nuevo. Puedes volver a llamarla desde Ajustes → Información.
+
+**Marcas de enviado y leído con personalidad**
+
+<p align="center">
+  <img src="docs/img/readme/marcas-pixel.png" alt="Personajes en pixel art de las marcas de leído: duermen al enviar, despiertan al entregar y ponen ojos de corazón al leer" width="60%">
+</p>
+
+- 💤 **Ocho personajes en pixel art**, chicas y chicos, que duermen al enviar, despiertan y guiñan al entregar y ponen ojos de corazón al leer.
+- ✨ 13 estilos nuevos de marcas y **Mis marcas**: pon tus propias imágenes o GIF para cada estado.
+- ✅ La lista de chats muestra el **estado real** del último mensaje, con el nuevo estado de entregado (dos marcas grises).
+
+**Actualizar sin sustos**
+- 🧩 Si una actualización no encaja con la versión instalada, la app te dice por qué y te ayuda a resolverlo, en vez de mostrar "conflicto con un paquete".
+
+---
+
+## Novedades de la 8.5
 
 **Archivos sin límites absurdos**
 - 📎 Envía **hasta 30 fotos, vídeos o documentos a la vez**, cada uno con su descripción y menciones con @.
@@ -348,7 +376,7 @@ El código se publica **solo para consulta**. Compilarlo, modificarlo o redistri
 
 ## English
 
-**NexusChat 8.5** is an Android messenger built for anonymity. You can sign up without a phone number, your email and phone are never visible to other users, and it combines end-to-end encrypted chats and groups, secret chats, voice and video calls, stories, AI agents that research, write and run code for you, built-in Tor and a real terminal with Kali Linux. On top of that sits a **design studio**: 10 chat rows, 12 message fields, 7 home screens, 7 settings screens, 8 bubble styles, 21 fonts and 36 accent colours, or your own. Version 8.5 adds sending up to 30 files at once, documents that open inside the app, admin-only groups, channels with reactions and views, broadcasts and keyless GIFs. No ads. The app is available in Spanish and English.
+**NexusChat 8.6** is an Android messenger built for anonymity. You can sign up without a phone number, your email and phone are never visible to other users, and it combines end-to-end encrypted chats and groups, secret chats, voice and video calls, stories, AI agents that research, write and run code for you, built-in Tor and a real terminal with Kali Linux. On top of that sits a **design studio**: 10 chat rows, 12 message fields, 7 home screens, 7 settings screens, 8 bubble styles, 21 fonts and 36 accent colours, or your own. Version 8.5 adds sending up to 30 files at once, documents that open inside the app, admin-only groups, channels with reactions and views, broadcasts and keyless GIFs. Version 8.6 introduces Nexa, a pixel-art host who walks you through the real buttons of the app with voice and expressions and tells you what's new after every update, plus animated pixel characters for read receipts. No ads. The app is available in Spanish and English.
 
 © 2026 Azel Mods. All rights reserved. The source code is published for viewing only; see [LICENSE](LICENSE).
 

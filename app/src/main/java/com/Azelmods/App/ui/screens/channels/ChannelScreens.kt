@@ -1,5 +1,6 @@
 package com.Azelmods.App.ui.screens.channels
 
+import com.Azelmods.App.ui.screens.welcome.nexaTarget
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -122,7 +123,7 @@ fun ChannelsScreen(navController: NavController, viewModel: ChannelsViewModel = 
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { creating = true }) { Icon(Icons.Default.Add, tr("Crear canal")) }
+            FloatingActionButton(onClick = { creating = true }, modifier = Modifier.nexaTarget("channels_create")) { Icon(Icons.Default.Add, tr("Crear canal")) }
         },
         containerColor = NexusTokens.Color.BgBase
     ) { padding ->
