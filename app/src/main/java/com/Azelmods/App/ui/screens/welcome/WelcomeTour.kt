@@ -140,7 +140,7 @@ private val NEWS: Map<Int, () -> List<TourStep>> = mapOf(
     860 to {
         listOf(
             TourStep(null, NexaMood.HAPPY, tr("¡Hay novedades!"),
-                tr("Soy Nexa. Desde ahora te cuento lo nuevo de cada versión. Esta es la 8.6.0, y viene cargada."), left = true, pose = NexaPose.WAVE),
+                tr("Soy Nexa. Desde ahora te cuento lo nuevo de cada versión. La 8.6 viene cargada."), left = true, pose = NexaPose.WAVE),
             TourStep("chat_studio", NexaMood.LOVE, tr("Marcas con personajes"),
                 tr("Ocho personajes en pixel art, chicas y chicos, que duermen al enviar, despiertan al entregar y ponen ojos de corazón al leer. En Mis marcas puedes poner tus propias imágenes o GIF."), left = false, target = "studio_tabs"),
             TourStep(Screen.Home.route, NexaMood.SURPRISE, tr("Leído de verdad"),
@@ -148,11 +148,31 @@ private val NEWS: Map<Int, () -> List<TourStep>> = mapOf(
             TourStep(Screen.Home.route, NexaMood.WINK, tr("Actualizar sin sustos"),
                 tr("Si alguna vez una actualización no encaja con tu versión, te explico por qué y te ayudo a resolverlo. Puedes volver a verme en Ajustes, en Información."), left = false, pose = NexaPose.WAVE)
         )
+    },
+    861 to {
+        listOf(
+            TourStep(null, NexaMood.HAPPY, tr("Novedades de la 8.6.1"),
+                tr("¡Hola otra vez! Traigo dos arreglos que pedíais mucho."), left = true, pose = NexaPose.WAVE),
+            TourStep(Screen.Home.route, NexaMood.EXCITED, tr("Mensajes sin leer"),
+                tr("Cada chat vuelve a mostrar cuántos mensajes nuevos tienes, y el filtro No leídos los encuentra todos. Al abrir el chat, el contador se pone a cero."), left = true, target = "home_filters"),
+            TourStep(Screen.Home.route, NexaMood.WINK, tr("Notificaciones con nuestro logo"),
+                tr("Las notificaciones ya llevan el logo de NexusChat en vez de una campana. Así sabes de un vistazo que es un mensaje nuestro."), left = false, pose = NexaPose.WAVE)
+        )
     }
 )
 
 private fun latestNewsKey(version: Int): Int? = NEWS.keys.filter { it <= version }.maxOrNull()
-private fun newsSteps(version: Int): List<TourStep>? = latestNewsKey(version)?.let { NEWS[it]?.invoke() }
+
+/**
+ * Novedades que contar: todas las versiones que esta persona no ha visto (si viene de una
+ * versión antigua, se las cuenta seguidas, sin repetir el saludo). Si ya las vio todas
+ * (cuando la llama desde Ajustes), cuenta las de la última versión.
+ */
+private fun newsSteps(version: Int, seen: Int = 0): List<TourStep>? {
+    val keys = NEWS.keys.filter { it in (seen + 1)..version }.sorted().ifEmpty { listOfNotNull(latestNewsKey(version)) }
+    if (keys.isEmpty()) return null
+    return keys.flatMapIndexed { i, k -> NEWS.getValue(k)().let { if (i > 0) it.drop(1) else it } }
+}
 
 /** Frases de Nexa guardadas en la app (assets/nexa/frases.json): [{"m": ánimo, "t": texto}]. */
 private fun loadNexaPhrases(context: android.content.Context): List<Pair<NexaMood, String>> = runCatching {
@@ -281,7 +301,7 @@ fun WelcomeTourOverlay(navController: NavController) {
     val speaking by voice.speaking.collectAsState()
     val wordTick by voice.wordTick.collectAsState()
     var muted by remember { mutableStateOf(prefs.getBoolean("muted", false)) }
-    val tour = remember(show) { if (show == NexaShow.NEWS) newsSteps(version) ?: steps() else steps() }
+    val tour = remember(show) { if (show == NexaShow.NEWS) newsSteps(version, prefs.getInt("news_version", 0)) ?: steps() else steps() }
     // Barajadas: cada toque dice una distinta y no se repiten hasta agotarlas.
     // Frases al tocarla: las del archivo de la app más las que se añadan en Firebase
     // (config/nexa/frases), barajadas y sin repetirse hasta agotarlas.

@@ -33,6 +33,14 @@
 ---
 
 <a id="v841"></a>
+## v8.6.1
+
+**Correcciones**
+- Vuelven los contadores de mensajes sin leer: cada chat muestra cuántos mensajes nuevos tienes (también fotos, vídeos, audios, ubicaciones y stickers) y el filtro "No leídos" los encuentra. El contador se pone a cero al abrir el chat.
+- Las notificaciones llevan el logo de NexusChat en vez de una campana.
+
+---
+
 ## v8.6.0
 
 **Conoce a Nexa**

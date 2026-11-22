@@ -146,6 +146,12 @@
             </intent-filter>
         </service>
 
+        <!-- Icono de las notificaciones que manda el servidor (avisos de actualización, etc.):
+             el logo de NexusChat en vez del icono genérico. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+
         <!-- Color de acento por defecto para notificaciones FCM recibidas en background -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"

@@ -303,7 +303,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "lastMessageId" to messageId,
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
-        )
+        ) + unreadIncrements(chatRef, currentUserId)
         chatRef.updateChildren(lastMessageData).await()
 
         sendFcmForMessage(chatId = chatId, senderId = currentUserId, content = lastMessageText)
@@ -468,7 +468,7 @@ class RealtimeDatabaseRepository @Inject constructor(
                 "lastMessagePayload" to null,
                 "lastMessageTime" to ServerValue.TIMESTAMP,
                 "lastMessageSenderId" to senderId
-            )
+            ) + unreadIncrements(chatRef, senderId)
         ).await()
     }
 
@@ -1103,7 +1103,7 @@ class RealtimeDatabaseRepository @Inject constructor(
                 "lastMessageId" to messageId,
                 "lastMessageTime" to ServerValue.TIMESTAMP,
                 "lastMessageSenderId" to currentUserId
-            )
+            ) + unreadIncrements(chatRef, currentUserId)
         ).await()
 
         sendFcmForMessage(
@@ -1176,7 +1176,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "lastMessagePayload" to null,
             "lastMessageTime" to ServerValue.TIMESTAMP,
             "lastMessageSenderId" to currentUserId
-        )
+        ) + unreadIncrements(chatRef, currentUserId)
         chatRef.updateChildren(lastMessageData).await()
 
         sendFcmForMessage(
@@ -1387,7 +1387,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "IMAGE", "mediaUrl" to imageUrl, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to (if (caption.isNotEmpty()) caption else "📷 Foto"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to (if (caption.isNotEmpty()) caption else "📷 Foto"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId) + unreadIncrements(chatRef, currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, if (caption.isNotEmpty()) caption else "📷 Foto", "IMAGE")
     }
 
@@ -1408,7 +1408,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "VIDEO", "mediaUrl" to videoUrl, "duration" to duration, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to (if (caption.isNotEmpty()) caption else "🎥 Video"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to (if (caption.isNotEmpty()) caption else "🎥 Video"), "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId) + unreadIncrements(chatRef, currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, if (caption.isNotEmpty()) caption else "🎥 Video", "VIDEO")
     }
 
@@ -1429,7 +1429,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "📄 $fileName", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "📄 $fileName", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId) + unreadIncrements(chatRef, currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "📄 $fileName", "DOCUMENT")
     }
 
@@ -1450,7 +1450,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "AUDIO", "mediaUrl" to audioUrl, "duration" to duration, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "🎤 Audio", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "🎤 Audio", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId) + unreadIncrements(chatRef, currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "🎤 Audio", "AUDIO")
     }
 
@@ -1469,7 +1469,7 @@ class RealtimeDatabaseRepository @Inject constructor(
             "mediaType" to "LOCATION", "latitude" to latitude, "longitude" to longitude, "timestamp" to ServerValue.TIMESTAMP, "status" to "sent"
         )
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "📍 Ubicación", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "📍 Ubicación", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId) + unreadIncrements(chatRef, currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "📍 Ubicación", "LOCATION")
     }
 
@@ -1491,7 +1491,7 @@ class RealtimeDatabaseRepository @Inject constructor(
         replyTo?.let { messageData["replyTo"] = it }
         if (forwarded) messageData["forwardedFrom"] = "1"
         chatRef.child("messages").child(messageId).setValue(messageData).await()
-        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "Sticker", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId)).await()
+        chatRef.updateChildren(mapOf("lastMessagePayload" to null, "lastMessage" to "Sticker", "lastMessageTime" to ServerValue.TIMESTAMP, "lastMessageSenderId" to currentUserId) + unreadIncrements(chatRef, currentUserId)).await()
         sendFcmForMessage(chatId, currentUserId, "Sticker", "STICKER")
     }
 
@@ -1501,12 +1501,16 @@ class RealtimeDatabaseRepository @Inject constructor(
     }
 
     /**
-     * Marca como leídos los mensajes ENTRANTES (no propios) de un chat que aún no
-     * estén en "read". Se invoca mientras el usuario tiene el chat abierto. Las
-     * reglas permiten a cualquier miembro del chat escribir en /messages, así que
-     * el receptor puede actualizar el status. Solo escribe los que cambian, para
-     * evitar writes y re-emisiones innecesarias.
+     * Suma 1 a los no leídos de cada miembro del chat salvo quien envía. Va en la misma
+     * escritura que guarda el último mensaje, así contador y burbuja van siempre a la par.
      */
+    private suspend fun unreadIncrements(chatRef: DatabaseReference, senderId: String): Map<String, Any> = runCatching {
+        val members = chatRef.child("members").get().await()
+        val ids = if (members.hasChildren()) members.children.mapNotNull { it.key }
+        else chatRef.child("participants").get().await().children.mapNotNull { it.getValue(String::class.java) }
+        ids.filter { it.isNotBlank() && it != senderId }.associate { "unreadCount/$it" to ServerValue.increment(1) }
+    }.getOrDefault(emptyMap())
+
     /**
      * Sube el estado de los mensajes PROPIOS de un chat hasta [status] ("delivered" o "read"),
      * nunca lo baja. Lo usa el asistente de bienvenida, que no tiene teléfono propio que
@@ -1529,9 +1533,18 @@ class RealtimeDatabaseRepository @Inject constructor(
         if (updates.isNotEmpty()) messagesRef.updateChildren(updates).await()
     }
 
+    /**
+     * Marca como leídos los mensajes ENTRANTES (no propios) de un chat que aún no
+     * estén en "read". Se invoca mientras el usuario tiene el chat abierto. Las
+     * reglas permiten a cualquier miembro del chat escribir en /messages, así que
+     * el receptor puede actualizar el status. Solo escribe los que cambian, para
+     * evitar writes y re-emisiones innecesarias.
+     */
     suspend fun markMessagesAsRead(chatId: String) {
         val userId = auth.currentUser?.uid ?: return
         if (chatId.isBlank()) return
+        // Tus no leídos de este chat vuelven a 0 al abrirlo.
+        runCatching { database.child("chats").child(chatId).child("unreadCount").child(userId).setValue(0).await() }
         // Modo anónimo: los mensajes se leen sin avisar al remitente.
         if (com.Azelmods.App.data.security.tor.AnonymityPolicy.hidesActivity) return
         val messagesRef = database.child("chats").child(chatId).child("messages")

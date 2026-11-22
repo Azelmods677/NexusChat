@@ -51,7 +51,7 @@
 
 ## Novedades de la 8.6
 
-> **Versión actual: 8.6.0.** Historial completo en [CHANGELOG.md](CHANGELOG.md).
+> **Versión actual: 8.6.1.** Historial completo en [CHANGELOG.md](CHANGELOG.md).
 
 <p align="center">
   <img src="docs/img/readme/nexa.png" alt="Nexa, la anfitriona de NexusChat, en pixel art: saluda, sonríe, señala, guiña, se sorprende, piensa, se enamora y camina" width="100%">
@@ -73,6 +73,10 @@
 - 💤 **Ocho personajes en pixel art**, chicas y chicos, que duermen al enviar, despiertan y guiñan al entregar y ponen ojos de corazón al leer.
 - ✨ 13 estilos nuevos de marcas y **Mis marcas**: pon tus propias imágenes o GIF para cada estado.
 - ✅ La lista de chats muestra el **estado real** del último mensaje, con el nuevo estado de entregado (dos marcas grises).
+
+**Avisos claros**
+- 🔔 Contadores de mensajes sin leer en cada chat y filtro **No leídos**.
+- 🟣 Las notificaciones llevan el logo de NexusChat.
 
 **Actualizar sin sustos**
 - 🧩 Si una actualización no encaja con la versión instalada, la app te dice por qué y te ayuda a resolverlo, en vez de mostrar "conflicto con un paquete".
